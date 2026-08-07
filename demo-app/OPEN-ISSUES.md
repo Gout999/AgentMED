@@ -54,3 +54,29 @@
 - **当前实现**：`client_id=release-controller` → write 令牌；`quality-reader/reader` → read 令牌；
   不校验 client_secret（演示环境）。真实部署由 Higress 凭证托管注入 Authorization 头。
 - **影响**：conformance 不走 /oauth/token（直接用 Bearer 令牌），不影响验收。
+
+## 8. 业务端点鉴权为有意简化（主控确认保留）
+
+`POST /chat`、`POST /feedback` **不要求鉴权**：无 Authorization 头、垃圾 token 均返回 200。
+这是**有意设计**，理由：
+
+- openapi 全局 `security: []`、逐端点 opt-in——这两个业务端点**不在 Quality API 契约约束内**
+  （契约只约束 `/v2/*` 与 `/admin/*`）。
+- 治理面的权威边界是 **Quality API 写面**：`quality:write` 令牌仅签发给 Release Controller，
+  只有它能改 VersionSet 生命周期、做故障注入；业务端点（用户问客服、点踩）面向终端用户，
+  演示环境不做用户侧认证，真实部署应在网关层加用户会话鉴权。
+
+## 9. conformance / integration 测试会污染运行态（有 reset 闭环）
+
+`conformance`/`integration` 测试会创建并 promote 自己的 VersionSet（`v-test-*`），
+把基线 `vs_baseline0000000001` 顶成 `superseded`，`active` 变为测试残留；
+且测试版本 `model=step-2-16k`（本账号不存在）导致 `/chat` 全挂（`chat_logs.status=provider_error`）。
+这是 promote→active 契约语义的预期副作用，**不是测试放水**。
+
+**跑完 conformance / integration 后必须执行**（幂等，可重复跑）：
+
+```bash
+bash demo-app/scripts/reset_state.sh   # 清 v-test-* 残留 + 恢复基线 active + 验证
+```
+
+验收标准姿势：conformance 39 绿 → `reset_state.sh` → `curl /chat` 真实可用（answer 非兜底、`chat_logs.status=ok`）。

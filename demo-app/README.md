@@ -101,6 +101,33 @@ python3 -m venv /tmp/caseloop-demo-venv && /tmp/caseloop-demo-venv/bin/pip insta
   -o addopts="" # 或设置 CASELOOP_QUALITY_API_BASE_URL 指向你的服务
 
 # 本地冒烟（服务层直连 PG，无需容器）：python scripts/smoke_local.py
+```
+
+## ⚠️ 运行态污染与一键恢复（跑完测试必读）
+
+**conformance / integration 测试会污染运行态**：测试会创建并 promote 自己的
+VersionSet（`v-test-*`），把基线 `vs_baseline0000000001` 顶成 `superseded`，
+`active` 变成测试残留；且测试版本的 `model=step-2-16k`（该模型在本账号不存在），
+导致 `/chat` 全挂（`chat_logs.status=provider_error`，返回兜底文案）。
+这是 promote→active 契约语义的预期副作用，不是测试放水。
+
+**跑完 conformance / integration 后必须执行一键恢复**（幂等，可重复跑）：
+
+```bash
+bash demo-app/scripts/reset_state.sh
+# 效果：清掉全部 v-test-* 残留 + 恢复基线 active + 验证输出
+```
+
+验收/联调的标准姿势：
+
+```bash
+# 跑 conformance（39 全绿，但污染 active）
+pytest contracts/conformance -q
+# 一键恢复交付终态
+bash demo-app/scripts/reset_state.sh
+# 再验证 chat 真实可用
+curl -s -X POST http://127.0.0.1:8080/chat -H 'Content-Type: application/json' -d '{"message":"X200 续航是多久？"}'
+```
 
 # conformance（最终验收：39 全绿）
 cd contracts/conformance && CASELOOP_QUALITY_API_BASE_URL=http://127.0.0.1:8080 pytest -q
