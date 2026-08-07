@@ -1,0 +1,17 @@
+# CaseLoop mcp-servers — 钉版本依赖（Python 3.11+）
+# 传输层：MCP 1.x（fastmcp 在 mcp 包内；2.x 移除了 fastmcp，故钉 1.12.4）
+mcp==1.12.4
+uvicorn[standard]==0.32.1
+fastapi==0.115.6
+sqlalchemy==2.0.36
+psycopg[binary]==3.2.3
+pydantic==2.10.3
+pydantic-settings==2.6.1
+httpx==0.28.1
+python-dotenv==1.0.1
+ulid-py==1.1.0
+jsonschema==4.23.0
+
+# 测试
+pytest==8.3.4
+pytest-asyncio==0.24.0
