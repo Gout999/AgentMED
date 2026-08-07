@@ -1,0 +1,50 @@
+# CaseLoop 演示环境骨架（T2 先出 PG；T1 在此追加 demo-app 服务）
+# 用法：
+#   docker compose -f deploy/compose.yaml up -d postgres
+# 三逻辑库：control_plane / demo_app / casebase（见 postgres/init）
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: caseloop-postgres
+    environment:
+      POSTGRES_USER: caseloop
+      POSTGRES_PASSWORD: caseloop
+      # 默认库；init 脚本再创建 control_plane/demo_app/casebase
+      POSTGRES_DB: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - caseloop_pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U caseloop -d control_plane"]
+      interval: 3s
+      timeout: 5s
+      retries: 20
+      start_period: 5s
+
+  # ---- T1 demo-app「小智客服」（被治理应用）—— 仅 APPEND，不重构 control-plane 骨架 ----
+  demo-app:
+    build:
+      context: ../demo-app
+    container_name: caseloop-demo-app
+    environment:
+      DATABASE_URL: postgresql+psycopg://caseloop:caseloop@postgres:5432/demo_app
+      STEPFUN_API_KEY: ${STEPFUN_API_KEY:-}
+      STEPFUN_BASE_URL: https://api.stepfun.com/v1
+      STEPFUN_MODEL: step-3.7-flash
+      CASELOOP_READ_TOKEN: ${CASELOOP_READ_TOKEN:-conformance-read-token}
+      CASELOOP_WRITE_TOKEN: ${CASELOOP_WRITE_TOKEN:-conformance-write-token}
+      OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
+      LLM_RPM_LIMIT: "8"
+    ports:
+      - "8080:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  caseloop_pgdata:
+    name: caseloop_pgdata
