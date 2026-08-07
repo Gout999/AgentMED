@@ -1,0 +1,56 @@
+# demo-app OPEN-ISSUES（T1 施工过程中发现的契约/实现问题）
+
+> 按 scope 纪律：契约问题不直接改 contracts/，记录于此供主控裁决。日期 2026-08-07。
+
+## 1. 合成 VersionSet 的 prompt digest 无内容绑定
+
+- **现象**：conformance `_sample_content()` 提交的 prompt 只有 `{prompt_id, version, digest}`，
+  无正文。服务端无法按「内容」计算 prompt.digest。
+- **当前实现**：已注册版本（`prompts/versions.json` 内）→ digest 内容绑定；
+  未注册版本 → digest = JCS({prompt_id, version})（元数据绑定）。
+- **影响**：两个同 `prompt_id+version` 但正文不同的版本 digest 相同（仅在未注册合成版本上可能）。
+  基线/真实版本不受影响。Phase 2 建议引入「prompt 注册必须含内容摘要」约束。
+
+## 2. /logs 的 versionset_id 语义（故障注入期间）
+
+- **现象**：B1 注入后，线上 prompt 偏离任何已注册 VersionSet（契约要求如此）。
+  /logs 仍记 `versionset_id=活跃基线 id`，但 `prompt_digest` 已偏离该版本的 prompt.digest。
+- **当前实现**：versionset_id 恒为「当前 active VersionSet」，digests 反映 live 实际内容。
+  归因层用 digest 差异发现漂移（这是本意）。
+- **待主控确认**：是否要求 /logs 在注入期间给 `versionset_id` 一个特殊值（如 `""` 或 `faulted:B1`）
+  以显式标记「偏离注册版本」。当前选型利于归因「版本+digest 联合看」。
+
+## 3. canary → canary 再灰度允许
+
+- **现象**：openapi 只画了 staged→canary；control-plane 的 FakeQualityClient 允许 staged/canary→canary。
+- **当前实现**：允许 canary 从 staged 或 canary 发起（re-canary 更新 percent），promote 从 staged 或 canary。
+- **理由**：与控制面 Fake 行为对齐；契约未明文禁止。若主控要求严格单跳，改 `ALLOWED_FROM` 即可。
+
+## 4. rollback_to=digest 的匹配口径
+
+- **现象**：RollbackRequest.rollback_to 支持 `previous` 或「完整 digest」。
+- **当前实现**：`previous` = 最近被 promote 顶掉的 superseded 版本；digest 匹配 = 全等 VersionSet.digest。
+- **边界**：若某版本从未 active 或已被 rolled_back，digest 匹配也能恢复为 active（契约未禁止，但语义上
+  回滚目标应为「曾承担流量」的版本）。建议 Phase 2 收紧。
+
+## 5. 检索的 KB 范围简化
+
+- **现象**：D-001 #12 说 Phase 1 案例检索用「全文+元数据过滤」，向量检索 Phase 2 启用。
+- **当前实现**：检索作用于 live KB 全量条目（关键词子串打分），KB manifest 只用于 digest 绑定，
+  未做「按 manifest 条目白名单过滤」。
+- **影响**：合成 VersionSet（manifest 只含 x200）promote 后 chat 仍能检索全部种子条目。
+  对演示闭环无影响；Phase 2 接入向量检索时建议把 manifest 作为条目作用域。
+
+## 6. pgvector 扩展由应用侧建
+
+- **现象**：`deploy/postgres/init/01-create-databases.sql` 只对 casebase 建 vector 扩展。
+- **当前实现**：demo-app 建连时 `CREATE EXTENSION IF NOT EXISTS vector`（caseloop 为 superuser 可建），
+  并在 init SQL APPEND 了对 demo_app 的扩展创建（双保险，幂等）。
+- **待主控确认**：若要求 demo_app 扩展只能由 init 管理，移除应用侧建连即可。
+
+## 7. /oauth/token 为演示简化实现
+
+- **现象**：openapi 声明 client_credentials tokenUrl=/oauth/token。
+- **当前实现**：`client_id=release-controller` → write 令牌；`quality-reader/reader` → read 令牌；
+  不校验 client_secret（演示环境）。真实部署由 Higress 凭证托管注入 Authorization 头。
+- **影响**：conformance 不走 /oauth/token（直接用 Bearer 令牌），不影响验收。

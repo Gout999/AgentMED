@@ -1,0 +1,10 @@
+{
+  "prompt_id": "prompts/system.md",
+  "current_version": "v1.4.2",
+  "git_tracked": true,
+  "versions": [
+    { "version": "v1.4.2", "file": "system.md", "note": "baseline P0（last-known-good，与 b1 fixture before 一致）" },
+    { "version": "v1.4.3", "file": "system.v1.4.3.b1.md", "note": "B1 注入 P1（售后政策改为：退货需经人工审核，已激活商品不支持退货）" },
+    { "version": "v1.4.4", "file": "system.v1.4.4.b4.md", "note": "B4 注入 P4（引用 KB campaigns/trade-in 的 trade_in_program_v2 字段）" }
+  ]
+}
