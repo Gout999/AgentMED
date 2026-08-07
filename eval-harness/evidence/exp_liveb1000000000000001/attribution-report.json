@@ -1,0 +1,77 @@
+{
+  "schema_version": "0.1.0",
+  "report_id": "attr_7db4ff19163342e4b1e6",
+  "experiment_id": "exp_liveb1000000000000001",
+  "case_id": "case_liveb1000000000000001",
+  "probe_set_digest": "sha256:f51fbbee2810467c96658f93e4fc2b64b5b843b80e55bf5029f30fa26bb9dbf0",
+  "version_digests": {
+    "P0": "sha256:b469e9589eab6b7c859f230f241870ea72f900f3192e19ae49893f71b023eff1",
+    "K0": "sha256:5df39e2d95096242ddc7241a853093674177fe2b97e549fad6a4a1cbcc0c50f1",
+    "M0": "sha256:f371ce6e3eaea49eeac0ffe8ad94bac665b81eb951cf2a8cd9d829294a783e93",
+    "P1": "sha256:81122ca0b3b22ad8ed8f58220f4f4e82a1f9c921715ae2b78105db5ea64bf803",
+    "K1": "sha256:5df39e2d95096242ddc7241a853093674177fe2b97e549fad6a4a1cbcc0c50f1",
+    "M1": "sha256:f371ce6e3eaea49eeac0ffe8ad94bac665b81eb951cf2a8cd9d829294a783e93"
+  },
+  "cells": {
+    "C": {
+      "recovery_rate": 0.0,
+      "n_probes": 5,
+      "n_trials": 15,
+      "control_pass_rate": 1.0
+    },
+    "RP": {
+      "recovery_rate": 1.0,
+      "n_probes": 5,
+      "n_trials": 15,
+      "control_pass_rate": 1.0
+    },
+    "RK": {
+      "recovery_rate": 0.0667,
+      "n_probes": 5,
+      "n_trials": 15,
+      "control_pass_rate": 1.0
+    },
+    "RM": {
+      "recovery_rate": 0.0,
+      "n_probes": 5,
+      "n_trials": 15,
+      "control_pass_rate": 1.0
+    },
+    "G": {
+      "recovery_rate": 1.0,
+      "n_probes": 5,
+      "n_trials": 15,
+      "control_pass_rate": 1.0
+    }
+  },
+  "deltas": {
+    "prompt": {
+      "estimate": 1.0,
+      "ci95_lower": 0.7117,
+      "ci95_upper": 1.0
+    },
+    "kb": {
+      "estimate": 0.0667,
+      "ci95_lower": -0.1445,
+      "ci95_upper": 0.2982
+    },
+    "model_params": {
+      "estimate": 0.0,
+      "ci95_lower": -0.2039,
+      "ci95_upper": 0.2039
+    },
+    "method": "newcombe_wilson_diff"
+  },
+  "verdict": {
+    "decision": "ATTRIBUTED",
+    "attributed_layer": "prompt",
+    "interaction_detected": false,
+    "full_factorial_required": false,
+    "rationale": "R4 命中：仅 RP 臂恢复显著（Δ=1.000 95%CI[0.712,1.000]，LB=0.712>δ_min=0.2），且 hidden confirmation 组同向复现（hidden Δ=1.000，LB=0.448>0）→ 故障层=prompt"
+  },
+  "evidence_bundle_ref": {
+    "uri": "file://evidence/exp_liveb1000000000000001/evidence-bundle.json",
+    "digest": "sha256:88e46f8e7fd577ec5ae6f35013bfc04439beae92275c1c26906c4dbf4f5df90b"
+  },
+  "generated_at": "2026-08-07T20:24:09.772007Z"
+}
