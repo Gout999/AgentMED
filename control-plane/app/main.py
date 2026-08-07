@@ -5,15 +5,17 @@ import logging
 from contextlib import asynccontextmanager
 from typing import Any
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app import __version__
-from app.api import cases, releases
+from app.api import cases, changesets, experiments, notifications, releases
 from app.config import Settings, get_settings
 from app.db import get_engine, get_session_factory
 from app.models.tables import Base
 from app.quality.client import FakeQualityClient, QualityAPIClient
+from app.services.event_store import CASConflict
+from app.services.state_machines import IllegalTransition
 
 logger = logging.getLogger(__name__)
 
@@ -56,11 +58,39 @@ def create_app(
         app.state.quality_client = quality_client
 
     app.include_router(cases.router)
+    app.include_router(experiments.router)
+    app.include_router(changesets.router)
     app.include_router(releases.router)
+    app.include_router(notifications.router)
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
         return {"status": "ok", "version": __version__}
+
+    # 状态机非法迁移 / CAS 冲突 → 结构化错误（避免裸 500）
+    @app.exception_handler(IllegalTransition)
+    async def _illegal_transition_handler(_req: Request, exc: IllegalTransition) -> JSONResponse:
+        return JSONResponse(
+            status_code=422,
+            content={
+                "code": "illegal_transition",
+                "message": str(exc),
+                "current_state": exc.from_state,
+                "event": exc.event,
+            },
+        )
+
+    @app.exception_handler(CASConflict)
+    async def _cas_conflict_handler(_req: Request, exc: CASConflict) -> JSONResponse:
+        return JSONResponse(
+            status_code=409,
+            content={
+                "code": "revision_conflict",
+                "message": str(exc),
+                "expected_revision": exc.expected,
+                "actual_revision": exc.actual,
+            },
+        )
 
     return app
 

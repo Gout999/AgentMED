@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
-from app.models.tables import Approval, ControllerOperation, WorkOrder
+from app.models.tables import Aggregate, Approval, ControllerOperation, WorkOrder
 from app.quality.client import QualityAPIError, QualityClientProtocol
 from app.services.audit import AuditService, AuditWriteError
 from app.services.event_store import CASConflict, EventStore
@@ -103,15 +103,9 @@ class ReleaseService:
         )
         self.session.add(wo)
 
-        # ChangeSet 聚合
+        # ChangeSet 聚合（首事件懒创建 DRAFTED）
         cs_id = f"cs_{payload['workorder_id']}"
         if self.store.get_aggregate("changeset", cs_id) is None:
-            self.store.create_aggregate(
-                "changeset",
-                cs_id,
-                "DRAFTED",
-                payload={"workorder_id": payload["workorder_id"], "workorder_hash": declared},
-            )
             self.store.append_event(
                 aggregate_type="changeset",
                 aggregate_id=cs_id,
@@ -125,7 +119,7 @@ class ReleaseService:
                 },
                 correlation_id=payload["case_id"],
                 actor="controller:release",
-                new_state="DRAFTED",
+                machine="changeset",
             )
 
         self.audit.record(
@@ -168,7 +162,7 @@ class ReleaseService:
         if wo.payload.get("nonce") != payload["nonce"]:
             raise ReleaseServiceError("validation_failed", "nonce must match WorkOrder.nonce")
 
-        # nonce 唯一
+        # nonce 唯一（防重放：同一次 nonce 只能登记一次 approval）
         existing_nonce = self.session.scalar(select(Approval).where(Approval.nonce == payload["nonce"]))
         if existing_nonce is not None:
             raise ReleaseServiceError(
@@ -178,7 +172,6 @@ class ReleaseService:
 
         expiry = _parse_dt(payload["expiry"])
         now = datetime.now(timezone.utc)
-        # grant expiry 不得超过 workorder expiry；TTL 默认 30min 约束由调用方保证，这里校验未过期
         if expiry <= now:
             raise ReleaseServiceError("approval_expired", "approval already expired at grant time")
 
@@ -187,7 +180,10 @@ class ReleaseService:
             raise ReleaseServiceError("validation_failed", "decision must be approved|rejected")
 
         status = "pending" if decision == "approved" else "rejected"
-        proof = payload.get("proof") or {"method": "server_recorded", "ref": f"audit://control-plane/approval/{payload['approval_id']}"}
+        proof = payload.get("proof") or {
+            "method": "server_recorded",
+            "ref": f"audit://control-plane/approval/{payload['approval_id']}",
+        }
 
         appr = Approval(
             approval_id=payload["approval_id"],
@@ -207,10 +203,7 @@ class ReleaseService:
         cs_id = f"cs_{payload['workorder_id']}"
         cs = self.store.get_aggregate("changeset", cs_id)
         if cs and decision == "approved":
-            # 简化：若尚未 GATE_ATTACHED/AWAITING，直接记 approved 事件到 APPROVED
-            # 契约路径：approval_requested → approved；此处允许从 DRAFTED 经 gate+request 或直接跳到 approved 测试
-            # 为不发明状态，我们先补齐中间迁移（若需要）
-            self._ensure_changeset_approved(cs_id, payload)
+            self._advance_changeset_to_approved(cs_id, payload)
 
         self.audit.record(
             actor=approver.get("identity", "human"),
@@ -228,52 +221,14 @@ class ReleaseService:
             "proof": proof,
         }
 
-    def _ensure_changeset_approved(self, cs_id: str, payload: dict[str, Any]) -> None:
+    def _advance_changeset_to_approved(self, cs_id: str, payload: dict[str, Any]) -> None:
+        """按状态机推进 ChangeSet 到 APPROVED（审批通过即含门禁已过语义）。"""
         cs = self.store.get_aggregate("changeset", cs_id)
-        if cs is None:
+        if cs is None or cs.state == "APPROVED":
             return
-        # 尽力按状态机推进到 APPROVED
-        path = {
-            "DRAFTED": [
-                ("changeset.gate_attached", "GATE_ATTACHED", {"gate_report_ref": "attached", "gate_status": "passed"}),
-                ("changeset.approval_requested", "AWAITING_APPROVAL", {
-                    "workorder_hash": payload["workorder_hash"],
-                    "nonce": payload["nonce"],
-                    "expiry": payload["expiry"],
-                    "channel": "api",
-                }),
-                ("changeset.approved", "APPROVED", {
-                    "approval_id": payload["approval_id"],
-                    "approver": payload["approver"].get("identity"),
-                    "workorder_hash": payload["workorder_hash"],
-                    "nonce_consumed": True,
-                }),
-            ],
-            "GATE_ATTACHED": [
-                ("changeset.approval_requested", "AWAITING_APPROVAL", {
-                    "workorder_hash": payload["workorder_hash"],
-                    "nonce": payload["nonce"],
-                    "expiry": payload["expiry"],
-                    "channel": "api",
-                }),
-                ("changeset.approved", "APPROVED", {
-                    "approval_id": payload["approval_id"],
-                    "approver": payload["approver"].get("identity"),
-                    "workorder_hash": payload["workorder_hash"],
-                    "nonce_consumed": True,
-                }),
-            ],
-            "AWAITING_APPROVAL": [
-                ("changeset.approved", "APPROVED", {
-                    "approval_id": payload["approval_id"],
-                    "approver": payload["approver"].get("identity"),
-                    "workorder_hash": payload["workorder_hash"],
-                    "nonce_consumed": True,
-                }),
-            ],
-        }
-        steps = path.get(cs.state, [])
-        for event_type, _to, body in steps:
+
+        def _append(event_type: str, body: dict[str, Any]) -> None:
+            nonlocal cs
             cs = self.store.get_aggregate("changeset", cs_id)
             assert cs is not None
             self.store.append_event(
@@ -286,6 +241,32 @@ class ReleaseService:
                 expected_revision=cs.revision,
                 machine="changeset",
                 merge_payload=body,
+            )
+
+        if cs.state == "DRAFTED":
+            _append(
+                "changeset.gate_attached",
+                {"gate_report_ref": "attached", "gate_status": "passed"},
+            )
+        if cs.state == "GATE_ATTACHED":
+            _append(
+                "changeset.approval_requested",
+                {
+                    "workorder_hash": payload["workorder_hash"],
+                    "nonce": payload["nonce"],
+                    "expiry": payload["expiry"],
+                    "channel": "api",
+                },
+            )
+        if cs.state == "AWAITING_APPROVAL":
+            _append(
+                "changeset.approved",
+                {
+                    "approval_id": payload["approval_id"],
+                    "approver": payload["approver"].get("identity"),
+                    "workorder_hash": payload["workorder_hash"],
+                    "nonce_consumed": True,
+                },
             )
 
     # ---------- Release 流程 ----------
@@ -323,7 +304,7 @@ class ReleaseService:
             self.session.flush()
             raise ReleaseServiceError("approval_expired", "approval TTL exceeded")
 
-        # 重算 WorkOrder hash
+        # 重算 WorkOrder hash（审批即批此 hash，发布前逐字节核对）
         recomputed = workorder_hash(wo.payload)
         if recomputed != appr.workorder_hash or recomputed != wo.hash:
             raise ReleaseServiceError("hash_mismatch", "workorder hash drift detected at release time")
@@ -337,20 +318,6 @@ class ReleaseService:
         rid = release_id or new_release_id()
         target_digest = wo.payload["target_versionset_digest"]
 
-        self.store.create_aggregate(
-            "release",
-            rid,
-            "REQUESTED",
-            payload={
-                "workorder_id": workorder_id,
-                "workorder_hash": wo.hash,
-                "approval_id": approval_id,
-                "versionset_id": versionset_id,
-                "target_versionset_digest": target_digest,
-                "canary_step_index": 0,
-                "canary_percent": 0,
-            },
-        )
         self.store.append_event(
             aggregate_type="release",
             aggregate_id=rid,
@@ -363,7 +330,16 @@ class ReleaseService:
             },
             correlation_id=wo.case_id,
             actor="controller:release",
-            new_state="REQUESTED",
+            machine="release",
+            merge_payload={
+                "workorder_id": workorder_id,
+                "workorder_hash": wo.hash,
+                "approval_id": approval_id,
+                "versionset_id": versionset_id,
+                "target_versionset_digest": target_digest,
+                "canary_step_index": 0,
+                "canary_percent": 0,
+            },
         )
 
         # changeset committed
@@ -404,13 +380,13 @@ class ReleaseService:
     def canary(self, release_id: str, *, percent: Optional[int] = None, idempotency_key: str) -> dict[str, Any]:
         return self._write_step(release_id, "canary", idempotency_key=idempotency_key, percent=percent)
 
-    def promote(self, release_id: str, *, idempotency_key: str, skip_observation: bool = True) -> dict[str, Any]:
-        """灰度完成后 promote。MVP 可 skip_observation。"""
+    def promote(self, release_id: str, *, idempotency_key: str) -> dict[str, Any]:
+        """灰度验证通过后 promote。观察判定由 VERIFYING 前置迁移保证。"""
         agg = self.store.get_aggregate("release", release_id)
         if agg is None:
             raise ReleaseServiceError("not_found", f"release {release_id} not found")
 
-        # 若在 CANARYING，先 verification_completed → VERIFYING
+        # CANARYING → verification(passed) → VERIFYING（契约：须经 VERIFYING 才 promote）
         if agg.state == "CANARYING":
             self.store.append_event(
                 aggregate_type="release",
@@ -429,59 +405,57 @@ class ReleaseService:
         return self._write_step(release_id, "promote", idempotency_key=idempotency_key)
 
     def rollback(self, release_id: str, *, reason: str = "manual", idempotency_key: str) -> dict[str, Any]:
+        """回滚：仅可从灰度观察态（CANARYING / VERIFYING）触发；ROLLING_BACK 可重试。"""
         agg = self.store.get_aggregate("release", release_id)
         if agg is None:
             raise ReleaseServiceError("not_found", f"release {release_id} not found")
 
-        if agg.state in ("CANARYING", "VERIFYING", "STAGING", "PROMOTING", "REQUESTED"):
-            if agg.state != "ROLLING_BACK":
-                # 发 rollback_started：从 VERIFYING 才有契约迁移；其他状态直接进 ROLLING_BACK 需特殊处理
-                if agg.state == "VERIFYING":
-                    self.store.append_event(
-                        aggregate_type="release",
-                        aggregate_id=release_id,
-                        event_type="release.rollback_started",
-                        payload={"rollback_to": "previous", "reason": reason},
-                        correlation_id=release_id,
-                        actor="controller:release",
-                        expected_revision=agg.revision,
-                        machine="release",
-                        guard="verification=failed",
-                        merge_payload={"rollback_reason": reason},
-                    )
-                elif agg.state == "CANARYING":
-                    # 先 verification failed → VERIFYING → rollback_started
-                    self.store.append_event(
-                        aggregate_type="release",
-                        aggregate_id=release_id,
-                        event_type="release.verification_completed",
-                        payload={"result": "failed", "probe_set_digest": "sha256:" + "c" * 64},
-                        correlation_id=release_id,
-                        actor="controller:release",
-                        expected_revision=agg.revision,
-                        machine="release",
-                        merge_payload={"verification": "failed"},
-                    )
-                    agg = self.store.get_aggregate("release", release_id)
-                    assert agg is not None
-                    self.store.append_event(
-                        aggregate_type="release",
-                        aggregate_id=release_id,
-                        event_type="release.rollback_started",
-                        payload={"rollback_to": "previous", "reason": reason},
-                        correlation_id=release_id,
-                        actor="controller:release",
-                        expected_revision=agg.revision,
-                        machine="release",
-                        guard="verification=failed",
-                        merge_payload={"rollback_reason": reason},
-                    )
-                else:
-                    # 强制标记 ROLLING_BACK（通过 unknown 路径不合适）；直接改投影并记事件
-                    # 为不发明事件，用 rollback_started 仅从 VERIFYING；其余手动 set
-                    agg.state = "ROLLING_BACK"
-                    agg.revision = int(agg.revision) + 1
-                    self.session.flush()
+        if agg.state == "CANARYING":
+            # 先落"验证失败" → VERIFYING，再 rollback_started → ROLLING_BACK
+            self.store.append_event(
+                aggregate_type="release",
+                aggregate_id=release_id,
+                event_type="release.verification_completed",
+                payload={"result": "failed", "probe_set_digest": "sha256:" + "c" * 64},
+                correlation_id=release_id,
+                actor="controller:release",
+                expected_revision=agg.revision,
+                machine="release",
+                merge_payload={"verification": "failed"},
+            )
+            agg = self.store.get_aggregate("release", release_id)
+            assert agg is not None
+            self.store.append_event(
+                aggregate_type="release",
+                aggregate_id=release_id,
+                event_type="release.rollback_started",
+                payload={"rollback_to": "previous", "reason": reason},
+                correlation_id=release_id,
+                actor="controller:release",
+                expected_revision=agg.revision,
+                machine="release",
+                guard="verification=failed",
+                merge_payload={"rollback_reason": reason},
+            )
+        elif agg.state == "VERIFYING":
+            self.store.append_event(
+                aggregate_type="release",
+                aggregate_id=release_id,
+                event_type="release.rollback_started",
+                payload={"rollback_to": "previous", "reason": reason},
+                correlation_id=release_id,
+                actor="controller:release",
+                expected_revision=agg.revision,
+                machine="release",
+                guard="verification=failed",
+                merge_payload={"rollback_reason": reason},
+            )
+        elif agg.state != "ROLLING_BACK":
+            raise ReleaseServiceError(
+                "illegal_transition",
+                f"cannot rollback from state {agg.state}",
+                current_state=agg.state,
+            )
 
         return self._write_step(release_id, "rollback", idempotency_key=idempotency_key, reason=reason)
 
@@ -498,7 +472,7 @@ class ReleaseService:
         if agg is None:
             raise ReleaseServiceError("not_found", f"release {release_id} not found")
 
-        # 幂等
+        # 幂等：同 Idempotency-Key 不重复执行
         existing_op = self.session.scalar(
             select(ControllerOperation).where(ControllerOperation.idempotency_key == idempotency_key)
         )
@@ -515,7 +489,7 @@ class ReleaseService:
         if not vs_id:
             raise ReleaseServiceError("validation_failed", "release missing versionset_id")
 
-        # 读当前 revision
+        # 读当前 revision 作为 If-Match（CAS）
         try:
             vs = self.quality.get_versionset(vs_id)
             current_rev = int(vs.get("revision", 1))
@@ -579,7 +553,6 @@ class ReleaseService:
         remote_status = remote_op.get("status", "succeeded")
 
         if remote_status in ("pending", "running"):
-            # 轮询至终态或 UNKNOWN
             remote_status, remote_op = self._poll_operation(remote_id or "", local_op_id)
 
         if remote_status == "unknown":
@@ -593,8 +566,8 @@ class ReleaseService:
 
         cop.status = "succeeded"
         cop.result = remote_op
-        # 应用本地状态机
         result = self._apply_success(release_id, kind, remote_op, percent=percent)
+        result["operation_id"] = local_op_id  # 幂等跟踪用本地 operation_id（get_operation 用它查）
         self.audit.record(
             actor="controller:release",
             action=f"release.{kind}",
@@ -608,7 +581,7 @@ class ReleaseService:
     def _poll_operation(self, remote_id: str, local_op_id: str) -> tuple[str, dict[str, Any]]:
         if not remote_id:
             return "unknown", {}
-        deadline = time.time() + 5.0  # 短轮询
+        deadline = time.time() + self.settings.operation_poll_timeout_seconds
         last: dict[str, Any] = {}
         while time.time() < deadline:
             try:
@@ -617,9 +590,7 @@ class ReleaseService:
                 if st in ("succeeded", "failed"):
                     return st, last
             except QualityAPIError as exc:
-                if exc.status_code == 410:
-                    return "unknown", {}
-                if exc.code == "network_error":
+                if exc.status_code == 410 or exc.code == "network_error":
                     return "unknown", {}
             time.sleep(0.05)
         return "unknown", last
@@ -630,7 +601,6 @@ class ReleaseService:
         cop = self.session.get(ControllerOperation, op_id)
         if cop:
             cop.status = "unknown"
-        # 仅从允许的状态进入 UNKNOWN
         if agg.state in ("STAGING", "CANARYING", "PROMOTING", "ROLLING_BACK"):
             self.store.append_event(
                 aggregate_type="release",
@@ -644,7 +614,7 @@ class ReleaseService:
                 merge_payload={"unknown_op": op_id, "unknown_kind": kind},
             )
         else:
-            # REQUESTED 上 stage 失败：标记 payload
+            # 首步（stage）结果不可考时状态仍在 REQUESTED：仅标记，不进 UNKNOWN（契约无该迁移）
             agg.payload = {**(agg.payload or {}), "unknown_op": op_id, "unknown_kind": kind}
             self.session.flush()
 
@@ -664,13 +634,23 @@ class ReleaseService:
             "reconcile_required": True,
         }
 
+    # ---------- reconcile（UNKNOWN→对账，指数退避由调用方循环） ----------
+
     def reconcile(self, release_id: str) -> dict[str, Any]:
-        """UNKNOWN→reconcile：指数退避由调用方循环；此处做一次对账。"""
+        """UNKNOWN→reconcile：以 GET /status 权威状态对账，按实际生效情况收敛。
+
+        - 未生效 → action=resume：回 REQUESTED 重发（同 Idempotency-Key）
+        - promote 已生效 → action=confirm：确认 COMPLETED
+        - 回滚已生效 → action=compensate：ROLLING_BACK → rolled_back
+        - stage/canary 已生效 → 收敛到 REQUESTED 后按远端现实补成功事件（重放）
+        """
         agg = self.store.get_aggregate("release", release_id)
         if agg is None:
             raise ReleaseServiceError("not_found", f"release {release_id} not found")
         if agg.state != "UNKNOWN" and not (agg.payload or {}).get("unknown_op"):
-            raise ReleaseServiceError("illegal_transition", f"cannot reconcile from {agg.state}", current_state=agg.state)
+            raise ReleaseServiceError(
+                "illegal_transition", f"cannot reconcile from {agg.state}", current_state=agg.state
+            )
 
         vs_id = (agg.payload or {}).get("versionset_id")
         kind = (agg.payload or {}).get("unknown_kind", "stage")
@@ -682,100 +662,38 @@ class ReleaseService:
             raise ReleaseServiceError("quality_api_error", f"reconcile status failed: {exc}") from exc
 
         remote_status = vs.get("status", "")
-        # 判断是否已生效
-        action = "resume"
-        target_guard = "action=resume"
-        if kind == "stage" and remote_status in ("staged", "canary", "active"):
-            action = "confirm"
-            # 已 stage：补 release.staged 并视情况
-            target_guard = "action=confirm"
-            # 简化：若已 staged 但 release 在 UNKNOWN，reconcile 到可继续的状态
-            # 契约：confirm → COMPLETED 仅当操作已终态成功；对 stage 更合理是 resume 到 REQUESTED 后重放
-            # 我们用：已生效 → 应用成功事件路径
-            action = "apply_and_resume"
-        if kind == "promote" and remote_status == "active":
-            action = "confirm"
-            target_guard = "action=confirm"
-        if kind == "canary" and remote_status == "canary":
-            action = "apply_and_resume"
-        if kind == "rollback" and remote_status == "rolled_back":
-            action = "confirm"
-            target_guard = "action=confirm"
+        applied, _ = self._remote_effect(kind, remote_status)
 
-        if action == "confirm" and agg.state == "UNKNOWN":
-            self.store.append_event(
-                aggregate_type="release",
-                aggregate_id=release_id,
-                event_type="release.reconciled",
-                payload={"operation_id": op_id, "resolved_status": remote_status, "action": "resume" if target_guard != "action=confirm" else "resume"},
-                correlation_id=release_id,
-                actor="controller:release",
-                expected_revision=agg.revision,
-                machine="release",
-                guard=target_guard if target_guard != "action=confirm" else "action=confirm",
-                merge_payload={"reconciled": True, "remote_status": remote_status},
-            )
-            # 若 confirm→COMPLETED 但实际是 stage，修正：用 resume
-            agg = self.store.get_aggregate("release", release_id)
-            if target_guard == "action=confirm" and kind != "promote" and kind != "rollback":
-                # force back — 上面可能到 COMPLETED；对 canary/stage 用 resume 更合适
-                pass
-        elif agg.state == "UNKNOWN":
-            self.store.append_event(
-                aggregate_type="release",
-                aggregate_id=release_id,
-                event_type="release.reconciled",
-                payload={"operation_id": op_id, "resolved_status": remote_status, "action": "resume"},
-                correlation_id=release_id,
-                actor="controller:release",
-                expected_revision=agg.revision,
-                machine="release",
-                guard="action=resume",
-                merge_payload={"reconciled": True, "remote_status": remote_status},
-            )
+        # 选择 reconcile action 与目标 guard
+        if not applied:
+            action, guard = "resume", "action=resume"
+        elif kind == "rollback":
+            # 回滚已生效：compensate → ROLLING_BACK → rolled_back
+            action, guard = "compensate", "action=compensate"
+        elif kind == "promote":
+            action, guard = "confirm", "action=confirm"
         else:
-            # 非 UNKNOWN 投影，清标记
-            agg.payload = {**(agg.payload or {}), "reconciled": True, "remote_status": remote_status}
+            # stage/canary 已生效：resume 到 REQUESTED 后重放成功事件
+            action, guard = "apply", "action=resume"
 
-        # 若已生效，补成功事件
-        if action in ("apply_and_resume", "confirm"):
-            agg = self.store.get_aggregate("release", release_id)
-            assert agg is not None
-            if kind == "stage" and agg.state in ("REQUESTED", "STAGING"):
-                if agg.state == "REQUESTED":
-                    self._apply_success(release_id, "stage", {"result": {"revision": vs.get("revision"), "status": remote_status}})
-            elif kind == "canary" and agg.state in ("REQUESTED", "STAGING", "CANARYING"):
-                if agg.state in ("REQUESTED", "STAGING"):
-                    # need staged first in local SM
-                    if agg.state == "REQUESTED":
-                        self._apply_success(release_id, "stage", {"result": {"revision": vs.get("revision"), "status": "staged"}})
-                    self._apply_success(release_id, "canary", {"result": {"revision": vs.get("revision"), "status": "canary", "canary_percent": vs.get("canary_percent", 5)}})
-            elif kind == "promote" and remote_status == "active":
-                if agg.state != "COMPLETED":
-                    # 推进到 COMPLETED
-                    if agg.state == "REQUESTED":
-                        self._apply_success(release_id, "stage", {"result": {}})
-                        agg = self.store.get_aggregate("release", release_id)
-                    if agg and agg.state == "STAGING":
-                        self._apply_success(release_id, "canary", {"result": {"canary_percent": 100}})
-                        agg = self.store.get_aggregate("release", release_id)
-                    if agg and agg.state == "CANARYING":
-                        self.store.append_event(
-                            aggregate_type="release",
-                            aggregate_id=release_id,
-                            event_type="release.verification_completed",
-                            payload={"result": "passed", "probe_set_digest": "sha256:" + "b" * 64},
-                            correlation_id=release_id,
-                            actor="controller:release",
-                            expected_revision=agg.revision,
-                            machine="release",
-                        )
-                        agg = self.store.get_aggregate("release", release_id)
-                    if agg and agg.state == "VERIFYING":
-                        self._apply_success(release_id, "promote", {"result": {"revision": vs.get("revision")}})
-            elif kind == "rollback" and remote_status == "rolled_back":
-                if agg.state != "ROLLED_BACK":
-                    self._apply_success(release_id, "rollback", {"result": {"restored_digest": "sha256:" + "d" * 64}})
+        if agg.state == "UNKNOWN":
+            self.store.append_event(
+                aggregate_type="release",
+                aggregate_id=release_id,
+                event_type="release.reconciled",
+                payload={"operation_id": op_id, "resolved_status": remote_status, "action": action},
+                correlation_id=release_id,
+                actor="controller:release",
+                expected_revision=agg.revision,
+                machine="release",
+                guard=guard,
+                merge_payload={"reconciled": True, "remote_status": remote_status},
+            )
+
+        if applied:
+            self._apply_remote_reality(release_id, kind, vs)
+
+        self._clear_unknown_marker(release_id, remote_status)
 
         if op_id:
             cop = self.session.get(ControllerOperation, op_id)
@@ -799,7 +717,7 @@ class ReleaseService:
         }
 
     def reconcile_loop(self, release_id: str, max_attempts: int = 5) -> dict[str, Any]:
-        """带指数退避的 reconcile 循环（5s 起，5min 上限）。测试中可缩短。"""
+        """带指数退避的 reconcile 循环（5s 起，5min 上限；测试中可配小）。"""
         delay = float(self.settings.reconcile_backoff_initial_seconds)
         max_delay = float(self.settings.reconcile_backoff_max_seconds)
         last: dict[str, Any] = {}
@@ -811,9 +729,82 @@ class ReleaseService:
             except ReleaseServiceError:
                 if attempt == max_attempts - 1:
                     raise
-            time.sleep(min(delay, max_delay) if delay < 1 else 0)  # 测试环境 delay 可配成很小
+            time.sleep(min(delay, max_delay))
             delay = min(delay * 2, max_delay)
         return last
+
+    @staticmethod
+    def _remote_effect(kind: str, remote_status: str) -> tuple[bool, Optional[str]]:
+        if kind == "stage":
+            return remote_status in ("staged", "canary", "active"), "STAGING"
+        if kind == "canary":
+            return remote_status in ("canary", "active"), "CANARYING"
+        if kind == "promote":
+            return remote_status == "active", "COMPLETED"
+        if kind == "rollback":
+            return remote_status == "rolled_back", "ROLLED_BACK"
+        return False, None
+
+    def _apply_remote_reality(self, release_id: str, kind: str, vs: dict[str, Any]) -> None:
+        """把已确认的远端现实落到本地状态机（补成功事件）。"""
+        agg = self.store.get_aggregate("release", release_id)
+        if agg is None:
+            return
+        rev = vs.get("revision")
+
+        if kind == "stage":
+            if agg.state == "REQUESTED":
+                self._apply_success(release_id, "stage", {"result": {"revision": rev, "status": "staged"}})
+        elif kind == "canary":
+            if agg.state in ("REQUESTED", "STAGING"):
+                self._apply_success(
+                    release_id,
+                    "canary",
+                    {"result": {"revision": rev, "status": "canary", "canary_percent": vs.get("canary_percent", 5)}},
+                )
+        elif kind == "promote":
+            if agg.state == "REQUESTED":
+                self._apply_success(release_id, "stage", {"result": {"revision": rev}})
+                agg = self.store.get_aggregate("release", release_id)
+                assert agg is not None
+            if agg.state == "STAGING":
+                self._apply_success(release_id, "canary", {"result": {"revision": rev, "canary_percent": 100}})
+                agg = self.store.get_aggregate("release", release_id)
+                assert agg is not None
+            if agg.state == "CANARYING":
+                self.store.append_event(
+                    aggregate_type="release",
+                    aggregate_id=release_id,
+                    event_type="release.verification_completed",
+                    payload={"result": "passed", "probe_set_digest": "sha256:" + "b" * 64},
+                    correlation_id=release_id,
+                    actor="controller:release",
+                    expected_revision=agg.revision,
+                    machine="release",
+                )
+                agg = self.store.get_aggregate("release", release_id)
+                assert agg is not None
+            if agg.state == "VERIFYING":
+                self._apply_success(release_id, "promote", {"result": {"revision": rev}})
+        elif kind == "rollback":
+            if agg.state == "ROLLING_BACK":
+                self._apply_success(
+                    release_id,
+                    "rollback",
+                    {"result": {"restored_digest": "sha256:" + "d" * 64, "revision": rev}},
+                )
+
+    def _clear_unknown_marker(self, release_id: str, remote_status: str) -> None:
+        agg = self.store.get_aggregate("release", release_id)
+        if agg is None:
+            return
+        p = dict(agg.payload or {})
+        p.pop("unknown_op", None)
+        p.pop("unknown_kind", None)
+        p["reconciled"] = True
+        p["remote_status"] = remote_status
+        agg.payload = p
+        self.session.flush()
 
     def _apply_success(
         self,
@@ -844,9 +835,8 @@ class ReleaseService:
             steps = self.settings.canary_step_list
             idx = int((agg.payload or {}).get("canary_step_index", 0))
             pct = percent if percent is not None else int(result.get("canary_percent") or steps[min(idx, len(steps) - 1)])
-            # STAGING → canary_started → CANARYING
             if agg.state == "REQUESTED":
-                # 允许测试跳过 stage？契约要求 STAGING 先；强制先 stage 事件
+                # 兼容 reconcile 重放路径：先补 stage
                 self.store.append_event(
                     aggregate_type="release",
                     aggregate_id=release_id,
@@ -919,6 +909,7 @@ class ReleaseService:
             "revision": agg.revision if agg else None,
             "status": "succeeded",
             "kind": kind,
+            "operation_id": remote_op.get("operation_id", ""),
             "payload": agg.payload if agg else {},
         }
 
@@ -931,6 +922,19 @@ class ReleaseService:
             "state": agg.state,
             "revision": agg.revision,
             "payload": agg.payload,
+        }
+
+    def list_releases(self, *, state: Optional[str] = None, limit: int = 100, cursor: int = 0) -> dict[str, Any]:
+        q = select(Aggregate).where(Aggregate.aggregate_type == "release").order_by(Aggregate.aggregate_id)
+        if state:
+            q = q.where(Aggregate.state == state)
+        rows = list(self.session.scalars(q.offset(cursor).limit(limit)).all())
+        return {
+            "items": [
+                {"release_id": r.aggregate_id, "state": r.state, "revision": r.revision}
+                for r in rows
+            ],
+            "next_cursor": cursor + len(rows) if len(rows) == limit else None,
         }
 
     def get_operation(self, operation_id: str) -> dict[str, Any]:

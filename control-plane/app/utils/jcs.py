@@ -44,8 +44,16 @@ def workorder_hash(payload: dict[str, Any]) -> str:
 
 
 def params_digest(params: Any) -> str:
-    """审计参数 digest：sha256:<hex>。"""
-    return f"sha256:{sha256_hex(jcs_subset(params))}"
+    """审计参数 digest：sha256:<hex>。
+
+    优先 JCS（确定性）；含浮点/非 ASCII 等 JCS 子集不支持的值时降级为
+    sort_keys JSON（审计 digest 仅用于防篡改，无契约格式约束）。
+    """
+    try:
+        data = jcs_subset(params)
+    except (ValueError, TypeError):
+        data = json.dumps(params, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return f"sha256:{sha256_hex(data)}"
 
 
 def content_sha256_hex(text: str) -> str:

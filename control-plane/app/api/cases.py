@@ -88,6 +88,18 @@ def post_complaint(
     return result
 
 
+@router.get("/v1/cases")
+def list_cases(
+    state: Optional[str] = None,
+    limit: int = 100,
+    cursor: int = 0,
+    session: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_app_settings),
+) -> dict[str, Any]:
+    svc = CaseService(session, settings)
+    return svc.list_cases(state=state, limit=min(limit, 500), cursor=cursor)
+
+
 @router.get("/v1/cases/{case_id}")
 def get_case(
     case_id: str,

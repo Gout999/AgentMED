@@ -1,6 +1,8 @@
 """状态机迁移表（权威：contracts/events/state-machines.yaml）。
 
-只实现 Case / Release / ChangeSet 施工面所需迁移；不发明 contracts 没有的状态。
+实现七个状态机（case / experiment / changeset / eval / release / notification / trust）。
+纪律：状态权威源 = 控制面数据库（PG aggregate/event）；LLM 永远不是状态权威源。
+guard 语义：带 guard 的迁移必须由调用方显式给出匹配的 guard，否则拒绝（防止走错分支）。
 """
 from __future__ import annotations
 
@@ -63,6 +65,68 @@ CASE_TRANSITIONS: list[Transition] = [
     Transition("*", "case.escalated", "ESCALATED"),
 ]
 
+# ---------- Experiment ----------
+EXPERIMENT_STATES = {
+    "REQUESTED",
+    "PROTOCOL_FROZEN",
+    "RUNNING",
+    "ANALYZING",
+    "VERDICT_COMPUTED",
+    "CANCELLED",
+}
+EXPERIMENT_INITIAL = "REQUESTED"
+EXPERIMENT_TERMINAL = {"VERDICT_COMPUTED", "CANCELLED"}
+
+EXPERIMENT_TRANSITIONS: list[Transition] = [
+    Transition("REQUESTED", "experiment.protocol_frozen", "PROTOCOL_FROZEN"),
+    Transition("PROTOCOL_FROZEN", "experiment.started", "RUNNING"),
+    Transition("RUNNING", "experiment.runner_lost", "PROTOCOL_FROZEN"),
+    Transition("RUNNING", "experiment.cell_completed", "RUNNING"),
+    Transition("RUNNING", "experiment.verdict_computed", "VERDICT_COMPUTED"),
+    Transition("VERDICT_COMPUTED", "experiment.escalated_full_factorial", "PROTOCOL_FROZEN", guard="verdict=CONFOUNDED"),
+    Transition("*", "experiment.cancelled", "CANCELLED"),
+]
+
+# ---------- ChangeSet ----------
+CHANGESET_STATES = {
+    "DRAFTED",
+    "GATE_ATTACHED",
+    "AWAITING_APPROVAL",
+    "APPROVED",
+    "COMMITTED",
+    "REJECTED",
+    "EXPIRED",
+    "SUPERSEDED",
+}
+CHANGESET_INITIAL = "DRAFTED"
+CHANGESET_TERMINAL = {"COMMITTED", "REJECTED", "EXPIRED", "SUPERSEDED"}
+
+CHANGESET_TRANSITIONS: list[Transition] = [
+    Transition("DRAFTED", "changeset.gate_attached", "GATE_ATTACHED"),
+    Transition("DRAFTED", "changeset.drafted", "SUPERSEDED"),
+    Transition("GATE_ATTACHED", "changeset.approval_requested", "AWAITING_APPROVAL"),
+    Transition("AWAITING_APPROVAL", "changeset.approved", "APPROVED"),
+    Transition("AWAITING_APPROVAL", "changeset.rejected", "REJECTED"),
+    Transition("AWAITING_APPROVAL", "changeset.expired", "EXPIRED"),
+    Transition("APPROVED", "changeset.committed", "COMMITTED"),
+    Transition("APPROVED", "changeset.expired", "EXPIRED"),
+]
+
+# ---------- Eval ----------
+EVAL_STATES = {"REQUESTED", "RUNNING", "PASSED", "FAILED"}
+EVAL_INITIAL = "REQUESTED"
+EVAL_TERMINAL = {"PASSED", "FAILED"}
+
+EVAL_TRANSITIONS: list[Transition] = [
+    Transition("REQUESTED", "eval.started", "RUNNING"),
+    Transition("RUNNING", "eval.rule_track_completed", "RUNNING"),
+    Transition("RUNNING", "eval.judge_track_completed", "RUNNING"),
+    Transition("RUNNING", "eval.passed", "PASSED"),
+    Transition("RUNNING", "eval.failed", "FAILED"),
+    Transition("RUNNING", "eval.error", "REQUESTED", guard="retryable=true"),
+    Transition("RUNNING", "eval.error", "FAILED", guard="retryable=false"),
+]
+
 # ---------- Release ----------
 RELEASE_STATES = {
     "REQUESTED",
@@ -85,47 +149,87 @@ RELEASE_TRANSITIONS: list[Transition] = [
     Transition("CANARYING", "release.verification_completed", "VERIFYING"),
     Transition("VERIFYING", "release.promoted", "COMPLETED", guard="verification=passed"),
     Transition("VERIFYING", "release.rollback_started", "ROLLING_BACK", guard="verification=failed"),
-    # 允许从 CANARYING 直接 promote 的简化路径不在契约；须经 VERIFYING
-    # 从 CANARYING 也可直接 promote 若观察通过：契约要求 verification_completed → VERIFYING → promoted
     Transition("PROMOTING", "release.promoted", "COMPLETED"),
-    Transition("VERIFYING", "release.promoted", "COMPLETED"),  # promote 事件
     Transition("ROLLING_BACK", "release.rolled_back", "ROLLED_BACK"),
     Transition("ROLLING_BACK", "release.rollback_failed", "FAILED_ESCALATED"),
     Transition("STAGING", "release.unknown_detected", "UNKNOWN"),
     Transition("CANARYING", "release.unknown_detected", "UNKNOWN"),
     Transition("PROMOTING", "release.unknown_detected", "UNKNOWN"),
     Transition("ROLLING_BACK", "release.unknown_detected", "UNKNOWN"),
-    # reconcile 多目标：由 guard 参数选择
+    # reconcile 多目标：由 guard=action:X 选择
     Transition("UNKNOWN", "release.reconciled", "REQUESTED", guard="action=resume"),
     Transition("UNKNOWN", "release.reconciled", "COMPLETED", guard="action=confirm"),
     Transition("UNKNOWN", "release.reconciled", "ROLLING_BACK", guard="action=compensate"),
     Transition("UNKNOWN", "release.rollback_failed", "FAILED_ESCALATED"),
-    # 人工可从 REQUESTED 直接开始 canary（若 stage 已在外部完成）— 不发明；保持契约
 ]
 
-# ---------- ChangeSet ----------
-CHANGESET_STATES = {
-    "DRAFTED",
-    "GATE_ATTACHED",
-    "AWAITING_APPROVAL",
-    "APPROVED",
-    "COMMITTED",
-    "REJECTED",
-    "EXPIRED",
-    "SUPERSEDED",
+# ---------- Notification ----------
+NOTIFICATION_STATES = {"QUEUED", "SENDING", "RETRYING", "SENT", "DEAD_LETTERED"}
+NOTIFICATION_INITIAL = "QUEUED"
+NOTIFICATION_TERMINAL = {"SENT", "DEAD_LETTERED"}
+
+NOTIFICATION_TRANSITIONS: list[Transition] = [
+    Transition("QUEUED", "notification.sent", "SENT"),
+    Transition("QUEUED", "notification.failed", "RETRYING", guard="retryable=true"),
+    # 语义补全（state-machines.yaml failure_semantics：不可重试错误直接死信）
+    Transition("QUEUED", "notification.failed", "DEAD_LETTERED", guard="retryable=false"),
+    Transition("SENDING", "notification.sent", "SENT"),
+    Transition("SENDING", "notification.failed", "RETRYING", guard="retryable=true"),
+    Transition("SENDING", "notification.failed", "DEAD_LETTERED", guard="retryable=false"),
+    Transition("RETRYING", "notification.retry_scheduled", "QUEUED"),
+    Transition("RETRYING", "notification.dead_lettered", "DEAD_LETTERED"),
+]
+
+# ---------- Trust ----------
+TRUST_STATES = {
+    "MANUAL",
+    "ELIGIBLE",
+    "AWAITING_CONFIRMATION",
+    "AUTO_ENABLED",
+    "SUSPENDED",
+    "BLOCKED_UNKNOWN",
 }
-CHANGESET_INITIAL = "DRAFTED"
+TRUST_INITIAL = "MANUAL"
 
-CHANGESET_TRANSITIONS: list[Transition] = [
-    Transition("DRAFTED", "changeset.gate_attached", "GATE_ATTACHED"),
-    Transition("DRAFTED", "changeset.drafted", "SUPERSEDED"),
-    Transition("GATE_ATTACHED", "changeset.approval_requested", "AWAITING_APPROVAL"),
-    Transition("AWAITING_APPROVAL", "changeset.approved", "APPROVED"),
-    Transition("AWAITING_APPROVAL", "changeset.rejected", "REJECTED"),
-    Transition("AWAITING_APPROVAL", "changeset.expired", "EXPIRED"),
-    Transition("APPROVED", "changeset.committed", "COMMITTED"),
-    Transition("APPROVED", "changeset.expired", "EXPIRED"),
+TRUST_TRANSITIONS: list[Transition] = [
+    Transition("MANUAL", "trust.evidence_recorded", "ELIGIBLE", guard="r1_whitelist"),
+    Transition("ELIGIBLE", "trust.evidence_recorded", "ELIGIBLE", guard="below_threshold"),
+    Transition("ELIGIBLE", "trust.promotion_proposed", "AWAITING_CONFIRMATION", guard="wilson_lower>0.9"),
+    Transition("AWAITING_CONFIRMATION", "trust.promotion_confirmed", "AUTO_ENABLED"),
+    Transition("AWAITING_CONFIRMATION", "trust.promotion_rejected_by_human", "ELIGIBLE"),
+    Transition("AUTO_ENABLED", "trust.suspended", "SUSPENDED", guard="verification_failed"),
+    Transition("AUTO_ENABLED", "trust.blocked_unknown", "BLOCKED_UNKNOWN"),
+    Transition("SUSPENDED", "trust.reinstated", "ELIGIBLE"),
+    Transition("BLOCKED_UNKNOWN", "trust.reinstated", "MANUAL"),
+    Transition("ELIGIBLE", "trust.blocked_unknown", "BLOCKED_UNKNOWN"),
 ]
+
+# 初始状态查表（首事件懒创建聚合时使用）
+INITIAL_STATES = {
+    "case": CASE_INITIAL,
+    "experiment": EXPERIMENT_INITIAL,
+    "changeset": CHANGESET_INITIAL,
+    "eval": EVAL_INITIAL,
+    "release": RELEASE_INITIAL,
+    "notification": NOTIFICATION_INITIAL,
+    "trust": TRUST_INITIAL,
+}
+
+_MACHINES: dict[str, list[Transition]] = {
+    "case": CASE_TRANSITIONS,
+    "experiment": EXPERIMENT_TRANSITIONS,
+    "changeset": CHANGESET_TRANSITIONS,
+    "eval": EVAL_TRANSITIONS,
+    "release": RELEASE_TRANSITIONS,
+    "notification": NOTIFICATION_TRANSITIONS,
+    "trust": TRUST_TRANSITIONS,
+}
+
+
+def initial_state(machine: str) -> str:
+    if machine not in INITIAL_STATES:
+        raise ValueError(f"unknown machine: {machine}")
+    return INITIAL_STATES[machine]
 
 
 def next_state(
@@ -135,12 +239,8 @@ def next_state(
     *,
     guard: Optional[str] = None,
 ) -> str:
-    """查迁移表；非法则抛 IllegalTransition。"""
-    table = {
-        "case": CASE_TRANSITIONS,
-        "release": RELEASE_TRANSITIONS,
-        "changeset": CHANGESET_TRANSITIONS,
-    }.get(machine)
+    """查迁移表；非法或 guard 未满足则抛 IllegalTransition。"""
+    table = _MACHINES.get(machine)
     if table is None:
         raise IllegalTransition(machine, from_state, event, f"unknown machine: {machine}")
 
@@ -153,22 +253,18 @@ def next_state(
         raise IllegalTransition(machine, from_state, event)
 
     if guard is not None:
+        # 精确 guard 优先
         for t in candidates:
-            if t.guard == guard or t.guard is None:
-                # 优先精确 guard 匹配
-                pass
-        exact = [t for t in candidates if t.guard == guard]
-        if exact:
-            return exact[0].to_state
-        # 无 guard 的通配
+            if t.guard == guard:
+                return t.to_state
+        # 无 guard 的通配迁移可作为兜底
         free = [t for t in candidates if t.guard is None]
         if free:
             return free[0].to_state
-        # 有多个不同 guard 的候选但未指定匹配 → 取第一个（调用方应传 guard）
-        return candidates[0].to_state
+        raise IllegalTransition(machine, from_state, event, f"guard={guard!r} not satisfied")
 
-    # 无 guard 入参：优先无 guard 的迁移
+    # 未指定 guard：只允许无 guard 的迁移；若候选全要求 guard → 拒绝
     free = [t for t in candidates if t.guard is None]
     if free:
         return free[0].to_state
-    return candidates[0].to_state
+    raise IllegalTransition(machine, from_state, event, "transition requires guard")

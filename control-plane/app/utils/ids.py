@@ -4,11 +4,11 @@ from __future__ import annotations
 import secrets
 import string
 
-from ulid import ULID
+import ulid
 
 
 def _ulid() -> str:
-    return str(ULID())
+    return str(ulid.new())
 
 
 def new_event_id() -> str:
@@ -33,6 +33,18 @@ def new_lease_id() -> str:
 
 def new_release_id() -> str:
     return f"rel_{_ulid()}"
+
+
+def new_experiment_id() -> str:
+    return f"exp_{_ulid()}"
+
+
+def new_notification_id() -> str:
+    return f"notif_{_ulid()}"
+
+
+def new_changeset_id() -> str:
+    return f"cs_{_ulid()}"
 
 
 def new_operation_id() -> str:

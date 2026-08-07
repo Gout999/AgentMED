@@ -1,4 +1,8 @@
-"""事件溯源存储：追加事件 + CAS 更新聚合；支持从 events 重放状态。"""
+"""事件溯源存储：追加事件 + CAS 更新聚合；支持从 events 重放状态。
+
+聚合在首事件时懒创建（revision=1, seq=1）；此后每个事件 revision+1、seq+1。
+revision 即事件序号，CAS 依据（spec §7.2：revision BIGINT 每次迁移 +1，初始 1）。
+"""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -8,7 +12,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.tables import Aggregate, Event, Outbox
-from app.services.state_machines import IllegalTransition, next_state
+from app.services.state_machines import IllegalTransition, initial_state, next_state
 from app.utils.ids import new_event_id, new_outbox_id
 
 
@@ -37,6 +41,9 @@ class EventStore:
         state: str,
         payload: Optional[dict[str, Any]] = None,
     ) -> Aggregate:
+        """预创建聚合（无事件）；一般无需调用——append_event 会在首事件时懒创建。"""
+        if self.get_aggregate(aggregate_type, aggregate_id) is not None:
+            raise CASConflict(aggregate_type, aggregate_id, 0, None)
         agg = Aggregate(
             aggregate_type=aggregate_type,
             aggregate_id=aggregate_id,
@@ -69,35 +76,38 @@ class EventStore:
     ) -> Event:
         """同事务：CAS 迁移聚合 + 追加事件 + 可选 outbox。
 
-        状态机迁移：若 machine 给定，用 next_state 计算 new_state。
-        若 new_state 直接给定则使用之（创建首事件等）。
+        - 聚合不存在 → 懒创建（state = new_state or 机器初始状态），seq=1。
+          expected_revision 必须为 None 或 0。
+        - 聚合存在 → CAS 校验 expected_revision == agg.revision；随后状态迁移、
+          revision+1、seq=last+1。
         """
         agg = self.get_aggregate(aggregate_type, aggregate_id)
         now = datetime.now(timezone.utc)
 
         if agg is None:
-            # 首事件：创建聚合
-            initial_state = new_state or "RECEIVED"
-            if machine and new_state is None:
-                # 首事件不经迁移表
-                pass
-            agg = self.create_aggregate(aggregate_type, aggregate_id, initial_state, payload={})
-            seq = 1
-            if expected_revision is not None and expected_revision != 0:
+            if expected_revision not in (None, 0):
                 raise CASConflict(aggregate_type, aggregate_id, expected_revision, None)
+            state = new_state or (initial_state(machine) if machine else "RECEIVED")
+            agg = Aggregate(
+                aggregate_type=aggregate_type,
+                aggregate_id=aggregate_id,
+                state=state,
+                payload=dict(merge_payload or {}),
+                revision=1,
+                updated_at=now,
+            )
+            self.session.add(agg)
+            seq = 1
         else:
-            if expected_revision is not None and agg.revision != expected_revision:
-                raise CASConflict(aggregate_type, aggregate_id, expected_revision, agg.revision)
+            if expected_revision is not None and int(agg.revision) != expected_revision:
+                raise CASConflict(aggregate_type, aggregate_id, expected_revision, int(agg.revision))
             seq = self._next_seq(aggregate_id)
 
-            target_state = new_state
             if machine is not None:
-                try:
-                    target_state = next_state(machine, agg.state, event_type, guard=guard)
-                except IllegalTransition:
-                    raise
-            if target_state is not None and target_state != agg.state:
+                target_state = next_state(machine, agg.state, event_type, guard=guard)
                 agg.state = target_state
+            elif new_state is not None:
+                agg.state = new_state
 
             if merge_payload:
                 merged = dict(agg.payload or {})
@@ -159,24 +169,13 @@ class EventStore:
         if not events:
             raise ValueError(f"no events for {aggregate_type}/{aggregate_id}")
 
-        # 首事件建立初始状态
-        state = "RECEIVED" if machine == "case" else "REQUESTED" if machine == "release" else "DRAFTED"
+        state = initial_state(machine)
         payload: dict[str, Any] = {}
-
-        # 若首事件是 case.opened 等，需从初始状态迁移
-        # 约定：创建聚合时已有 RECEIVED，首条业务事件驱动迁移
-        for i, ev in enumerate(events):
+        for ev in events:
             payload.update(ev.payload or {})
-            if i == 0 and machine == "case" and ev.event_type == "complaint.received":
-                state = "RECEIVED"
-                continue
-            if i == 0 and machine == "case" and ev.event_type == "case.opened":
-                # opened 从 RECEIVED
-                state = next_state("case", "RECEIVED", "case.opened")
-                continue
             try:
                 state = next_state(machine, state, ev.event_type)
             except IllegalTransition:
-                # 部分事件不改变状态（自迁移等）——保持
+                # 部分事件不改变状态（自迁移/需 guard 的事件）——保持
                 pass
         return state, payload, len(events)

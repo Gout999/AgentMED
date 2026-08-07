@@ -13,6 +13,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         extra="ignore",
+        populate_by_name=True,  # 允许以字段名传参（测试/构造），env 仍走 alias
     )
 
     database_url: str = Field(
@@ -31,6 +32,7 @@ class Settings(BaseSettings):
     canary_steps: str = Field(default="5,25,100", alias="CANARY_STEPS")
     canary_observation_seconds: int = Field(default=120, alias="CANARY_OBSERVATION_SECONDS")
     operation_ttl_hours: int = Field(default=24, alias="OPERATION_TTL_HOURS")
+    operation_poll_timeout_seconds: float = Field(default=5.0, alias="OPERATION_POLL_TIMEOUT_SECONDS")
 
     reconcile_backoff_initial_seconds: int = Field(default=5, alias="RECONCILE_BACKOFF_INITIAL_SECONDS")
     reconcile_backoff_max_seconds: int = Field(default=300, alias="RECONCILE_BACKOFF_MAX_SECONDS")

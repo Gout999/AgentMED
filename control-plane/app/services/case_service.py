@@ -54,8 +54,9 @@ class CaseService:
     ) -> dict[str, Any]:
         """POST /v1/complaints 核心逻辑。
 
-        去重：dedup_key = sha256(source|external_id)；无 external_id 时按 D-001 Q4 归一化内容哈希。
-        24h 去重窗：窗内重复 → 200 + existing_case_id。
+        去重：dedup_key = sha256(source|external_id)；无 external_id 时按 D-001 Q4
+        （先 PII 脱敏、再归一化、后 sha256）内容指纹。去重窗内重复 → 返回已有 case；
+        窗外 → 换键重新立案并关联历史 case_id（spec §7.3）。
         """
         if source not in ("webhook", "poll"):
             raise CaseServiceError("validation_failed", "source must be webhook|poll")
@@ -72,10 +73,7 @@ class CaseService:
             norm = normalize_for_dedup(text)
             ext = hashlib.sha256(norm.encode("utf-8")).hexdigest()
 
-        dedup_material = f"{source}|{ext}"
-        dedup_hex = hashlib.sha256(dedup_material.encode("utf-8")).hexdigest()
-        dedup_key = f"sha256:{dedup_hex}"
-
+        dedup_key = self._dedup_key(source, ext)
         now = datetime.now(timezone.utc)
         window = timedelta(hours=self.settings.complaint_dedup_window_hours)
 
@@ -85,7 +83,7 @@ class CaseService:
             if received.tzinfo is None:
                 received = received.replace(tzinfo=timezone.utc)
             if now - received <= window:
-                # 重复：返回已有 case
+                # 重复：返回已有 case（不再立案）
                 self.audit.record(
                     actor="controller:case",
                     action="complaint.duplicate",
@@ -100,8 +98,13 @@ class CaseService:
                     "case_id": existing.case_id,
                     "disposition": existing.disposition,
                 }
+            # 去重窗外：换键新立案，关联历史 case_id（spec §7.3）
+            previous_case_id = existing.case_id
+            dedup_key = self._dedup_key(source, ext, suffix=f"refile:{previous_case_id}")
+        else:
+            previous_case_id = None
 
-        # 新投诉：inbox + case 聚合
+        # 新投诉：inbox + case 聚合（首事件懒创建）
         case_id = new_case_id()
         trace_id = new_trace_id()
         safe_payload = {
@@ -113,6 +116,7 @@ class CaseService:
             "text": redacted.text,  # 已脱敏
             "attachments": attachments or [],
             "app_ref": app_ref,
+            "previous_case_id": previous_case_id,
         }
 
         inbox = Inbox(
@@ -126,8 +130,6 @@ class CaseService:
         )
         self.session.add(inbox)
 
-        # 创建 case 聚合 RECEIVED
-        self.store.create_aggregate("case", case_id, "RECEIVED", payload={"app_ref": app_ref})
         self.store.append_event(
             aggregate_type="case",
             aggregate_id=case_id,
@@ -145,11 +147,9 @@ class CaseService:
             correlation_id=case_id,
             actor="controller:case",
             trace_id=trace_id,
+            machine="case",
             new_state="RECEIVED",
-            expected_revision=None,
         )
-        # 首事件时 create_aggregate 已 revision=1；append 在已有 agg 上会 +1
-        # 上面 create 后 get 到 agg，append 会 seq=1 revision→2。调整：直接用 opened。
 
         if auto_open:
             self._open_case(
@@ -178,6 +178,11 @@ class CaseService:
             "state": agg.state if agg else "OPEN",
             "revision": agg.revision if agg else 1,
         }
+
+    @staticmethod
+    def _dedup_key(source: str, external_id: str, suffix: str = "") -> str:
+        material = f"{source}|{external_id}" + (f"|{suffix}" if suffix else "")
+        return f"sha256:{hashlib.sha256(material.encode('utf-8')).hexdigest()}"
 
     def _open_case(
         self,
@@ -216,28 +221,26 @@ class CaseService:
         agg = self.store.get_aggregate("case", case_id)
         if agg is None:
             raise CaseServiceError("not_found", f"case {case_id} not found")
-        if agg.state not in ("OPEN", "DISPATCHED"):
-            # 允许对已 DISPATCHED 且 lease 过期的回收：先 worker_lost 再 claim
-            if agg.state == "DISPATCHED" and self.leases.is_expired(case_id):
-                self._worker_lost(case_id, reason="lease_expired")
-                agg = self.store.get_aggregate("case", case_id)
-            else:
-                raise CaseServiceError(
-                    "illegal_transition",
-                    f"cannot claim from state {agg.state}",
-                    current_state=agg.state,
-                )
 
-        if agg.state == "DISPATCHED" and not self.leases.is_expired(case_id):
-            # 同 worker 可重领；不同 worker 冲突
-            pass
+        # 已 DISPATCHED 且 lease 过期 → 先回收（case.worker_lost → OPEN）
+        if agg.state == "DISPATCHED" and self.leases.is_expired(case_id):
+            self._worker_lost(case_id, reason="lease_expired")
+            agg = self.store.get_aggregate("case", case_id)
+            assert agg is not None
+
+        if agg.state not in ("OPEN", "DISPATCHED"):
+            raise CaseServiceError(
+                "illegal_transition",
+                f"cannot claim from state {agg.state}",
+                current_state=agg.state,
+            )
 
         try:
             lease = self.leases.claim(case_id, worker_id)
         except LeaseConflict as exc:
             raise CaseServiceError("lease_conflict", str(exc), current_state=agg.state) from exc
 
-        # 若当前 OPEN → DISPATCHED
+        # OPEN → DISPATCHED；DISPATCHED 同 owner 重领 → 更新 payload（不重复立案）
         if agg.state == "OPEN":
             attempt = int((agg.payload or {}).get("dispatch_attempt", 0)) + 1
             self.store.append_event(
@@ -263,7 +266,7 @@ class CaseService:
                 },
             )
         else:
-            # 已 DISPATCHED 重领：更新 payload，不改状态
+            # 已 DISPATCHED 重领：lease 已换发新 fencing token，同步投影
             agg.payload = {
                 **(agg.payload or {}),
                 "worker_id": worker_id,
@@ -424,6 +427,24 @@ class CaseService:
             "payload": agg.payload,
             "updated_at": agg.updated_at.isoformat() if agg.updated_at else None,
             "event_count": len(events),
+        }
+
+    def list_cases(self, *, state: Optional[str] = None, limit: int = 100, cursor: int = 0) -> dict[str, Any]:
+        q = select(Aggregate).where(Aggregate.aggregate_type == "case").order_by(Aggregate.aggregate_id)
+        if state:
+            q = q.where(Aggregate.state == state)
+        rows = list(self.session.scalars(q.offset(cursor).limit(limit)).all())
+        return {
+            "items": [
+                {
+                    "case_id": r.aggregate_id,
+                    "state": r.state,
+                    "revision": r.revision,
+                    "updated_at": r.updated_at.isoformat() if r.updated_at else None,
+                }
+                for r in rows
+            ],
+            "next_cursor": cursor + len(rows) if len(rows) == limit else None,
         }
 
     def write_with_fencing(

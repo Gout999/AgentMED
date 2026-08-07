@@ -116,6 +116,22 @@ def start_release(
     return {}
 
 
+@router.get("/v1/releases")
+def list_releases(
+    state: Optional[str] = None,
+    limit: int = 100,
+    cursor: int = 0,
+    session: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_app_settings),
+    quality: QualityClientProtocol = Depends(get_quality_client),
+) -> dict[str, Any]:
+    try:
+        return _svc(session, quality, settings).list_releases(state=state, limit=min(limit, 500), cursor=cursor)
+    except ReleaseServiceError as exc:
+        _raise(exc)
+    return {}
+
+
 @router.get("/v1/releases/{release_id}")
 def get_release(
     release_id: str,
