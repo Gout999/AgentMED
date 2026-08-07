@@ -1,0 +1,7 @@
+# eval-harness 运行时依赖（钉版本）
+# Python 3.11+
+requests==2.34.2
+PyYAML==6.0.3
+jsonschema==4.23.0
+openai==1.59.7
+python-dotenv==1.0.1

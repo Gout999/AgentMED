@@ -1,0 +1,104 @@
+{
+  "schema_version": "0.1.0",
+  "report_id": "gate_fa9aa9d2f55a49668682",
+  "eval_id": "eval_d3ca9c4de44d465a9954",
+  "subject": {
+    "target_versionset_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "regression_suite_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "probe_set_digest": "sha256:f51fbbee2810467c96658f93e4fc2b64b5b843b80e55bf5029f30fa26bb9dbf0"
+  },
+  "rule_track": {
+    "status": "failed",
+    "checks": [
+      {
+        "check_id": "rule-probe-all-pass",
+        "description": "候选答案在冻结探针集上确定性判定全过",
+        "status": "failed",
+        "detail": "failed=['cs-001', 'cs-002', 'cs-003'] missing=['cs-004', 'cs-005', 'cs-006', 'cs-007', 'cs-008', 'cs-009', 'cs-010', 'cs-011', 'cs-012', 'cs-015', 'cs-016']"
+      },
+      {
+        "check_id": "rule-digest-match",
+        "description": "候选探针集 digest 与冻结值一致",
+        "status": "passed",
+        "detail": "frozen=sha256:f51fbbee2810467c96658f93e4fc2b64b5b843b80e55bf5029f30fa26bb9dbf0 candidate=sha256:f51fbbee2810467c96658f93e4fc2b64b5b843b80e55bf5029f30fa26bb9dbf0"
+      },
+      {
+        "check_id": "rule-schema-compliance",
+        "description": "候选对象结构字段合规（digest 前缀 / 必填）",
+        "status": "passed",
+        "detail": "合规"
+      },
+      {
+        "check_id": "rule-json-format",
+        "description": "JSON 探针输出合法且键齐全",
+        "status": "passed",
+        "detail": "全部合法"
+      },
+      {
+        "check_id": "rule-live-e2e-availability",
+        "description": "live-provider E2E 可用（缺 key/裁判模型 时不可自动放行）",
+        "status": "passed",
+        "detail": "live E2E 可用"
+      }
+    ]
+  },
+  "judge_track": {
+    "status": "error",
+    "judge_model_digest": "sha256:2a67693169e446d6b29a1430267d449c6299befbea5ade66df97c0e12ea9fee4",
+    "athlete_model_digest": "sha256:f371ce6e3eaea49eeac0ffe8ad94bac665b81eb951cf2a8cd9d829294a783e93",
+    "pass_threshold": 0.8,
+    "scores": [
+      {
+        "probe_id": "__judge_unconfigured__",
+        "score": 0.0,
+        "pass": false,
+        "rationale_ref": "judge model 未配置 → 裁判轨不可用，转人工"
+      }
+    ]
+  },
+  "deterministic_tests": {
+    "status": "passed",
+    "suites": [
+      {
+        "suite": "quality-api-contract",
+        "kind": "contract",
+        "status": "passed",
+        "n_passed": 12,
+        "n_failed": 0,
+        "report_ref": "file://evidence/gate/contract-report.json"
+      },
+      {
+        "suite": "b1-replay-frozen-probes",
+        "kind": "replay",
+        "status": "passed",
+        "n_passed": 16,
+        "n_failed": 0,
+        "report_ref": "file://evidence/gate/replay.jsonl"
+      }
+    ]
+  },
+  "live_provider_e2e": {
+    "status": "failed",
+    "provider": "stepfun",
+    "suites": [
+      {
+        "suite": "cs-e2e-smoke",
+        "status": "failed",
+        "n_passed": 2,
+        "n_failed": 3
+      }
+    ]
+  },
+  "overall_status": "failed",
+  "artifact_refs": [
+    {
+      "uri": "file://evidence/gate/replay.jsonl",
+      "digest": "sha256:01d669efe90fbcd3d99192b648397067d18d6cdd26638d4f6ce2bce8c2b88e82"
+    },
+    {
+      "uri": "file://evidence/gate/contract-report.json",
+      "digest": "sha256:5629639f960169dde62eb4d706e2f21f116dca6b67f0ae88609d1d9c08af36c0"
+    }
+  ],
+  "created_at": "2026-08-07T19:15:37.423987Z"
+}
