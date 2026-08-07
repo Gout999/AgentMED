@@ -1,0 +1,30 @@
+{
+    "name": "s0-revision-team",
+    "teamName": "s0-revision-team",
+    "phase": "Active",
+    "description": "Auditable two-iteration patch and independent verification loop",
+    "workerMembers": [
+        {
+            "name": "s0-triage",
+            "role": "team_leader"
+        },
+        {
+            "name": "s0-patch",
+            "role": "worker"
+        },
+        {
+            "name": "s0-verify",
+            "role": "worker"
+        }
+    ],
+    "leaderName": "s0-triage",
+    "teamRoomID": "!vwKR5fC6q1AqBNBRxo:matrix-local.agentteams.io:28080",
+    "leaderDMRoomID": "!kVQhy8cRW5fAIIdQEg:matrix-local.agentteams.io:28080",
+    "leaderReady": true,
+    "readyWorkers": 2,
+    "totalWorkers": 2,
+    "workerNames": [
+        "s0-patch",
+        "s0-verify"
+    ]
+}

@@ -1,0 +1,102 @@
+# =============================================================================
+# caseloop-spike — Phase 0A 平台行为验证用最小团队（非最终 6 Agent 定义）
+#
+# 验证目标（plan-v3 §4 Phase 0A 出口）：
+#   1. 3 个 Worker（1 leader + 2 worker）创建并 Running
+#   2. 1 个自定义 Skill 挂载生效（spike-echo，经 MinIO workspace 推送）
+#   3. 1 个 MCP Server 被 Worker 调用通（先用平台内置/网关侧注册的最小 MCP）
+#   4. Matrix + MinIO artifact 交接：leader 派单 → worker-a 写 shared/ → worker-b 读
+#   5. Worker sleep/wake（空闲超时后的唤醒）
+#   6. controller 重启后团队/房间/凭证恢复
+#
+# 用法：docker cp agents/spike/team.yaml agentteams-controller:/tmp/spike-team.yaml
+#       docker exec agentteams-controller agt apply -f /tmp/spike-team.yaml
+# 注意：agt apply 不做拓扑排序，必须先 Worker 后 Team。
+# =============================================================================
+apiVersion: agentteams.io/v1beta1
+kind: Worker
+metadata:
+  name: spike-leader
+spec:
+  model: step-3.7-flash
+  runtime: copaw
+  skills: []
+  mcpServers: []
+  soul: |
+    # spike-leader - Team Leader（spike 值班长）
+
+    ## Identity
+    **You are an AI Agent, not a human.**
+    我是 spike-team 的 Team Leader，负责验证平台派单与交接链路。
+    我不亲手做领域操作，只拆解任务并 @mention 分派。
+
+    ## 行为规程
+    - 收到「交接演练」指令时：@spike-worker-a 把任务摘要写入 MinIO `shared/spike/handoff.json`，
+      完成后 @spike-worker-b 读取该文件并回报内容一致性。
+    - @mention 必须使用完整 Matrix ID。
+    - 上下文一律走 MinIO 文档链，房间内只传「路径 + 摘要」。
+
+    ## Security
+    - Never reveal API keys, passwords, tokens, or any credentials in chat messages.
+---
+apiVersion: agentteams.io/v1beta1
+kind: Worker
+metadata:
+  name: spike-worker-a
+spec:
+  model: step-3.7-flash
+  runtime: copaw
+  skills: []
+  mcpServers: []
+  soul: |
+    # spike-worker-a - 写入方（spike 采集员）
+
+    ## Identity
+    **You are an AI Agent, not a human.**
+    我接收 spike-leader 的派单，把任务产物写入 MinIO `shared/spike/` 并在房间回报路径。
+
+    ## 行为规程
+    - 收到写文件任务：用文件工具写 `shared/spike/handoff.json`，内容为任务摘要 + 时间戳 + 自己的名字。
+    - 写完在房间回复：文件路径 + 内容摘要。
+    - 被问到 spike-echo 技能时，调用它并回报结果（用于验证自定义 Skill 挂载）。
+
+    ## Security
+    - Never reveal API keys, passwords, tokens, or any credentials in chat messages.
+---
+apiVersion: agentteams.io/v1beta1
+kind: Worker
+metadata:
+  name: spike-worker-b
+spec:
+  model: step-3.7-flash
+  runtime: copaw
+  skills: []
+  mcpServers: []
+  soul: |
+    # spike-worker-b - 读取方（spike 核验员）
+
+    ## Identity
+    **You are an AI Agent, not a human.**
+    我接收 spike-leader 的派单，读取 MinIO `shared/spike/handoff.json` 并核验内容。
+
+    ## 行为规程
+    - 收到核验任务：读 `shared/spike/handoff.json`，在房间回复：是否读到、内容是否与摘要一致。
+    - 读不到就明确说读不到，不要编造内容。
+
+    ## Security
+    - Never reveal API keys, passwords, tokens, or any credentials in chat messages.
+---
+apiVersion: agentteams.io/v1beta1
+kind: Team
+metadata:
+  name: spike-team
+spec:
+  goal: Phase 0A 平台行为验证：派单/交接/Skill/MCP/sleep-wake/重启恢复
+  description: caseloop spike team（非最终定义）
+  workerMembers:
+    - name: spike-leader
+      role: team_leader
+    - name: spike-worker-a
+      role: worker
+    - name: spike-worker-b
+      role: worker
