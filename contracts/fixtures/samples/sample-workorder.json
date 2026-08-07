@@ -1,0 +1,28 @@
+{
+  "schema_version": "0.1.0",
+  "workorder_id": "wo_01JB1FIX0001DEMO0000001",
+  "case_id": "case_01JB1DEMO0001CASE000001",
+  "channel": "prompt",
+  "base_versionset_digest": "sha256:6d33f16bfa455507afade8b85ac0162d243fb0c6e7621ebf47e9224accf3eb6a",
+  "target_versionset_digest": "sha256:a0f978a43154736baa309b00fcc8314179d3c1a8b24660db4a4b9342367dac0f",
+  "input_versions": {
+    "prompt_digest": "sha256:2c0181a1c7503464ab4f3abe91efaefe564ff4a905cdbc2b9e4623ea5668c8de",
+    "kb_manifest_digest": "sha256:d9c398c7c8fff1322fdc7c0967f48bd8bf4e17e8377e57a09ee7a1b7c51606fe",
+    "model_digest": "sha256:7a76640188d9c06895b9d2e5c49bfea66369b7640918c387d58a8cdc43580e7e"
+  },
+  "diff": {
+    "format": "unified_diff",
+    "content_ref": "file://evidence/b1/wo_01JB1FIX0001DEMO0000001.diff",
+    "digest": "sha256:c92702f3358ea7a52e07aa1c794e5c7b28e4f2706d1e93ca2704cce4612788f2"
+  },
+  "gate_report_ref": {
+    "uri": "file://contracts/fixtures/samples/sample-gate-report.json",
+    "digest": "sha256:8fcaef0ff0d18c8470d4f420adce53b85e3a7bfe0ad46832a21d00ff987298cc"
+  },
+  "expiry": "2026-08-12T00:00:00Z",
+  "nonce": "3f6b2c5e-9a1d-4e7f-b2c8-5d6a7e8f9a0b",
+  "created_at": "2026-08-08T06:30:00Z",
+  "created_by": "agent:repairer-fix-01",
+  "hash": "1e79b1bdcf3d5a931980fa28a7a4c0313d7aecf0f4d1de08df4d721927da8936",
+  "hash_rule": "jcs-rfc8785+sha256"
+}

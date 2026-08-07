@@ -1,0 +1,149 @@
+{
+  "schema_version": "0.1.0",
+  "description": "Wilson 双侧 95% 区间测试向量（z=1.96）。口径：一次动作=一个样本。晋升判据：lower>0.9。trials=0 约定 [0,1]。参考实现与公式见 contracts/wilson/README.md；断言容差 1e-3。",
+  "vectors": [
+    {
+      "successes": 0,
+      "trials": 0,
+      "confidence": 0.95,
+      "side": "two-sided",
+      "z": 1.96,
+      "expected_lower": 0.0,
+      "expected_upper": 1.0,
+      "promotion_eligible": false,
+      "note": "无证据：约定全区间 [0,1]，promotion_eligible=false"
+    },
+    {
+      "successes": 1,
+      "trials": 1,
+      "confidence": 0.95,
+      "side": "two-sided",
+      "z": 1.96,
+      "expected_lower": 0.206543,
+      "expected_upper": 1.0,
+      "promotion_eligible": false,
+      "note": "单次成功：下界仅约 0.21，离 0.9 很远"
+    },
+    {
+      "successes": 3,
+      "trials": 3,
+      "confidence": 0.95,
+      "side": "two-sided",
+      "z": 1.96,
+      "expected_lower": 0.438494,
+      "expected_upper": 1.0,
+      "promotion_eligible": false,
+      "note": "MVP 演示用例：下界约 0.438<0.9 → 记账但拒绝晋升"
+    },
+    {
+      "successes": 0,
+      "trials": 3,
+      "confidence": 0.95,
+      "side": "two-sided",
+      "z": 1.96,
+      "expected_lower": 0.0,
+      "expected_upper": 0.561506,
+      "promotion_eligible": false,
+      "note": "三次全败：上界约 0.56，显著恶化信号"
+    },
+    {
+      "successes": 10,
+      "trials": 10,
+      "confidence": 0.95,
+      "side": "two-sided",
+      "z": 1.96,
+      "expected_lower": 0.72246,
+      "expected_upper": 1.0,
+      "promotion_eligible": false,
+      "note": "十连胜仍不够：下界约 0.72<0.9"
+    },
+    {
+      "successes": 0,
+      "trials": 10,
+      "confidence": 0.95,
+      "side": "two-sided",
+      "z": 1.96,
+      "expected_lower": 0.0,
+      "expected_upper": 0.27754,
+      "promotion_eligible": false,
+      "note": "rule-of-three 形态：上界约 0.28"
+    },
+    {
+      "successes": 5,
+      "trials": 10,
+      "confidence": 0.95,
+      "side": "two-sided",
+      "z": 1.96,
+      "expected_lower": 0.23659,
+      "expected_upper": 0.76341,
+      "promotion_eligible": false,
+      "note": "一半成功：区间跨 0.5 两侧"
+    },
+    {
+      "successes": 7,
+      "trials": 10,
+      "confidence": 0.95,
+      "side": "two-sided",
+      "z": 1.96,
+      "expected_lower": 0.396773,
+      "expected_upper": 0.892211,
+      "promotion_eligible": false,
+      "note": "七成成功：上界约 0.89，仍未稳过 0.9"
+    },
+    {
+      "successes": 9,
+      "trials": 10,
+      "confidence": 0.95,
+      "side": "two-sided",
+      "z": 1.96,
+      "expected_lower": 0.595844,
+      "expected_upper": 0.982124,
+      "promotion_eligible": false,
+      "note": "九成成功但样本小：下界约 0.60"
+    },
+    {
+      "successes": 30,
+      "trials": 30,
+      "confidence": 0.95,
+      "side": "two-sided",
+      "z": 1.96,
+      "expected_lower": 0.886483,
+      "expected_upper": 1.0,
+      "promotion_eligible": false,
+      "note": "三十连胜仍被拒绝：下界约 0.886<0.9（统计纪律演示点）"
+    },
+    {
+      "successes": 40,
+      "trials": 40,
+      "confidence": 0.95,
+      "side": "two-sided",
+      "z": 1.96,
+      "expected_lower": 0.912375,
+      "expected_upper": 1.0,
+      "promotion_eligible": true,
+      "note": "全成功时首个越过 0.9 的规模：下界约 0.912"
+    },
+    {
+      "successes": 45,
+      "trials": 50,
+      "confidence": 0.95,
+      "side": "two-sided",
+      "z": 1.96,
+      "expected_lower": 0.786395,
+      "expected_upper": 0.956525,
+      "promotion_eligible": false,
+      "note": "九成成功率大样本：下界约 0.79，点估计高但纪律不放行"
+    },
+    {
+      "successes": 100,
+      "trials": 100,
+      "confidence": 0.95,
+      "side": "two-sided",
+      "z": 1.96,
+      "expected_lower": 0.963005,
+      "expected_upper": 1.0,
+      "promotion_eligible": true,
+      "note": "百连胜：下界约 0.963>0.9 → 满足晋升统计条件"
+    }
+  ]
+}

@@ -1,0 +1,578 @@
+{
+  "schema_version": "0.1.0",
+  "bundle_id": "eb_01JB1DEMO0001BUNDLE0001",
+  "experiment_id": "exp_01JB1DEMO0001EXP000001",
+  "case_id": "case_01JB1DEMO0001CASE000001",
+  "protocol": {
+    "matrix": "five_cell",
+    "repetitions": 3,
+    "random_arm_order": [
+      "RM@cs-001",
+      "C@cs-002",
+      "RP@cs-001",
+      "G@cs-003",
+      "RK@cs-001",
+      "C@cs-001",
+      "RP@cs-002",
+      "RM@cs-002",
+      "RK@cs-002",
+      "G@cs-001"
+    ],
+    "random_seed_ref": "file://evidence/b1/exp/arm-seed.txt",
+    "frozen_at": "2026-08-08T06:00:00Z",
+    "confidence": 0.95
+  },
+  "probe_set": {
+    "probe_set_digest": "sha256:8c21e6d7af247aaec2a2d3f1a41b6be5dd4176ae8b47975d1c05539afabcbaf6",
+    "discovery": [
+      "cs-001",
+      "cs-002",
+      "cs-003"
+    ],
+    "hidden_confirmation": [
+      "cs-004",
+      "cs-005"
+    ],
+    "unaffected_controls": [
+      "cs-013",
+      "cs-014",
+      "cs-015",
+      "cs-016"
+    ]
+  },
+  "cells": {
+    "C": {
+      "versions": {
+        "prompt_digest": "sha256:2c0181a1c7503464ab4f3abe91efaefe564ff4a905cdbc2b9e4623ea5668c8de",
+        "kb_manifest_digest": "sha256:d9c398c7c8fff1322fdc7c0967f48bd8bf4e17e8377e57a09ee7a1b7c51606fe",
+        "model_digest": "sha256:7a76640188d9c06895b9d2e5c49bfea66369b7640918c387d58a8cdc43580e7e"
+      },
+      "results": [
+        {
+          "probe_id": "cs-001",
+          "repetition": 1,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-001-rep1.txt"
+        },
+        {
+          "probe_id": "cs-001",
+          "repetition": 2,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-001-rep2.txt"
+        },
+        {
+          "probe_id": "cs-001",
+          "repetition": 3,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-001-rep3.txt"
+        },
+        {
+          "probe_id": "cs-002",
+          "repetition": 1,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-002-rep1.txt"
+        },
+        {
+          "probe_id": "cs-002",
+          "repetition": 2,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-002-rep2.txt"
+        },
+        {
+          "probe_id": "cs-002",
+          "repetition": 3,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-002-rep3.txt"
+        },
+        {
+          "probe_id": "cs-003",
+          "repetition": 1,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-003-rep1.txt"
+        },
+        {
+          "probe_id": "cs-003",
+          "repetition": 2,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-003-rep2.txt"
+        },
+        {
+          "probe_id": "cs-003",
+          "repetition": 3,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-003-rep3.txt"
+        },
+        {
+          "probe_id": "cs-004",
+          "repetition": 1,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-004-rep1.txt"
+        },
+        {
+          "probe_id": "cs-004",
+          "repetition": 2,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-004-rep2.txt"
+        },
+        {
+          "probe_id": "cs-004",
+          "repetition": 3,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-004-rep3.txt"
+        },
+        {
+          "probe_id": "cs-005",
+          "repetition": 1,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-005-rep1.txt"
+        },
+        {
+          "probe_id": "cs-005",
+          "repetition": 2,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-005-rep2.txt"
+        },
+        {
+          "probe_id": "cs-005",
+          "repetition": 3,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-005-rep3.txt"
+        }
+      ],
+      "recovery_rate": 0.0,
+      "control_pass_rate": 1.0
+    },
+    "RP": {
+      "versions": {
+        "prompt_digest": "sha256:03f971099898037f1e82d1bd81d0c284dc9fe386e675a587f55ec0e8e219e8c6",
+        "kb_manifest_digest": "sha256:d9c398c7c8fff1322fdc7c0967f48bd8bf4e17e8377e57a09ee7a1b7c51606fe",
+        "model_digest": "sha256:7a76640188d9c06895b9d2e5c49bfea66369b7640918c387d58a8cdc43580e7e"
+      },
+      "results": [
+        {
+          "probe_id": "cs-001",
+          "repetition": 1,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-001-rep1.txt"
+        },
+        {
+          "probe_id": "cs-001",
+          "repetition": 2,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-001-rep2.txt"
+        },
+        {
+          "probe_id": "cs-001",
+          "repetition": 3,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-001-rep3.txt"
+        },
+        {
+          "probe_id": "cs-002",
+          "repetition": 1,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-002-rep1.txt"
+        },
+        {
+          "probe_id": "cs-002",
+          "repetition": 2,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-002-rep2.txt"
+        },
+        {
+          "probe_id": "cs-002",
+          "repetition": 3,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-002-rep3.txt"
+        },
+        {
+          "probe_id": "cs-003",
+          "repetition": 1,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-003-rep1.txt"
+        },
+        {
+          "probe_id": "cs-003",
+          "repetition": 2,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-003-rep2.txt"
+        },
+        {
+          "probe_id": "cs-003",
+          "repetition": 3,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-003-rep3.txt"
+        },
+        {
+          "probe_id": "cs-004",
+          "repetition": 1,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-004-rep1.txt"
+        },
+        {
+          "probe_id": "cs-004",
+          "repetition": 2,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-004-rep2.txt"
+        },
+        {
+          "probe_id": "cs-004",
+          "repetition": 3,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-004-rep3.txt"
+        },
+        {
+          "probe_id": "cs-005",
+          "repetition": 1,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-005-rep1.txt"
+        },
+        {
+          "probe_id": "cs-005",
+          "repetition": 2,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-005-rep2.txt"
+        },
+        {
+          "probe_id": "cs-005",
+          "repetition": 3,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-005-rep3.txt"
+        }
+      ],
+      "recovery_rate": 1.0,
+      "control_pass_rate": 1.0
+    },
+    "RK": {
+      "versions": {
+        "prompt_digest": "sha256:2c0181a1c7503464ab4f3abe91efaefe564ff4a905cdbc2b9e4623ea5668c8de",
+        "kb_manifest_digest": "sha256:74cfe0050ee17653db5d8481032b74a108cf806f0073ea2c547834bea757a331",
+        "model_digest": "sha256:7a76640188d9c06895b9d2e5c49bfea66369b7640918c387d58a8cdc43580e7e"
+      },
+      "results": [
+        {
+          "probe_id": "cs-001",
+          "repetition": 1,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-001-rep1.txt"
+        },
+        {
+          "probe_id": "cs-001",
+          "repetition": 2,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-001-rep2.txt"
+        },
+        {
+          "probe_id": "cs-001",
+          "repetition": 3,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-001-rep3.txt"
+        },
+        {
+          "probe_id": "cs-002",
+          "repetition": 1,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-002-rep1.txt"
+        },
+        {
+          "probe_id": "cs-002",
+          "repetition": 2,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-002-rep2.txt"
+        },
+        {
+          "probe_id": "cs-002",
+          "repetition": 3,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-002-rep3.txt"
+        },
+        {
+          "probe_id": "cs-003",
+          "repetition": 1,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-003-rep1.txt"
+        },
+        {
+          "probe_id": "cs-003",
+          "repetition": 2,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-003-rep2.txt"
+        },
+        {
+          "probe_id": "cs-003",
+          "repetition": 3,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-003-rep3.txt"
+        },
+        {
+          "probe_id": "cs-004",
+          "repetition": 1,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-004-rep1.txt"
+        },
+        {
+          "probe_id": "cs-004",
+          "repetition": 2,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-004-rep2.txt"
+        },
+        {
+          "probe_id": "cs-004",
+          "repetition": 3,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-004-rep3.txt"
+        },
+        {
+          "probe_id": "cs-005",
+          "repetition": 1,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-005-rep1.txt"
+        },
+        {
+          "probe_id": "cs-005",
+          "repetition": 2,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-005-rep2.txt"
+        },
+        {
+          "probe_id": "cs-005",
+          "repetition": 3,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-005-rep3.txt"
+        }
+      ],
+      "recovery_rate": 0.0,
+      "control_pass_rate": 1.0
+    },
+    "RM": {
+      "versions": {
+        "prompt_digest": "sha256:2c0181a1c7503464ab4f3abe91efaefe564ff4a905cdbc2b9e4623ea5668c8de",
+        "kb_manifest_digest": "sha256:d9c398c7c8fff1322fdc7c0967f48bd8bf4e17e8377e57a09ee7a1b7c51606fe",
+        "model_digest": "sha256:4f5d0a1f1c2cb3f985eae68431bc97249d37901f3c1a287a5f5627f89df5464f"
+      },
+      "results": [
+        {
+          "probe_id": "cs-001",
+          "repetition": 1,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-001-rep1.txt"
+        },
+        {
+          "probe_id": "cs-001",
+          "repetition": 2,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-001-rep2.txt"
+        },
+        {
+          "probe_id": "cs-001",
+          "repetition": 3,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-001-rep3.txt"
+        },
+        {
+          "probe_id": "cs-002",
+          "repetition": 1,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-002-rep1.txt"
+        },
+        {
+          "probe_id": "cs-002",
+          "repetition": 2,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-002-rep2.txt"
+        },
+        {
+          "probe_id": "cs-002",
+          "repetition": 3,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-002-rep3.txt"
+        },
+        {
+          "probe_id": "cs-003",
+          "repetition": 1,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-003-rep1.txt"
+        },
+        {
+          "probe_id": "cs-003",
+          "repetition": 2,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-003-rep2.txt"
+        },
+        {
+          "probe_id": "cs-003",
+          "repetition": 3,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-003-rep3.txt"
+        },
+        {
+          "probe_id": "cs-004",
+          "repetition": 1,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-004-rep1.txt"
+        },
+        {
+          "probe_id": "cs-004",
+          "repetition": 2,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-004-rep2.txt"
+        },
+        {
+          "probe_id": "cs-004",
+          "repetition": 3,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-004-rep3.txt"
+        },
+        {
+          "probe_id": "cs-005",
+          "repetition": 1,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-005-rep1.txt"
+        },
+        {
+          "probe_id": "cs-005",
+          "repetition": 2,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-005-rep2.txt"
+        },
+        {
+          "probe_id": "cs-005",
+          "repetition": 3,
+          "recovered": false,
+          "output_ref": "file://evidence/b1/exp/cs-005-rep3.txt"
+        }
+      ],
+      "recovery_rate": 0.0,
+      "control_pass_rate": 1.0
+    },
+    "G": {
+      "versions": {
+        "prompt_digest": "sha256:03f971099898037f1e82d1bd81d0c284dc9fe386e675a587f55ec0e8e219e8c6",
+        "kb_manifest_digest": "sha256:74cfe0050ee17653db5d8481032b74a108cf806f0073ea2c547834bea757a331",
+        "model_digest": "sha256:4f5d0a1f1c2cb3f985eae68431bc97249d37901f3c1a287a5f5627f89df5464f"
+      },
+      "results": [
+        {
+          "probe_id": "cs-001",
+          "repetition": 1,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-001-rep1.txt"
+        },
+        {
+          "probe_id": "cs-001",
+          "repetition": 2,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-001-rep2.txt"
+        },
+        {
+          "probe_id": "cs-001",
+          "repetition": 3,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-001-rep3.txt"
+        },
+        {
+          "probe_id": "cs-002",
+          "repetition": 1,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-002-rep1.txt"
+        },
+        {
+          "probe_id": "cs-002",
+          "repetition": 2,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-002-rep2.txt"
+        },
+        {
+          "probe_id": "cs-002",
+          "repetition": 3,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-002-rep3.txt"
+        },
+        {
+          "probe_id": "cs-003",
+          "repetition": 1,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-003-rep1.txt"
+        },
+        {
+          "probe_id": "cs-003",
+          "repetition": 2,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-003-rep2.txt"
+        },
+        {
+          "probe_id": "cs-003",
+          "repetition": 3,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-003-rep3.txt"
+        },
+        {
+          "probe_id": "cs-004",
+          "repetition": 1,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-004-rep1.txt"
+        },
+        {
+          "probe_id": "cs-004",
+          "repetition": 2,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-004-rep2.txt"
+        },
+        {
+          "probe_id": "cs-004",
+          "repetition": 3,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-004-rep3.txt"
+        },
+        {
+          "probe_id": "cs-005",
+          "repetition": 1,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-005-rep1.txt"
+        },
+        {
+          "probe_id": "cs-005",
+          "repetition": 2,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-005-rep2.txt"
+        },
+        {
+          "probe_id": "cs-005",
+          "repetition": 3,
+          "recovered": true,
+          "output_ref": "file://evidence/b1/exp/cs-005-rep3.txt"
+        }
+      ],
+      "recovery_rate": 1.0,
+      "control_pass_rate": 1.0
+    }
+  },
+  "effects": {
+    "prompt": {
+      "delta": 1.0,
+      "ci95_lower": 0.592,
+      "ci95_upper": 1.0,
+      "significant": true
+    },
+    "kb": {
+      "delta": 0.0,
+      "ci95_lower": -0.204,
+      "ci95_upper": 0.204,
+      "significant": false
+    },
+    "model_params": {
+      "delta": 0.0,
+      "ci95_lower": -0.204,
+      "ci95_upper": 0.204,
+      "significant": false
+    },
+    "method": "wilson_score_bounds_conservative_diff"
+  },
+  "verdict": {
+    "decision": "ATTRIBUTED",
+    "attributed_layer": "prompt",
+    "rationale": "仅 RP 臂与 G 臂恢复（Δ_prompt=1.0，95%CI[0.592,1.0]），RK/RM 臂不恢复且 CI 覆盖 0；hidden confirmation 组复现；G 恢复与 prompt 归因一致（P0 含于 G）",
+    "hidden_confirmation_reproduced": true
+  },
+  "created_at": "2026-08-08T06:20:00Z"
+}

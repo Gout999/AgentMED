@@ -1,0 +1,75 @@
+# B1 故障注入 ground-truth：prompt 回归（售后政策条款被改坏）
+# 对应 plan-v3 §6：e2e 断言「归因裁决=ATTRIBUTED 且故障层=prompt」。
+# 本文件是 Phase 1 B1 纵切的唯一事实源：注入内容、探针分组、期望裁决全部冻结于此。
+fixture_id: B1
+title: "prompt 回归：售后政策条款被改坏"
+draft: false
+fault_layer: prompt
+
+scenario:
+  app: xiaozhi-customer-service
+  app_description: "小智客服：3C 数码电商客服（售后政策/产品参数/物流规则）"
+  complaint_example: "你们客服昨天还说 7 天无理由退货，今天就说激活后不能退了？我耳机都拆了！"
+
+# 注入的 prompt 变更内容（ground-truth）。
+# 通过 demo-app 的 POST /admin/inject/B1 注入；注入后线上 prompt = P1（v1.4.3）。
+injected_change:
+  channel: prompt
+  prompt_section: "售后政策"
+  prompt_ref: "prompts/system.md"
+  base_version: "v1.4.2"      # P0，last-known-good
+  injected_version: "v1.4.3"  # P1，含回归
+  before: |
+    我们支持 7 天无理由退货（自签收次日起算，激活后仍可退，运费由我们承担）。
+  after: |
+    退货需经人工审核，已激活商品不支持退货。
+  injection_endpoint: "POST /admin/inject/B1"
+  reset_endpoint: "POST /admin/reset"
+
+# 期望归因结论（机器断言口径）
+expected_attribution:
+  verdict: ATTRIBUTED
+  attributed_layer: prompt
+  expected_effects:
+    prompt: "Δ显著为正（CI 整体在 0 之上）"
+    kb: "Δ≈0，CI 覆盖 0"
+    model_params: "Δ≈0，CI 覆盖 0"
+  hidden_confirmation_must_reproduce: true
+  # 五细胞期望恢复形态：仅 RP、G 恢复（G 含 P0，与 prompt 归因自洽）
+  expected_cell_recovery:
+    C: false
+    RP: true
+    RK: false
+    RM: false
+    G: true
+
+# 探针分组（引用 probes-customer-service.yaml 的探针 id；实验前冻结并记录 probe_set_digest）
+probe_sets:
+  probe_set_ref: "contracts/fixtures/probes-customer-service.yaml"
+  discovery:            # 公开发现组：主要归因测量
+    - cs-001
+    - cs-002
+    - cs-003
+  hidden_confirmation:  # 隐藏确认组：结论必须在其上复现
+    - cs-004
+    - cs-005
+  unaffected_controls:  # 不受影响对照：各臂均应通过
+    - cs-013
+    - cs-014
+    - cs-015
+    - cs-016
+
+experiment_protocol:
+  matrix: five_cell     # C/RP/RK/RM/G 最小矩阵（plan-v3 §2.3.2）
+  repetitions: 3
+  random_arm_order: true
+  confidence: 0.95
+
+# 修复侧 ground-truth：合法修复=回滚该条款（prompt 通道，单变量纪律）
+expected_fix:
+  channel: prompt
+  workorder_constraints:
+    - "channel=prompt（单变量，不得夹带 KB/模型参数变更）"
+    - "target_versionset 的 prompt 层 digest 必须等于 P0"
+  sample_workorder_ref: "contracts/fixtures/samples/sample-workorder.json"
+  sample_attribution_report_ref: "contracts/fixtures/samples/sample-attribution-report.json"

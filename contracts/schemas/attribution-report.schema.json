@@ -1,0 +1,187 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/schemas/attribution-report.schema.json",
+  "title": "AttributionReport",
+  "description": "归因报告（plan-v3 §2.3.2）：evidence bundle 的蒸馏结论版，对外（Case 事件流/门禁/演示材料）引用。含 C/RP/RK/RM/G 五细胞结果、三层 Δ效应量+95%CI、ATTRIBUTED/INCONCLUSIVE/CONFOUNDED 三态裁决。废除旧版\"置信≥0.8\"未定义指标，一切以 Δ+CI+三态为准。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_id",
+    "experiment_id",
+    "case_id",
+    "probe_set_digest",
+    "version_digests",
+    "cells",
+    "deltas",
+    "verdict",
+    "evidence_bundle_ref",
+    "generated_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "report_id": {
+      "type": "string",
+      "pattern": "^attr_[0-9A-Za-z]{8,64}$"
+    },
+    "experiment_id": {
+      "type": "string",
+      "pattern": "^exp_[0-9A-Za-z]{8,64}$"
+    },
+    "case_id": {
+      "type": "string",
+      "pattern": "^case_[0-9A-Za-z]{8,64}$"
+    },
+    "probe_set_digest": {
+      "type": "string",
+      "description": "冻结探针集 digest，须与 evidence bundle 一致",
+      "$ref": "#/$defs/digest"
+    },
+    "version_digests": {
+      "type": "object",
+      "description": "实验涉及的全部版本 digest（P0/P1/K0/K1/M0/M1），可机器复核每个 cell 的版本组合",
+      "additionalProperties": false,
+      "required": ["P0", "P1", "K0", "K1", "M0", "M1"],
+      "properties": {
+        "P0": { "$ref": "#/$defs/digest" },
+        "P1": { "$ref": "#/$defs/digest" },
+        "K0": { "$ref": "#/$defs/digest" },
+        "K1": { "$ref": "#/$defs/digest" },
+        "M0": { "$ref": "#/$defs/digest" },
+        "M1": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "cells": {
+      "type": "object",
+      "description": "C/RP/RK/RM/G 五细胞汇总结果（恢复率口径=受影响探针）",
+      "additionalProperties": false,
+      "required": ["C", "RP", "RK", "RM", "G"],
+      "properties": {
+        "C": { "$ref": "#/$defs/cellSummary" },
+        "RP": { "$ref": "#/$defs/cellSummary" },
+        "RK": { "$ref": "#/$defs/cellSummary" },
+        "RM": { "$ref": "#/$defs/cellSummary" },
+        "G": { "$ref": "#/$defs/cellSummary" }
+      }
+    },
+    "deltas": {
+      "type": "object",
+      "description": "三层 Δ效应量+95%CI（相对 C 臂的恢复率差）",
+      "additionalProperties": false,
+      "required": ["prompt", "kb", "model_params"],
+      "properties": {
+        "prompt": { "$ref": "#/$defs/delta" },
+        "kb": { "$ref": "#/$defs/delta" },
+        "model_params": { "$ref": "#/$defs/delta" },
+        "method": {
+          "type": "string",
+          "description": "CI 计算方法标识。【待定】具体方法 plan-v3 未指定"
+        }
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["decision", "attributed_layer", "interaction_detected", "rationale"],
+      "properties": {
+        "decision": {
+          "type": "string",
+          "description": "三态裁决",
+          "enum": ["ATTRIBUTED", "INCONCLUSIVE", "CONFOUNDED"]
+        },
+        "attributed_layer": {
+          "type": ["string", "null"],
+          "enum": ["prompt", "kb", "model_params", "interaction", null]
+        },
+        "interaction_detected": {
+          "type": "boolean",
+          "description": "是否检出层间交互（多臂同恢复或均不恢复）；true 时必须已扩全因子或标记升级"
+        },
+        "full_factorial_required": {
+          "type": "boolean",
+          "description": "CONFOUNDED 时强制 true：必须扩 2³ 全因子识别交互"
+        },
+        "rationale": {
+          "type": "string"
+        }
+      }
+    },
+    "evidence_bundle_ref": {
+      "type": "object",
+      "description": "原始证据包引用（digest 防伪）",
+      "additionalProperties": false,
+      "required": ["uri", "digest"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "cellSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["recovery_rate", "n_probes", "n_trials"],
+      "properties": {
+        "recovery_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "n_probes": {
+          "type": "integer",
+          "description": "受影响探针数（discovery+hidden confirmation）",
+          "minimum": 1
+        },
+        "n_trials": {
+          "type": "integer",
+          "description": "该臂总调用次数 = n_probes × repetitions",
+          "minimum": 1
+        },
+        "control_pass_rate": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "delta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["estimate", "ci95_lower", "ci95_upper"],
+      "properties": {
+        "estimate": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "ci95_lower": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "ci95_upper": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        }
+      }
+    }
+  }
+}

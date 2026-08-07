@@ -1,0 +1,33 @@
+{
+  "schema_version": "0.1.0",
+  "entry_id": "tle_01JB1DEMO0001TRUST00001",
+  "trust_key": "release_rollback_to_previous:R1_REVERSIBLE_WRITE",
+  "risk_class": "R1_REVERSIBLE_WRITE",
+  "action_type": "release_rollback_to_previous",
+  "outcome": {
+    "status": "success",
+    "action_ref": "rel_01JB1DEMO0001RELEASE01",
+    "detail": "B1 修复灰度后验证通过，回滚预案演练成功（一次动作=一个样本，动作内 8 条探针不重复计数）"
+  },
+  "sample_rule": "one_action_one_sample",
+  "evidence_epoch": 1,
+  "epoch_successes": 3,
+  "epoch_trials": 3,
+  "wilson": {
+    "confidence": 0.95,
+    "side": "two-sided",
+    "z": 1.96,
+    "lower": 0.438494,
+    "upper": 1.0
+  },
+  "autonomy_state_before": "ELIGIBLE",
+  "autonomy_state_after": "ELIGIBLE",
+  "promotion": {
+    "eligible": false,
+    "threshold": 0.9,
+    "decision": "denied",
+    "evidence_table_ref": "feishu://msg/trust-evidence/tle_01JB1DEMO0001TRUST00001"
+  },
+  "recorded_at": "2026-08-08T09:05:00Z",
+  "causation_id": "evt_01JB1DEMO0001ROLLEDBACK"
+}

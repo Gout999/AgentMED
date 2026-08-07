@@ -1,0 +1,40 @@
+# B2 故障注入 ground-truth（简版，Phase 2 用）：KB 条目过期/改错
+# 【draft】Phase 2 才冻结全部细节；当前仅锁定场景、期望归因层与示例探针。
+fixture_id: B2
+title: "KB 回归：产品参数条目被改错"
+draft: true   # Phase 2 冻结
+fault_layer: kb
+
+scenario:
+  app: xiaozhi-customer-service
+  complaint_example: "你们客服说 X200 续航只有 8 小时？商品页明明写 30 小时！"
+
+injected_change:
+  channel: kb
+  kb_entry: "products/X200-earbuds.yaml"
+  field: "battery_life_hours"
+  before: "30"
+  after: "8"
+  injection_endpoint: "POST /admin/inject/B2"
+
+expected_attribution:
+  verdict: ATTRIBUTED
+  attributed_layer: kb
+  # 五细胞期望：仅 RK、G 恢复
+  expected_cell_recovery:
+    C: false
+    RP: false
+    RK: true
+    RM: false
+    G: true
+
+# 示例探针（3 条，引用 probes-customer-service.yaml）
+probes:
+  - cs-006   # X200 续航
+  - cs-007   # X200 降噪深度
+  - cs-008   # Y90 轴体
+
+experiment_protocol:
+  matrix: five_cell
+  repetitions: 3
+  confidence: 0.95

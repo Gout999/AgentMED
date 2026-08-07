@@ -1,0 +1,155 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/schemas/workorder.schema.json",
+  "title": "WorkOrder",
+  "description": "不可变修复工单（plan-v3 §2.3.3 / T5）。修复师自由起草的产物；审批即批此 WorkOrder 的 hash，防止审批后掉包。hash 绑定：目标 VersionSet digest / 输入版本 / diff / 门禁报告引用 / expiry / nonce。单变量纪律：channel 三选一，一份 WorkOrder 只允许改动一个通道。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "workorder_id",
+    "case_id",
+    "channel",
+    "base_versionset_digest",
+    "target_versionset_digest",
+    "input_versions",
+    "diff",
+    "gate_report_ref",
+    "expiry",
+    "nonce",
+    "created_at",
+    "created_by",
+    "hash",
+    "hash_rule"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "description": "契约版本，语义化版本号",
+      "const": "0.1.0"
+    },
+    "workorder_id": {
+      "type": "string",
+      "description": "工单唯一标识，wo_ 前缀",
+      "pattern": "^wo_[0-9A-Za-z]{8,64}$"
+    },
+    "case_id": {
+      "type": "string",
+      "description": "溯源：产生本工单的 Case（causation 链）",
+      "pattern": "^case_[0-9A-Za-z]{8,64}$"
+    },
+    "channel": {
+      "type": "string",
+      "description": "修复通道（plan-v3 §2.3.3 三通道），单变量纪律：一份工单只能选一个",
+      "enum": ["prompt", "kb", "model_params"]
+    },
+    "base_versionset_digest": {
+      "type": "string",
+      "description": "输入基线：修复前线上 VersionSet 的完整 digest",
+      "$ref": "#/$defs/digest"
+    },
+    "target_versionset_digest": {
+      "type": "string",
+      "description": "目标 VersionSet digest：应用 diff 后应得到的完整版本 digest，发布时逐字节核对",
+      "$ref": "#/$defs/digest"
+    },
+    "input_versions": {
+      "type": "object",
+      "description": "输入版本三元组：起草时所见的各层版本，全部以 digest 锁定",
+      "additionalProperties": false,
+      "required": ["prompt_digest", "kb_manifest_digest", "model_digest"],
+      "properties": {
+        "prompt_digest": { "$ref": "#/$defs/digest" },
+        "kb_manifest_digest": { "$ref": "#/$defs/digest" },
+        "model_digest": {
+          "type": "string",
+          "description": "model+params 组合的 digest",
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "diff": {
+      "type": "object",
+      "description": "变更载荷。content 与 content_ref 二选一；digest 必须覆盖实际载荷内容",
+      "additionalProperties": false,
+      "required": ["format", "digest"],
+      "properties": {
+        "format": {
+          "type": "string",
+          "description": "diff 表示格式。kb 通道建议 kb_revision（结构化修订条目）；model_params 通道建议 json_patch",
+          "enum": ["unified_diff", "json_patch", "kb_revision"]
+        },
+        "content": {
+          "type": "string",
+          "description": "内联载荷（小 diff 直接内嵌）"
+        },
+        "content_ref": {
+          "type": "string",
+          "description": "外部载荷引用（artifact URI），与 digest 联合防伪",
+          "format": "uri"
+        },
+        "digest": {
+          "type": "string",
+          "description": "载荷内容的 sha256",
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "oneOf": [
+        { "required": ["content"] },
+        { "required": ["content_ref"] }
+      ]
+    },
+    "gate_report_ref": {
+      "type": "object",
+      "description": "门禁报告引用（plan-v3 §2.3.6：门禁报告是 WorkOrder 的必要附件，缺它不得进入审批）",
+      "additionalProperties": false,
+      "required": ["uri", "digest"],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "description": "门禁报告（gate-report.schema.json 实例）的存储位置",
+          "format": "uri"
+        },
+        "digest": {
+          "type": "string",
+          "description": "门禁报告内容 sha256，防止附件被替换",
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "expiry": {
+      "type": "string",
+      "description": "工单过期时间（RFC 3339）。过期后审批/发布必须拒绝（ChangeSet.EXPIRED）",
+      "format": "date-time"
+    },
+    "nonce": {
+      "type": "string",
+      "description": "一次性随机数（UUID v4），随 ApprovalGrant 一起消费，防重放",
+      "format": "uuid"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "created_by": {
+      "type": "string",
+      "description": "起草者（修复师 Agent 身份，非授权主体）"
+    },
+    "hash": {
+      "type": "string",
+      "description": "工单内容指纹。计算规则（hash 计算规则说明）：1) 取本对象除 hash 字段外的全部字段；2) 按 RFC 8785 (JCS) 做 canonical JSON 序列化——键按 UTF-16 码位排序、无空白、UTF-8 编码、数字取最短精确表示；3) 对 canonical 字节串做 SHA-256，输出小写 hex。任何字段（含 expiry/nonce）变动都会改变 hash，审批与发布据此防掉包。",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "hash_rule": {
+      "type": "string",
+      "description": "hash 算法标识，固定值",
+      "const": "jcs-rfc8785+sha256"
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

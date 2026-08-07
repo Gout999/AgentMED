@@ -1,0 +1,169 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/schemas/trust-ledger-entry.schema.json",
+  "title": "TrustLedgerEntry",
+  "description": "信任账本条目（plan-v3 §2.3.4 / T8）。risk_class × autonomy_state 二维拆分；evidence epoch 原始整数计数，一次动作=一个样本（一次动作中多条探针只算一个样本）；Wilson 双侧 95% 下界为晋升判据（下界>0.9 才可提请晋升，且仅白名单内 R1 动作可晋升 AUTO_ENABLED；R2 永远逐次审批）。账本追加式，条目落库即不可改。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "entry_id",
+    "trust_key",
+    "risk_class",
+    "action_type",
+    "outcome",
+    "sample_rule",
+    "evidence_epoch",
+    "epoch_successes",
+    "epoch_trials",
+    "wilson",
+    "autonomy_state_before",
+    "autonomy_state_after",
+    "promotion",
+    "recorded_at",
+    "causation_id"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "entry_id": {
+      "type": "string",
+      "pattern": "^tle_[0-9A-Za-z]{8,64}$"
+    },
+    "trust_key": {
+      "type": "string",
+      "description": "账本维度键：action_type 与 risk_class 的组合标识（同一动作在不同 risk_class 下独立记账）",
+      "pattern": "^[a-z0-9_]+:(R0_READ|R1_REVERSIBLE_WRITE|R2_HIGH_IMPACT)$"
+    },
+    "risk_class": {
+      "type": "string",
+      "description": "风险分级。R0_READ 只读；R1_REVERSIBLE_WRITE 可逆写（白名单内方可晋升 AUTO_ENABLED）；R2_HIGH_IMPACT 高影响，永远逐次审批",
+      "enum": ["R0_READ", "R1_REVERSIBLE_WRITE", "R2_HIGH_IMPACT"]
+    },
+    "action_type": {
+      "type": "string",
+      "description": "动作类型标识（白名单动作的稳定 id）",
+      "pattern": "^[a-z0-9_]+$"
+    },
+    "outcome": {
+      "type": "object",
+      "description": "本次动作结果——这就是\"一个样本\"",
+      "additionalProperties": false,
+      "required": ["status", "action_ref"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "description": "success 计 1 个成功样本；failure 计 1 个失败样本",
+          "enum": ["success", "failure"]
+        },
+        "action_ref": {
+          "type": "string",
+          "description": "被记账动作的引用（release_id / operation_id 等）"
+        },
+        "detail": {
+          "type": "string"
+        }
+      }
+    },
+    "sample_rule": {
+      "type": "string",
+      "description": "样本口径声明，固定值：一次动作=一个样本，动作内多条探针不重复计数",
+      "const": "one_action_one_sample"
+    },
+    "evidence_epoch": {
+      "type": "integer",
+      "description": "证据纪元（原始整数计数所属的 epoch）。冷却/再启用后滚动新 epoch，旧 epoch 计数清零重攒",
+      "minimum": 0
+    },
+    "epoch_successes": {
+      "type": "integer",
+      "description": "当前 epoch 内成功样本数（原始整数，应用本条动作之后）",
+      "minimum": 0
+    },
+    "epoch_trials": {
+      "type": "integer",
+      "description": "当前 epoch 内总样本数（原始整数，应用本条动作之后）",
+      "minimum": 0
+    },
+    "wilson": {
+      "type": "object",
+      "description": "Wilson 双侧 95% 区间（对 epoch_successes/epoch_trials 计算；z=1.96；trials=0 时约定 [0,1] 全区间）",
+      "additionalProperties": false,
+      "required": ["confidence", "side", "z", "lower", "upper"],
+      "properties": {
+        "confidence": {
+          "type": "number",
+          "const": 0.95
+        },
+        "side": {
+          "type": "string",
+          "description": "双侧口径（plan-v3 T8 明确双侧，不用单侧）",
+          "const": "two-sided"
+        },
+        "z": {
+          "type": "number",
+          "const": 1.96
+        },
+        "lower": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "upper": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "autonomy_state_before": {
+      "$ref": "#/$defs/autonomyState"
+    },
+    "autonomy_state_after": {
+      "$ref": "#/$defs/autonomyState"
+    },
+    "promotion": {
+      "type": "object",
+      "description": "晋升评估。MVP 演示口径=记账但拒绝晋升（如 3/3 时下界≈0.438<0.9 → decision=denied）；攒够证据→飞书带证据表提请→人确认后才 AUTO_ENABLED",
+      "additionalProperties": false,
+      "required": ["eligible", "decision", "threshold"],
+      "properties": {
+        "eligible": {
+          "type": "boolean",
+          "description": "wilson.lower > threshold"
+        },
+        "threshold": {
+          "type": "number",
+          "description": "晋升阈值，固定 0.9",
+          "const": 0.9
+        },
+        "decision": {
+          "type": "string",
+          "description": "not_evaluable：样本为零/状态不可评估；denied：记账但拒绝晋升；proposed：已提请人工确认；confirmed：人工确认生效；rejected_by_human：人工拒绝",
+          "enum": ["not_evaluable", "denied", "proposed", "confirmed", "rejected_by_human"]
+        },
+        "evidence_table_ref": {
+          "type": "string",
+          "description": "提请时随附的证据表引用（飞书消息/artifact）"
+        }
+      }
+    },
+    "recorded_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "causation_id": {
+      "type": "string",
+      "description": "因果链：触发本次记账的事件 id"
+    }
+  },
+  "$defs": {
+    "autonomyState": {
+      "type": "string",
+      "description": "自治状态。MANUAL 全人工；ELIGIBLE 有资格被评估晋升；AWAITING_CONFIRMATION 已提请待人确认；AUTO_ENABLED 自治生效（仅白名单 R1）；SUSPENDED 验证失败冷却中；BLOCKED_UNKNOWN 状态未知阻断，必须人工接管",
+      "enum": ["MANUAL", "ELIGIBLE", "AWAITING_CONFIRMATION", "AUTO_ENABLED", "SUSPENDED", "BLOCKED_UNKNOWN"]
+    }
+  }
+}

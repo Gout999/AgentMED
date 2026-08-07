@@ -1,0 +1,20 @@
+{
+  "schema_version": "0.1.0",
+  "approval_id": "appr_01JB1DEMO0001APPROVAL01",
+  "workorder_hash": "1e79b1bdcf3d5a931980fa28a7a4c0313d7aecf0f4d1de08df4d721927da8936",
+  "workorder_id": "wo_01JB1FIX0001DEMO0000001",
+  "nonce": "3f6b2c5e-9a1d-4e7f-b2c8-5d6a7e8f9a0b",
+  "nonce_consumed": false,
+  "expiry": "2026-08-12T00:00:00Z",
+  "approver": {
+    "type": "human",
+    "identity": "feishu:ou_demo_oncall_lead_001",
+    "display_name": "值班主管（演示）"
+  },
+  "decision": "approved",
+  "decided_at": "2026-08-08T08:15:00Z",
+  "proof": {
+    "method": "server_recorded",
+    "ref": "audit://control-plane/approval/appr_01JB1DEMO0001APPROVAL01"
+  }
+}

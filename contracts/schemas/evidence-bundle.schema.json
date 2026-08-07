@@ -1,0 +1,279 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/schemas/evidence-bundle.schema.json",
+  "title": "EvidenceBundle",
+  "description": "归因证据包（plan-v3 §2.3.2 / T4）。对照实验的完整原始记录：5-cell 最小矩阵（C/RP/RK/RM/G）逐探针逐次结果、Δ效应量+95%CI、三态裁决、探针集 digest、全部版本 digest、随机臂序记录、重复次数。证据包是归因结论可机器复核的唯一依据；INCONCLUSIVE→补实验或升级人工，CONFOUNDED→强制 2³ 全因子。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "bundle_id",
+    "experiment_id",
+    "case_id",
+    "protocol",
+    "probe_set",
+    "cells",
+    "effects",
+    "verdict",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "bundle_id": {
+      "type": "string",
+      "pattern": "^eb_[0-9A-Za-z]{8,64}$"
+    },
+    "experiment_id": {
+      "type": "string",
+      "pattern": "^exp_[0-9A-Za-z]{8,64}$"
+    },
+    "case_id": {
+      "type": "string",
+      "pattern": "^case_[0-9A-Za-z]{8,64}$"
+    },
+    "protocol": {
+      "type": "object",
+      "description": "实验协议参数。探针提前冻结后方可开始跑臂；随机臂序与重复调用是协议强制项",
+      "additionalProperties": false,
+      "required": [
+        "matrix",
+        "repetitions",
+        "random_arm_order",
+        "frozen_at",
+        "confidence"
+      ],
+      "properties": {
+        "matrix": {
+          "type": "string",
+          "description": "five_cell 为最小矩阵（C/RP/RK/RM/G）；多臂同恢复或均不恢复时扩为 full_factorial_2x2x2",
+          "enum": ["five_cell", "full_factorial_2x2x2"]
+        },
+        "repetitions": {
+          "type": "integer",
+          "description": "每个 (cell, probe) 组合的重复调用次数（≥1，演示确定性靠 temperature=0+冻结探针集）",
+          "minimum": 1
+        },
+        "random_arm_order": {
+          "type": "array",
+          "description": "随机臂序记录：实际执行顺序（cell id 的排列），先 discovery 组后 hidden confirmation 组，组内随机",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 5
+        },
+        "random_seed_ref": {
+          "type": "string",
+          "description": "随机种子记录引用（可复现臂序）"
+        },
+        "frozen_at": {
+          "type": "string",
+          "description": "探针集冻结时间，冻结后任何探针增删改都使本证据包作废",
+          "format": "date-time"
+        },
+        "confidence": {
+          "type": "number",
+          "description": "置信水平，固定 0.95",
+          "const": 0.95
+        }
+      }
+    },
+    "probe_set": {
+      "type": "object",
+      "description": "冻结探针集（分 discovery / hidden confirmation，另含 unaffected controls）",
+      "additionalProperties": false,
+      "required": ["probe_set_digest", "discovery", "hidden_confirmation", "unaffected_controls"],
+      "properties": {
+        "probe_set_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "discovery": {
+          "type": "array",
+          "description": "公开发现组探针 id，用于主要归因测量",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "hidden_confirmation": {
+          "type": "array",
+          "description": "隐藏确认组探针 id，归因结论必须在其上复现，防过拟合 discovery 组",
+          "items": { "type": "string" },
+          "minItems": 1
+        },
+        "unaffected_controls": {
+          "type": "array",
+          "description": "不受影响的对照探针 id，各臂均应通过；对照臂失败即提示实验环境污染",
+          "items": { "type": "string" },
+          "minItems": 1
+        }
+      }
+    },
+    "cells": {
+      "type": "object",
+      "description": "5-cell 最小矩阵结果。语义：P0/K0/M0=回滚到的旧版本，P1/K1/M1=当前线上版本。C=(P1,K1,M1) 现状臂；RP=(P0,K1,M1) 单回滚 prompt；RK=(P1,K0,M1) 单回滚 KB；RM=(P1,K1,M0) 单回滚模型参数；G=(P0,K0,M0) 全回滚总对照，用于识别环境性混杂",
+      "additionalProperties": false,
+      "required": ["C", "RP", "RK", "RM", "G"],
+      "properties": {
+        "C": { "$ref": "#/$defs/cell" },
+        "RP": { "$ref": "#/$defs/cell" },
+        "RK": { "$ref": "#/$defs/cell" },
+        "RM": { "$ref": "#/$defs/cell" },
+        "G": { "$ref": "#/$defs/cell" }
+      }
+    },
+    "effects": {
+      "type": "object",
+      "description": "Δ效应量+95%CI。prompt/kb/model_params 三个单层各一个效应量：Δ_prompt=recovery(RP)−recovery(C)，Δ_kb=recovery(RK)−recovery(C)，Δ_model=recovery(RM)−recovery(C)（在受影响探针上测量）。【待定】Δ 的 95%CI 计算方法（差值 Wilson/Newcombe 等）plan-v3 未指定，method 字段如实记录所用方法",
+      "additionalProperties": false,
+      "required": ["prompt", "kb", "model_params"],
+      "properties": {
+        "prompt": { "$ref": "#/$defs/effect" },
+        "kb": { "$ref": "#/$defs/effect" },
+        "model_params": { "$ref": "#/$defs/effect" },
+        "method": {
+          "type": "string",
+          "description": "效应量与 CI 的计算方法标识"
+        }
+      }
+    },
+    "verdict": {
+      "type": "object",
+      "description": "三态裁决。ATTRIBUTED：唯一单层 Δ 显著为正且其余层 Δ 的 CI 覆盖 0，且 hidden confirmation 组复现；INCONCLUSIVE：信号不足→补实验或升级人工；CONFOUNDED：多臂同恢复/均不恢复/G 臂异常→强制全因子",
+      "additionalProperties": false,
+      "required": ["decision", "rationale"],
+      "properties": {
+        "decision": {
+          "type": "string",
+          "enum": ["ATTRIBUTED", "INCONCLUSIVE", "CONFOUNDED"]
+        },
+        "attributed_layer": {
+          "type": ["string", "null"],
+          "description": "归因到的故障层；interaction 仅允许出现在全因子扩展后；非 ATTRIBUTED 时必须为 null",
+          "enum": ["prompt", "kb", "model_params", "interaction", null]
+        },
+        "rationale": {
+          "type": "string",
+          "description": "裁决理由（人读摘要，机器裁决以上述字段为准）"
+        },
+        "hidden_confirmation_reproduced": {
+          "type": "boolean",
+          "description": "结论是否在 hidden confirmation 组复现；ATTRIBUTED 必须为 true"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "decision": { "const": "ATTRIBUTED" } }
+          },
+          "then": {
+            "properties": {
+              "attributed_layer": { "enum": ["prompt", "kb", "model_params", "interaction"] },
+              "hidden_confirmation_reproduced": { "const": true }
+            },
+            "required": ["attributed_layer", "hidden_confirmation_reproduced"]
+          }
+        },
+        {
+          "if": {
+            "properties": { "decision": { "enum": ["INCONCLUSIVE", "CONFOUNDED"] } }
+          },
+          "then": {
+            "properties": {
+              "attributed_layer": { "const": null }
+            }
+          }
+        }
+      ]
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "cell": {
+      "type": "object",
+      "description": "单臂结果：完整版本 digest（每个 cell 的实际版本组合可机器复核）+ 逐探针原始结果",
+      "additionalProperties": false,
+      "required": ["versions", "results", "recovery_rate"],
+      "properties": {
+        "versions": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["prompt_digest", "kb_manifest_digest", "model_digest"],
+          "properties": {
+            "prompt_digest": { "$ref": "#/$defs/digest" },
+            "kb_manifest_digest": { "$ref": "#/$defs/digest" },
+            "model_digest": { "$ref": "#/$defs/digest" }
+          }
+        },
+        "results": {
+          "type": "array",
+          "description": "逐探针逐次原始结果（recovered=true 表示该次调用探针恢复通过）",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["probe_id", "repetition", "recovered"],
+            "properties": {
+              "probe_id": { "type": "string" },
+              "repetition": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "recovered": { "type": "boolean" },
+              "output_ref": {
+                "type": "string",
+                "description": "原始输出 artifact 引用（可回放复核）"
+              }
+            }
+          },
+          "minItems": 1
+        },
+        "recovery_rate": {
+          "type": "number",
+          "description": "受影响探针（discovery+hidden_confirmation）上的恢复率，∈[0,1]",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "control_pass_rate": {
+          "type": "number",
+          "description": "unaffected controls 通过率；任何臂 <1.0 都应触发环境污染告警",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "effect": {
+      "type": "object",
+      "description": "单层 Δ效应量+95%CI（恢复率差值）",
+      "additionalProperties": false,
+      "required": ["delta", "ci95_lower", "ci95_upper", "significant"],
+      "properties": {
+        "delta": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "ci95_lower": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "ci95_upper": {
+          "type": "number",
+          "minimum": -1,
+          "maximum": 1
+        },
+        "significant": {
+          "type": "boolean",
+          "description": "CI 是否整体位于 0 之上（显著为正）"
+        }
+      }
+    }
+  }
+}

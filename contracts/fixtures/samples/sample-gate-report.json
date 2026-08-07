@@ -1,0 +1,102 @@
+{
+  "schema_version": "0.1.0",
+  "report_id": "gate_01JB1DEMO0001GATE00001",
+  "eval_id": "eval_01JB1DEMO0001EVAL00001",
+  "subject": {
+    "target_versionset_digest": "sha256:a0f978a43154736baa309b00fcc8314179d3c1a8b24660db4a4b9342367dac0f",
+    "regression_suite_digest": "sha256:ef05aa1e8e0698b81a52158bc06b3782406fec93a44ee38e51a6b09f982339db",
+    "probe_set_digest": "sha256:8c21e6d7af247aaec2a2d3f1a41b6be5dd4176ae8b47975d1c05539afabcbaf6"
+  },
+  "rule_track": {
+    "status": "passed",
+    "checks": [
+      {
+        "check_id": "rule-policy-keyword",
+        "description": "售后政策必含关键词",
+        "status": "passed"
+      },
+      {
+        "check_id": "rule-json-format",
+        "description": "JSON 输出合法性",
+        "status": "passed"
+      },
+      {
+        "check_id": "rule-no-refusal",
+        "description": "政策类问题不得拒答",
+        "status": "passed"
+      }
+    ]
+  },
+  "judge_track": {
+    "status": "passed",
+    "judge_model_digest": "sha256:6dd6b1d3420893df0afa0c698df08acee34d08ba500bad8e9d18ddfb9ba85f5a",
+    "athlete_model_digest": "sha256:7a76640188d9c06895b9d2e5c49bfea66369b7640918c387d58a8cdc43580e7e",
+    "pass_threshold": 0.8,
+    "scores": [
+      {
+        "probe_id": "cs-001",
+        "score": 0.95,
+        "pass": true,
+        "rationale_ref": "file://evidence/b1/gate/judge-cs-001.md"
+      },
+      {
+        "probe_id": "cs-002",
+        "score": 0.93,
+        "pass": true,
+        "rationale_ref": "file://evidence/b1/gate/judge-cs-002.md"
+      },
+      {
+        "probe_id": "cs-003",
+        "score": 0.91,
+        "pass": true,
+        "rationale_ref": "file://evidence/b1/gate/judge-cs-003.md"
+      }
+    ]
+  },
+  "deterministic_tests": {
+    "status": "passed",
+    "suites": [
+      {
+        "suite": "quality-api-contract",
+        "kind": "contract",
+        "status": "passed",
+        "n_passed": 12,
+        "n_failed": 0,
+        "report_ref": "file://evidence/b1/gate/contract.xml"
+      },
+      {
+        "suite": "b1-replay-frozen-probes",
+        "kind": "replay",
+        "status": "passed",
+        "n_passed": 24,
+        "n_failed": 0,
+        "report_ref": "file://evidence/b1/gate/replay.jsonl"
+      }
+    ]
+  },
+  "live_provider_e2e": {
+    "status": "passed",
+    "provider": "stepfun",
+    "suites": [
+      {
+        "suite": "cs-e2e-smoke",
+        "status": "passed",
+        "n_passed": 8,
+        "n_failed": 0,
+        "report_ref": "file://evidence/b1/gate/live-e2e.jsonl"
+      }
+    ]
+  },
+  "overall_status": "passed",
+  "artifact_refs": [
+    {
+      "uri": "file://evidence/b1/gate/contract.xml",
+      "digest": "sha256:11965f3cfe5fbfc38432623ca70f217f082b2a491d31173ab3ec17edc9723d41"
+    },
+    {
+      "uri": "file://evidence/b1/gate/replay.jsonl",
+      "digest": "sha256:ccee7c883715b0a6b38fe72f12255fac0f2e565dcc0de0ad0aa4fe97a3d0d637"
+    }
+  ],
+  "created_at": "2026-08-08T07:20:00Z"
+}

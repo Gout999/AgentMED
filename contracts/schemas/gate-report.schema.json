@@ -1,0 +1,245 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/schemas/gate-report.schema.json",
+  "title": "GateReport",
+  "description": "评测门禁报告（plan-v3 §2.3.6 / T6）。双轨：规则轨+裁判轨（裁判模型≠运动员模型）；确定性 contract/replay 测试与 live-provider E2E 必须分开报告，不得合并成一个总分。门禁报告是 WorkOrder 的必要附件。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "report_id",
+    "eval_id",
+    "subject",
+    "rule_track",
+    "judge_track",
+    "deterministic_tests",
+    "live_provider_e2e",
+    "overall_status",
+    "created_at"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "report_id": {
+      "type": "string",
+      "pattern": "^gate_[0-9A-Za-z]{8,64}$"
+    },
+    "eval_id": {
+      "type": "string",
+      "description": "产生本报告的 Eval 聚合 id",
+      "pattern": "^eval_[0-9A-Za-z]{8,64}$"
+    },
+    "subject": {
+      "type": "object",
+      "description": "被评测对象（候选版本，全部 digest 锁定）",
+      "additionalProperties": false,
+      "required": ["target_versionset_digest", "regression_suite_digest", "probe_set_digest"],
+      "properties": {
+        "target_versionset_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "regression_suite_digest": {
+          "type": "string",
+          "description": "回归评测集 digest",
+          "$ref": "#/$defs/digest"
+        },
+        "probe_set_digest": {
+          "type": "string",
+          "description": "冻结探针集 digest",
+          "$ref": "#/$defs/digest"
+        }
+      }
+    },
+    "rule_track": {
+      "type": "object",
+      "description": "规则轨：确定性检查（关键词/格式/策略断言），无 LLM 参与",
+      "additionalProperties": false,
+      "required": ["status", "checks"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["passed", "failed", "error"]
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["check_id", "status"],
+            "properties": {
+              "check_id": { "type": "string" },
+              "description": { "type": "string" },
+              "status": {
+                "type": "string",
+                "enum": ["passed", "failed", "skipped"]
+              },
+              "detail": { "type": "string" }
+            }
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "judge_track": {
+      "type": "object",
+      "description": "裁判轨：LLM 裁判打分。judge_model_digest 必须与运动员模型 digest 不同（裁判模型≠运动员模型，T6 硬约束）",
+      "additionalProperties": false,
+      "required": ["status", "judge_model_digest", "athlete_model_digest", "scores"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["passed", "failed", "error"]
+        },
+        "judge_model_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "athlete_model_digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "scores": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["probe_id", "score", "pass"],
+            "properties": {
+              "probe_id": { "type": "string" },
+              "score": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 1
+              },
+              "pass": { "type": "boolean" },
+              "rationale_ref": {
+                "type": "string",
+                "description": "裁判理由 artifact 引用"
+              }
+            }
+          },
+          "minItems": 1
+        },
+        "pass_threshold": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "deterministic_tests": {
+      "type": "object",
+      "description": "确定性测试：contract 测试 + replay 回放（temperature=0/冻结探针集），结果必须可复现。与 live_provider_e2e 分开报告",
+      "additionalProperties": false,
+      "required": ["status", "suites"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["passed", "failed", "error"]
+        },
+        "suites": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["suite", "kind", "status", "n_passed", "n_failed"],
+            "properties": {
+              "suite": { "type": "string" },
+              "kind": {
+                "type": "string",
+                "enum": ["contract", "replay"]
+              },
+              "status": {
+                "type": "string",
+                "enum": ["passed", "failed", "error"]
+              },
+              "n_passed": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "n_failed": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "report_ref": { "type": "string" }
+            }
+          },
+          "minItems": 1
+        }
+      }
+    },
+    "live_provider_e2e": {
+      "type": "object",
+      "description": "live-provider E2E：真实调用 LLM provider 的端到端验证。概率性结果，单独报告，不得与确定性结果合并计分",
+      "additionalProperties": false,
+      "required": ["status", "provider", "suites"],
+      "properties": {
+        "status": {
+          "type": "string",
+          "enum": ["passed", "failed", "error", "skipped"]
+        },
+        "provider": {
+          "type": "string",
+          "description": "如 stepfun；演示确定性靠 temperature=0"
+        },
+        "suites": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["suite", "status", "n_passed", "n_failed"],
+            "properties": {
+              "suite": { "type": "string" },
+              "status": {
+                "type": "string",
+                "enum": ["passed", "failed", "error", "skipped"]
+              },
+              "n_passed": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "n_failed": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "report_ref": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "overall_status": {
+      "type": "string",
+      "description": "门禁总结论。规则轨/裁判轨/确定性测试任一 failed 即 failed；live E2E 的失败单独标注但同样阻断放行",
+      "enum": ["passed", "failed", "error"]
+    },
+    "artifact_refs": {
+      "type": "array",
+      "description": "全部支撑材料引用",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["uri", "digest"],
+        "properties": {
+          "uri": {
+            "type": "string",
+            "format": "uri"
+          },
+          "digest": {
+            "$ref": "#/$defs/digest"
+          }
+        }
+      }
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "$defs": {
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    }
+  }
+}

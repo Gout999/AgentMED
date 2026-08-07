@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/schemas/approval.schema.json",
+  "title": "ApprovalGrant",
+  "description": "审批授权（plan-v3 §2.3.3 / §2.3.9）。审批即批 WorkOrder 的 hash：grant 绑定 workorder_hash + nonce + expiry，nonce 一次性消费，三者共同防重放、防掉包。zeroops common/approval.py 的静态 token 方案显式废弃，不得沿用。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "approval_id",
+    "workorder_hash",
+    "workorder_id",
+    "nonce",
+    "expiry",
+    "approver",
+    "decision",
+    "decided_at",
+    "nonce_consumed"
+  ],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "0.1.0"
+    },
+    "approval_id": {
+      "type": "string",
+      "pattern": "^appr_[0-9A-Za-z]{8,64}$"
+    },
+    "workorder_hash": {
+      "type": "string",
+      "description": "被批准 WorkOrder 的内容 hash（64 hex，无 sha256: 前缀，与 workorder.hash 字段同格式）。Release Controller 执行前必须重新计算 WorkOrder hash 并逐字节比对，不一致即拒绝执行。",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "workorder_id": {
+      "type": "string",
+      "description": "冗余索引字段，便于审计检索；授权效力只认 workorder_hash",
+      "pattern": "^wo_[0-9A-Za-z]{8,64}$"
+    },
+    "nonce": {
+      "type": "string",
+      "description": "从被批 WorkOrder 原样复制的 nonce。服务端见到即标记已消费（一次性），同一 nonce 的第二次出示必须拒绝——重放攻击防线",
+      "format": "uuid"
+    },
+    "nonce_consumed": {
+      "type": "boolean",
+      "description": "nonce 是否已被消费。出库（granted）时为 false；首次用于发布后置 true。任何 nonce_consumed=true 的 grant 不得再次驱动写操作"
+    },
+    "expiry": {
+      "type": "string",
+      "description": "授权过期时间，不得晚于 WorkOrder 自身 expiry",
+      "format": "date-time"
+    },
+    "approver": {
+      "type": "object",
+      "description": "审批人。LLM 永远不是权限权威源，approver.type 必须为 human",
+      "additionalProperties": false,
+      "required": ["type", "identity"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "const": "human"
+        },
+        "identity": {
+          "type": "string",
+          "description": "审批人稳定身份（如飞书 open_id：feishu:ou_xxx）"
+        },
+        "display_name": {
+          "type": "string"
+        }
+      }
+    },
+    "decision": {
+      "type": "string",
+      "description": "审批结论。rejected 的 grant 同样落库（审计需要），但不得驱动发布",
+      "enum": ["approved", "rejected"]
+    },
+    "decided_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "proof": {
+      "type": "object",
+      "description": "授权证据。【待定】证明机制（服务端审计记录 / HMAC / 非对称签名）plan-v3 未规定，当前仅要求可回溯引用",
+      "additionalProperties": false,
+      "required": ["method"],
+      "properties": {
+        "method": {
+          "type": "string",
+          "enum": ["server_recorded", "hmac_sha256", "ed25519_signature"]
+        },
+        "ref": {
+          "type": "string",
+          "description": "证据引用（审计记录 URI 或签名值）"
+        }
+      }
+    },
+    "consumed_at": {
+      "type": "string",
+      "description": "nonce 被消费的时间（首次驱动发布时写入）",
+      "format": "date-time"
+    }
+  }
+}

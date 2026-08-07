@@ -1,0 +1,43 @@
+# B3 故障注入 ground-truth（简版，Phase 2 用）：模型参数漂移
+# 【draft】Phase 2 才冻结全部细节。
+fixture_id: B3
+title: "model+params 回归：输出纪律被破坏"
+draft: true   # Phase 2 冻结
+fault_layer: model_params
+
+scenario:
+  app: xiaozhi-customer-service
+  complaint_example: "让你们客服给个 JSON 格式的参数表，返回的全是散文还截断了！"
+
+injected_change:
+  channel: model_params
+  # 运动员模型本身不变，参数组合漂移 → model_digest 变化（model+params 联合 digest）
+  before:
+    temperature: 0.0
+    max_tokens: 1024
+  after:
+    temperature: 1.2
+    max_tokens: 64
+  injection_endpoint: "POST /admin/inject/B3"
+
+expected_attribution:
+  verdict: ATTRIBUTED
+  attributed_layer: model_params
+  # 五细胞期望：仅 RM、G 恢复
+  expected_cell_recovery:
+    C: false
+    RP: false
+    RK: false
+    RM: true
+    G: true
+
+# 示例探针（3 条）：格式/完整性纪律对参数漂移最敏感
+probes:
+  - cs-010   # 严格 JSON 输出
+  - cs-011   # 逐字引用政策原文
+  - cs-012   # 一句话概括（长度纪律）
+
+experiment_protocol:
+  matrix: five_cell
+  repetitions: 3
+  confidence: 0.95

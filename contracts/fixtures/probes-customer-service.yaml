@@ -1,0 +1,131 @@
+# 小智客服基础探针集（3C 数码电商：售后政策/产品参数/物流规则）
+# fault_layer 覆盖：prompt（5）/ kb（4）/ model（3）/ unaffected（4），共 16 条。
+# 实验前整体冻结并计算 probe_set_digest；冻结后增删改任何一条都须换新 digest。
+# B1 使用：discovery=[cs-001..003], hidden_confirmation=[cs-004,005], unaffected_controls=[cs-013..016]。
+probe_set_id: probes-customer-service-v1
+domain: "3C 数码电商客服"
+version: "1.0.0"
+frozen: true
+
+probes:
+  # ---------- prompt 层敏感（售后政策，B1 目标）----------
+  - id: cs-001
+    input: "我三天前买的蓝牙耳机，现在不想要了，能退吗？"
+    expected_behavior:
+      description: "告知 7 天无理由退货政策及基本条件"
+      must_include: ["7 天无理由", "退"]
+      must_not_include: ["不支持退货", "人工审核"]
+    tags: { fault_layer: prompt, topic: 售后政策 }
+
+  - id: cs-002
+    input: "耳机已经激活了还能退货吗？"
+    expected_behavior:
+      description: "明确激活后仍可在 7 天无理由期内退货"
+      must_include: ["7 天无理由", "激活"]
+      must_not_include: ["已激活商品不支持退货"]
+    tags: { fault_layer: prompt, topic: 售后政策 }
+
+  - id: cs-003
+    input: "退货的运费谁出？"
+    expected_behavior:
+      description: "说明运费由商家承担"
+      must_include: ["运费", "我们承担"]
+    tags: { fault_layer: prompt, topic: 售后政策 }
+
+  - id: cs-004
+    input: "手机拆开包装试了试，可以退吗？"
+    expected_behavior:
+      description: "拆封试用不影响 7 天无理由退货"
+      must_include: ["7 天无理由"]
+      must_not_include: ["不支持退货"]
+    tags: { fault_layer: prompt, topic: 售后政策 }
+
+  - id: cs-005
+    input: "退货期限从什么时候开始算？"
+    expected_behavior:
+      description: "说明自签收次日起算"
+      must_include: ["签收", "次日"]
+    tags: { fault_layer: prompt, topic: 售后政策 }
+
+  # ---------- kb 层敏感（产品参数，B2 目标）----------
+  - id: cs-006
+    input: "X200 蓝牙耳机续航多久？"
+    expected_behavior:
+      description: "回答 30 小时（KB 事实）"
+      must_include: ["30 小时"]
+      must_not_include: ["8 小时"]
+    tags: { fault_layer: kb, topic: 产品参数 }
+
+  - id: cs-007
+    input: "X200 的主动降噪深度是多少？"
+    expected_behavior:
+      description: "回答 42dB（KB 事实）"
+      must_include: ["42dB"]
+    tags: { fault_layer: kb, topic: 产品参数 }
+
+  - id: cs-008
+    input: "Y90 机械键盘用的是什么轴体？"
+    expected_behavior:
+      description: "回答线性红轴（KB 事实）"
+      must_include: ["红轴"]
+    tags: { fault_layer: kb, topic: 产品参数 }
+
+  - id: cs-009
+    input: "Z30 充电宝容量多大？能带上飞机吗？"
+    expected_behavior:
+      description: "20000mAh/74Wh，符合民航随身携带标准"
+      must_include: ["20000mAh", "74Wh", "可以"]
+    tags: { fault_layer: kb, topic: 产品参数 }
+
+  # ---------- model 层敏感（输出纪律，B3 目标）----------
+  - id: cs-010
+    input: "请严格用 JSON 格式列出 X200 的三个核心参数（键：battery, anc, bluetooth）。"
+    expected_behavior:
+      description: "输出必须是可解析的合法 JSON，且三个键齐全"
+      must_include: ["battery", "anc", "bluetooth"]
+      format: json
+    tags: { fault_layer: model, topic: 输出纪律 }
+
+  - id: cs-011
+    input: "请逐字引用售后政策的第一条原文。"
+    expected_behavior:
+      description: "与政策原文逐字一致，不得改写"
+      must_include: ["我们支持 7 天无理由退货"]
+    tags: { fault_layer: model, topic: 输出纪律 }
+
+  - id: cs-012
+    input: "用一句话（不超过 30 字）概括你们的退货政策。"
+    expected_behavior:
+      description: "单句、≤30 字、完整覆盖核心承诺，不啰嗦不截断"
+      must_include: ["7 天无理由"]
+      max_output_chars: 60
+    tags: { fault_layer: model, topic: 输出纪律 }
+
+  # ---------- unaffected 对照（物流规则，B1/B2/B3 均不应影响）----------
+  - id: cs-013
+    input: "下单后多久发货？"
+    expected_behavior:
+      description: "48 小时内发货"
+      must_include: ["48 小时"]
+    tags: { fault_layer: unaffected, topic: 物流规则 }
+
+  - id: cs-014
+    input: "你们支持哪些快递？"
+    expected_behavior:
+      description: "列出合作快递（顺丰/京东物流）"
+      must_include: ["顺丰"]
+    tags: { fault_layer: unaffected, topic: 物流规则 }
+
+  - id: cs-015
+    input: "新疆、西藏包邮吗？"
+    expected_behavior:
+      description: "按物流规则说明偏远地区运费政策"
+      must_include: ["运费"]
+    tags: { fault_layer: unaffected, topic: 物流规则 }
+
+  - id: cs-016
+    input: "怎么查我的物流单号？"
+    expected_behavior:
+      description: "指引到订单详情页查看单号"
+      must_include: ["订单"]
+    tags: { fault_layer: unaffected, topic: 物流规则 }

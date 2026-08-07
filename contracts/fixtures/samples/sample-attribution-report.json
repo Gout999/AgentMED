@@ -1,0 +1,77 @@
+{
+  "schema_version": "0.1.0",
+  "report_id": "attr_01JB1DEMO0001REPORT001",
+  "experiment_id": "exp_01JB1DEMO0001EXP000001",
+  "case_id": "case_01JB1DEMO0001CASE000001",
+  "probe_set_digest": "sha256:8c21e6d7af247aaec2a2d3f1a41b6be5dd4176ae8b47975d1c05539afabcbaf6",
+  "version_digests": {
+    "P0": "sha256:03f971099898037f1e82d1bd81d0c284dc9fe386e675a587f55ec0e8e219e8c6",
+    "P1": "sha256:2c0181a1c7503464ab4f3abe91efaefe564ff4a905cdbc2b9e4623ea5668c8de",
+    "K0": "sha256:74cfe0050ee17653db5d8481032b74a108cf806f0073ea2c547834bea757a331",
+    "K1": "sha256:d9c398c7c8fff1322fdc7c0967f48bd8bf4e17e8377e57a09ee7a1b7c51606fe",
+    "M0": "sha256:4f5d0a1f1c2cb3f985eae68431bc97249d37901f3c1a287a5f5627f89df5464f",
+    "M1": "sha256:7a76640188d9c06895b9d2e5c49bfea66369b7640918c387d58a8cdc43580e7e"
+  },
+  "cells": {
+    "C": {
+      "recovery_rate": 0.0,
+      "n_probes": 5,
+      "n_trials": 15,
+      "control_pass_rate": 1.0
+    },
+    "RP": {
+      "recovery_rate": 1.0,
+      "n_probes": 5,
+      "n_trials": 15,
+      "control_pass_rate": 1.0
+    },
+    "RK": {
+      "recovery_rate": 0.0,
+      "n_probes": 5,
+      "n_trials": 15,
+      "control_pass_rate": 1.0
+    },
+    "RM": {
+      "recovery_rate": 0.0,
+      "n_probes": 5,
+      "n_trials": 15,
+      "control_pass_rate": 1.0
+    },
+    "G": {
+      "recovery_rate": 1.0,
+      "n_probes": 5,
+      "n_trials": 15,
+      "control_pass_rate": 1.0
+    }
+  },
+  "deltas": {
+    "prompt": {
+      "estimate": 1.0,
+      "ci95_lower": 0.592,
+      "ci95_upper": 1.0
+    },
+    "kb": {
+      "estimate": 0.0,
+      "ci95_lower": -0.204,
+      "ci95_upper": 0.204
+    },
+    "model_params": {
+      "estimate": 0.0,
+      "ci95_lower": -0.204,
+      "ci95_upper": 0.204
+    },
+    "method": "wilson_score_bounds_conservative_diff"
+  },
+  "verdict": {
+    "decision": "ATTRIBUTED",
+    "attributed_layer": "prompt",
+    "interaction_detected": false,
+    "full_factorial_required": false,
+    "rationale": "Δ_prompt=1.0(95%CI[0.592,1.0]) 唯一显著；e2e 断言口径：裁决=ATTRIBUTED 且故障层=prompt"
+  },
+  "evidence_bundle_ref": {
+    "uri": "file://contracts/fixtures/samples/sample-evidence-bundle.json",
+    "digest": "sha256:344ba64e66a03da8c639bb8297dd5e3066791cbd439390c79b87f5502d6b6bbc"
+  },
+  "generated_at": "2026-08-08T06:25:00Z"
+}

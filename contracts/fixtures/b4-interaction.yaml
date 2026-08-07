@@ -1,0 +1,48 @@
+# B4 故障注入 ground-truth（简版，Phase 2 用）：层间交互故障
+# 【draft】Phase 2 才冻结全部细节。B4 是协议压力测试：单变量臂不足以识别，
+# 期望路径 = 五细胞出现「多臂同恢复或均不恢复」→ 裁决 CONFOUNDED → 强制扩 2³ 全因子 → 识别交互。
+fixture_id: B4
+title: "交互回归：prompt 与 KB 同时变更才触发"
+draft: true   # Phase 2 冻结
+fault_layer: interaction
+
+scenario:
+  app: xiaozhi-customer-service
+  description: "新 prompt 引用 KB 条目的新字段名，旧 KB 没有该字段；单独回滚任一层都会破坏另一部分（prompt 新+KB 旧=字段缺失；prompt 旧+KB 新=答非所问）。仅 (P0,K0) 或 (P1,K1) 组合正常。"
+  complaint_example: "客服一会儿说以旧换新，一会儿说没这活动，到底听谁的？"
+
+injected_change:
+  channel: interaction   # 双通道同时变更
+  changes:
+    - channel: prompt
+      prompt_section: "以旧换新活动"
+      note: "引用 KB 新字段 trade_in_program_v2"
+    - channel: kb
+      kb_entry: "campaigns/trade-in.yaml"
+      note: "新增字段 trade_in_program_v2，旧字段废弃"
+  injection_endpoint: "POST /admin/inject/B4"
+
+expected_attribution:
+  # 第一裁（五细胞）：CONFOUNDED（多臂同恢复或均不恢复，单变量无法解释）
+  first_verdict: CONFOUNDED
+  full_factorial_required: true
+  # 第二裁（2³ 全因子后）：ATTRIBUTED + interaction
+  final_verdict: ATTRIBUTED
+  final_attributed_layer: interaction
+
+# 示例探针（3 条，Phase 2 补全到正式探针集）
+probes:
+  - id: cs-b4-001
+    input: "现在以旧换新有什么补贴？"
+    expected_behavior: "按 KB 当前活动条款回答，不与页面信息矛盾"
+  - id: cs-b4-002
+    input: "旧耳机换新能抵多少钱？"
+    expected_behavior: "给出当前活动的抵扣规则"
+  - id: cs-b4-003
+    input: "以旧换新和 7 天退货冲突吗？"
+    expected_behavior: "分别引用两个政策，不混淆"
+
+experiment_protocol:
+  matrix: five_cell        # 起步矩阵；CONFOUNDED 后扩 full_factorial_2x2x2
+  repetitions: 3
+  confidence: 0.95

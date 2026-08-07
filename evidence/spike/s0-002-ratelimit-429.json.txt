@@ -1,0 +1,7 @@
+packages/openai/_base_client.py", line 1992, in post
+    return await self.request(cast_to, opts, stream=stream, stream_cls=stream_cls)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/venv/standard/lib/python3.11/site-packages/openai/_base_client.py", line 1777, in request
+    raise self._make_status_error_from_response(err.response) from None
+openai.RateLimitError: Error code: 429 - {'error': {'message': 'request limited RPM reached, current: 11, limit: 10. Please top up at https://platform.stepfun.com/top-up. Rate limit rules: https://platform.stepfun.com/docs/zh/pricing/details#%E9%98%B6%E6%A2%AF%E9%99%90%E9%80%9F', 'type': 'rate_limited'}}
+
