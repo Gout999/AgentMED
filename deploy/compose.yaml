@@ -45,6 +45,30 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # ---- Wave 3：control-plane 服务化（确定性控制面）—— 仅 APPEND，不动上方服务 ----
+  control-plane:
+    build:
+      context: ../control-plane
+    container_name: caseloop-control-plane
+    environment:
+      # compose 内部网络：直连 postgres 容器（宿主映射见 ports）
+      DATABASE_URL: postgresql+psycopg://caseloop:caseloop@postgres:5432/control_plane
+      # 被治理应用 Quality API（写面唯一入口）；容器内 127.0.0.1 不是 demo-app
+      QUALITY_API_BASE_URL: http://demo-app:8080
+      QUALITY_API_TOKEN: ${CASELOOP_WRITE_TOKEN:-conformance-write-token}
+    ports:
+      - "18090:8090"   # 宿主 8090 被占用，映射到 18090
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8090/healthz', timeout=2)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
 volumes:
   caseloop_pgdata:
     name: caseloop_pgdata

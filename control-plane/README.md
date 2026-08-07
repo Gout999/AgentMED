@@ -48,9 +48,29 @@ python3.11 -m venv .venv
 
 ### 4) 起服务
 
+方式 A：宿主机 uvicorn（本地开发）
+
 ```bash
 .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8090
 ```
+
+方式 B：compose 容器（e2e 编排 / 统一部署）
+
+```bash
+# 在仓库根目录；仅起 control-plane（自动拉 postgres 依赖 + 构建镜像）
+docker compose -f deploy/compose.yaml up -d --build control-plane
+
+# 宿主 8090 被其他服务占用，compose 映射到 18090
+curl http://127.0.0.1:18090/healthz     # {"status":"ok",...}
+curl http://127.0.0.1:18090/v1/cases    # {"items":[],...}
+
+# 重启（alembic 幂等：已在 head 时 upgrade 为 no-op）
+docker compose -f deploy/compose.yaml restart control-plane
+```
+
+容器入口先 `alembic upgrade head` 再起 uvicorn；`DATABASE_URL` 由 compose
+注入 compose 内部网络地址（`postgres:5432/control_plane`），`QUALITY_API_BASE_URL`
+指向 `demo-app:8080`。镜像构建见 `Dockerfile`，非 root 运行。
 
 配置全部走环境变量，模板见 `.env.example`（复制为 `.env` 后填写；`.env` 不入库）。
 
