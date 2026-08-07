@@ -1,0 +1,31 @@
+# Secrets —— 任何密钥/凭证一律不入库
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+secrets/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Node
+node_modules/
+dist/
+.next/
+
+# 构建与运行产物
+*.log
+.DS_Store
+coverage/
+htmlcov/
+
+# 证据导出物中的大文件按需保留（截图/日志入库，临时包忽略）
+evidence/tmp/
