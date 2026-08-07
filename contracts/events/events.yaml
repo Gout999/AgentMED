@@ -1,0 +1,594 @@
+# CaseLoop 领域事件契约（plan-v3 §2.3.5 七个聚合 + 投诉接入）
+# 约定：
+# - 所有事件经控制面 PG event 表持久化（审计权威源=数据库，audit.jsonl 仅导出物）。
+# - 每事件必带：event_id / event_type / aggregate_type / aggregate_id / occurred_at /
+#   causation_id / correlation_id / payload。causation_id = 造成本事件的上游事件或命令 id；
+#   correlation_id = 贯穿全链路的 case_id（投诉接入阶段为 complaint_id）。
+# - payload 用 JSON Schema draft 2020-12 描述，控制面落库前逐事件校验。
+version: "0.1.0"
+
+envelope:
+  description: "事件信封（所有事件共享）"
+  required: [event_id, event_type, aggregate_type, aggregate_id, occurred_at, causation_id, correlation_id, payload]
+  properties:
+    event_id:   { type: string, pattern: "^evt_[0-9A-Za-z]{8,64}$" }
+    event_type: { type: string, pattern: "^[a-z]+\\.[a-z_]+$" }
+    aggregate_type:
+      type: string
+      enum: [case, experiment, changeset, eval, release, notification, trust]
+    aggregate_id: { type: string, minLength: 4 }
+    occurred_at:  { type: string, format: date-time }
+    causation_id:   { type: string, description: "上游因果事件/命令 id；链首用 none" }
+    correlation_id: { type: string, description: "全链路关联 id（case 链=case_id，接入段=complaint_id）" }
+    actor:       { type: string, description: "发起方（controller 组件或 agent 身份）；缺省=system" }
+    payload:     { type: object }
+
+# ---------------------------------------------------------------- 投诉接入
+# 事件驱动（webhook）+ 轮询兜底（poll）双来源，统一经 Case Controller inbox 去重后立案。
+ingestion:
+  sources:
+    - id: webhook
+      description: "飞书等 IM 的实时回调"
+      external_id_field: "provider_message_id（如飞书 message_id）"
+    - id: poll
+      description: "轮询兜底（webhook 丢失时兜住）；poll 无稳定 external_id 时用内容指纹"
+      external_id_field: "provider_message_id，缺省时 sha256(归一化内容)"
+  dedup:
+    description: "inbox 去重键：同一来源同一外部 id 只立案一次；重复投递→case.duplicate_dismissed 或并入已有 Case"
+    dedup_key: "sha256(source + '|' + external_id)"
+    normalization_note: "【待定】poll 无 external_id 时的内容归一化规则（大小写/空白/PII 脱敏先后序）"
+  event: complaint.received
+
+# ---------------------------------------------------------------- 七聚合领域事件
+aggregates:
+
+  case:
+    description: "投诉全生命周期（控制面唯一事实源；Worker 丢失经 lease 回收重派）"
+    states_ref: "state-machines.yaml#case"
+    events:
+      - event_type: complaint.received
+        aggregate_id: "inbox 阶段用 dedup_key 作 provisional id"
+        causation_id: none
+        payload:
+          required: [source, external_id, dedup_key, channel, complainant_ref, text_ref]
+          properties:
+            source: { enum: [webhook, poll] }
+            external_id: { type: string }
+            dedup_key: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            channel: { type: string, description: "如 feishu:group:oc_xxx" }
+            complainant_ref: { type: string, description: "假名化投诉人" }
+            text_ref: { type: string, description: "脱敏后内容 artifact 引用" }
+            attachments: { type: array, items: { type: string } }
+      - event_type: case.opened
+        aggregate_id: case_id
+        causation_id: "complaint.received 事件 id"
+        payload:
+          required: [dedup_key, title, app_ref]
+          properties:
+            dedup_key: { type: string }
+            title: { type: string }
+            severity: { enum: [low, medium, high, critical] }
+            app_ref: { type: string, description: "被治理应用标识" }
+      - event_type: case.merged
+        aggregate_id: "canonical case_id"
+        causation_id: "case.opened / 去重判定"
+        payload:
+          required: [canonical_case_id, merged_case_ids, reason]
+          properties:
+            canonical_case_id: { type: string }
+            merged_case_ids: { type: array, items: { type: string }, minItems: 1 }
+            reason: { type: string }
+      - event_type: case.duplicate_dismissed
+        aggregate_id: "被丢弃的重复 case_id"
+        causation_id: "inbox 去重判定"
+        payload:
+          required: [canonical_case_id, dedup_key]
+          properties:
+            canonical_case_id: { type: string }
+            dedup_key: { type: string }
+      - event_type: case.dispatched
+        aggregate_id: case_id
+        causation_id: "case.opened 或重派决策"
+        payload:
+          required: [worker_id, lease_id, fencing_token, attempt]
+          properties:
+            worker_id: { type: string }
+            lease_id: { type: string }
+            fencing_token: { type: integer, minimum: 1, description: "单调递增，僵尸 Worker 写拒绝" }
+            attempt: { type: integer, minimum: 1 }
+      - event_type: case.worker_lost
+        aggregate_id: case_id
+        causation_id: "lease 看门狗"
+        payload:
+          required: [worker_id, lease_id, requeued]
+          properties:
+            worker_id: { type: string }
+            lease_id: { type: string }
+            detected_at: { type: string, format: date-time }
+            requeued: { type: boolean, const: true }
+      - event_type: case.attribution_completed
+        aggregate_id: case_id
+        causation_id: "experiment.verdict_computed"
+        payload:
+          required: [experiment_id, verdict, report_ref]
+          properties:
+            experiment_id: { type: string }
+            verdict: { enum: [ATTRIBUTED, INCONCLUSIVE, CONFOUNDED] }
+            attributed_layer: { enum: [prompt, kb, model_params, interaction, null] }
+            report_ref: { type: string, description: "attribution-report URI" }
+      - event_type: case.resolved
+        aggregate_id: case_id
+        causation_id: "release.promoted / release.rolled_back"
+        payload:
+          required: [release_id, versionset_digest]
+          properties:
+            release_id: { type: string }
+            versionset_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+      - event_type: case.escalated
+        aggregate_id: case_id
+        causation_id: "任意失败终态 / INCONCLUSIVE 升级"
+        payload:
+          required: [reason, from_state]
+          properties:
+            reason: { type: string }
+            from_state: { type: string, description: "升级前所处状态" }
+            human_assignee: { type: string }
+      - event_type: case.closed
+        aggregate_id: case_id
+        causation_id: "notification.sent（回复投诉原处成功后归档）"
+        payload:
+          required: [resolution, notification_id]
+          properties:
+            resolution: { enum: [fixed, wontfix, duplicate, invalid] }
+            notification_id: { type: string }
+
+  experiment:
+    description: "归因对照实验（§2.3.2 严格协议）"
+    states_ref: "state-machines.yaml#experiment"
+    events:
+      - event_type: experiment.requested
+        aggregate_id: experiment_id
+        causation_id: "case.opened / 质量官建议"
+        payload:
+          required: [case_id, protocol_version]
+          properties:
+            case_id: { type: string }
+            hypothesis_layer: { enum: [prompt, kb, model_params, null] }
+            protocol_version: { type: string, const: "five_cell-v1" }
+      - event_type: experiment.protocol_frozen
+        aggregate_id: experiment_id
+        causation_id: "experiment.requested"
+        payload:
+          required: [probe_set_digest, discovery, hidden_confirmation, unaffected_controls, repetitions, versions, random_seed_ref]
+          properties:
+            probe_set_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            discovery: { type: array, items: { type: string }, minItems: 1 }
+            hidden_confirmation: { type: array, items: { type: string }, minItems: 1 }
+            unaffected_controls: { type: array, items: { type: string }, minItems: 1 }
+            repetitions: { type: integer, minimum: 1 }
+            versions:
+              required: [P0, P1, K0, K1, M0, M1]
+              properties:
+                P0: { type: string }
+                P1: { type: string }
+                K0: { type: string }
+                K1: { type: string }
+                M0: { type: string }
+                M1: { type: string }
+            random_seed_ref: { type: string }
+      - event_type: experiment.started
+        aggregate_id: experiment_id
+        causation_id: "experiment.protocol_frozen"
+        payload:
+          required: [runner_id, lease_id, fencing_token]
+          properties:
+            runner_id: { type: string }
+            lease_id: { type: string }
+            fencing_token: { type: integer, minimum: 1 }
+      - event_type: experiment.cell_completed
+        aggregate_id: experiment_id
+        causation_id: "experiment.started"
+        payload:
+          required: [cell, arm_order_index, recovery_rate]
+          properties:
+            cell: { enum: [C, RP, RK, RM, G] }
+            arm_order_index: { type: integer, minimum: 0 }
+            recovery_rate: { type: number, minimum: 0, maximum: 1 }
+      - event_type: experiment.runner_lost
+        aggregate_id: experiment_id
+        causation_id: "lease 看门狗"
+        payload:
+          required: [runner_id, lease_id, requeued]
+          properties:
+            runner_id: { type: string }
+            lease_id: { type: string }
+            requeued: { type: boolean, const: true }
+      - event_type: experiment.verdict_computed
+        aggregate_id: experiment_id
+        causation_id: "全部 cell_completed"
+        payload:
+          required: [verdict, deltas, evidence_bundle_ref, report_ref]
+          properties:
+            verdict: { enum: [ATTRIBUTED, INCONCLUSIVE, CONFOUNDED] }
+            attributed_layer: { enum: [prompt, kb, model_params, interaction, null] }
+            deltas:
+              required: [prompt, kb, model_params]
+              properties:
+                prompt: { type: number }
+                kb: { type: number }
+                model_params: { type: number }
+            evidence_bundle_ref: { type: string }
+            report_ref: { type: string }
+      - event_type: experiment.escalated_full_factorial
+        aggregate_id: experiment_id
+        causation_id: "experiment.verdict_computed（CONFOUNDED）"
+        payload:
+          required: [reason]
+          properties:
+            reason: { enum: [multi_arm_recovered, no_arm_recovered, confounded_control] }
+            from_verdict: { const: CONFOUNDED }
+      - event_type: experiment.cancelled
+        aggregate_id: experiment_id
+        causation_id: "case.merged / 人工决策"
+        payload:
+          required: [reason]
+          properties:
+            reason: { type: string }
+
+  changeset:
+    description: "修复变更集（WorkOrder 载体 + 审批生命周期；审批拒绝/过期语义在此）"
+    states_ref: "state-machines.yaml#changeset"
+    events:
+      - event_type: changeset.drafted
+        aggregate_id: changeset_id
+        causation_id: "case.attribution_completed（ATTRIBUTED）"
+        payload:
+          required: [case_id, workorder_ref, workorder_hash, channel, author_agent]
+          properties:
+            case_id: { type: string }
+            workorder_ref: { type: string }
+            workorder_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
+            channel: { enum: [prompt, kb, model_params] }
+            author_agent: { type: string }
+      - event_type: changeset.gate_attached
+        aggregate_id: changeset_id
+        causation_id: "eval.passed"
+        payload:
+          required: [gate_report_ref, gate_status]
+          properties:
+            gate_report_ref: { type: string }
+            gate_status: { const: passed, description: "只有门禁 passed 才允许附入并进入审批" }
+      - event_type: changeset.approval_requested
+        aggregate_id: changeset_id
+        causation_id: "changeset.gate_attached"
+        payload:
+          required: [workorder_hash, nonce, expiry, channel]
+          properties:
+            workorder_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
+            nonce: { type: string, format: uuid }
+            expiry: { type: string, format: date-time }
+            channel: { type: string, description: "审批触达通道（飞书带证据表）" }
+      - event_type: changeset.approved
+        aggregate_id: changeset_id
+        causation_id: "人工审批动作"
+        payload:
+          required: [approval_id, approver, workorder_hash]
+          properties:
+            approval_id: { type: string }
+            approver: { type: string, description: "human 身份（LLM 永远不是权限权威源）" }
+            workorder_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
+            nonce_consumed: { type: boolean, const: true }
+      - event_type: changeset.rejected
+        aggregate_id: changeset_id
+        causation_id: "人工审批动作"
+        payload:
+          required: [approval_id, approver, reason]
+          properties:
+            approval_id: { type: string }
+            approver: { type: string }
+            reason: { type: string }
+      - event_type: changeset.expired
+        aggregate_id: changeset_id
+        causation_id: "expiry 定时器"
+        payload:
+          required: [workorder_hash, expiry]
+          properties:
+            workorder_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
+            expiry: { type: string, format: date-time }
+      - event_type: changeset.superseded
+        aggregate_id: changeset_id
+        causation_id: "更新的 changeset.drafted"
+        payload:
+          required: [replaced_by]
+          properties:
+            replaced_by: { type: string, description: "取代本单的 changeset_id" }
+      - event_type: changeset.committed
+        aggregate_id: changeset_id
+        causation_id: "release.requested"
+        payload:
+          required: [release_id]
+          properties:
+            release_id: { type: string }
+
+  eval:
+    description: "评测门禁执行（双轨；确定性 contract/replay 与 live E2E 分开）"
+    states_ref: "state-machines.yaml#eval"
+    events:
+      - event_type: eval.requested
+        aggregate_id: eval_id
+        causation_id: "changeset.drafted"
+        payload:
+          required: [changeset_id, target_versionset_digest, regression_suite_digest, probe_set_digest, trigger]
+          properties:
+            changeset_id: { type: string }
+            target_versionset_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            regression_suite_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            probe_set_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            trigger: { enum: [gate, regression, patrol] }
+      - event_type: eval.started
+        aggregate_id: eval_id
+        causation_id: "eval.requested"
+        payload:
+          required: [runner_id, lease_id, fencing_token]
+          properties:
+            runner_id: { type: string }
+            lease_id: { type: string }
+            fencing_token: { type: integer, minimum: 1 }
+      - event_type: eval.rule_track_completed
+        aggregate_id: eval_id
+        causation_id: "eval.started"
+        payload:
+          required: [status, n_passed, n_failed]
+          properties:
+            status: { enum: [passed, failed] }
+            n_passed: { type: integer, minimum: 0 }
+            n_failed: { type: integer, minimum: 0 }
+      - event_type: eval.judge_track_completed
+        aggregate_id: eval_id
+        causation_id: "eval.started"
+        payload:
+          required: [status, judge_model_digest, athlete_model_digest]
+          properties:
+            status: { enum: [passed, failed] }
+            judge_model_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            athlete_model_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$", description: "必须≠judge（裁判模型≠运动员模型）" }
+      - event_type: eval.passed
+        aggregate_id: eval_id
+        causation_id: "双轨均完成"
+        payload:
+          required: [report_ref, report_digest]
+          properties:
+            report_ref: { type: string }
+            report_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+      - event_type: eval.failed
+        aggregate_id: eval_id
+        causation_id: "任一轨 failed"
+        payload:
+          required: [report_ref, failing_checks]
+          properties:
+            report_ref: { type: string }
+            failing_checks: { type: array, items: { type: string }, minItems: 1 }
+      - event_type: eval.error
+        aggregate_id: eval_id
+        causation_id: "基础设施异常 / runner_lost"
+        payload:
+          required: [error, retryable]
+          properties:
+            error: { type: string }
+            retryable: { type: boolean }
+
+  release:
+    description: "发布（唯一经 Release Controller 调 Quality API 写面；UNKNOWN→reconcile；回滚失败→人工）"
+    states_ref: "state-machines.yaml#release"
+    events:
+      - event_type: release.requested
+        aggregate_id: release_id
+        causation_id: "changeset.approved"
+        payload:
+          required: [changeset_id, workorder_hash, target_versionset_digest, approval_id]
+          properties:
+            changeset_id: { type: string }
+            workorder_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
+            target_versionset_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            approval_id: { type: string, description: "执行前重算 WorkOrder hash 比对 + 消费 nonce" }
+      - event_type: release.staged
+        aggregate_id: release_id
+        causation_id: "Quality API stage operation succeeded"
+        payload:
+          required: [versionset_id, revision, operation_id]
+          properties:
+            versionset_id: { type: string }
+            revision: { type: integer, minimum: 1 }
+            operation_id: { type: string }
+      - event_type: release.canary_started
+        aggregate_id: release_id
+        causation_id: "Quality API canary operation succeeded"
+        payload:
+          required: [versionset_id, percent, operation_id]
+          properties:
+            versionset_id: { type: string }
+            percent: { type: integer, minimum: 1, maximum: 100 }
+            operation_id: { type: string }
+      - event_type: release.verification_completed
+        aggregate_id: release_id
+        causation_id: "灰度观察窗结束"
+        payload:
+          required: [result, probe_set_digest]
+          properties:
+            result: { enum: [passed, failed] }
+            probe_set_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+      - event_type: release.promoted
+        aggregate_id: release_id
+        causation_id: "Quality API promote operation succeeded"
+        payload:
+          required: [versionset_id, revision, operation_id]
+          properties:
+            versionset_id: { type: string }
+            revision: { type: integer, minimum: 1 }
+            operation_id: { type: string }
+      - event_type: release.unknown_detected
+        aggregate_id: release_id
+        causation_id: "写操作超时 / operation 410 / 网络分区"
+        payload:
+          required: [operation_id, last_known]
+          properties:
+            operation_id: { type: string }
+            last_known: { type: string, description: "失控前最后已知状态" }
+      - event_type: release.reconciled
+        aggregate_id: release_id
+        causation_id: "reconcile 对账完成"
+        payload:
+          required: [operation_id, resolved_status, action]
+          properties:
+            operation_id: { type: string }
+            resolved_status: { type: string, description: "对账后确认的权威状态" }
+            action: { enum: [resume, retry, compensate, escalate] }
+      - event_type: release.rollback_started
+        aggregate_id: release_id
+        causation_id: "verification failed / 人工触发"
+        payload:
+          required: [rollback_to, reason]
+          properties:
+            rollback_to: { type: string, description: "previous 或目标 digest" }
+            reason: { type: string }
+      - event_type: release.rolled_back
+        aggregate_id: release_id
+        causation_id: "Quality API rollback operation succeeded"
+        payload:
+          required: [restored_digest, operation_id]
+          properties:
+            restored_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            operation_id: { type: string }
+      - event_type: release.rollback_failed
+        aggregate_id: release_id
+        causation_id: "rollback operation failed / reconcile 无法收敛"
+        payload:
+          required: [reason, escalated]
+          properties:
+            reason: { type: string }
+            escalated: { const: true, description: "回滚失败必须升级人工接管，不得自动再试" }
+
+  notification:
+    description: "对外通知（回复投诉原处；飞书双向留痕；失败重试到死信）"
+    states_ref: "state-machines.yaml#notification"
+    events:
+      - event_type: notification.queued
+        aggregate_id: notification_id
+        causation_id: "case.resolved"
+        payload:
+          required: [case_id, channel, thread_ref, body_ref, outbox_id]
+          properties:
+            case_id: { type: string }
+            channel: { type: string, description: "如 feishu" }
+            thread_ref: { type: string, description: "【待定】原群/原帖定位字段（飞书 chat_id+thread/root_id）" }
+            body_ref: { type: string, description: "回复内容 artifact（已脱敏复核）" }
+            outbox_id: { type: string, description: "PG outbox 行 id（失败即拒业务的审计要求）" }
+      - event_type: notification.sent
+        aggregate_id: notification_id
+        causation_id: "通道 ACK"
+        payload:
+          required: [provider_message_id]
+          properties:
+            provider_message_id: { type: string }
+      - event_type: notification.failed
+        aggregate_id: notification_id
+        causation_id: "通道 NACK / 超时"
+        payload:
+          required: [error, retryable, attempt]
+          properties:
+            error: { type: string }
+            retryable: { type: boolean }
+            attempt: { type: integer, minimum: 1 }
+      - event_type: notification.retry_scheduled
+        aggregate_id: notification_id
+        causation_id: "notification.failed（retryable）"
+        payload:
+          required: [attempt, next_at]
+          properties:
+            attempt: { type: integer, minimum: 2 }
+            next_at: { type: string, format: date-time }
+      - event_type: notification.dead_lettered
+        aggregate_id: notification_id
+        causation_id: "重试耗尽"
+        payload:
+          required: [attempts, escalated]
+          properties:
+            attempts: { type: integer, minimum: 1 }
+            escalated: { const: true, description: "死信必须升级人工（回复用户不可丢）" }
+
+  trust:
+    description: "信任账本（risk_class × autonomy_state 二维；记账但拒绝晋升的 MVP 演示口径在此）"
+    states_ref: "state-machines.yaml#trust"
+    events:
+      - event_type: trust.evidence_recorded
+        aggregate_id: "trust_key = action_type:risk_class"
+        causation_id: "被记账动作的结果事件"
+        payload:
+          required: [action_type, risk_class, outcome, evidence_epoch, epoch_successes, epoch_trials, wilson_lower, wilson_upper]
+          properties:
+            action_type: { type: string }
+            risk_class: { enum: [R0_READ, R1_REVERSIBLE_WRITE, R2_HIGH_IMPACT] }
+            outcome: { enum: [success, failure] }
+            evidence_epoch: { type: integer, minimum: 0 }
+            epoch_successes: { type: integer, minimum: 0 }
+            epoch_trials: { type: integer, minimum: 0 }
+            wilson_lower: { type: number, minimum: 0, maximum: 1 }
+            wilson_upper: { type: number, minimum: 0, maximum: 1 }
+      - event_type: trust.promotion_denied
+        aggregate_id: trust_key
+        causation_id: "trust.evidence_recorded 后的晋升评估"
+        payload:
+          required: [wilson_lower, threshold, reason]
+          properties:
+            wilson_lower: { type: number, minimum: 0, maximum: 1 }
+            threshold: { const: 0.9 }
+            reason: { const: lower_bound_below_threshold, description: "记账但拒绝晋升（如 3/3 下界 0.438<0.9）" }
+      - event_type: trust.promotion_proposed
+        aggregate_id: trust_key
+        causation_id: "晋升评估 eligible"
+        payload:
+          required: [wilson_lower, threshold, evidence_table_ref, proposed_state]
+          properties:
+            wilson_lower: { type: number, exclusiveMinimum: 0.9 }
+            threshold: { const: 0.9 }
+            evidence_table_ref: { type: string, description: "飞书提请随附证据表" }
+            proposed_state: { const: AUTO_ENABLED }
+      - event_type: trust.promotion_confirmed
+        aggregate_id: trust_key
+        causation_id: "人工确认（飞书）"
+        payload:
+          required: [confirmer, new_state]
+          properties:
+            confirmer: { type: string, description: "human 身份" }
+            new_state: { const: AUTO_ENABLED }
+      - event_type: trust.promotion_rejected_by_human
+        aggregate_id: trust_key
+        causation_id: "人工拒绝（飞书）"
+        payload:
+          required: [rejecter, reason]
+          properties:
+            rejecter: { type: string }
+            reason: { type: string }
+      - event_type: trust.suspended
+        aggregate_id: trust_key
+        causation_id: "自治动作验证失败"
+        payload:
+          required: [reason, cooldown_until]
+          properties:
+            reason: { type: string }
+            cooldown_until: { type: string, format: date-time, description: "冷却期；过后新 epoch 从零重攒" }
+      - event_type: trust.reinstated
+        aggregate_id: trust_key
+        causation_id: "冷却结束 / 人工恢复"
+        payload:
+          required: [new_epoch]
+          properties:
+            new_epoch: { type: integer, minimum: 1, description: "滚动到新 evidence epoch，旧计数清零" }
+      - event_type: trust.blocked_unknown
+        aggregate_id: trust_key
+        causation_id: "动作结果不可考（UNKNOWN）"
+        payload:
+          required: [reason, requires_human]
+          properties:
+            reason: { type: string }
+            requires_human: { const: true, description: "BLOCKED_UNKNOWN 必须人工接管" }

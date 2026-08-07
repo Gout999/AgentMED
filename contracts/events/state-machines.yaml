@@ -1,0 +1,209 @@
+# CaseLoop 七个子状态机（plan-v3 §2.3.5）
+# 纪律：状态权威源 = 控制面数据库（PG aggregate/event）；LLM 永远不是状态权威源。
+# 每个状态机：states 枚举（含 initial/terminal）+ transitions 迁移表 + failure_semantics。
+# 七种必备失败语义（§2.3.5 点名）：重复与合并 / 审批拒绝与过期 / Worker 丢失 /
+# 发布 UNKNOWN→reconcile / 回滚失败 / 通知失败 / 人工接管。
+version: "0.1.0"
+
+machines:
+
+  case:
+    description: "投诉全生命周期。Worker 领单制：lease 过期即 Worker 丢失→回收重派；任意阶段可人工接管"
+    initial: RECEIVED
+    terminal: [CLOSED, MERGED, DUPLICATE_DISMISSED]
+    states:
+      RECEIVED:             "inbox 已接收，待立案/去重"
+      OPEN:                 "已立案，待派单"
+      DISPATCHED:           "已派单给 Worker（lease 持有中）"
+      ATTRIBUTING:          "归因实验进行中"
+      AWAITING_FIX:         "已归因，等待 ChangeSet 起草+门禁"
+      AWAITING_APPROVAL:    "等待人工审批"
+      RELEASING:            "发布进行中"
+      NOTIFYING:            "回复投诉原处进行中"
+      ESCALATED:            "人工接管（LLM 结论永远只是建议，人可随时介入）"
+      CLOSED:               "终态：已回复并归档（案例沉淀为评测与知识资产）"
+      MERGED:               "终态：重复投诉并入 canonical case"
+      DUPLICATE_DISMISSED:  "终态：inbox 去重丢弃"
+    transitions:
+      - { from: RECEIVED,           on: case.opened,                 to: OPEN }
+      - { from: RECEIVED,           on: case.duplicate_dismissed,    to: DUPLICATE_DISMISSED }
+      - { from: OPEN,               on: case.merged,                 to: MERGED }
+      - { from: OPEN,               on: case.dispatched,             to: DISPATCHED }
+      - { from: DISPATCHED,         on: case.worker_lost,            to: OPEN,               note: "lease 回收重派，fencing token 防僵尸写" }
+      - { from: DISPATCHED,         on: experiment.requested,        to: ATTRIBUTING }
+      - { from: ATTRIBUTING,        on: case.attribution_completed,  to: AWAITING_FIX,       guard: "verdict=ATTRIBUTED" }
+      - { from: ATTRIBUTING,        on: case.escalated,              to: ESCALATED,          guard: "verdict=INCONCLUSIVE（补实验无果）或 CONFOUNDED 全因子仍不可判 → 升级人工" }
+      - { from: AWAITING_FIX,       on: changeset.approval_requested, to: AWAITING_APPROVAL }
+      - { from: AWAITING_APPROVAL,  on: changeset.approved,          to: RELEASING }
+      - { from: AWAITING_APPROVAL,  on: changeset.rejected,          to: AWAITING_FIX,       note: "审批拒绝：回到修复起草，可重新归因" }
+      - { from: AWAITING_APPROVAL,  on: changeset.expired,           to: AWAITING_FIX,       note: "审批过期：WorkOrder 作废，须重签" }
+      - { from: RELEASING,          on: case.resolved,               to: NOTIFYING }
+      - { from: RELEASING,          on: release.rollback_failed,     to: ESCALATED }
+      - { from: NOTIFYING,          on: notification.sent,           to: CLOSED }
+      - { from: NOTIFYING,          on: notification.dead_lettered,  to: ESCALATED }
+      - { from: "*",                on: case.escalated,              to: ESCALATED,          note: "人工接管是全局迁移" }
+    failure_semantics:
+      duplicate_and_merge: "inbox dedup_key 命中 → DUPLICATE_DISMISSED（同一条重复投递）或 MERGED（同人同事不同渠道）；合并后原 case 事件全部指向 canonical_case_id"
+      worker_lost: "DISPATCHED 状态 lease 到期未续 → case.worker_lost → 回到 OPEN 重派；fencing_token 单调递增，旧 Worker 迟到的写一律拒绝"
+      manual_takeover: "任意状态 → ESCALATED；接管期间派单暂停，人工结论经控制面落库后状态机继续"
+
+  experiment:
+    description: "归因实验。Runner 也是领单 Worker；CONFOUNDED 强制全因子"
+    initial: REQUESTED
+    terminal: [VERDICT_COMPUTED, CANCELLED]
+    states:
+      REQUESTED:       "已申请，待冻结协议"
+      PROTOCOL_FROZEN: "探针集/版本/臂序种子已冻结（此后改动即作废）"
+      RUNNING:         "跑臂中"
+      ANALYZING:       "全部 cell 完成，计算 Δ+CI+裁决中"
+      VERDICT_COMPUTED: "终态：裁决已出（ATTRIBUTED/INCONCLUSIVE/CONFOUNDED）"
+      CANCELLED:       "终态：取消（case 被合并/人工终止）"
+    transitions:
+      - { from: REQUESTED,        on: experiment.protocol_frozen,          to: PROTOCOL_FROZEN }
+      - { from: PROTOCOL_FROZEN,  on: experiment.started,                  to: RUNNING }
+      - { from: RUNNING,          on: experiment.runner_lost,              to: PROTOCOL_FROZEN, note: "Worker 丢失：已完成 cell 结果幂等保留，重领后续跑（arm 结果按 (cell,probe,repetition) 幂等键去重）" }
+      - { from: RUNNING,          on: experiment.cell_completed,           to: RUNNING,          note: "自迁移：累计 cell 进度" }
+      - { from: RUNNING,          on: experiment.verdict_computed,         to: VERDICT_COMPUTED, guard: "全部 5 cell × 探针 × repetitions 完成" }
+      - { from: VERDICT_COMPUTED, on: experiment.escalated_full_factorial, to: PROTOCOL_FROZEN,  note: "CONFOUNDED：冻结 2³ 全因子新协议重跑" }
+      - { from: "*",              on: experiment.cancelled,                to: CANCELLED }
+    failure_semantics:
+      worker_lost: "runner lease 过期 → experiment.runner_lost → 回 PROTOCOL_FROZEN 重派；cell 结果幂等键 (cell, probe_id, repetition) 防重复计数"
+      inconclusive: "INCONCLUSIVE → 增加 repetitions 或扩探针补实验（同实验新 epoch），仍不可判 → case.escalated 人工接管"
+      confounded: "CONFOUNDED（多臂同恢复/均不恢复/G 异常）→ 强制 2³ 全因子，禁止直接进修复"
+
+  changeset:
+    description: "修复变更集。审批即批 WorkOrder hash；拒绝/过期都回起草侧，且旧单一律作废"
+    initial: DRAFTED
+    terminal: [COMMITTED, REJECTED, EXPIRED, SUPERSEDED]
+    states:
+      DRAFTED:           "WorkOrder 已起草，待门禁"
+      GATE_ATTACHED:     "门禁 passed 报告已附（必要附件齐），可提请审批"
+      AWAITING_APPROVAL: "审批中（飞书带证据表；expiry 计时中）"
+      APPROVED:          "已批准（nonce 待消费）"
+      COMMITTED:         "终态：已移交 Release Controller（nonce 已消费）"
+      REJECTED:          "终态：审批拒绝"
+      EXPIRED:           "终态：审批超时/WorkOrder 过期"
+      SUPERSEDED:        "终态：被更新工单取代"
+    transitions:
+      - { from: DRAFTED,           on: changeset.gate_attached,      to: GATE_ATTACHED }
+      - { from: DRAFTED,           on: changeset.drafted,            to: SUPERSEDED,          note: "同 case 新工单起草 → 旧单作废" }
+      - { from: GATE_ATTACHED,     on: changeset.approval_requested, to: AWAITING_APPROVAL }
+      - { from: AWAITING_APPROVAL, on: changeset.approved,           to: APPROVED,            guard: "workorder_hash 逐字节匹配 + nonce 未消费 + 未过期" }
+      - { from: AWAITING_APPROVAL, on: changeset.rejected,           to: REJECTED }
+      - { from: AWAITING_APPROVAL, on: changeset.expired,            to: EXPIRED }
+      - { from: APPROVED,          on: changeset.committed,          to: COMMITTED }
+      - { from: APPROVED,          on: changeset.expired,            to: EXPIRED,             note: "批准后到执行前也可能过期，照样作废" }
+    failure_semantics:
+      approval_rejected: "REJECTED 终态：不得复活；修复师须基于反馈起草新 WorkOrder（新 nonce 新 expiry 新 hash）"
+      approval_expired: "EXPIRED 终态：过期 grant 出示一律拒绝（防重放的时间半轴）；nonce 一次性消费防重放的次数半轴"
+      stale_gate: "门禁报告引用与当前目标 digest 不一致 → 禁止进入 AWAITING_APPROVAL（附件掉包防线）"
+
+  eval:
+    description: "评测门禁。双轨分开报告；error ≠ failed（基础设施错可重试）"
+    initial: REQUESTED
+    terminal: [PASSED, FAILED]
+    states:
+      REQUESTED: "已申请"
+      RUNNING:   "双轨+确定性套件执行中"
+      PASSED:    "终态：规则轨+裁判轨+确定性 contract/replay 全过（live E2E 单独报告）"
+      FAILED:    "终态：任一轨 failed（报告附 failing_checks）"
+    transitions:
+      - { from: REQUESTED, on: eval.started,                to: RUNNING }
+      - { from: RUNNING,   on: eval.rule_track_completed,   to: RUNNING, note: "自迁移：轨进度" }
+      - { from: RUNNING,   on: eval.judge_track_completed,  to: RUNNING, note: "自迁移：轨进度" }
+      - { from: RUNNING,   on: eval.passed,                 to: PASSED }
+      - { from: RUNNING,   on: eval.failed,                 to: FAILED }
+      - { from: RUNNING,   on: eval.error,                  to: REQUESTED, guard: "retryable=true（含 runner 丢失）", note: "基础设施错误：重试，不污染门禁结论" }
+      - { from: RUNNING,   on: eval.error,                  to: FAILED,    guard: "retryable=false 且重试耗尽",  note: "升级为失败并说明 error 原因" }
+    failure_semantics:
+      error_vs_failed: "error（网络/provider 限流/runner 丢失）可重试且不计入 failed；failed 必须是确定性证据"
+      worker_lost: "eval runner lease 过期 → eval.error(retryable) → 回 REQUESTED 重派"
+      judge_athlete_separation: "judge_model_digest == athlete_model_digest 的报告直接作废重跑（T6 硬约束）"
+
+  release:
+    description: "发布。全部写面经 Release Controller + CAS；UNKNOWN 必须 reconcile；回滚失败必须人工"
+    initial: REQUESTED
+    terminal: [COMPLETED, ROLLED_BACK, FAILED_ESCALATED]
+    states:
+      REQUESTED:        "已受理（ApprovalGrant 校验+nonce 消费完成）"
+      STAGING:          "Quality API stage 异步操作中"
+      CANARYING:        "灰度中（观察窗）"
+      VERIFYING:        "灰度验证（冻结探针回放）"
+      PROMOTING:        "promote 异步操作中"
+      COMPLETED:        "终态：全量完成"
+      ROLLING_BACK:     "回滚异步操作中"
+      ROLLED_BACK:      "终态：已回滚到目标版本"
+      UNKNOWN:          "写操作结果不可考（超时/410/分区）——禁止盲目重试，必须先 reconcile"
+      FAILED_ESCALATED: "终态：回滚失败/reconcile 不收敛 → 人工接管"
+    transitions:
+      - { from: REQUESTED,    on: release.staged,                 to: STAGING }
+      - { from: STAGING,      on: release.canary_started,         to: CANARYING }
+      - { from: CANARYING,    on: release.verification_completed, to: VERIFYING }
+      - { from: VERIFYING,    on: release.promoted,               to: COMPLETED,   guard: "verification=passed" }
+      - { from: VERIFYING,    on: release.rollback_started,       to: ROLLING_BACK, guard: "verification=failed" }
+      - { from: PROMOTING,    on: release.promoted,               to: COMPLETED }
+      - { from: ROLLING_BACK, on: release.rolled_back,            to: ROLLED_BACK }
+      - { from: ROLLING_BACK, on: release.rollback_failed,        to: FAILED_ESCALATED }
+      - { from: STAGING,      on: release.unknown_detected,       to: UNKNOWN }
+      - { from: CANARYING,    on: release.unknown_detected,       to: UNKNOWN }
+      - { from: PROMOTING,    on: release.unknown_detected,       to: UNKNOWN }
+      - { from: ROLLING_BACK, on: release.unknown_detected,       to: UNKNOWN }
+      - { from: UNKNOWN,      on: release.reconciled,             to: REQUESTED,   guard: "对账：操作实际未生效 → resume 重发（同 Idempotency-Key）" }
+      - { from: UNKNOWN,      on: release.reconciled,             to: COMPLETED,   guard: "对账：操作实际已生效 → 直接确认终态" }
+      - { from: UNKNOWN,      on: release.reconciled,             to: ROLLING_BACK, guard: "对账：已部分生效 → compensate" }
+      - { from: UNKNOWN,      on: release.rollback_failed,        to: FAILED_ESCALATED, note: "reconcile 无法收敛视同回滚失败，升级人工" }
+    failure_semantics:
+      unknown_reconcile: "写面异步+410 语义下结果不可考 → UNKNOWN：以 GET /status 权威状态对账（reconcile），按实际生效情况 resume/retry/compensate/escalate；重试必须沿用原 Idempotency-Key 保证不重复执行"
+      rollback_failed: "回滚失败不允许自动二次回滚：FAILED_ESCALATED 终态 + 人工接管（回滚失败时线上处于非预期版本，人必须知情）"
+      cas_drift: "任何 409 revision_conflict → 重新 GET 读最新 revision 后再决策，不得带旧 revision 硬闯"
+
+  notification:
+    description: "对外通知。outbox 模式；失败重试到死信；死信必人工"
+    initial: QUEUED
+    terminal: [SENT, DEAD_LETTERED]
+    states:
+      QUEUED:        "outbox 已落库，待发送"
+      SENDING:       "通道调用中"
+      RETRYING:      "可重试失败，等待下一跳"
+      SENT:          "终态：通道 ACK（双向留痕完成）"
+      DEAD_LETTERED: "终态：重试耗尽，升级人工"
+    transitions:
+      - { from: QUEUED,   on: notification.failed,           to: RETRYING,      guard: "retryable=true" }
+      - { from: QUEUED,   on: notification.sent,             to: SENT }
+      - { from: SENDING,  on: notification.sent,             to: SENT }
+      - { from: SENDING,  on: notification.failed,           to: RETRYING,      guard: "retryable=true" }
+      - { from: SENDING,  on: notification.failed,           to: DEAD_LETTERED, guard: "retryable=false 或重试耗尽" }
+      - { from: RETRYING, on: notification.retry_scheduled,  to: QUEUED }
+      - { from: RETRYING, on: notification.dead_lettered,    to: DEAD_LETTERED }
+    failure_semantics:
+      notification_failed: "可重试错误（限流/5xx）指数退避重试；不可重试错误（鉴权/格式）直接死信"
+      dead_letter: "DEAD_LETTERED 必发升级事件（通知失败=用户等不到回复，不得静默吞掉）；人工补发后由控制面补记 sent 等价终态"
+      outbox_atomicity: "通知入 outbox 与业务状态迁移同事务；审计写失败即拒业务（不放行）"
+
+  trust:
+    description: "信任账本（risk_class × autonomy_state 二维拆分）。状态即 autonomy_state 枚举"
+    initial: MANUAL
+    terminal: []   # 无终态：信任是持续账本
+    states:
+      MANUAL:                "全人工执行（默认起点；R2 永远停在这里逐次审批）"
+      ELIGIBLE:              "有资格被评估晋升（白名单 R1 动作，攒证据中）"
+      AWAITING_CONFIRMATION: "已达统计判据（下界>0.9），飞书提请待人确认"
+      AUTO_ENABLED:          "自治生效（仅白名单 R1 可达）"
+      SUSPENDED:             "验证失败冷却中"
+      BLOCKED_UNKNOWN:       "动作结果不可考，阻断待人工"
+    transitions:
+      - { from: MANUAL,                on: trust.evidence_recorded,        to: ELIGIBLE,              guard: "动作在 R1 白名单" }
+      - { from: ELIGIBLE,              on: trust.evidence_recorded,        to: ELIGIBLE,              note: "记账；下界仍≤0.9 → 同时发 trust.promotion_denied（记账但拒绝晋升）" }
+      - { from: ELIGIBLE,              on: trust.promotion_proposed,       to: AWAITING_CONFIRMATION, guard: "wilson_lower>0.9" }
+      - { from: AWAITING_CONFIRMATION, on: trust.promotion_confirmed,      to: AUTO_ENABLED }
+      - { from: AWAITING_CONFIRMATION, on: trust.promotion_rejected_by_human, to: ELIGIBLE }
+      - { from: AUTO_ENABLED,          on: trust.suspended,                to: SUSPENDED,             guard: "自治动作验证失败" }
+      - { from: AUTO_ENABLED,          on: trust.blocked_unknown,          to: BLOCKED_UNKNOWN }
+      - { from: SUSPENDED,             on: trust.reinstated,               to: ELIGIBLE,              note: "冷却结束：新 evidence epoch，旧计数清零重攒" }
+      - { from: BLOCKED_UNKNOWN,       on: trust.reinstated,               to: MANUAL,                note: "人工接管解除后回到 MANUAL 重新挣信任" }
+      - { from: ELIGIBLE,              on: trust.blocked_unknown,          to: BLOCKED_UNKNOWN }
+    failure_semantics:
+      verification_failed: "AUTO_ENABLED 动作验证失败 → SUSPENDED + 冷却期；冷却结束 reinstate 到新 epoch（计数清零，信任重新挣）。# 【待定】冷却时长与解除是否需人工确认（OPEN-QUESTIONS Q8）"
+      unknown_blocked: "动作结果不可考 → BLOCKED_UNKNOWN，必须人工核查解除；解除后降回 MANUAL"
+      r2_never_auto: "R2_HIGH_IMPACT 不参与上述迁移：永远 MANUAL 逐次审批，统计证据只用于展示不用于放行"
+      epoch_reset: "任何 SUSPENDED/BLOCKED_UNKNOWN 解除都滚动 evidence epoch；旧 epoch 计数仅作历史展示，不并入新判据"

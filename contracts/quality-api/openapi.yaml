@@ -1,0 +1,1006 @@
+openapi: 3.1.0
+jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
+
+info:
+  title: CaseLoop Quality API
+  version: "2.0.0"
+  summary: AI 应用质量自治底座——被治理应用的质量契约（v2 强化版）
+  description: |
+    Quality API v2（plan-v3 §2.3.1 / T0）。任何 LLM 应用实现本契约即可被 CaseLoop 纳管。
+
+    核心不变量：
+    - **VersionSet 不可变**：{prompt, KB manifest, model+params} 创建后内容不可改，
+      变更 = 新 VersionSet（新 id + 新 digest）；只有生命周期状态可迁移。
+    - **生命周期**：draft → stage → canary → promote | rollback → status。
+    - **写面纪律**：全部写操作要求 CAS（If-Match 头 或 body expected_revision）、
+      Idempotency-Key 头，且为异步——返回 operation_id，经 GET /v2/operations/{id} 查结果。
+    - **写面仅 Release Controller 可调**：quality:write scope 令牌只签发给
+      Release Controller（控制面组件，非 LLM）。应用自身、Agent 均不得持有。
+    - **读面**：GET /v2/logs、GET /v2/feedback（quality:read 或 quality:write）。
+
+    digest 规则：所有 digest = sha256(JCS(RFC 8785) canonical JSON)，
+    表示为 `sha256:<64 hex>`；VersionSet 的完整版本 digest 覆盖其
+    {prompt, kb_manifest, model} 三元组内容。
+
+  contact:
+    name: CaseLoop contracts
+    url: https://caseloop.dev/contracts
+
+servers:
+  - url: http://127.0.0.1:8080
+    description: demo-app 本地默认（conformance suite 的 BASE_URL 缺省值）
+
+tags:
+  - name: versionsets
+    description: VersionSet 资源（不可变内容 + 生命周期状态）
+  - name: lifecycle
+    description: 生命周期迁移（写面，异步，CAS+幂等）
+  - name: operations
+    description: 异步写操作结果查询
+  - name: read
+    description: 运行数据读面（logs / feedback）
+  - name: admin
+    description: 演示/测试故障注入（内部，x-internal）
+
+paths:
+  /v2/versionsets:
+    post:
+      tags: [versionsets]
+      summary: 创建新 VersionSet（初始状态 draft）
+      description: |
+        内容创建即不可变。digest 由服务端按 JCS+SHA-256 计算并返回；
+        幂等：相同 Idempotency-Key + 相同内容 → 返回同一 VersionSet（不新建）。
+      operationId: createVersionSet
+      security:
+        - quality_oauth: [quality:write]
+      parameters:
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VersionSetContent"
+      responses:
+        "201":
+          description: 创建成功（同步创建资源本身；生命周期迁移全部走异步）
+          headers:
+            ETag:
+              description: 当前 revision（CAS 用）
+              schema: { type: string, example: "\"1\"" }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionSet"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+    get:
+      tags: [versionsets]
+      summary: 列出 VersionSet
+      operationId: listVersionSets
+      security:
+        - quality_oauth: [quality:read]
+        - quality_oauth: [quality:write]
+      parameters:
+        - name: status
+          in: query
+          schema:
+            $ref: "#/components/schemas/LifecycleStatus"
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 200, default: 50 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: 分页列表
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionSetPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v2/versionsets/{versionsetId}:
+    get:
+      tags: [versionsets]
+      summary: 读取单个 VersionSet（含完整 digest 与生命周期状态）
+      operationId: getVersionSet
+      security:
+        - quality_oauth: [quality:read]
+        - quality_oauth: [quality:write]
+      parameters:
+        - $ref: "#/components/parameters/VersionSetId"
+      responses:
+        "200":
+          description: 成功
+          headers:
+            ETag:
+              description: 当前 revision，写操作 If-Match 用它
+              schema: { type: string, example: "\"3\"" }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionSet"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v2/versionsets/{versionsetId}/status:
+    get:
+      tags: [lifecycle]
+      summary: 生命周期状态查询（含灰度信息与迁移历史）
+      operationId: getVersionSetStatus
+      security:
+        - quality_oauth: [quality:read]
+        - quality_oauth: [quality:write]
+      parameters:
+        - $ref: "#/components/parameters/VersionSetId"
+      responses:
+        "200":
+          description: 成功
+          headers:
+            ETag:
+              schema: { type: string, example: "\"3\"" }
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VersionSetStatus"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+
+  /v2/versionsets/{versionsetId}/stage:
+    post:
+      tags: [lifecycle]
+      summary: draft → staged（进入待灰度区）
+      operationId: stageVersionSet
+      security:
+        - quality_oauth: [quality:write]
+      parameters:
+        - $ref: "#/components/parameters/VersionSetId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LifecycleRequest"
+      responses:
+        "202":
+          $ref: "#/components/responses/AcceptedOperation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/RevisionConflict"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /v2/versionsets/{versionsetId}/canary:
+    post:
+      tags: [lifecycle]
+      summary: staged → canary（按百分比灰度）
+      operationId: canaryVersionSet
+      security:
+        - quality_oauth: [quality:write]
+      parameters:
+        - $ref: "#/components/parameters/VersionSetId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CanaryRequest"
+      responses:
+        "202":
+          $ref: "#/components/responses/AcceptedOperation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/RevisionConflict"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /v2/versionsets/{versionsetId}/promote:
+    post:
+      tags: [lifecycle]
+      summary: canary → active（全量；原 active 自动转 superseded）
+      operationId: promoteVersionSet
+      security:
+        - quality_oauth: [quality:write]
+      parameters:
+        - $ref: "#/components/parameters/VersionSetId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LifecycleRequest"
+      responses:
+        "202":
+          $ref: "#/components/responses/AcceptedOperation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/RevisionConflict"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /v2/versionsets/{versionsetId}/rollback:
+    post:
+      tags: [lifecycle]
+      summary: 回滚：active → rolled_back，目标版本恢复为 active
+      description: |
+        回滚是语义级操作而非内容修改：本 VersionSet 转 rolled_back，
+        rollback_to 指定的（或 previous = 上一个 active）VersionSet 恢复为 active。
+        回滚失败（下游不一致）时 operation 转 failed 且必须触发人工接管事件
+        （见 contracts/events/state-machines.yaml Release 状态机）。
+      operationId: rollbackVersionSet
+      security:
+        - quality_oauth: [quality:write]
+      parameters:
+        - $ref: "#/components/parameters/VersionSetId"
+        - $ref: "#/components/parameters/IfMatch"
+        - $ref: "#/components/parameters/IdempotencyKey"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RollbackRequest"
+      responses:
+        "202":
+          $ref: "#/components/responses/AcceptedOperation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/RevisionConflict"
+        "412":
+          $ref: "#/components/responses/PreconditionFailed"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /v2/operations/{operationId}:
+    get:
+      tags: [operations]
+      summary: 查询异步写操作结果
+      description: |
+        写操作（stage/canary/promote/rollback）均为异步：先返 202 + operation_id，
+        本端点轮询至 succeeded/failed。operation 记录有 TTL（【待定】默认 24h），
+        过期清理后查询返回 410 operation_expired——发布侧 UNKNOWN 语义见此：
+        调用方查不到终态时必须按 Release 状态机走 reconcile，不得盲目重试。
+      operationId: getOperation
+      security:
+        - quality_oauth: [quality:read]
+        - quality_oauth: [quality:write]
+      parameters:
+        - name: operationId
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^op_[0-9A-Za-z]{8,64}$"
+      responses:
+        "200":
+          description: 操作当前状态
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Operation"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "410":
+          $ref: "#/components/responses/OperationExpired"
+
+  /v2/logs:
+    get:
+      tags: [read]
+      summary: 运行日志读面（plan-v3 保留接口）
+      description: |
+        每次请求一条：携带实际生效的 prompt/kb/model digest，
+        使控制面可以把 badcase 精确绑定到版本。【待定】分页/过滤字段
+        plan-v3 未细化，当前定为 cursor 分页 + 时间窗 + versionset_id 过滤。
+      operationId: getLogs
+      security:
+        - quality_oauth: [quality:read]
+        - quality_oauth: [quality:write]
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - name: versionset_id
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: 日志页
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LogPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v2/feedback:
+    get:
+      tags: [read]
+      summary: 用户反馈读面（plan-v3 保留接口）
+      operationId: getFeedback
+      security:
+        - quality_oauth: [quality:read]
+        - quality_oauth: [quality:write]
+      parameters:
+        - name: from
+          in: query
+          schema: { type: string, format: date-time }
+        - name: to
+          in: query
+          schema: { type: string, format: date-time }
+        - name: versionset_id
+          in: query
+          schema: { type: string }
+        - name: rating
+          in: query
+          schema: { type: string, enum: [positive, negative, neutral] }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 500, default: 100 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+      responses:
+        "200":
+          description: 反馈页
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FeedbackPage"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /admin/inject/{faultId}:
+    post:
+      tags: [admin]
+      summary: 注入演示故障（B1–B4）
+      description: |
+        演示用故障注入。注入后线上运行版本偏离任何已注册 VersionSet
+        （这就是被归因实验识别的"故障"）；各故障的 ground-truth 冻结于
+        contracts/fixtures/b1..b4-*.yaml。**仅限演示/测试环境启用**，
+        生产部署必须整体移除 /admin 路由。
+      operationId: injectFault
+      x-internal: true
+      security:
+        - quality_oauth: [quality:write]
+      parameters:
+        - name: faultId
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [B1, B2, B3, B4]
+            description: B1=prompt 回归；B2=KB 回归；B3=model_params 漂移；B4=prompt×KB 交互
+      responses:
+        "200":
+          description: 注入成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/InjectResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "422":
+          $ref: "#/components/responses/ValidationFailed"
+
+  /admin/reset:
+    post:
+      tags: [admin]
+      summary: 清除全部注入故障，恢复基线版本
+      operationId: resetFaults
+      x-internal: true
+      security:
+        - quality_oauth: [quality:write]
+      responses:
+        "200":
+          description: 已恢复基线
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResetResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+
+components:
+  securitySchemes:
+    quality_oauth:
+      type: oauth2
+      description: |
+        OAuth2 client credentials。scope 语义：
+        - **quality:read**：读面（GET logs/feedback/versionsets/operations）。
+        - **quality:write**：写面（创建 VersionSet、全部生命周期迁移、admin 注入）。
+          **写 scope 令牌仅签发给 Release Controller**（plan-v3 §2.3.1 硬约束）；
+          持有 quality:write 的调用方同时视为有读权限。
+      flows:
+        clientCredentials:
+          tokenUrl: /oauth/token
+          scopes:
+            quality:read: "读面：logs/feedback/versionsets/operations 查询"
+            quality:write: "写面：仅 Release Controller 可持有"
+
+  parameters:
+    VersionSetId:
+      name: versionsetId
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: "^vs_[0-9A-Za-z]{8,64}$"
+    IfMatch:
+      name: If-Match
+      in: header
+      required: false
+      description: |
+        CAS 前置条件：值为 GET 时返回的 ETag（当前 revision）。
+        与 body.expected_revision 二选一；两者都缺 → 412 precondition_failed；
+        与服务端当前 revision 不一致 → 409 revision_conflict；两者同时提供时以 If-Match 为准。
+      schema:
+        type: string
+        example: "\"3\""
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      description: |
+        幂等键（调用方生成，建议 UUID）。相同 key + 相同请求指纹的重放
+        必须返回同一个 operation（不重复执行）；相同 key 但请求体不同 →
+        422 validation_failed（details.subcode=idempotency_key_conflict）。
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+
+  responses:
+    AcceptedOperation:
+      description: 已受理（异步）。body 含 operation_id，轮询 GET /v2/operations/{operationId} 得终态
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Operation"
+    Unauthorized:
+      description: 未认证（令牌缺失/无效）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example:
+            error: { code: unauthorized, message: "missing or invalid token" }
+    Forbidden:
+      description: 已认证但 scope 不足（如持 quality:read 调写面）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example:
+            error: { code: forbidden, message: "scope quality:write required; write surface is restricted to Release Controller" }
+    NotFound:
+      description: 资源不存在
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example:
+            error: { code: not_found, message: "versionset not found" }
+    RevisionConflict:
+      description: 409 revision_conflict——If-Match/expected_revision 与服务端当前 revision 不一致（乐观并发冲突，调用方应重新读取后重试）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example:
+            error:
+              code: revision_conflict
+              message: "expected revision 3, current revision 5"
+              details: { expected_revision: 3, current_revision: 5 }
+    PreconditionFailed:
+      description: 412 precondition_failed——CAS 前置条件缺失（If-Match 与 expected_revision 都未提供）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example:
+            error:
+              code: precondition_failed
+              message: "write requires If-Match header or expected_revision"
+              details: { subcode: precondition_required }
+    ValidationFailed:
+      description: 422 validation_failed——请求体验证失败或非法生命周期迁移（details.subcode 区分：illegal_transition / schema_invalid / idempotency_key_conflict）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example:
+            error:
+              code: validation_failed
+              message: "illegal transition: cannot canary from status draft"
+              details: { subcode: illegal_transition, current_status: draft, attempted: canary }
+    OperationExpired:
+      description: 410 operation_expired——operation 记录已过 TTL 被清理，终态不可考（调用方按 UNKNOWN→reconcile 处理）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+          example:
+            error:
+              code: operation_expired
+              message: "operation record expired and purged"
+
+  schemas:
+    Digest:
+      type: string
+      description: sha256(JCS canonical JSON) 内容指纹
+      pattern: "^sha256:[0-9a-f]{64}$"
+      example: "sha256:1e79b1bdcf3d5a931980fa28a7a4c0313d7aecf0f4d1de08df4d721927da8936"
+
+    Prompt:
+      type: object
+      additionalProperties: false
+      required: [prompt_id, version, digest]
+      properties:
+        prompt_id:
+          type: string
+          description: prompt 逻辑标识（git 化管理的仓库内路径或注册名）
+        version:
+          type: string
+          description: 语义化版本或 git 引用
+        digest:
+          $ref: "#/components/schemas/Digest"
+
+    KBManifestEntry:
+      type: object
+      additionalProperties: false
+      required: [kb_id, entry_id, version, digest]
+      properties:
+        kb_id: { type: string }
+        entry_id: { type: string }
+        version: { type: string }
+        digest:
+          $ref: "#/components/schemas/Digest"
+
+    KBManifest:
+      type: object
+      additionalProperties: false
+      required: [entries, manifest_digest]
+      properties:
+        entries:
+          type: array
+          description: 全部知识库条目的版本清单（pgvector KB 的逐条目快照）
+          items:
+            $ref: "#/components/schemas/KBManifestEntry"
+        manifest_digest:
+          $ref: "#/components/schemas/Digest"
+
+    ModelSpec:
+      type: object
+      additionalProperties: false
+      required: [provider, model, params, digest]
+      properties:
+        provider:
+          type: string
+          description: 如 stepfun；治理层模型无关
+        model:
+          type: string
+        params:
+          type: object
+          description: 生成参数（演示确定性靠 temperature=0）
+          additionalProperties: true
+          properties:
+            temperature: { type: number }
+            top_p: { type: number }
+            max_tokens: { type: integer }
+            seed: { type: integer }
+        digest:
+          type: string
+          description: model+params 联合 digest
+          $ref: "#/components/schemas/Digest"
+
+    VersionSetContent:
+      type: object
+      description: VersionSet 不可变内容三元组；完整版本 digest 覆盖本对象整体
+      additionalProperties: false
+      required: [prompt, kb_manifest, model]
+      properties:
+        prompt:
+          $ref: "#/components/schemas/Prompt"
+        kb_manifest:
+          $ref: "#/components/schemas/KBManifest"
+        model:
+          $ref: "#/components/schemas/ModelSpec"
+
+    LifecycleStatus:
+      type: string
+      description: |
+        生命周期状态机（非法迁移一律 422 validation_failed）：
+        draft → staged → canary → active（promote）；active → rolled_back（rollback）；
+        promote 时原 active 自动 → superseded。
+      enum: [draft, staged, canary, active, superseded, rolled_back]
+
+    VersionSet:
+      type: object
+      additionalProperties: false
+      required: [versionset_id, revision, status, content, digest, created_at]
+      properties:
+        versionset_id:
+          type: string
+          pattern: "^vs_[0-9A-Za-z]{8,64}$"
+        revision:
+          type: integer
+          minimum: 1
+          description: 单调递增的乐观并发 revision（ETag）；每次生命周期迁移 +1
+        status:
+          $ref: "#/components/schemas/LifecycleStatus"
+        content:
+          $ref: "#/components/schemas/VersionSetContent"
+        digest:
+          type: string
+          description: 完整版本 digest = sha256(JCS(content))
+          $ref: "#/components/schemas/Digest"
+        created_at:
+          type: string
+          format: date-time
+        labels:
+          type: object
+          additionalProperties: { type: string }
+
+    VersionSetPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/VersionSet"
+        next_cursor:
+          type: string
+          description: 无更多页时缺省
+
+    TransitionRecord:
+      type: object
+      additionalProperties: false
+      required: [from, to, at, operation_id]
+      properties:
+        from:
+          $ref: "#/components/schemas/LifecycleStatus"
+        to:
+          $ref: "#/components/schemas/LifecycleStatus"
+        at:
+          type: string
+          format: date-time
+        operation_id:
+          type: string
+        actor:
+          type: string
+          description: 发起方标识（正常应为 release-controller）
+
+    VersionSetStatus:
+      type: object
+      additionalProperties: false
+      required: [versionset_id, revision, status, is_active, history]
+      properties:
+        versionset_id:
+          type: string
+        revision:
+          type: integer
+          minimum: 1
+        status:
+          $ref: "#/components/schemas/LifecycleStatus"
+        is_active:
+          type: boolean
+          description: 当前是否承担线上流量
+        canary:
+          type: object
+          additionalProperties: false
+          properties:
+            percent:
+              type: integer
+              minimum: 1
+              maximum: 100
+            started_at:
+              type: string
+              format: date-time
+        history:
+          type: array
+          items:
+            $ref: "#/components/schemas/TransitionRecord"
+
+    LifecycleRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+          description: If-Match 的 body 替代形式（二选一）
+        note:
+          type: string
+
+    CanaryRequest:
+      type: object
+      additionalProperties: false
+      required: [percent]
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+        percent:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: 灰度流量百分比
+        verification:
+          type: object
+          description: 【待定】灰度验证判据（冻结探针集回放 + 阈值），plan-v3 未细化
+          additionalProperties: false
+          properties:
+            probe_set_digest:
+              $ref: "#/components/schemas/Digest"
+            min_observation_minutes:
+              type: integer
+              minimum: 0
+
+    RollbackRequest:
+      type: object
+      additionalProperties: false
+      required: [rollback_to]
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+        rollback_to:
+          description: previous = 上一个 active VersionSet；或直接给目标完整 digest
+          oneOf:
+            - type: string
+              const: previous
+            - $ref: "#/components/schemas/Digest"
+        reason:
+          type: string
+
+    Operation:
+      type: object
+      additionalProperties: false
+      required: [operation_id, kind, status, idempotency_key, created_at, expires_at]
+      properties:
+        operation_id:
+          type: string
+          pattern: "^op_[0-9A-Za-z]{8,64}$"
+        kind:
+          type: string
+          enum: [stage, canary, promote, rollback]
+        status:
+          type: string
+          description: pending/running 为中间态；succeeded/failed 为终态
+          enum: [pending, running, succeeded, failed]
+        idempotency_key:
+          type: string
+        versionset_id:
+          type: string
+        result:
+          type: object
+          description: 成功终态的结果
+          additionalProperties: false
+          properties:
+            revision:
+              type: integer
+            status:
+              $ref: "#/components/schemas/LifecycleStatus"
+        error:
+          $ref: "#/components/schemas/ErrorBody"
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        expires_at:
+          type: string
+          format: date-time
+          description: 记录 TTL（【待定】默认 24h），过后查询返回 410 operation_expired
+
+    LogEntry:
+      type: object
+      additionalProperties: false
+      required: [ts, request_id, versionset_id, prompt_digest, kb_manifest_digest, model_digest, status]
+      properties:
+        ts:
+          type: string
+          format: date-time
+        request_id:
+          type: string
+        versionset_id:
+          type: string
+        prompt_digest:
+          $ref: "#/components/schemas/Digest"
+        kb_manifest_digest:
+          $ref: "#/components/schemas/Digest"
+        model_digest:
+          $ref: "#/components/schemas/Digest"
+        status:
+          type: string
+          description: ok / provider_error / timeout 等
+        latency_ms:
+          type: integer
+          minimum: 0
+        usage:
+          type: object
+          additionalProperties: false
+          properties:
+            prompt_tokens: { type: integer, minimum: 0 }
+            completion_tokens: { type: integer, minimum: 0 }
+        trace_id:
+          type: string
+          description: OTel trace 关联
+
+    LogPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/LogEntry"
+        next_cursor:
+          type: string
+
+    FeedbackEntry:
+      type: object
+      additionalProperties: false
+      required: [feedback_id, ts, request_id, versionset_id, rating, source]
+      properties:
+        feedback_id:
+          type: string
+        ts:
+          type: string
+          format: date-time
+        request_id:
+          type: string
+          description: 关联到具体哪次回答
+        versionset_id:
+          type: string
+        rating:
+          type: string
+          enum: [positive, negative, neutral]
+        comment:
+          type: string
+          description: 已做 PII 入口脱敏
+        user_ref:
+          type: string
+          description: 假名化用户标识
+        source:
+          type: string
+          description: 反馈来源渠道（如 feishu / in_app）
+
+    FeedbackPage:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/FeedbackEntry"
+        next_cursor:
+          type: string
+
+    InjectResult:
+      type: object
+      additionalProperties: false
+      required: [fault_id, injected_at, detail]
+      properties:
+        fault_id:
+          type: string
+          enum: [B1, B2, B3, B4]
+        injected_at:
+          type: string
+          format: date-time
+        detail:
+          type: string
+          description: 注入内容摘要（与 fixtures/b1..b4 ground-truth 对应）
+        ground_truth_ref:
+          type: string
+          example: "contracts/fixtures/b1-prompt-regression.yaml"
+
+    ResetResult:
+      type: object
+      additionalProperties: false
+      required: [reset_at, cleared]
+      properties:
+        reset_at:
+          type: string
+          format: date-time
+        cleared:
+          type: array
+          items:
+            type: string
+            enum: [B1, B2, B3, B4]
+
+    ErrorBody:
+      type: object
+      additionalProperties: false
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: |
+            机器可判错误码。HTTP 映射：400→bad_request；401→unauthorized；403→forbidden；
+            404→not_found；409→revision_conflict；410→operation_expired；
+            412→precondition_failed；422→validation_failed。
+          enum:
+            - bad_request
+            - unauthorized
+            - forbidden
+            - not_found
+            - revision_conflict
+            - precondition_failed
+            - validation_failed
+            - operation_expired
+        message:
+          type: string
+          description: 人读描述
+        details:
+          type: object
+          description: 结构化补充（subcode / expected_revision / current_revision / current_status / attempted 等）
+          additionalProperties: true
+        operation_id:
+          type: string
+        trace_id:
+          type: string
+
+    Error:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          $ref: "#/components/schemas/ErrorBody"
+
+security: []
