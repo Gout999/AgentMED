@@ -1,0 +1,29 @@
+# MCP 网关端到端验证 · step 1: initialize
+# 时间: 2026-08-07 17:11:42 UTC（容器内 date 头）
+# 调用方: agentteams-controller 容器内 curl，凭证 = spike-worker-a 的 WORKER_GATEWAY_KEY（打码: 39a07362****）
+# 链路: controller → Higress 网关(mcp-spike 路由) → host.docker.internal:8000 spike-mcp server
+
+== 请求 ==
+POST http://aigw-local.agentteams.io:8080/mcp-servers/mcp-spike/mcp
+Authorization: Bearer 39a07362****(64 hex, 已打码)
+Content-Type: application/json
+Accept: application/json, text/event-stream
+
+{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"spike-e2e","version":"0.1"}}}
+
+== 响应 (HTTP 200) ==
+HTTP/1.1 200 OK
+date: Fri, 07 Aug 2026 17:11:42 GMT
+server: istio-envoy
+cache-control: no-cache, no-transform
+content-type: text/event-stream
+mcp-session-id: afef551f639e41349a22ce3d9a45459c
+x-accel-buffering: no
+req-cost-time: 9
+req-arrive-time: 1786122702915
+resp-start-time: 1786122702925
+x-envoy-upstream-service-time: 5
+transfer-encoding: chunked
+
+event: message
+data: {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05","capabilities":{"experimental":{},"prompts":{"listChanged":false},"resources":{"subscribe":false,"listChanged":false},"tools":{"listChanged":false}},"serverInfo":{"name":"spike-mcp","version":"1.12.4"}}}

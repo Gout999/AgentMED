@@ -1,0 +1,48 @@
+# MCP 网关端到端验证 · step 2: notifications/initialized + tools/list
+# 时间: 2026-08-07 17:11:46 UTC
+# 会话: Mcp-Session-Id: afef551f639e41349a22ce3d9a45459c（来自 initialize 响应头）
+# 凭证: spike-worker-a 的 WORKER_GATEWAY_KEY（打码: 39a07362****）
+
+== 请求 2a ==
+POST http://aigw-local.agentteams.io:8080/mcp-servers/mcp-spike/mcp
+Mcp-Session-Id: afef551f639e41349a22ce3d9a45459c
+（其余头同上）
+
+{"jsonrpc":"2.0","method":"notifications/initialized"}
+
+== 响应 2a (HTTP 202) ==
+HTTP/1.1 202 Accepted
+date: Fri, 07 Aug 2026 17:11:46 GMT
+server: istio-envoy
+content-type: application/json
+mcp-session-id: afef551f639e41349a22ce3d9a45459c
+content-length: 0
+req-cost-time: 2
+req-arrive-time: 1786122706835
+resp-start-time: 1786122706837
+x-envoy-upstream-service-time: 1
+
+
+== 请求 2b ==
+POST http://aigw-local.agentteams.io:8080/mcp-servers/mcp-spike/mcp
+Mcp-Session-Id: afef551f639e41349a22ce3d9a45459c
+
+{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}
+
+== 响应 2b (HTTP 200) ==
+HTTP/1.1 200 OK
+date: Fri, 07 Aug 2026 17:11:46 GMT
+server: istio-envoy
+cache-control: no-cache, no-transform
+content-type: text/event-stream
+mcp-session-id: afef551f639e41349a22ce3d9a45459c
+x-accel-buffering: no
+req-cost-time: 2
+req-arrive-time: 1786122706840
+resp-start-time: 1786122706842
+x-envoy-upstream-service-time: 1
+transfer-encoding: chunked
+
+
+event: message
+data: {"jsonrpc":"2.0","id":2,"result":{"tools":[{"name":"caseloop_ping","description":"回显 text 并附服务器时间戳（spike 验证用）。","inputSchema":{"properties":{"text":{"title":"Text","type":"string"}},"required":["text"],"title":"caseloop_pingArguments","type":"object"},"outputSchema":{"properties":{"result":{"title":"Result","type":"string"}},"required":["result"],"title":"caseloop_pingOutput","type":"object"}}]}}

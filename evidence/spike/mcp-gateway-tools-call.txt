@@ -1,0 +1,27 @@
+# MCP 网关端到端验证 · step 3: tools/call caseloop_ping
+# 时间: 2026-08-07 17:11:50 UTC
+# 会话: Mcp-Session-Id: afef551f639e41349a22ce3d9a45459c
+# 凭证: spike-worker-a 的 WORKER_GATEWAY_KEY（打码: 39a07362****）
+
+== 请求 ==
+POST http://aigw-local.agentteams.io:8080/mcp-servers/mcp-spike/mcp
+Mcp-Session-Id: afef551f639e41349a22ce3d9a45459c
+
+{"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"caseloop_ping","arguments":{"text":"caseloop-e2e-001"}}}
+
+== 响应 (HTTP 200) ==
+HTTP/1.1 200 OK
+date: Fri, 07 Aug 2026 17:11:50 GMT
+server: istio-envoy
+cache-control: no-cache, no-transform
+content-type: text/event-stream
+mcp-session-id: afef551f639e41349a22ce3d9a45459c
+x-accel-buffering: no
+req-cost-time: 3
+req-arrive-time: 1786122710549
+resp-start-time: 1786122710553
+x-envoy-upstream-service-time: 1
+transfer-encoding: chunked
+
+event: message
+data: {"jsonrpc":"2.0","id":3,"result":{"content":[{"type":"text","text":"PONG | caseloop-e2e-001 | 2026-08-07T17:11:50.554820+00:00"}],"structuredContent":{"result":"PONG | caseloop-e2e-001 | 2026-08-07T17:11:50.554820+00:00"},"isError":false}}
