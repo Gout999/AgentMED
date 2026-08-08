@@ -82,6 +82,8 @@ class HttpClient:
         last_err: Optional[McpError] = None
         for attempt in range(attempts):
             try:
+                # trust_env=False：本机内部调用禁止走系统/环境代理
+                # （httpx 默认 trust_env=True 会读 macOS 系统代理，localhost 被代理 502）
                 resp = httpx.request(
                     method,
                     f"{self.base_url}{path}",
@@ -89,6 +91,7 @@ class HttpClient:
                     json=json_body,
                     headers=self._headers(),
                     timeout=self.timeout,
+                    trust_env=False,
                 )
             except httpx.TimeoutException as exc:
                 last_err = McpError(UPSTREAM_TIMEOUT, f"upstream timeout: {path}", retryable=True)
