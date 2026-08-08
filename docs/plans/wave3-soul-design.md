@@ -63,7 +63,7 @@ SOUL 写的是**角色、边界、工具权限、质量 bar**，不是流程剧�
 ## 6. 修复师 repairer（弹性）
 
 - **使命**：按归因结论**自由起草**修复——prompt git 化 / KB 修订 / 模型参数切换，产出不可变 WorkOrder。这是 LLM 创造力域，反剧本最彻底的一份。
-- **工具面**：mcp-release-admin（workorder.draft/freeze/approval.request）、mcp-case-admin（读面）。
+- **工具面**：mcp-release-admin（workorder.draft/freeze；`approval.request` 归守门员，见 §9 修订记录）、mcp-case-admin（读面）。
 - **判断域**：修复内容的全部起草（prompt 怎么改、KB 哪条怎么修、参数怎么调）；修复范围的最小化判断；WorkOrder 的自检陈述。
 - **永不**：跨层修复（归因=prompt 的故障不许改 KB）； freeze 后修改 WorkOrder（不可变，改=新单）；自行发布/灰度（执行权在 Release Controller + ApprovalGrant，R2 动作永远逐次审批）；起草无法机器验证效果的修复（必须给出验证探针）。
 - **质量 bar**：WorkOrder 过 schema 校验；freeze 后 hash 可复核；验证探针确定性可判定。
@@ -85,3 +85,9 @@ SOUL 写的是**角色、边界、工具权限、质量 bar**，不是流程剧�
 1. 修复师产出形式：**只产出候选文本**，经 WorkOrder 由 Release Controller 落库（写面唯一入口，plan-v3）。
 2. 守门员一票否决：**不覆盖**人工已审批的放行；否决权作用于自动放行路径，人工审批是最高权威。
 3. 质量周报发出：**不需要**人工确认（R0/R1 低风险，信任账本记账即可）。
+
+## 10. 修订记录（2026-08-07 主控裁决 T5 OPEN-ISSUES，冻结）
+
+1. `approval.request` ACL 归属：**守门员**（spec §9.4 + 职责分离：修复师起草、守门员提请、人工审批）。本设计稿 §6 原列给修复师为笔误，已修正。
+2. `case.escalate` 保留给质量官（impl 唯一升级通道，ACL 全员）；spec §9.3 工具表已同步补 `case.timeline` / `case.escalate` 两行。
+3. 守门员 trust-ledger 可达性：trust-ledger 为内嵌库（spec §9.8），远程 gatekeeper 的账本核对经 release-admin/eval-runner 服务端内嵌完成，**不得静默跳过**；Phase 2 补只读透出工具（登记 agents/OPEN-ISSUES）。

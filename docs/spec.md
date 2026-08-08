@@ -756,6 +756,8 @@ DRAINING → 停止新 claim → 等待 lease=0 → outbox 清空
 | `case.submit_suggestion` | `case_id*`, `fencing_token*`, `kind*`(`triage|attribution|fix|gate|verify`), `payload*`, `evidence_refs` | `{accepted, event_id}`；控制面裁决后迁移 | Worker |
 | `app.logs` | `app*`, `time_range*`, `filter`, `limit` | `{entries:[…]}`（代理 Quality API `GET /logs`，已脱敏） | 采集员/归因师 |
 | `app.feedback` | `app*`, `time_range*` | `{feedback:[…]}`（代理 `GET /feedback`） | 采集员 |
+| `case.timeline` | `case_id*` | 案件时间线（事件序列 + 建议记录） | 全员 |
+| `case.escalate` | `case_id*`, `reason*`, `evidence_refs` | `{accepted, event_id}`；升级人工，经 notification 留痕 | 全员 |
 
 降级：`app.logs/feedback` 不可达 → 退避重试，失败返回 `evidence_gap=true`，不阻塞流水线，缺口显式标注。
 
