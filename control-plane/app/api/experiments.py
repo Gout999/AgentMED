@@ -61,6 +61,7 @@ def _raise(exc: ExperimentServiceError) -> None:
     status = {
         "not_found": 404,
         "validation_failed": 422,
+        "validation_error": 400,  # S0-006：空探针集冻结 = 领域校验错误 → 400
         "illegal_transition": 422,
         "revision_conflict": 409,
     }.get(exc.code, 400)

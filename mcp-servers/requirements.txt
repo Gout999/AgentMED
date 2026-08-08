@@ -12,6 +12,9 @@ python-dotenv==1.0.1
 ulid-py==1.1.0
 jsonschema==4.23.0
 
+# eval-harness 执行机（S0-006：experiment.execute 复用 5-cell 执行链路，源码依赖同仓）
+-e ../eval-harness
+
 # 测试
 pytest==8.3.4
 pytest-asyncio==0.24.0
