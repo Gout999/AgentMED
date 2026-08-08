@@ -37,3 +37,7 @@
 2. **control-plane 容器重建后重启 MCP server**：server 的 httpx 连接池持有旧容器死连接，表现为 `case controller unreachable` 但宿主 curl 正常。
 3. **integration 测试默认指 scratch 库**（S0-005）：`DATABASE_URL` 不设时是 `control_plane_test`，指活库必须显式覆盖。
 4. **demo-app compose up 必须带 env**：`set -a && source ~/Documents/kimi/workspace/ACL-team/.env && set +a`，否则 `STEPFUN_API_KEY` 被空值覆盖，chat 静默回兜底文案。
+5. **Matrix 房间代发三件套**：容器内 `docker exec agentteams-controller`，URL 用 `$AGENTTEAMS_MATRIX_URL`，token 用 `$AGENTTEAMS_MATRIX_APPSERVICE_AS_TOKEN`，`?user_id=` 指定代发身份；**m.mentions 的 MXID 必须与真实 sender 一致**（工人是 `@quality-officer:…` 不是 `@caseloop-quality-officer:…`，写错 mentions=工人收不到）；payload 先写 /tmp/*.json 再 `docker cp` 进容器，避免引号地狱。
+6. **worker 单线程 ReAct 循环**：工人在 loop 里时新消息只排队不消费；`docker restart` 会打断 loop 但**恰在消费瞬间重启=消息丢失**（sync token 已推进，新进程视其为已读）——重启前先确认 worker 空闲，丢了就用新 txn id 重发。
+7. **agent 报"工具没有/行为不对"时先做隔离测试**：用 `mcp-servers/scripts/mcp_client.py <port> <tool> '<json>'` 以正确参数直调，平台正常=agent 参数构造错，平台异常=平台缺陷；S0-006 即靠此把"空实验"精确定位到 agent 传错 probe_set 键名 + probe.freeze 零校验。
+8. **e2e 期间 demo-app 故障态是前提资产**：归因执行机（DemoAppB1Driver）会 inject/reset 切换故障臂，跑完务必确认 B1 仍注入（`curl :8080/chat` 问退货，漂移应答+prompt_digest=81122ca0… 为正常）；恢复基线用 `demo-app/scripts/reset_state.sh`。
