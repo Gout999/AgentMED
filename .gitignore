@@ -26,6 +26,7 @@ dist/
 .DS_Store
 coverage/
 htmlcov/
+/var/
 
 # 证据导出物中的大文件按需保留（截图/日志入库，临时包忽略）
 evidence/tmp/

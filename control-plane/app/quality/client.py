@@ -44,7 +44,13 @@ class QualityClientProtocol(Protocol):
         expected_revision: Optional[int] = None,
     ) -> dict[str, Any]: ...
     def promote(
-        self, versionset_id: str, *, if_match: str, idempotency_key: str, expected_revision: Optional[int] = None
+        self,
+        versionset_id: str,
+        expected_active_digest: str,
+        *,
+        if_match: str,
+        idempotency_key: str,
+        expected_revision: Optional[int] = None,
     ) -> dict[str, Any]: ...
     def rollback(
         self,
@@ -157,12 +163,13 @@ class QualityAPIClient:
     def promote(
         self,
         versionset_id: str,
+        expected_active_digest: str,
         *,
         if_match: str,
         idempotency_key: str,
         expected_revision: Optional[int] = None,
     ) -> dict[str, Any]:
-        body: dict[str, Any] = {}
+        body: dict[str, Any] = {"expected_active_digest": expected_active_digest}
         if expected_revision is not None:
             body["expected_revision"] = expected_revision
         return self._request(
@@ -213,6 +220,7 @@ class _VS:
     digest: str = ""
     canary_percent: int = 0
     content: dict[str, Any] = field(default_factory=dict)
+    history: list[dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -222,6 +230,8 @@ class _Op:
     versionset_id: str = ""
     kind: str = ""
     result: dict[str, Any] = field(default_factory=dict)
+    request: dict[str, Any] = field(default_factory=dict)
+    applied: bool = False
     created_at: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
     expires_at: datetime = field(
         default_factory=lambda: datetime.now(timezone.utc) + timedelta(hours=24)
@@ -231,12 +241,19 @@ class _Op:
 class FakeQualityClient:
     """内存版 Quality API，行为对齐 openapi 写面语义（供控制面 integration）。"""
 
-    def __init__(self, *, fail_next: Optional[str] = None, unknown_ops: bool = False):
+    def __init__(
+        self,
+        *,
+        fail_next: Optional[str] = None,
+        unknown_ops: bool = False,
+        defer_effects: bool = False,
+    ):
         self._vs: dict[str, _VS] = {}
         self._ops: dict[str, _Op] = {}
         self._idem: dict[str, str] = {}  # idempotency_key → operation_id
         self.fail_next = fail_next  # network | timeout | 410
         self.unknown_ops = unknown_ops
+        self.defer_effects = defer_effects
         self.call_log: list[str] = []
 
     def seed_versionset(
@@ -262,7 +279,15 @@ class FakeQualityClient:
         }
 
     def get_status(self, versionset_id: str) -> dict[str, Any]:
-        return self.get_versionset(versionset_id)
+        vs = self._require(versionset_id)
+        result = {
+            **self.get_versionset(versionset_id),
+            "is_active": vs.status == "active",
+            "history": [dict(item) for item in vs.history],
+        }
+        if vs.status == "canary":
+            result["canary"] = {"percent": vs.canary_percent}
+        return result
 
     def list_versionsets(self, *, status: Optional[str] = None, limit: int = 50) -> dict[str, Any]:
         if self.fail_next in ("network", "timeout"):
@@ -292,9 +317,22 @@ class FakeQualityClient:
         )
 
     def promote(
-        self, versionset_id: str, *, if_match: str, idempotency_key: str, expected_revision: Optional[int] = None
+        self,
+        versionset_id: str,
+        expected_active_digest: str,
+        *,
+        if_match: str,
+        idempotency_key: str,
+        expected_revision: Optional[int] = None,
     ) -> dict[str, Any]:
-        return self._lifecycle(versionset_id, "promote", if_match, idempotency_key, expected_revision)
+        return self._lifecycle(
+            versionset_id,
+            "promote",
+            if_match,
+            idempotency_key,
+            expected_revision,
+            expected_active_digest=expected_active_digest,
+        )
 
     def rollback(
         self,
@@ -346,6 +384,19 @@ class FakeQualityClient:
 
         if idempotency_key in self._idem:
             op_id = self._idem[idempotency_key]
+            existing = self._ops[op_id]
+            replay_revision = self._parse_match(if_match, expected_revision)
+            if (
+                existing.versionset_id != versionset_id
+                or existing.kind != kind
+                or existing.request != {"expected_revision": replay_revision, **extra}
+            ):
+                raise QualityAPIError(
+                    "validation_failed",
+                    "idempotency_key reused with different lifecycle parameters",
+                    422,
+                    details={"subcode": "idempotency_key_conflict"},
+                )
             return self.get_operation(op_id)
 
         vs = self._require(versionset_id)
@@ -360,7 +411,32 @@ class FakeQualityClient:
                 details={"expected_revision": rev, "current_revision": vs.revision},
             )
 
-        # 状态迁移
+        op_id = f"op_{uuid.uuid4().hex[:16]}"
+        op = _Op(
+            operation_id=op_id,
+            status="pending" if (self.unknown_ops or self.defer_effects) else "succeeded",
+            versionset_id=versionset_id,
+            kind=kind,
+            request={"expected_revision": rev, **extra},
+        )
+        if not self.defer_effects:
+            op.result = self._apply_transition(vs, kind, op_id, extra)
+            op.applied = True
+        self._ops[op_id] = op
+        self._idem[idempotency_key] = op_id
+        return self.get_operation(op_id)
+
+    def _apply_transition(
+        self,
+        vs: _VS,
+        kind: str,
+        operation_id: str,
+        extra: dict[str, Any],
+    ) -> dict[str, Any]:
+        """Apply one fake transition and record the same receipt identity as Quality API."""
+
+        from_status = vs.status
+        restored_digest: Optional[str] = None
         if kind == "stage":
             if vs.status != "draft":
                 raise QualityAPIError("validation_failed", f"cannot stage from {vs.status}", 422)
@@ -373,36 +449,96 @@ class FakeQualityClient:
         elif kind == "promote":
             if vs.status not in ("canary", "staged"):
                 raise QualityAPIError("validation_failed", f"cannot promote from {vs.status}", 422)
+            active_rows = [
+                other
+                for other in self._vs.values()
+                if other.versionset_id != vs.versionset_id and other.status == "active"
+            ]
+            active = active_rows[0] if len(active_rows) == 1 else None
+            expected_active_digest = extra.get("expected_active_digest")
+            if active is None or active.digest != expected_active_digest:
+                raise QualityAPIError(
+                    "revision_conflict",
+                    "active VersionSet changed after promote approval",
+                    409,
+                    details={
+                        "expected_active_digest": expected_active_digest,
+                        "current_active_digest": active.digest if active is not None else None,
+                        "current_active_count": len(active_rows),
+                    },
+                )
+            for other in self._vs.values():
+                if other.versionset_id != vs.versionset_id and other.status == "active":
+                    other_from = other.status
+                    other.status = "superseded"
+                    other.revision += 1
+                    other.history.append(
+                        {"from": other_from, "to": "superseded", "operation_id": operation_id}
+                    )
             vs.status = "active"
             vs.canary_percent = 100
         elif kind == "rollback":
+            if vs.status not in ("canary", "active"):
+                raise QualityAPIError("validation_failed", f"cannot rollback from {vs.status}", 422)
+            rollback_to = extra.get("rollback_to", "previous")
+            if rollback_to == "previous":
+                desired_status = "active" if vs.status == "canary" else "superseded"
+                target = next(
+                    (
+                        other
+                        for other in reversed(list(self._vs.values()))
+                        if other.versionset_id != vs.versionset_id and other.status == desired_status
+                    ),
+                    None,
+                )
+            else:
+                target = next(
+                    (
+                        other
+                        for other in self._vs.values()
+                        if other.versionset_id != vs.versionset_id and other.digest == rollback_to
+                    ),
+                    None,
+                )
+            if target is None:
+                raise QualityAPIError(
+                    "validation_failed",
+                    "approved rollback target digest is unavailable",
+                    422,
+                )
             vs.status = "rolled_back"
             vs.canary_percent = 0
+            if target.status != "active":
+                target.status = "active"
+                target.revision += 1
+            target.canary_percent = 100
+            restored_digest = target.digest
 
         vs.revision += 1
-        op_id = f"op_{uuid.uuid4().hex[:16]}"
-        status = "pending" if self.unknown_ops else "succeeded"
-        op = _Op(
-            operation_id=op_id,
-            status=status,
-            versionset_id=versionset_id,
-            kind=kind,
-            result={"revision": vs.revision, "status": vs.status, "canary_percent": vs.canary_percent},
+        vs.history.append(
+            {"from": from_status, "to": vs.status, "operation_id": operation_id}
         )
-        if not self.unknown_ops:
-            op.status = "succeeded"
-        self._ops[op_id] = op
-        self._idem[idempotency_key] = op_id
         return {
-            "operation_id": op_id,
-            "status": op.status,
-            "versionset_id": versionset_id,
-            "kind": kind,
-            "result": op.result,
+            "revision": vs.revision,
+            "status": vs.status,
+            "canary_percent": vs.canary_percent,
+            **({"restored_digest": restored_digest} if restored_digest else {}),
         }
 
     def complete_pending(self, operation_id: str, status: str = "succeeded") -> None:
         op = self._ops[operation_id]
+        if status == "succeeded" and not op.applied:
+            vs = self._require(op.versionset_id)
+            expected_revision = op.request.get("expected_revision")
+            if vs.revision != expected_revision:
+                raise QualityAPIError(
+                    "revision_conflict",
+                    f"expected {expected_revision}, current {vs.revision}",
+                    409,
+                )
+            extra = {key: value for key, value in op.request.items() if key != "expected_revision"}
+            op.result = self._apply_transition(vs, op.kind, op.operation_id, extra)
+            op.applied = True
         op.status = status
 
     def _require(self, versionset_id: str) -> _VS:

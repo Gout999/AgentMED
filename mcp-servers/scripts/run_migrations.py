@@ -3,7 +3,7 @@
 用法：
   .venv/bin/python scripts/run_migrations.py
 
-- PG：执行 migrations/001_init.sql（IF NOT EXISTS + 向量列 ALTER）。
+- PG：按文件名顺序执行 migrations/*.sql（全部迁移必须幂等）。
 - SQLite：走 ORM create_all（向量列跳过，仅单测用）。
 """
 from __future__ import annotations
@@ -23,10 +23,12 @@ def run() -> None:
     url = settings.database_url
     engine = get_engine(url)
     if engine.dialect.name == "postgresql":
-        sql_path = Path(__file__).resolve().parent.parent / "migrations" / "001_init.sql"
+        migration_dir = Path(__file__).resolve().parent.parent / "migrations"
+        paths = sorted(migration_dir.glob("*.sql"))
         with engine.begin() as conn:
-            conn.execute(__import__("sqlalchemy").text(sql_path.read_text(encoding="utf-8")))
-        print(f"[migrate] PG schema applied from {sql_path}")
+            for sql_path in paths:
+                conn.execute(__import__("sqlalchemy").text(sql_path.read_text(encoding="utf-8")))
+        print(f"[migrate] PG schema applied ({len(paths)} files from {migration_dir})")
     else:
         create_all(url)
         print(f"[migrate] SQLite tables created ({url})")

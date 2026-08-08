@@ -127,14 +127,51 @@ call 8001 app.feedback '{"app":"demo-app","limit":1}' "app.feedback 取证"
 
 # ---------- 2) mcp-eval-runner ----------
 say "mcp-eval-runner（:8003）"
-GRUN=$("${CLIENT_CMD[@]}" 8003 gate.run '{"workorder_id":"wo_smoke","suite_digest":"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}' 2>&1)
-if echo "$GRUN" | grep -q '"ok": true'; then
-  ok "gate.run 触发评测（异步句柄）"
-  EVAL_ID=$(echo "$GRUN" | jq -r '.eval_id')
-  REPORT_HASH=$(echo "$GRUN" | jq -r '.report_hash')
-  call 8003 gate.report "{\"eval_id\":\"$EVAL_ID\"}" "gate.report 双轨报告"
+WO_ID=""; EVAL_ID=""; REPORT_HASH=""; GATE_VERDICT=""
+export QUALITY_API_BASE_URL="${QUALITY_API_BASE_URL:-http://127.0.0.1:8080}"
+QUALITY_READ_TOKEN="${QUALITY_READ_TOKEN:-conformance-read-token}"
+TARGET_JSON=$(curl -sf -m 5 "$QUALITY_API_BASE_URL/v2/versionsets?status=active&limit=1" \
+  -H "Authorization: Bearer $QUALITY_READ_TOKEN" 2>/dev/null | jq -c '.items[0] // empty' 2>/dev/null || true)
+
+if [ -n "$CASE_ID" ] && [ -n "$CONTROL_PLANE_BASE_URL" ] && [ -n "$TARGET_JSON" ]; then
+  TARGET_ID=$(echo "$TARGET_JSON" | jq -r '.versionset_id')
+  TARGET_REVISION=$(echo "$TARGET_JSON" | jq -r '.revision')
+  TARGET_DIGEST=$(echo "$TARGET_JSON" | jq -r '.digest')
+  PROMPT_DIGEST=$(echo "$TARGET_JSON" | jq -r '.content.prompt.digest')
+  KB_DIGEST=$(echo "$TARGET_JSON" | jq -r '.content.kb_manifest.manifest_digest')
+  MODEL_DIGEST=$(echo "$TARGET_JSON" | jq -r '.content.model.digest')
+  DIFF_CONTENT="smoke gate against exact active target"
+  DIFF_DIGEST="sha256:$(printf '%s' "$DIFF_CONTENT" | shasum -a 256 | awk '{print $1}')"
+  DRAFT_ARGS=$(jq -nc \
+    --arg case_id "$CASE_ID" --arg target_id "$TARGET_ID" --argjson target_revision "$TARGET_REVISION" \
+    --arg target_digest "$TARGET_DIGEST" --arg prompt_digest "$PROMPT_DIGEST" \
+    --arg kb_digest "$KB_DIGEST" --arg model_digest "$MODEL_DIGEST" \
+    --arg diff_content "$DIFF_CONTENT" --arg diff_digest "$DIFF_DIGEST" \
+    '{case_id:$case_id,target:{app:"xiaozhi-cs",layer:"prompt"},
+      input_versions:{prompt_digest:$prompt_digest,kb_manifest_digest:$kb_digest,model_digest:$model_digest},
+      diff:{format:"unified_diff",content:$diff_content,digest:$diff_digest},
+      single_factor_declaration:"single layer prompt only",
+      base_versionset_digest:$target_digest,target_versionset_digest:$target_digest,
+      target_versionset_id:$target_id,target_revision:$target_revision}')
+  DRAFT=$("${CLIENT_CMD[@]}" 8002 workorder.draft "$DRAFT_ARGS" 2>&1)
+  if echo "$DRAFT" | grep -q '"ok": true'; then
+    ok "workorder.draft 以真实 VersionSet 起草"
+    WO_ID=$(echo "$DRAFT" | jq -r '.workorder_id')
+    GRUN=$("${CLIENT_CMD[@]}" 8003 gate.run "{\"workorder_id\":\"$WO_ID\"}" 2>&1)
+    if echo "$GRUN" | grep -q '"ok": true'; then
+      ok "gate.run 完成真实 contract/replay/live 评测"
+      EVAL_ID=$(echo "$GRUN" | jq -r '.eval_id')
+      REPORT_HASH=$(echo "$GRUN" | jq -r '.report_hash')
+      GATE_VERDICT=$(echo "$GRUN" | jq -r '.verdict')
+      call 8003 gate.report "{\"eval_id\":\"$EVAL_ID\"}" "gate.report 双轨报告"
+    else
+      fail "gate.run"; echo "      $GRUN"
+    fi
+  else
+    fail "workorder.draft"; echo "      $DRAFT"
+  fi
 else
-  fail "gate.run"; EVAL_ID=""; REPORT_HASH=""
+  degraded "真实 gate（需 control-plane、active VersionSet 与 case）"
 fi
 if [ -n "$CONTROL_PLANE_BASE_URL" ]; then
   call 8003 experiment.plan "{\"case_id\":\"$CASE_ID\",\"matrix\":\"5cell\"}" "experiment.plan 实验计划"
@@ -144,11 +181,8 @@ fi
 
 # ---------- 3) mcp-release-admin ----------
 say "mcp-release-admin（:8002）"
-if [ -n "$CASE_ID" ] && [ -n "$REPORT_HASH" ]; then
-  DRAFT=$("${CLIENT_CMD[@]}" 8002 workorder.draft "{\"case_id\":\"$CASE_ID\",\"target\":{\"app\":\"xiaozhi-cs\",\"layer\":\"kb\"},\"input_versions\":{\"prompt_digest\":\"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc\",\"kb_manifest_digest\":\"sha256:5df39e2d95096242ddc7241a853093674177fe2b97e549fad6a4a1cbcc0c50f1\",\"model_digest\":\"sha256:f371ce6e3eaea49eeac0ffe8ad94bac665b81eb951cf2a8cd9d829294a783e93\"},\"diff\":{\"format\":\"kb_revision\",\"content_ref\":\"minio://kb/fix-v1.json\",\"digest\":\"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb\"},\"single_factor_declaration\":\"single layer kb only\"}" 2>&1)
-  if echo "$DRAFT" | grep -q '"ok": true'; then
-    ok "workorder.draft 起草"
-    WO_ID=$(echo "$DRAFT" | jq -r '.workorder_id')
+if [ -n "$WO_ID" ] && [ -n "$REPORT_HASH" ]; then
+  if [ "$GATE_VERDICT" = "passed" ]; then
     call 8002 gate.submit "{\"workorder_id\":\"$WO_ID\",\"eval_id\":\"$EVAL_ID\",\"report_hash\":\"$REPORT_HASH\"}" "gate.submit 门禁报告提交"
     call 8002 workorder.freeze "{\"workorder_id\":\"$WO_ID\",\"fencing_token\":1}" "workorder.freeze 定稿（hash 绑定）"
     APPR=$("${CLIENT_CMD[@]}" 8002 approval.request "{\"workorder_id\":\"$WO_ID\",\"evidence_summary\":\"gate passed\",\"channel\":\"feishu\"}" 2>&1)
@@ -161,7 +195,8 @@ if [ -n "$CASE_ID" ] && [ -n "$REPORT_HASH" ]; then
     fi
     call 8002 workorder.get "{\"workorder_id\":\"$WO_ID\"}" "workorder.get 读工单"
   else
-    fail "workorder.draft"; echo "      $DRAFT"
+    call_expect_error 8002 gate.submit "{\"workorder_id\":\"$WO_ID\",\"eval_id\":\"$EVAL_ID\",\"report_hash\":\"$REPORT_HASH\"}" "gate.submit 对 $GATE_VERDICT 门禁 fail-closed"
+    degraded "workorder.freeze/approval（live provider 门禁未通过）"
   fi
 else
   degraded "workorder 全流程（需 control-plane + gate）"

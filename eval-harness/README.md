@@ -62,6 +62,18 @@ live 集成依赖：demo-app 运行于 `CASELOOP_QUALITY_API_BASE_URL`（默认 
 # 预期：裁决=ATTRIBUTED，故障层=prompt，Δ_prompt>0 且 CI 下界>δ_min=0.2
 ```
 
+## 跑真实候选门禁
+
+```bash
+.venv/bin/python scripts/run_gate.py \
+  --versionset-id vs_candidate \
+  --out-dir evidence/gate-vs-candidate
+```
+
+命令只调用 Quality API 读接口，并始终执行指定 VersionSet；不会追随 `active` 指针，
+也不会由评测进程注入或复位故障。contract/replay、候选响应和 live-provider 结果分别落证据；
+任何轨道为 failed/error/skipped 时都会以非零退出码 fail closed。
+
 ## 关键设计（与契约对齐）
 
 | 项 | 实现 | 契约依据 |

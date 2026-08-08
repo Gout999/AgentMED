@@ -157,6 +157,68 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
+  /v2/versionsets/{versionsetId}/evaluate:
+    post:
+      tags: [versionsets]
+      summary: 对精确不可变 VersionSet 执行一条候选评测探针
+      description: |
+        Gate Runner 的内部只读执行面。该调用不改变生命周期状态，
+        也不使用当前 active 版本或故障覆盖；它必须从指定 VersionSet
+        的 prompt、KB manifest 及 model digest 精确重建运行配置。
+        任何注册资产缺失或 digest 漂移都返回 409，不得回退到 active。
+      operationId: evaluateVersionSetCandidate
+      x-internal: true
+      security:
+        - quality_oauth: [quality:read]
+        - quality_oauth: [quality:write]
+      parameters:
+        - $ref: "#/components/parameters/VersionSetId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [message]
+              properties:
+                message: { type: string, minLength: 1, maxLength: 2000 }
+                session_id: { type: [string, "null"] }
+                user_ref: { type: [string, "null"] }
+      responses:
+        "200":
+          description: 真实 provider 候选回复，并回显实际执行的组件 digest
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+                required:
+                  - request_id
+                  - answer
+                  - status
+                  - versionset_id
+                  - prompt_digest
+                  - kb_manifest_digest
+                  - model_digest
+                  - retrieval
+                properties:
+                  request_id: { type: string }
+                  answer: { type: string }
+                  status: { type: string, enum: [ok, provider_error] }
+                  versionset_id: { type: string }
+                  prompt_digest: { $ref: "#/components/schemas/Digest" }
+                  kb_manifest_digest: { $ref: "#/components/schemas/Digest" }
+                  model_digest: { $ref: "#/components/schemas/Digest" }
+                  trace_id: { type: [string, "null"] }
+                  retrieval: { type: array, items: { type: object } }
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "409":
+          $ref: "#/components/responses/Conflict"
+
   /v2/versionsets/{versionsetId}/stage:
     post:
       tags: [lifecycle]
@@ -234,10 +296,11 @@ paths:
         - $ref: "#/components/parameters/IfMatch"
         - $ref: "#/components/parameters/IdempotencyKey"
       requestBody:
+        required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/LifecycleRequest"
+              $ref: "#/components/schemas/PromoteRequest"
       responses:
         "202":
           $ref: "#/components/responses/AcceptedOperation"
@@ -257,10 +320,11 @@ paths:
   /v2/versionsets/{versionsetId}/rollback:
     post:
       tags: [lifecycle]
-      summary: 回滚：active → rolled_back，目标版本恢复为 active
+      summary: 回滚：canary/active → rolled_back，目标版本保持或恢复为 active
       description: |
-        回滚是语义级操作而非内容修改：本 VersionSet 转 rolled_back，
-        rollback_to 指定的（或 previous = 上一个 active）VersionSet 恢复为 active。
+        回滚是语义级操作而非内容修改：本 VersionSet 转 rolled_back。
+        canary 回滚保留当前 active 基线；active 回滚则将 rollback_to 指定的
+        （或 previous = 上一个 active）VersionSet 恢复为 active。
         回滚失败（下游不一致）时 operation 转 failed 且必须触发人工接管事件
         （见 contracts/events/state-machines.yaml Release 状态机）。
       operationId: rollbackVersionSet
@@ -543,6 +607,11 @@ components:
               code: revision_conflict
               message: "expected revision 3, current revision 5"
               details: { expected_revision: 3, current_revision: 5 }
+    Conflict:
+      description: 409 资源完整性或当前状态冲突（调用方不得回退为成功）
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
     PreconditionFailed:
       description: 412 precondition_failed——CAS 前置条件缺失（If-Match 与 expected_revision 都未提供）
       content:
@@ -592,6 +661,9 @@ components:
           type: string
           description: 语义化版本或 git 引用
         digest:
+          description: >-
+            条目完整运行快照摘要，覆盖标识、版本、正文及影响检索的
+            title/category/keywords；任一字段漂移都使精确候选评测拒绝执行。
           $ref: "#/components/schemas/Digest"
 
     KBManifestEntry:
@@ -659,7 +731,7 @@ components:
       type: string
       description: |
         生命周期状态机（非法迁移一律 422 validation_failed）：
-        draft → staged → canary → active（promote）；active → rolled_back（rollback）；
+        draft → staged → canary → active（promote）；canary/active → rolled_back（rollback）；
         promote 时原 active 自动 → superseded。
       enum: [draft, staged, canary, active, superseded, rolled_back]
 
@@ -787,6 +859,20 @@ components:
               type: integer
               minimum: 0
 
+    PromoteRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_active_digest]
+      properties:
+        expected_revision:
+          type: integer
+          minimum: 1
+        expected_active_digest:
+          description: >-
+            WorkOrder 审批时绑定的 active 基线完整 digest。Quality API 在全局
+            active-set 锁内再次核对；基线已漂移时 promote operation 必须失败。
+          $ref: "#/components/schemas/Digest"
+
     RollbackRequest:
       type: object
       additionalProperties: false
@@ -832,6 +918,10 @@ components:
               type: integer
             status:
               $ref: "#/components/schemas/LifecycleStatus"
+            restored_digest:
+              allOf:
+                - $ref: "#/components/schemas/Digest"
+              description: "rollback 成功时必填；实际恢复为 active 的 VersionSet digest"
         error:
           $ref: "#/components/schemas/ErrorBody"
         created_at:

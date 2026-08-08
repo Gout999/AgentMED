@@ -27,6 +27,9 @@ class Settings:
     )
     read_token: str = field(default_factory=lambda: _env("CASELOOP_READ_TOKEN", "conformance-read-token"))
     write_token: str = field(default_factory=lambda: _env("CASELOOP_WRITE_TOKEN", "conformance-write-token"))
+    quality_api_timeout_seconds: float = field(
+        default_factory=lambda: float(_env("CASELOOP_QUALITY_API_TIMEOUT_SECONDS", "95"))
+    )
 
     # StepFun（运动员模型）
     stepfun_api_key: str = field(default_factory=lambda: _env("STEPFUN_API_KEY"))
@@ -47,6 +50,9 @@ class Settings:
 
     # 门禁
     gate_judge_pass_threshold: float = field(default_factory=lambda: float(_env("GATE_JUDGE_PASS_THRESHOLD", "0.8")))
+    provider_timeout_seconds: float = field(
+        default_factory=lambda: float(_env("GATE_PROVIDER_TIMEOUT_SECONDS", "90"))
+    )
 
     # 仓库根（用于定位 contracts/ 与 demo-app/ 只读参考）
     repo_root: Path = _REPO_ROOT

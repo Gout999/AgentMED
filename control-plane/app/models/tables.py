@@ -137,6 +137,40 @@ class WorkOrder(Base):
     )
 
 
+class GateReportRecord(Base):
+    """Authoritative immutable GateReport plus post-freeze WorkOrder binding.
+
+    GateReport content is hashed before the final WorkOrder exists. Because the WorkOrder hash
+    itself includes the GateReport digest, storing the final WorkOrder hash inside that report
+    would create an impossible hash cycle. The control plane therefore seals both immutable
+    hashes in `binding_digest` when the WorkOrder is registered.
+    """
+
+    __tablename__ = "gate_reports"
+
+    eval_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    report_id: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    workorder_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    workorder_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, unique=True)
+    target_versionset_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    target_versionset_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    target_revision: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    dataset_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    dataset_version: Mapped[str] = mapped_column(String(64), nullable=False)
+    dataset_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    evidence_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    candidate_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    report_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    binding_digest: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    authorization_digest: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    overall_status: Mapped[str] = mapped_column(String(32), nullable=False)
+    report: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    bound_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+
+
 class Approval(Base):
     """审批授权：nonce 唯一，pending→consumed/rejected/expired。"""
 
@@ -205,8 +239,9 @@ class ControllerOperation(Base):
     kind: Mapped[str] = mapped_column(String(32), nullable=False)  # stage|canary|promote|rollback
     remote_operation_id: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="pending")
-    # pending|succeeded|failed|unknown|expired
+    # pending|succeeded|failed|unknown|expired (UNKNOWN is resolved only by reconcile)
     idempotency_key: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
+    approval_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, index=True)
     expected_revision: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     request_fingerprint: Mapped[str] = mapped_column(String(80), nullable=False, default="")
     result: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)

@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     quality_read_token: str = Field(default="conformance-read-token", alias="QUALITY_READ_TOKEN")
     quality_write_token: str = Field(default="", alias="QUALITY_WRITE_TOKEN")
 
+    # Gate executor: repository-owned allowlisted suites + persisted evidence.
+    gate_evaluation_timeout_seconds: int = Field(default=300, alias="GATE_EVALUATION_TIMEOUT_SECONDS")
+    gate_evidence_dir: str = Field(default="evidence/gate", alias="GATE_EVIDENCE_DIR")
+
     # 审批安全件（spec §5.2 / D-001 #10）
     approval_ttl_minutes: int = Field(default=30, alias="APPROVAL_TTL_MINUTES")
     # 冷却（D-001 Q8 / #7：SUSPENDED 冷却 24h）

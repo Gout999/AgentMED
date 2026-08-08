@@ -144,16 +144,19 @@ machines:
       - { from: PROMOTING,    on: release.promoted,               to: COMPLETED }
       - { from: ROLLING_BACK, on: release.rolled_back,            to: ROLLED_BACK }
       - { from: ROLLING_BACK, on: release.rollback_failed,        to: FAILED_ESCALATED }
+      - { from: REQUESTED,    on: release.unknown_detected,       to: UNKNOWN }
       - { from: STAGING,      on: release.unknown_detected,       to: UNKNOWN }
       - { from: CANARYING,    on: release.unknown_detected,       to: UNKNOWN }
+      - { from: VERIFYING,    on: release.unknown_detected,       to: UNKNOWN }
       - { from: PROMOTING,    on: release.unknown_detected,       to: UNKNOWN }
       - { from: ROLLING_BACK, on: release.unknown_detected,       to: UNKNOWN }
-      - { from: UNKNOWN,      on: release.reconciled,             to: REQUESTED,   guard: "对账：操作实际未生效 → resume 重发（同 Idempotency-Key）" }
-      - { from: UNKNOWN,      on: release.reconciled,             to: COMPLETED,   guard: "对账：操作实际已生效 → 直接确认终态" }
-      - { from: UNKNOWN,      on: release.reconciled,             to: ROLLING_BACK, guard: "对账：已部分生效 → compensate" }
+      - { from: UNKNOWN,      on: release.reconciled,             to: REQUESTED,   guard: "精确幂等重放 + operation history 证明 stage 已生效，随后追加真实 staged receipt" }
+      - { from: UNKNOWN,      on: release.reconciled,             to: STAGING,     guard: "精确幂等重放 + operation history 证明 canary 已生效，随后追加真实 canary receipt" }
+      - { from: UNKNOWN,      on: release.reconciled,             to: VERIFYING,   guard: "精确幂等重放 + operation history 证明 promote 已生效，随后追加真实 promoted receipt" }
+      - { from: UNKNOWN,      on: release.reconciled,             to: ROLLING_BACK, guard: "精确幂等重放 + operation history 证明 rollback 已生效，随后追加真实 rollback receipt" }
       - { from: UNKNOWN,      on: release.rollback_failed,        to: FAILED_ESCALATED, note: "reconcile 无法收敛视同回滚失败，升级人工" }
     failure_semantics:
-      unknown_reconcile: "写面异步+410 语义下结果不可考 → UNKNOWN：以 GET /status 权威状态对账（reconcile），按实际生效情况 resume/retry/compensate/escalate；重试必须沿用原 Idempotency-Key 保证不重复执行"
+      unknown_reconcile: "写面异步+410 语义下结果不可考 → UNKNOWN：reconcile 必须用原请求与原 Idempotency-Key 精确重放，并以 status.history 的真实 Quality operation_id 证明生效；未证明或仍 pending 时保持 UNKNOWN"
       rollback_failed: "回滚失败不允许自动二次回滚：FAILED_ESCALATED 终态 + 人工接管（回滚失败时线上处于非预期版本，人必须知情）"
       cas_drift: "任何 409 revision_conflict → 重新 GET 读最新 revision 后再决策，不得带旧 revision 硬闯"
 

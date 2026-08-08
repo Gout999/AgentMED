@@ -9,6 +9,10 @@ from __future__ import annotations
 import pytest
 from sqlalchemy import text
 
+from app.models.tables import GateReportRecord
+from app.utils.jcs import canonical_json_digest, workorder_hash
+from tests.conftest import make_gate_report, make_workorder
+
 
 def _create_mcp_tables(engine) -> None:
     """按 mcp-servers/001_init.sql 的 mcp_* 列形状建表（sqlite 子集，可被 JSON 列读回）。"""
@@ -343,30 +347,54 @@ def test_experiment_default_view_unchanged(app_client):
 # ------------------------------------------------------------------ 6. GET /v1/workorders
 
 
-def _new_awaiting_approval_changeset(client, seed: int = 1) -> str:
-    resp = client.post(
-        "/v1/changesets",
+def _new_awaiting_approval_changeset(client, seed: int = 1) -> tuple[str, dict]:
+    workorder_id = f"wo_{seed:012d}"
+    wo = make_workorder(
+        workorder_id=workorder_id,
+        nonce=f"00000000-0000-0000-0000-{seed:012d}",
+        case_id="case_1234567890abcdef",
+    )
+    report = make_gate_report(workorder_id, eval_id=f"eval_readview{seed:012d}")
+    report_hash = canonical_json_digest(report, prefix=False)
+    wo["gate_report_ref"] = {
+        "uri": f"eval://{report['eval_id']}",
+        "digest": f"sha256:{report_hash}",
+    }
+    wo["hash"] = workorder_hash(wo)
+
+    gate = client.post(
+        "/v1/gate-reports",
         json={
-            "case_id": "case_1234567890abcdef",
-            "workorder_ref": f"wo_{seed:012d}",
-            "workorder_hash": "sha256:" + "a" * 64,
-            "channel": "feishu",
-            "author_agent": "repairer-1",
+            "report": report,
+            "report_hash": report_hash,
+            "workorder_id": workorder_id,
+            "target_versionset_id": "vs_demo001fixedversionset01",
+            "target_revision": 1,
+            "dataset_id": "customer-service-regression",
+            "dataset_version": "1.0.0",
+            "evidence_digest": canonical_json_digest(report["artifact_refs"]),
         },
     )
-    assert resp.status_code == 200
-    cs_id = resp.json()["changeset_id"]
-    client.post(f"/v1/changesets/{cs_id}/gate", json={"gate_report_ref": "eval://e1", "gate_status": "passed"})
-    client.post(
+    assert gate.status_code == 200, gate.text
+    registered = client.post("/v1/workorders", json=wo)
+    assert registered.status_code == 200, registered.text
+    cs_id = f"cs_{workorder_id}"
+    attached = client.post(
+        f"/v1/changesets/{cs_id}/gate",
+        json={"eval_id": report["eval_id"], "report_hash": report_hash},
+    )
+    assert attached.status_code == 200, attached.text
+    requested = client.post(
         f"/v1/changesets/{cs_id}/approval-request",
         json={
-            "workorder_hash": "sha256:" + "a" * 64,
-            "nonce": f"nonce-{seed}",
+            "workorder_hash": wo["hash"],
+            "nonce": wo["nonce"],
             "expiry": "2099-01-01T00:00:00+00:00",
             "channel": "feishu",
         },
     )
-    return cs_id
+    assert requested.status_code == 200, requested.text
+    return cs_id, wo
 
 
 def test_workorders_empty(app_client):
@@ -378,7 +406,7 @@ def test_workorders_empty(app_client):
 
 def test_workorders_lists_changesets_with_freeze_metadata(app_client):
     client, _ = app_client
-    cs_id = _new_awaiting_approval_changeset(client)
+    cs_id, expected = _new_awaiting_approval_changeset(client)
 
     r = client.get("/v1/workorders")
     assert r.status_code == 200
@@ -387,11 +415,11 @@ def test_workorders_lists_changesets_with_freeze_metadata(app_client):
     wo = items[0]
     assert wo["changeset_id"] == cs_id
     assert wo["workorder_id"] == "wo_000000000001"
-    assert wo["hash"] == "sha256:" + "a" * 64
+    assert wo["hash"] == expected["hash"]
     assert wo["freeze_at"] == "2099-01-01T00:00:00+00:00"  # approval_requested 的 expiry
     assert wo["requester"] == "repairer-1"  # changeset.drafted 事件 author_agent
-    assert wo["channel"] == "feishu"
-    assert wo["nonce"] == "nonce-1"
+    assert wo["channel"] == "prompt"
+    assert wo["nonce"] == expected["nonce"]
     assert wo["state"] == "AWAITING_APPROVAL"
 
 
@@ -407,13 +435,11 @@ def test_workorders_multi_changeset(app_client):
 # ------------------------------------------------------------------ 7. GET /v1/gates
 
 
-def test_gates_source_unavailable(app_client):
+def test_gates_authoritative_empty_state_without_mcp_tables(app_client):
     client, _ = app_client
     r = client.get("/v1/gates")
     assert r.status_code == 200
-    body = r.json()
-    assert body["items"] == []
-    assert body["warning"] == "source_unavailable"
+    assert r.json() == {"items": []}
 
 
 def test_gates_empty_state(app_client, sqlite_engine):
@@ -427,39 +453,69 @@ def test_gates_empty_state(app_client, sqlite_engine):
 
 
 def test_gates_projects_dual_track_report(app_client, sqlite_engine):
-    _create_mcp_tables(sqlite_engine)
-    report = (
-        '{"report_id": "gate_eval_1",'
-        ' "rule_track": {"status": "passed"},'
-        ' "judge_track": {"status": "passed"},'
-        ' "deterministic_tests": {"status": "passed"},'
-        ' "live_provider_e2e": {"status": "skipped"},'
-        ' "overall_status": "passed"}'
-    )
-    with sqlite_engine.begin() as conn:
-        conn.execute(
-            text(
-                """
-                INSERT INTO mcp_eval_runs (eval_id, workorder_id, suite_digest, status, report, report_hash, created_at)
-                VALUES ('eval_1', 'wo_000000000001', 'suite-1', 'completed',
-                        :report,
-                        'sha256:' || replace('0000000000000000000000000000000000000000000000000000000000000000', '0', 'b'),
-                        datetime('now'))
-                """
-            ),
-            {"report": report},
-        )
+    del sqlite_engine  # authoritative gates no longer read the MCP projection table
     client, _ = app_client
+    report = make_gate_report("wo_000000000001", eval_id="eval_readviewgate1")
+    report_hash = canonical_json_digest(report, prefix=False)
+    registered = client.post(
+        "/v1/gate-reports",
+        json={
+            "report": report,
+            "report_hash": report_hash,
+            "workorder_id": "wo_000000000001",
+            "target_versionset_id": "vs_demo001fixedversionset01",
+            "target_revision": 1,
+            "dataset_id": "customer-service-regression",
+            "dataset_version": "1.0.0",
+            "evidence_digest": canonical_json_digest(report["artifact_refs"]),
+        },
+    )
+    assert registered.status_code == 200, registered.text
     r = client.get("/v1/gates")
     assert r.status_code == 200
     items = r.json()["items"]
     assert len(items) == 1
     g = items[0]
-    assert g["eval_id"] == "eval_1"
-    assert g["report_id"] == "gate_eval_1"
+    assert g["eval_id"] == "eval_readviewgate1"
+    assert g["report_id"] == report["report_id"]
     assert g["rule_track"] == "passed"
     assert g["judge_track"] == "passed"
     assert g["deterministic_tests"] == "passed"
-    assert g["live_provider_e2e"] == "skipped"
+    assert g["live_provider_e2e"] == "passed"
     assert g["verdict"] == "passed"
-    assert g["report_hash"].startswith("sha256:")
+    assert g["report_hash"] == report_hash
+
+
+def test_gates_fail_closed_when_persisted_report_is_tampered(app_client, sqlite_session):
+    client, _ = app_client
+    report = make_gate_report("wo_000000000002", eval_id="eval_readviewtampered1")
+    report_hash = canonical_json_digest(report, prefix=False)
+    registered = client.post(
+        "/v1/gate-reports",
+        json={
+            "report": report,
+            "report_hash": report_hash,
+            "workorder_id": "wo_000000000002",
+            "target_versionset_id": "vs_demo001fixedversionset01",
+            "target_revision": 1,
+            "dataset_id": "customer-service-regression",
+            "dataset_version": "1.0.0",
+            "evidence_digest": canonical_json_digest(report["artifact_refs"]),
+        },
+    )
+    assert registered.status_code == 200, registered.text
+
+    row = sqlite_session.get(GateReportRecord, report["eval_id"])
+    assert row is not None
+    row.report = {**row.report, "overall_status": "failed"}
+    sqlite_session.commit()
+
+    response = client.get("/v1/gates")
+    assert response.status_code == 200
+    item = response.json()["items"][0]
+    assert item["eval_id"] == report["eval_id"]
+    assert item["status"] == "integrity_error"
+    assert item["integrity_error"] == "hash_mismatch"
+    assert item["verdict"] == "error"
+    assert item["rule_track"] == "error"
+    assert "passed" not in item.values()

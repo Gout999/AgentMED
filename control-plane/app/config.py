@@ -23,6 +23,8 @@ class Settings(BaseSettings):
 
     quality_api_base_url: str = Field(default="http://127.0.0.1:8080", alias="QUALITY_API_BASE_URL")
     quality_api_token: str = Field(default="", alias="QUALITY_API_TOKEN")
+    control_plane_internal_token: str = Field(default="", alias="CONTROL_PLANE_TOKEN")
+    approval_authority_token: str = Field(default="", alias="APPROVAL_AUTHORITY_TOKEN")
 
     lease_ttl_seconds: int = Field(default=60, alias="LEASE_TTL_SECONDS")
     complaint_dedup_window_hours: int = Field(default=24, alias="COMPLAINT_DEDUP_WINDOW_HOURS")

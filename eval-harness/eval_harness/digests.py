@@ -33,6 +33,7 @@ def canonical_json_bytes(obj: Any) -> bytes:
         ensure_ascii=False,
         separators=(",", ":"),
         sort_keys=True,
+        allow_nan=False,
     )
     return text.encode("utf-8")
 

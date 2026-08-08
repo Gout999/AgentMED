@@ -52,9 +52,33 @@ def params_digest(params: Any) -> str:
     try:
         data = jcs_subset(params)
     except (ValueError, TypeError):
-        data = json.dumps(params, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        data = json.dumps(
+            params,
+            sort_keys=True,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
     return f"sha256:{sha256_hex(data)}"
 
 
 def content_sha256_hex(text: str) -> str:
     return sha256_hex(text.encode("utf-8"))
+
+
+def canonical_json_digest(value: Any, *, prefix: bool = True) -> str:
+    """Digest arbitrary JSON (including UTF-8 strings/floats) using sorted compact JSON.
+
+    GateReport contains judge scores and non-ASCII rationale text, so the intentionally narrow
+    WorkOrder JCS subset cannot hash it. This matches eval-harness/common report hashing.
+    """
+
+    data = json.dumps(
+        value,
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        allow_nan=False,
+    ).encode("utf-8")
+    digest = sha256_hex(data)
+    return f"sha256:{digest}" if prefix else digest

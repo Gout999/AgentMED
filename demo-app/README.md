@@ -53,8 +53,10 @@ curl -s http://127.0.0.1:8080/v2/versionsets  # 需带 Bearer 令牌
 | `STEPFUN_BASE_URL` | `https://api.stepfun.com/v1` | OpenAI 兼容端点 |
 | `STEPFUN_MODEL` | `step-3.7-flash` | 运动员模型 |
 | `DATABASE_URL` | `postgresql+psycopg://caseloop:caseloop@postgres:5432/demo_app` | demo_app 库 |
-| `CASELOOP_READ_TOKEN` | `conformance-read-token` | quality:read 演示令牌 |
-| `CASELOOP_WRITE_TOKEN` | `conformance-write-token` | quality:write 演示令牌（仅 Release Controller） |
+| `CASELOOP_READ_TOKEN` | 空（必填） | quality:read 令牌；未配置时授权面 fail closed |
+| `CASELOOP_WRITE_TOKEN` | 空（必填） | quality:write 令牌（仅 Release Controller；必须与 read token 不同） |
+| `RELEASE_CONTROLLER_CLIENT_SECRET` | 空（必填） | 仅用于签发 Release Controller 写令牌 |
+| `QUALITY_READER_CLIENT_SECRET` | 空（必填） | 只读 client_credentials 凭证；必须与写凭证不同 |
 | `LLM_RPM_LIMIT` | `8` | 集中限速（D-001：留 2 余量给 AgentTeams worker） |
 | `OPERATION_TTL_HOURS` | `24` | 异步 operation TTL（Q1 裁决） |
 | `OTEL_EXPORTER_OTLP_ENDPOINT` | 空 | OTLP 导出端点；空 → no-op 降级 |
@@ -64,7 +66,8 @@ curl -s http://127.0.0.1:8080/v2/versionsets  # 需带 Bearer 令牌
 - `POST /chat`：客服对话（body `{message}`；返回 `request_id/answer/digests`，每次落 `/logs`）。
 - `POST /feedback`：用户反馈（`{request_id, rating, comment}`；comment 入口 PII 脱敏）。
 - `POST /oauth/token`：client_credentials 签发演示令牌。
-- `/v2/versionsets`：CRUD + `/stage` `/canary` `/promote` `/rollback` + `/status`。
+- `/v2/versionsets`：CRUD + `/stage` `/canary` `/promote` `/rollback` + `/status`；promote
+  必须携带 Release Controller 已审批的 `expected_active_digest`，并在全局 active-set 锁内核对。
 - `/v2/operations/{id}`：异步写操作查询（TTL 24h，过期 410）。
 - `/v2/logs`、`/v2/feedback`：读面（cursor 分页 + 时间窗 + versionset_id/rating 过滤）。
 - `/admin/inject/{B1,B2,B3,B4}`、`/admin/reset`：故障注入（x-internal，生产必须移除）。

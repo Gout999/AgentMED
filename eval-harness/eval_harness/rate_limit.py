@@ -56,6 +56,7 @@ def retry_with_backoff(
     retries: int = DEFAULT_MAX_RETRIES,
     base: float = DEFAULT_BACKOFF_BASE_S,
     retryable_status: set[int] = DEFAULT_RETRYABLE_STATUS,
+    deadline_monotonic: float | None = None,
 ):
     """对返回 requests.Response 的调用做指数退避重试。
 
@@ -63,9 +64,19 @@ def retry_with_backoff(
     耗尽后抛 RateLimitError。非 retryable 状态码直接返回响应。
     """
     for attempt in itertools.count():
+        _remaining(deadline_monotonic)
         resp = fn()
         if resp.status_code not in retryable_status or attempt >= retries:
             return resp
         sleep_s = base * (2 ** attempt) + random.uniform(0, 0.25)
-        time.sleep(sleep_s)
+        time.sleep(min(sleep_s, _remaining(deadline_monotonic)))
     # unreachable
+
+
+def _remaining(deadline_monotonic: float | None) -> float:
+    if deadline_monotonic is None:
+        return 60.0
+    remaining = deadline_monotonic - time.monotonic()
+    if remaining <= 0:
+        raise TimeoutError("HTTP retry deadline exceeded")
+    return remaining

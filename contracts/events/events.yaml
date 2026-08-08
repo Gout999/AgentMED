@@ -277,7 +277,6 @@ aggregates:
             approval_id: { type: string }
             approver: { type: string, description: "human 身份（LLM 永远不是权限权威源）" }
             workorder_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
-            nonce_consumed: { type: boolean, const: true }
       - event_type: changeset.rejected
         aggregate_id: changeset_id
         causation_id: "人工审批动作"
@@ -385,11 +384,13 @@ aggregates:
         aggregate_id: release_id
         causation_id: "changeset.approved"
         payload:
-          required: [changeset_id, workorder_hash, target_versionset_digest, approval_id]
+          required: [changeset_id, workorder_hash, target_versionset_digest, target_revision, gate_report_hash, approval_id]
           properties:
             changeset_id: { type: string }
             workorder_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
             target_versionset_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            target_revision: { type: integer, minimum: 1, description: "GateReport 评测时锁定的 Quality API revision" }
+            gate_report_hash: { type: string, pattern: "^[0-9a-f]{64}$", description: "控制面权威 GateReport 内容 hash" }
             approval_id: { type: string, description: "执行前重算 WorkOrder hash 比对 + 消费 nonce" }
       - event_type: release.staged
         aggregate_id: release_id
@@ -404,19 +405,24 @@ aggregates:
         aggregate_id: release_id
         causation_id: "Quality API canary operation succeeded"
         payload:
-          required: [versionset_id, percent, operation_id]
+          required: [versionset_id, revision, percent, operation_id]
           properties:
             versionset_id: { type: string }
+            revision: { type: integer, minimum: 1 }
             percent: { type: integer, minimum: 1, maximum: 100 }
             operation_id: { type: string }
       - event_type: release.verification_completed
         aggregate_id: release_id
         causation_id: "灰度观察窗结束"
         payload:
-          required: [result, probe_set_digest]
+          required: [result, probe_set_digest, eval_id, report_hash, evidence_digest, target_revision]
           properties:
             result: { enum: [passed, failed] }
             probe_set_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            eval_id: { type: string, pattern: "^eval_[0-9A-Za-z]{8,64}$" }
+            report_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
+            evidence_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            target_revision: { type: integer, minimum: 1 }
       - event_type: release.promoted
         aggregate_id: release_id
         causation_id: "Quality API promote operation succeeded"
@@ -440,9 +446,9 @@ aggregates:
         payload:
           required: [operation_id, resolved_status, action]
           properties:
-            operation_id: { type: string }
+            operation_id: { type: string, description: "status.history 中已证明生效的真实 Quality operation_id；不得使用本地 ControllerOperation id" }
             resolved_status: { type: string, description: "对账后确认的权威状态" }
-            action: { enum: [resume, retry, compensate, escalate] }
+            action: { enum: [resume, apply_canary, confirm_promote, compensate, escalate] }
       - event_type: release.rollback_started
         aggregate_id: release_id
         causation_id: "verification failed / 人工触发"

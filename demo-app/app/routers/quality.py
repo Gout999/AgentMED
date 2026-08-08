@@ -6,6 +6,7 @@ OAuth token：/oauth/token（client_credentials，签发演示令牌）。
 """
 from __future__ import annotations
 
+import secrets
 import time
 from typing import Any, Optional
 
@@ -13,12 +14,15 @@ from datetime import datetime
 
 from fastapi import APIRouter, BackgroundTasks, Depends, Header, HTTPException, Query
 from fastapi.responses import JSONResponse
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth import require_read, require_write
+from app.chat_service import execute_chat
 from app.config import get_settings
 from app.db import SessionLocal, get_db
 from app.ids import new_trace_id
+from app.live_config import VersionSetConfigError, resolve_versionset_config
 from app.models import Operation, VersionSet
 from app.operations import build_operation_dict, execute_operation, is_expired
 from app.read_queries import (
@@ -30,7 +34,9 @@ from app.read_queries import (
 from app.schemas import (
     CanaryRequest,
     LifecycleRequest,
+    PromoteRequest,
     RollbackRequest,
+    ChatRequest,
     TokenRequest,
     VersionSetContentInput,
 )
@@ -44,6 +50,7 @@ from app.versionset_service import (
     get_versionset,
     lifecycle_fingerprint,
     list_versionsets,
+    lock_idempotency_key,
     record_operation_idempotency,
     resolve_idempotent_operation,
     validate_cas,
@@ -86,10 +93,31 @@ def build_versionset_dict(vs: VersionSet) -> dict[str, Any]:
 @oauth_router.post("/oauth/token")
 def oauth_token(payload: TokenRequest | None = None):
     settings = get_settings()
-    cid = payload.client_id if payload else None
-    cid = cid or "release-controller"
-    # 演示环境：固定客户端映射到演示令牌（真实部署由 Higress 凭证托管）
+    if (
+        settings.caseloop_read_token
+        and settings.caseloop_write_token
+        and secrets.compare_digest(settings.caseloop_read_token, settings.caseloop_write_token)
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail=_err_body(
+                "auth_misconfigured",
+                "Quality API read and write credentials must be distinct",
+            ),
+        )
+    if payload is None or payload.grant_type != "client_credentials":
+        raise HTTPException(status_code=401, detail=_err_body("unauthorized", "invalid client credentials"))
+    cid = payload.client_id or ""
+    supplied = payload.client_secret or ""
     if cid == "release-controller":
+        expected = settings.release_controller_client_secret
+        if not expected:
+            raise HTTPException(
+                status_code=503,
+                detail=_err_body("auth_not_configured", "release-controller OAuth secret is not configured"),
+            )
+        if not supplied or not secrets.compare_digest(supplied, expected):
+            raise HTTPException(status_code=401, detail=_err_body("unauthorized", "invalid client credentials"))
         return {
             "access_token": settings.caseloop_write_token,
             "token_type": "bearer",
@@ -97,13 +125,21 @@ def oauth_token(payload: TokenRequest | None = None):
             "expires_in": 3600,
         }
     if cid in ("quality-reader", "reader"):
+        expected = settings.quality_reader_client_secret
+        if not expected:
+            raise HTTPException(
+                status_code=503,
+                detail=_err_body("auth_not_configured", "quality-reader OAuth secret is not configured"),
+            )
+        if not supplied or not secrets.compare_digest(supplied, expected):
+            raise HTTPException(status_code=401, detail=_err_body("unauthorized", "invalid client credentials"))
         return {
             "access_token": settings.caseloop_read_token,
             "token_type": "bearer",
             "scope": "quality:read",
             "expires_in": 3600,
         }
-    raise HTTPException(status_code=401, detail=_err_body("unauthorized", "unknown client_id"))
+    raise HTTPException(status_code=401, detail=_err_body("unauthorized", "invalid client credentials"))
 
 
 # ---------------------------------------------------------------- VersionSet 读
@@ -154,6 +190,23 @@ def get_status_ep(
     )
 
 
+@router.post("/versionsets/{vs_id}/evaluate")
+def evaluate_versionset_ep(
+    vs_id: str,
+    payload: ChatRequest,
+    db: Session = Depends(get_db),
+    _=Depends(require_read),
+):
+    """Execute the exact immutable candidate without changing lifecycle state."""
+
+    try:
+        config = resolve_versionset_config(db, vs_id)
+    except VersionSetConfigError as exc:
+        status = 404 if exc.code == "not_found" else 409
+        raise HTTPException(status_code=status, detail=_err_body(exc.code, exc.message)) from exc
+    return execute_chat(payload, db, config, span_name="gate.candidate.evaluate")
+
+
 # ---------------------------------------------------------------- 创建
 
 @router.post("/versionsets")
@@ -202,9 +255,78 @@ def _handle_lifecycle(
     db: Session,
     background: BackgroundTasks,
 ):
-    vs = get_versionset(db, vs_id)
+    fingerprint = lifecycle_fingerprint(vs_id, action, body)
+    lock_idempotency_key(db, idempotency_key)
+
+    # Idempotent replay is resolved before current-state/CAS validation. A
+    # terminal operation must remain replayable after it changed the revision.
+    try:
+        existing = resolve_idempotent_operation(db, idempotency_key, fingerprint)
+    except IdempotencyConflictError as exc:
+        raise HTTPException(
+            status_code=422,
+            detail=_err_body(
+                "validation_failed", str(exc), {"subcode": "idempotency_key_conflict"}
+            ),
+        )
+    if existing is not None:
+        if is_expired(existing):
+            if existing.status in ("pending", "running"):
+                existing.status = "failed"
+                existing.error = {
+                    "code": "operation_expired",
+                    "message": "pending lifecycle operation expired before execution",
+                }
+                db.commit()
+            raise HTTPException(
+                status_code=410,
+                detail=_err_body(
+                    "operation_expired",
+                    "idempotent lifecycle operation expired before completion",
+                ),
+            )
+        if existing.status in ("pending", "running"):
+            # BackgroundTasks is not durable across a process crash. Exact-key
+            # replay safely re-schedules the same operation; the executor is
+            # idempotent and performs a locked second CAS check.
+            _schedule_operation(existing, background)
+        return JSONResponse(status_code=202, content=build_operation_dict(existing))
+
+    # Serialize acceptance per target. The pending-operation query prevents two
+    # different keys with the same If-Match from both being accepted before the
+    # asynchronous executor advances the revision.
+    vs = db.execute(
+        select(VersionSet)
+        .where(VersionSet.versionset_id == vs_id)
+        .with_for_update()
+    ).scalar_one_or_none()
     if vs is None:
         raise HTTPException(status_code=404, detail=_err_body("not_found", "versionset not found"))
+    pending = db.execute(
+        select(Operation)
+        .where(
+            Operation.versionset_id == vs_id,
+            Operation.status.in_(("pending", "running")),
+        )
+        .with_for_update()
+    ).scalars().first()
+    if pending is not None and is_expired(pending):
+        pending.status = "failed"
+        pending.error = {
+            "code": "operation_expired",
+            "message": "pending lifecycle operation expired before execution",
+        }
+        db.flush()
+        pending = None
+    if pending is not None:
+        raise HTTPException(
+            status_code=409,
+            detail=_err_body(
+                "revision_conflict",
+                "another lifecycle operation is already pending for this VersionSet",
+                {"operation_id": pending.operation_id, "current_revision": vs.revision},
+            ),
+        )
     try:
         validate_cas(vs, if_match, body.get("expected_revision"))
         validate_transition(vs, action)
@@ -225,22 +347,11 @@ def _handle_lifecycle(
             ),
         )
 
-    fingerprint = lifecycle_fingerprint(action, body)
-    try:
-        existing = resolve_idempotent_operation(db, idempotency_key, fingerprint)
-    except IdempotencyConflictError as exc:
-        raise HTTPException(
-            status_code=422,
-            detail=_err_body(
-                "validation_failed", str(exc), {"subcode": "idempotency_key_conflict"}
-            ),
-        )
-    if existing is not None:
-        return JSONResponse(status_code=202, content=build_operation_dict(existing))
-
     request_payload: dict[str, Any] = {}
     if action == "canary" and body.get("percent") is not None:
         request_payload["percent"] = body["percent"]
+    if action == "promote" and body.get("expected_active_digest") is not None:
+        request_payload["expected_active_digest"] = body["expected_active_digest"]
     if action == "rollback" and body.get("rollback_to") is not None:
         request_payload["rollback_to"] = body["rollback_to"]
 
@@ -280,14 +391,14 @@ def canary_ep(
 @router.post("/versionsets/{vs_id}/promote")
 def promote_ep(
     vs_id: str,
-    payload: Optional[LifecycleRequest] = None,
+    payload: PromoteRequest,
     db: Session = Depends(get_db),
     _=Depends(require_write),
     idempotency_key: str = Header(..., alias="Idempotency-Key"),
     if_match: Optional[str] = Header(default=None, alias="If-Match"),
     background: BackgroundTasks = BackgroundTasks(),
 ):
-    return _handle_lifecycle("promote", vs_id, payload.model_dump() if payload else {}, idempotency_key, if_match, db, background)
+    return _handle_lifecycle("promote", vs_id, payload.model_dump(), idempotency_key, if_match, db, background)
 
 
 @router.post("/versionsets/{vs_id}/rollback")

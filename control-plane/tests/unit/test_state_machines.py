@@ -83,10 +83,11 @@ def test_release_rollback_requires_guard():
 
 
 def test_release_unknown_reconcile():
-    for st in ("STAGING", "CANARYING", "PROMOTING", "ROLLING_BACK"):
+    for st in ("REQUESTED", "STAGING", "CANARYING", "VERIFYING", "PROMOTING", "ROLLING_BACK"):
         assert next_state("release", st, "release.unknown_detected") == "UNKNOWN"
     assert next_state("release", "UNKNOWN", "release.reconciled", guard="action=resume") == "REQUESTED"
-    assert next_state("release", "UNKNOWN", "release.reconciled", guard="action=confirm") == "COMPLETED"
+    assert next_state("release", "UNKNOWN", "release.reconciled", guard="action=apply_canary") == "STAGING"
+    assert next_state("release", "UNKNOWN", "release.reconciled", guard="action=confirm_promote") == "VERIFYING"
     assert next_state("release", "UNKNOWN", "release.reconciled", guard="action=compensate") == "ROLLING_BACK"
     assert next_state("release", "UNKNOWN", "release.rollback_failed") == "FAILED_ESCALATED"
 

@@ -7,7 +7,13 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_app_settings, get_db_session, get_quality_client
+from app.api.deps import (
+    get_app_settings,
+    get_db_session,
+    get_quality_client,
+    require_approval_authority,
+    require_internal_write,
+)
 from app.config import Settings
 from app.quality.client import QualityClientProtocol
 from app.services.audit import AuditWriteError
@@ -38,11 +44,24 @@ class StepIn(BaseModel):
     reason: str = "manual"
 
 
+class ApprovedStepIn(StepIn):
+    approval_id: str = Field(..., min_length=1, max_length=128)
+
+
+class VerificationIn(BaseModel):
+    eval_id: str = Field(..., min_length=1, max_length=128)
+    report_hash: str = Field(..., pattern=r"^[0-9a-f]{64}$")
+
+
 def _raise(exc: ReleaseServiceError) -> None:
     status = {
         "not_found": 404,
         "validation_failed": 422,
         "hash_mismatch": 422,
+        "gate_missing": 422,
+        "gate_failed": 422,
+        "target_mismatch": 422,
+        "idempotency_conflict": 409,
         "nonce_replay": 409,
         "approval_expired": 422,
         "illegal_transition": 422,
@@ -66,6 +85,7 @@ def _svc(
 @router.post("/v1/workorders")
 def register_workorder(
     body: dict[str, Any],
+    _actor: str = Depends(require_internal_write),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
     quality: QualityClientProtocol = Depends(get_quality_client),
@@ -82,6 +102,7 @@ def register_workorder(
 @router.post("/v1/approvals")
 def grant_approval(
     body: dict[str, Any],
+    _actor: str = Depends(require_approval_authority),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
     quality: QualityClientProtocol = Depends(get_quality_client),
@@ -98,6 +119,7 @@ def grant_approval(
 @router.post("/v1/releases")
 def start_release(
     body: StartReleaseIn,
+    _actor: str = Depends(require_internal_write),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
     quality: QualityClientProtocol = Depends(get_quality_client),
@@ -150,6 +172,7 @@ def get_release(
 def stage_release(
     release_id: str,
     body: StepIn,
+    _actor: str = Depends(require_internal_write),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
     quality: QualityClientProtocol = Depends(get_quality_client),
@@ -166,14 +189,18 @@ def stage_release(
 @router.post("/v1/releases/{release_id}/canary")
 def canary_release(
     release_id: str,
-    body: StepIn,
+    body: ApprovedStepIn,
+    _actor: str = Depends(require_internal_write),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
     quality: QualityClientProtocol = Depends(get_quality_client),
 ) -> dict[str, Any]:
     try:
         return _svc(session, quality, settings).canary(
-            release_id, percent=body.percent, idempotency_key=body.idempotency_key
+            release_id,
+            percent=body.percent,
+            idempotency_key=body.idempotency_key,
+            approval_id=body.approval_id,
         )
     except AuditWriteError as exc:
         raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
@@ -185,13 +212,40 @@ def canary_release(
 @router.post("/v1/releases/{release_id}/promote")
 def promote_release(
     release_id: str,
-    body: StepIn,
+    body: ApprovedStepIn,
+    _actor: str = Depends(require_internal_write),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
     quality: QualityClientProtocol = Depends(get_quality_client),
 ) -> dict[str, Any]:
     try:
-        return _svc(session, quality, settings).promote(release_id, idempotency_key=body.idempotency_key)
+        return _svc(session, quality, settings).promote(
+            release_id,
+            idempotency_key=body.idempotency_key,
+            approval_id=body.approval_id,
+        )
+    except AuditWriteError as exc:
+        raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
+    except ReleaseServiceError as exc:
+        _raise(exc)
+    return {}
+
+
+@router.post("/v1/releases/{release_id}/verification")
+def record_release_verification(
+    release_id: str,
+    body: VerificationIn,
+    _actor: str = Depends(require_internal_write),
+    session: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_app_settings),
+    quality: QualityClientProtocol = Depends(get_quality_client),
+) -> dict[str, Any]:
+    try:
+        return _svc(session, quality, settings).record_verification(
+            release_id,
+            eval_id=body.eval_id,
+            report_hash=body.report_hash,
+        )
     except AuditWriteError as exc:
         raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
     except ReleaseServiceError as exc:
@@ -202,14 +256,18 @@ def promote_release(
 @router.post("/v1/releases/{release_id}/rollback")
 def rollback_release(
     release_id: str,
-    body: StepIn,
+    body: ApprovedStepIn,
+    _actor: str = Depends(require_internal_write),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
     quality: QualityClientProtocol = Depends(get_quality_client),
 ) -> dict[str, Any]:
     try:
         return _svc(session, quality, settings).rollback(
-            release_id, reason=body.reason, idempotency_key=body.idempotency_key
+            release_id,
+            reason=body.reason,
+            idempotency_key=body.idempotency_key,
+            approval_id=body.approval_id,
         )
     except AuditWriteError as exc:
         raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
@@ -221,6 +279,7 @@ def rollback_release(
 @router.post("/v1/releases/{release_id}/reconcile")
 def reconcile_release(
     release_id: str,
+    _actor: str = Depends(require_internal_write),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
     quality: QualityClientProtocol = Depends(get_quality_client),

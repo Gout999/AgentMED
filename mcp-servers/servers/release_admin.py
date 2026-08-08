@@ -6,6 +6,7 @@
 - WorkOrder hash 绑定全部字段（JCS+SHA-256），FROZEN 后不可变（防掉包）。
 """
 import logging
+import json
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -24,7 +25,7 @@ from common.http import HttpClient  # noqa: E402
 from common.ids import new_approval_id, new_nonce, new_workorder_id  # noqa: E402
 from common.jcs import jcs_subset, sha256_hex, workorder_hash  # noqa: E402
 from common.serverkit import build_server_app  # noqa: E402
-from common.tables import ApprovalRequest, WorkOrderDraft  # noqa: E402
+from common.tables import ApprovalRequest, EvalRun, WorkOrderDraft  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +55,8 @@ def workorder_draft(
     single_factor_declaration: str,
     base_versionset_digest: Optional[str] = None,
     target_versionset_digest: Optional[str] = None,
+    target_versionset_id: Optional[str] = None,
+    target_revision: Optional[int] = None,
     created_by: str = "repairer",
 ) -> dict[str, Any]:
     """起草 WorkOrder（ACL：修复师）。target={app,layer}，layer∈prompt|kb|model；
@@ -70,6 +73,12 @@ def workorder_draft(
         raise validation("diff requires digest (sha256 of payload content)")
     if "content" not in diff and "content_ref" not in diff:
         raise validation("diff requires content or content_ref")
+    if not target_versionset_id or not isinstance(target_revision, int) or target_revision <= 0:
+        raise validation(
+            "workorder draft requires target_versionset_id and positive target_revision for gate binding"
+        )
+    if not target_versionset_digest:
+        raise validation("workorder draft requires the exact target_versionset_digest")
 
     workorder_id = new_workorder_id()
     with session_scope() as session:
@@ -95,6 +104,8 @@ def workorder_draft(
                     "single_factor_declaration": single_factor_declaration,
                     "base_versionset_digest": base_versionset_digest,
                     "target_versionset_digest": target_versionset_digest,
+                    "target_versionset_id": target_versionset_id,
+                    "target_revision": target_revision,
                 },
             )
         )
@@ -116,16 +127,45 @@ def gate_submit(
         draft = session.get(WorkOrderDraft, workorder_id)
         if draft is None:
             raise not_found(f"workorder {workorder_id} not found")
-        # 从共享 eval 库读门禁报告
-        row = session.execute(
-            text("SELECT report FROM mcp_eval_runs WHERE eval_id=:eid AND report_hash=:rh"),
-            {"eid": eval_id, "rh": report_hash},
-        ).mappings().first()
-        if row is None or row["report"] is None:
+        run = session.get(EvalRun, eval_id)
+        if run is None or run.report is None or run.status != "completed":
             raise validation("gate report not found for eval_id+report_hash")
-        status = (row["report"] or {}).get("overall_status")
-        if status != "passed":
-            raise McpError(GATE_FAILED, f"gate report overall_status={status}, must be passed")
+        if run.workorder_id != workorder_id:
+            raise validation("gate report belongs to a different workorder_id")
+        recomputed = _gate_report_hash(run.report)
+        if run.report_hash != report_hash or recomputed != report_hash:
+            raise validation("gate report content hash mismatch")
+        dp = draft.draft_payload or {}
+        if run.target_versionset_id != dp.get("target_versionset_id"):
+            raise validation("gate target_versionset_id does not match WorkOrder draft")
+        if run.target_revision != dp.get("target_revision"):
+            raise validation("gate target_revision does not match WorkOrder draft")
+        if (run.report.get("subject") or {}).get("target_versionset_digest") != dp.get("target_versionset_digest"):
+            raise validation("gate target digest does not match WorkOrder draft")
+        statuses = [
+            (run.report.get("rule_track") or {}).get("status"),
+            (run.report.get("judge_track") or {}).get("status"),
+            (run.report.get("deterministic_tests") or {}).get("status"),
+            (run.report.get("live_provider_e2e") or {}).get("status"),
+        ]
+        status = run.report.get("overall_status")
+        if status != "passed" or any(item != "passed" for item in statuses):
+            raise McpError(GATE_FAILED, f"gate report status={status} tracks={statuses}; all must be passed")
+
+        try:
+            authoritative = _cp().get(f"/v1/gate-reports/{eval_id}")
+        except McpError as exc:
+            raise exc
+        except Exception as exc:  # noqa: BLE001
+            raise dependency_unavailable(f"gate controller unreachable: {exc}") from exc
+        if (
+            authoritative.get("report_hash") != report_hash
+            or authoritative.get("workorder_id") != workorder_id
+            or authoritative.get("candidate_digest") != run.candidate_digest
+            or authoritative.get("evidence_digest") != run.evidence_digest
+            or authoritative.get("overall_status") != "passed"
+        ):
+            raise validation("authoritative GateReport binding mismatch")
         draft.gate_report_ref = f"eval://{eval_id}"
         draft.gate_report_digest = f"sha256:{report_hash}"
         AuditService(session).record(
@@ -253,8 +293,8 @@ def approval_request(
                 _cp().post(
                     f"/v1/changesets/{cs_id}/gate",
                     json_body={
-                        "gate_report_ref": draft.gate_report_ref,
-                        "gate_status": "passed",
+                        "eval_id": draft.gate_report_ref.removeprefix("eval://"),
+                        "report_hash": draft.gate_report_digest.removeprefix("sha256:"),
                     },
                 )
             except McpError as exc:
@@ -457,6 +497,15 @@ def _derive_target_digest(dp: dict[str, Any]) -> str:
     diff_digest = (dp.get("diff") or {}).get("digest", "sha256:" + "0" * 64)
     combined = f"{input_digest}|{diff_digest}".encode("utf-8")
     return f"sha256:{sha256_hex(combined)}"
+
+
+def _gate_report_hash(report: dict[str, Any]) -> str:
+    body = {key: value for key, value in report.items() if key != "report_hash"}
+    try:
+        data = jcs_subset(body)
+    except (ValueError, TypeError):
+        data = json.dumps(body, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    return sha256_hex(data)
 
 
 def main() -> None:

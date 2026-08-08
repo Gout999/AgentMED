@@ -24,8 +24,9 @@ from sqlalchemy import (
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
 
-from app.models.tables import Aggregate, Event
+from app.models.tables import Aggregate, Event, GateReportRecord
 from app.services.event_store import EventStore
+from app.services.gate_service import GateService, GateServiceError
 
 logger = logging.getLogger(__name__)
 
@@ -394,27 +395,69 @@ def list_workorders(session: Session, *, limit: int = 500) -> dict[str, Any]:
 
 
 def list_gates(session: Session, *, limit: int = 500) -> dict[str, Any]:
-    """门禁报告列表：mcp_eval_runs（gate.report 双轨 + 确定性测试 + live E2E + 总结论）。"""
-    rows, warning = _mcp_rows(session, MCP_EVAL_RUNS, order_by=MCP_EVAL_RUNS.c.created_at.desc(), limit=limit)
+    """门禁报告列表：控制面权威 gate_reports，不再信任 MCP 自报状态。"""
+    rows = session.scalars(
+        select(GateReportRecord).order_by(GateReportRecord.created_at.desc()).limit(limit)
+    ).all()
+    gates = GateService(session)
     items = []
     for r in rows:
-        report = r.get("report") or {}
+        try:
+            view = gates.get(r.eval_id)
+        except GateServiceError as exc:
+            # A read projection must not turn corrupted authoritative state into a
+            # plausible PASS.  Preserve only stable row identity for diagnosis and
+            # make the uncertainty explicit to Console consumers.
+            logger.error(
+                "GateReport integrity validation failed during projection",
+                extra={"eval_id": r.eval_id, "error_code": exc.code},
+            )
+            items.append(
+                {
+                    "eval_id": r.eval_id,
+                    "workorder_id": r.workorder_id,
+                    "workorder_hash": r.workorder_hash,
+                    "report_id": r.report_id,
+                    "rule_track": "error",
+                    "judge_track": "error",
+                    "deterministic_tests": "error",
+                    "live_provider_e2e": "error",
+                    "verdict": "error",
+                    "report_hash": r.report_hash,
+                    "binding_digest": r.binding_digest,
+                    "target_versionset_id": r.target_versionset_id,
+                    "target_revision": r.target_revision,
+                    "dataset_id": r.dataset_id,
+                    "dataset_version": r.dataset_version,
+                    "evidence_digest": r.evidence_digest,
+                    "status": "integrity_error",
+                    "integrity_error": exc.code,
+                    "created_at": _iso(r.created_at),
+                }
+            )
+            continue
+
+        report = view["report"]
         items.append(
             {
-                "eval_id": r.get("eval_id"),
-                "workorder_id": r.get("workorder_id"),
-                "report_id": report.get("report_id"),
+                "eval_id": view["eval_id"],
+                "workorder_id": view["workorder_id"],
+                "workorder_hash": view["workorder_hash"],
+                "report_id": view["report_id"],
                 "rule_track": (report.get("rule_track") or {}).get("status"),
                 "judge_track": (report.get("judge_track") or {}).get("status"),
                 "deterministic_tests": (report.get("deterministic_tests") or {}).get("status"),
                 "live_provider_e2e": (report.get("live_provider_e2e") or {}).get("status"),
-                "verdict": report.get("overall_status"),
-                "report_hash": r.get("report_hash"),
-                "status": r.get("status"),
-                "created_at": _iso(r.get("created_at")),
+                "verdict": view["overall_status"],
+                "report_hash": view["report_hash"],
+                "binding_digest": view["binding_digest"],
+                "target_versionset_id": view["target_versionset_id"],
+                "target_revision": view["target_revision"],
+                "dataset_id": view["dataset_id"],
+                "dataset_version": view["dataset_version"],
+                "evidence_digest": view["evidence_digest"],
+                "status": "completed",
+                "created_at": _iso(r.created_at),
             }
         )
-    result: dict[str, Any] = {"items": items}
-    if warning:
-        result["warning"] = warning
-    return result
+    return {"items": items}

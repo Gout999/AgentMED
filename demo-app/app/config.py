@@ -23,8 +23,10 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://caseloop:caseloop@127.0.0.1:5432/demo_app"
 
     # Quality API 演示令牌（conformance 缺省值）
-    caseloop_read_token: str = "conformance-read-token"
-    caseloop_write_token: str = "conformance-write-token"
+    caseloop_read_token: str = ""
+    caseloop_write_token: str = ""
+    release_controller_client_secret: str = ""
+    quality_reader_client_secret: str = ""
 
     # 集中限速器（D-001：默认 8 RPM，留 2 余量给 AgentTeams worker）
     llm_rpm_limit: int = 8

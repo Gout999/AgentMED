@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app import __version__
-from app.api import cases, changesets, experiments, notifications, read_views, releases
+from app.api import cases, changesets, experiments, gates, notifications, read_views, releases
 from app.config import Settings, get_settings
 from app.db import get_engine, get_session_factory
 from app.models.tables import Base
@@ -60,6 +60,7 @@ def create_app(
 
     app.include_router(cases.router)
     app.include_router(experiments.router)
+    app.include_router(gates.router)
     app.include_router(changesets.router)
     app.include_router(releases.router)
     app.include_router(notifications.router)

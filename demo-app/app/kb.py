@@ -46,15 +46,26 @@ def seed_kb_entries(db: Session) -> int:
         entry_id = raw["entry_id"]
         kb_id = raw["kb_id"]
         content = raw["content"].strip()
-        digest = jcs.kb_entry_digest(kb_id, entry_id, raw.get("version", "1.0.0"), content)
+        title = raw.get("title", entry_id)
+        category = raw.get("category", "product")
+        keywords = raw.get("keywords", [])
+        digest = jcs.kb_entry_digest(
+            kb_id,
+            entry_id,
+            raw.get("version", "1.0.0"),
+            content,
+            title=title,
+            category=category,
+            keywords=keywords,
+        )
         db.add(
             KBEntry(
                 entry_id=entry_id,
                 kb_id=kb_id,
-                category=raw.get("category", "product"),
-                title=raw.get("title", entry_id),
+                category=category,
+                title=title,
                 content=content,
-                keywords=raw.get("keywords", []),
+                keywords=keywords,
                 slug=raw.get("slug"),
                 version=raw.get("version", "1.0.0"),
                 digest=digest,
@@ -81,7 +92,15 @@ def update_entry_content(db: Session, kb_id: str, entry_id: str, content: str) -
     if e is None:
         raise KeyError(f"KB entry not found: {kb_id}/{entry_id}")
     e.content = content.strip()
-    e.digest = jcs.kb_entry_digest(e.kb_id, e.entry_id, e.version, e.content)
+    e.digest = jcs.kb_entry_digest(
+        e.kb_id,
+        e.entry_id,
+        e.version,
+        e.content,
+        title=e.title,
+        category=e.category,
+        keywords=e.keywords,
+    )
     db.commit()
     db.refresh(e)
     return e
@@ -101,7 +120,15 @@ def upsert_entry(
     """B4 注入新增/覆盖条目。"""
     e = find_entry(db, kb_id, entry_id)
     content = content.strip()
-    digest = jcs.kb_entry_digest(kb_id, entry_id, version, content)
+    digest = jcs.kb_entry_digest(
+        kb_id,
+        entry_id,
+        version,
+        content,
+        title=title,
+        category=category,
+        keywords=keywords,
+    )
     if e is None:
         e = KBEntry(
             entry_id=entry_id,
@@ -117,6 +144,7 @@ def upsert_entry(
     else:
         e.title = title
         e.content = content
+        e.category = category
         e.keywords = keywords or []
         e.version = version
         e.digest = digest

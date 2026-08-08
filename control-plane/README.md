@@ -161,6 +161,8 @@ docker compose -f deploy/compose.yaml restart control-plane
 | `DATABASE_URL` | `postgresql+psycopg://caseloop:caseloop@127.0.0.1:5432/control_plane` | PG 连接串 |
 | `QUALITY_API_BASE_URL` | `http://127.0.0.1:8080` | 被治理应用 Quality API |
 | `QUALITY_API_TOKEN` | 空 | 写面 Bearer token（不入库） |
+| `CONTROL_PLANE_TOKEN` | 空 | Gate/WorkOrder/ChangeSet/Release 内部写接口；未配置时 fail closed |
+| `APPROVAL_AUTHORITY_TOKEN` | 空 | 独立审批权威凭证；必须与控制面 token 不同，未配置时 fail closed |
 | `LEASE_TTL_SECONDS` | `60` | Worker 租约时长（D-001 #11） |
 | `COMPLAINT_DEDUP_WINDOW_HOURS` | `24` | 投诉去重窗（D-001 #1） |
 | `APPROVAL_TTL_MINUTES` | `30` | ApprovalGrant TTL（D-001 #10） |
@@ -184,8 +186,13 @@ docker compose -f deploy/compose.yaml restart control-plane
 - **inbox 去重**：`sha256(source|external_id)`；无 external_id 时按 D-001 Q4
   （先 PII 脱敏 → 归一化 → 哈希）。去重窗内重复 → 返回已有 case；窗外 → 换键重立案。
 - **UNKNOWN→reconcile**：Quality API 写操作结果不可考（超时/410/分区）→ Release 进 UNKNOWN；
-  以 `GET /status` 权威对账，按实际生效情况 resume / confirm / compensate，指数退避重试。
+  以原请求及原 Idempotency-Key 精确重放，并要求 `GET /status` history 以真实 Quality
+  operation id 证明生效；pending、无 history 或无法归因时保持 UNKNOWN。
 - **审计失败即拒业务**：audit 写入与业务同事务；写失败 → 事务回滚 → 503。
+- **R2 逐次授权**：canary/promote/rollback 各需一个绑定 release、action、target revision、
+  参数 digest 的独立 ApprovalGrant；grant nonce 只消费一次，reconcile 复用原 operation 绑定，
+  不会重新授权或扩大动作。promote 额外绑定获批 active 基线 digest，Quality API 在全局锁内
+  核对，防止并发候选串行掉包。
 - **JCS 限制**：WorkOrder hash 用 JCS 的 ASCII 可打印子集（与 contracts/conformance 一致）；
   含换行/非 ASCII 的 diff 请用 `content_ref` 而非内联 `content`。
 

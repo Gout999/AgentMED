@@ -8,19 +8,31 @@
 5. 审计写失败 → 写操作返回 503
 """
 from datetime import datetime, timedelta, timezone
+import hashlib
+import threading
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.pool import NullPool
+from sqlalchemy import func, select
+from sqlalchemy.orm import sessionmaker
 
 from app.config import Settings
 from app.main import create_app
-from app.models.tables import Base, Lease
+from app.models.tables import Aggregate, Approval, Base, Lease
 from app.quality.client import FakeQualityClient
 from app.services.case_service import CaseService
-from app.services.release_service import ReleaseService
+from app.services.release_service import ReleaseService, ReleaseServiceError
+from app.utils.jcs import canonical_json_digest
 
-from tests.conftest import TEST_DATABASE_URL, make_approval, make_workorder
+from tests.conftest import (
+    TEST_DATABASE_URL,
+    make_action_approval,
+    make_approval,
+    make_workorder,
+    register_gate_for_workorder,
+    register_release_verification,
+)
 
 pytestmark = pytest.mark.integration
 
@@ -96,8 +108,11 @@ def test_scenario_2_lease_fencing_rejects_stale_token(pg_session, pg_settings):
 # ------------------------------------------------------------------ 场景 3：灰度全链路
 
 
-def _new_release(svc: ReleaseService, session, case_id: str, seed: int, quality: FakeQualityClient) -> str:
+def _new_release(
+    svc: ReleaseService, session, case_id: str, seed: int, quality: FakeQualityClient
+) -> tuple[str, dict]:
     wo = make_workorder(workorder_id=f"wo_{seed:012d}", nonce=f"00000000-0000-0000-0000-{seed:012d}", case_id=case_id)
+    register_gate_for_workorder(svc, wo)
     svc.register_workorder(wo)
     session.commit()
     ap = make_approval(wo, f"ap_{seed}")
@@ -107,12 +122,43 @@ def _new_release(svc: ReleaseService, session, case_id: str, seed: int, quality:
         workorder_id=wo["workorder_id"], approval_id=ap["approval_id"], versionset_id="vs_demo001fixedversionset01"
     )
     session.commit()
-    return rel["release_id"]
+    return rel["release_id"], wo
+
+
+def _action_approval(session, svc, wo, release_id, action, key, *, reason="manual"):
+    suffix = hashlib.sha256(f"{release_id}:{action}:{key}".encode()).hexdigest()[:16]
+    approval_id = f"ap_itg_{suffix}"
+    if session.get(Approval, approval_id) is not None:
+        return approval_id
+    aggregate = svc.store.get_aggregate("release", release_id)
+    assert aggregate is not None
+    context = svc._expected_action_context(
+        aggregate,
+        action,
+        params={"reason": reason} if action == "rollback" else None,
+    )
+    svc.grant_approval(
+        make_action_approval(
+            wo,
+            approval_id=approval_id,
+            release_id=release_id,
+            action=action,
+            target_revision=context["target_revision"],
+            params=context["params"],
+        )
+    )
+    session.commit()
+    return approval_id
 
 
 def test_scenario_3_gray_release_promote_and_rollback(pg_session, pg_settings):
     quality = FakeQualityClient()
-    quality.seed_versionset("vs_demo001fixedversionset01", status="draft", revision=1)
+    quality.seed_versionset(
+        "vs_baseline0000000000000001", status="active", revision=1, digest="sha256:" + "a" * 64
+    )
+    quality.seed_versionset(
+        "vs_demo001fixedversionset01", status="draft", revision=1, digest="sha256:" + "b" * 64
+    )
     svc = ReleaseService(pg_session, quality, pg_settings)
 
     case_svc = CaseService(pg_session, pg_settings)
@@ -120,26 +166,81 @@ def test_scenario_3_gray_release_promote_and_rollback(pg_session, pg_settings):
     pg_session.commit()
 
     # ---- promote 全链路：draft → stage → canary → promote
-    rid1 = _new_release(svc, pg_session, case_id, 11, quality)
+    rid1, wo1 = _new_release(svc, pg_session, case_id, 11, quality)
     st = svc.stage(rid1, idempotency_key="itg-stage-1")
     pg_session.commit()
     assert st["state"] == "STAGING"
-    ca = svc.canary(rid1, idempotency_key="itg-canary-1")
+    ca = svc.canary(
+        rid1,
+        idempotency_key="itg-canary-1",
+        approval_id=_action_approval(
+            pg_session, svc, wo1, rid1, "canary", "itg-canary-1"
+        ),
+    )
     pg_session.commit()
     assert ca["state"] == "CANARYING"
-    pr = svc.promote(rid1, idempotency_key="itg-promote-1")
+    verification1 = register_release_verification(
+        svc,
+        wo1,
+        quality.get_versionset("vs_demo001fixedversionset01"),
+        overall_status="passed",
+        eval_id="eval_itgcanarypass11",
+    )
+    svc.record_verification(
+        rid1,
+        eval_id=verification1["eval_id"],
+        report_hash=canonical_json_digest(verification1, prefix=False),
+    )
+    pg_session.commit()
+    pr = svc.promote(
+        rid1,
+        idempotency_key="itg-promote-1",
+        approval_id=_action_approval(
+            pg_session, svc, wo1, rid1, "promote", "itg-promote-1"
+        ),
+    )
     pg_session.commit()
     assert pr["state"] == "COMPLETED"
     assert quality.get_versionset("vs_demo001fixedversionset01")["status"] == "active"
 
     # ---- rollback 全链路：draft → stage → canary → rollback
-    quality.seed_versionset("vs_demo001fixedversionset01", status="draft", revision=1)  # 重置远端
-    rid2 = _new_release(svc, pg_session, case_id, 12, quality)
+    quality.seed_versionset(
+        "vs_demo001fixedversionset01", status="draft", revision=1, digest="sha256:" + "b" * 64
+    )  # 重置远端
+    quality.seed_versionset(
+        "vs_baseline0000000000000001", status="active", revision=1, digest="sha256:" + "a" * 64
+    )
+    rid2, wo2 = _new_release(svc, pg_session, case_id, 12, quality)
     svc.stage(rid2, idempotency_key="itg-rb-stage-1")
     pg_session.commit()
-    svc.canary(rid2, idempotency_key="itg-rb-canary-1")
+    svc.canary(
+        rid2,
+        idempotency_key="itg-rb-canary-1",
+        approval_id=_action_approval(
+            pg_session, svc, wo2, rid2, "canary", "itg-rb-canary-1"
+        ),
+    )
     pg_session.commit()
-    rb = svc.rollback(rid2, idempotency_key="itg-rb-rollback-1")
+    verification2 = register_release_verification(
+        svc,
+        wo2,
+        quality.get_versionset("vs_demo001fixedversionset01"),
+        overall_status="failed",
+        eval_id="eval_itgcanaryfail12",
+    )
+    svc.record_verification(
+        rid2,
+        eval_id=verification2["eval_id"],
+        report_hash=canonical_json_digest(verification2, prefix=False),
+    )
+    pg_session.commit()
+    rb = svc.rollback(
+        rid2,
+        idempotency_key="itg-rb-rollback-1",
+        approval_id=_action_approval(
+            pg_session, svc, wo2, rid2, "rollback", "itg-rb-rollback-1"
+        ),
+    )
     pg_session.commit()
     assert rb["state"] == "ROLLED_BACK"
     assert quality.get_versionset("vs_demo001fixedversionset01")["status"] == "rolled_back"
@@ -150,7 +251,9 @@ def test_scenario_3_gray_release_promote_and_rollback(pg_session, pg_settings):
 
 def test_scenario_4_nonce_replay_rejected(pg_session, pg_settings):
     quality = FakeQualityClient()
-    quality.seed_versionset("vs_demo001fixedversionset01", status="draft", revision=1)
+    quality.seed_versionset(
+        "vs_demo001fixedversionset01", status="draft", revision=1, digest="sha256:" + "b" * 64
+    )
     svc = ReleaseService(pg_session, quality, pg_settings)
 
     case_svc = CaseService(pg_session, pg_settings)
@@ -158,6 +261,7 @@ def test_scenario_4_nonce_replay_rejected(pg_session, pg_settings):
     pg_session.commit()
 
     wo = make_workorder(workorder_id="wo_000000000021", nonce="00000000-0000-0000-0000-000000000021", case_id=case_id)
+    register_gate_for_workorder(svc, wo)
     svc.register_workorder(wo)
     pg_session.commit()
     ap = make_approval(wo, "ap_000000000021")
@@ -168,12 +272,71 @@ def test_scenario_4_nonce_replay_rejected(pg_session, pg_settings):
     pg_session.commit()
 
     # nonce 已消费 → 重放拒绝
-    from app.services.release_service import ReleaseServiceError
-
     with pytest.raises(ReleaseServiceError) as exc:
         svc.start_release(workorder_id=wo["workorder_id"], approval_id=ap["approval_id"], versionset_id="vs_demo001fixedversionset01")
     assert exc.value.code == "nonce_replay"
     pg_session.rollback()
+
+
+def test_scenario_4_concurrent_nonce_consumption_creates_one_release(
+    pg_engine, pg_session, pg_settings
+):
+    """PostgreSQL row lock makes nonce consumption atomic across requests."""
+
+    quality = FakeQualityClient()
+    quality.seed_versionset(
+        "vs_demo001fixedversionset01",
+        status="draft",
+        revision=1,
+        digest="sha256:" + "b" * 64,
+    )
+    setup = ReleaseService(pg_session, quality, pg_settings)
+    wo = make_workorder(
+        workorder_id="wo_000000000022",
+        nonce="00000000-0000-0000-0000-000000000022",
+        case_id="case_concurrent_nonce",
+    )
+    register_gate_for_workorder(setup, wo)
+    setup.register_workorder(wo)
+    setup.grant_approval(make_approval(wo, "ap_000000000022"))
+    pg_session.commit()
+
+    factory = sessionmaker(bind=pg_engine, autoflush=False, autocommit=False)
+    barrier = threading.Barrier(2)
+    outcomes: list[str] = []
+    outcome_lock = threading.Lock()
+
+    def worker() -> None:
+        session = factory()
+        try:
+            barrier.wait(timeout=5)
+            service = ReleaseService(session, quality, pg_settings)
+            service.start_release(
+                workorder_id=wo["workorder_id"],
+                approval_id="ap_000000000022",
+                versionset_id="vs_demo001fixedversionset01",
+            )
+            session.commit()
+            outcome = "success"
+        except ReleaseServiceError as exc:
+            session.rollback()
+            outcome = exc.code
+        finally:
+            session.close()
+        with outcome_lock:
+            outcomes.append(outcome)
+
+    threads = [threading.Thread(target=worker), threading.Thread(target=worker)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(timeout=10)
+
+    assert sorted(outcomes) == ["nonce_replay", "success"]
+    count = pg_session.scalar(
+        select(func.count()).select_from(Aggregate).where(Aggregate.aggregate_type == "release")
+    )
+    assert count == 1
 
 
 # ------------------------------------------------------------------ 补充：UNKNOWN→reconcile 退避
@@ -182,7 +345,9 @@ def test_scenario_4_nonce_replay_rejected(pg_session, pg_settings):
 def test_scenario_6_unknown_reconcile(pg_session, pg_settings):
     """写操作结果不可考 → UNKNOWN；reconcile 以 GET /status 对账收敛（含指数退避循环）。"""
     quality = FakeQualityClient()
-    quality.seed_versionset("vs_demo001fixedversionset01", status="draft", revision=1)
+    quality.seed_versionset(
+        "vs_demo001fixedversionset01", status="draft", revision=1, digest="sha256:" + "b" * 64
+    )
     svc = ReleaseService(pg_session, quality, pg_settings)
 
     case_svc = CaseService(pg_session, pg_settings)
@@ -190,6 +355,7 @@ def test_scenario_6_unknown_reconcile(pg_session, pg_settings):
     pg_session.commit()
 
     wo = make_workorder(workorder_id="wo_000000000031", nonce="00000000-0000-0000-0000-000000000031", case_id=case_id)
+    register_gate_for_workorder(svc, wo)
     svc.register_workorder(wo)
     pg_session.commit()
     ap = make_approval(wo, "ap_000000000031")
@@ -204,7 +370,13 @@ def test_scenario_6_unknown_reconcile(pg_session, pg_settings):
     pg_session.commit()
     # canary 进入 pending → 轮询超时 → UNKNOWN（远端实际已生效）
     quality.unknown_ops = True
-    unk = svc.canary(rid, idempotency_key="itg-unk-canary-1")
+    unk = svc.canary(
+        rid,
+        idempotency_key="itg-unk-canary-1",
+        approval_id=_action_approval(
+            pg_session, svc, wo, rid, "canary", "itg-unk-canary-1"
+        ),
+    )
     pg_session.commit()
     assert unk["state"] == "UNKNOWN"
     assert unk["status"] == "unknown"

@@ -62,6 +62,16 @@ def _wait_op(read_session, op_id, timeout=20):
 
 def _run_lifecycle(write_session, read_session, vs_id, action, etag=None, expected_revision=None, body_extra=None):
     body = dict(body_extra or {})
+    if action == "promote" and "expected_active_digest" not in body:
+        active_response = read_session.get(
+            f"{BASE_URL}/v2/versionsets",
+            params={"status": "active", "limit": 50},
+            timeout=TIMEOUT,
+        )
+        assert active_response.status_code == 200, active_response.text[:300]
+        active = active_response.json().get("items") or []
+        assert len(active) == 1, f"promote 前必须有唯一 active 基线: {active}"
+        body["expected_active_digest"] = active[0]["digest"]
     if expected_revision is not None:
         body["expected_revision"] = expected_revision
     headers = {"Idempotency-Key": _key()}

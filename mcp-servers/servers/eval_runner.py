@@ -6,9 +6,10 @@
 - 裁判模型 ≠ 运动员模型（T6 硬约束，digest 不同）。
 """
 import logging
+import json
 import sys
 import threading
-from datetime import datetime, timezone
+import time
 from pathlib import Path
 from typing import Any
 
@@ -31,18 +32,20 @@ from common.tables import EvalRun, WorkOrderDraft  # noqa: E402
 # 复用完整 5-cell 执行→聚合→裁决→报告链路，禁止重造。
 from eval_harness.client import QualityAPIClient  # noqa: E402
 from eval_harness.config import Settings as EvalHarnessSettings  # noqa: E402
+from eval_harness.digests import sha256_digest  # noqa: E402
 from eval_harness.experiment import DemoAppB1Driver, ExperimentRunner  # noqa: E402
+from eval_harness.gate import GateCandidate, GateRunner, LLMJudge, build_error_gate_report  # noqa: E402
+from eval_harness.gate_executor import (  # noqa: E402
+    CommandSuiteRunner,
+    frozen_gate_suite_digest,
+    write_json_artifact,
+)
 from eval_harness.models import ExperimentPlan  # noqa: E402
-from eval_harness.probe_loader import load_probe_set  # noqa: E402
+from eval_harness.probe_loader import frozen_digest, load_probe_set  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
 mcp = FastMCP("mcp-eval-runner")
-
-# 裁判模型 digest ≠ 运动员模型 digest（T6）
-_JUDGE_DIGEST = "sha256:" + "9" * 64
-_ATHLETE_DIGEST = "sha256:" + "8" * 64
-
 
 def _settings() -> Settings:
     return get_settings()
@@ -57,18 +60,57 @@ def _cp() -> HttpClient:
 
 
 @mcp.tool(name="gate.run")
-def gate_run(workorder_id: str, suite_digest: str) -> dict[str, Any]:
-    """触发门禁评测（ACL：守门员）。返回 {eval_id, status:queued} 异步任务句柄；
-    完成后经 gate.report 取双轨报告。"""
+def gate_run(workorder_id: str, suite_digest: str = "") -> dict[str, Any]:
+    """Run the real allowlisted gate suites and persist the fail-closed result.
+
+    This synchronous implementation returns `completed`; it never claims queued while already
+    completed. Provider/test timeouts are persisted as an ERROR GateReport.
+    """
     eval_id = new_eval_id()
     with session_scope() as session:
-        report = _build_gate_report(eval_id, workorder_id, suite_digest, session)
-        report_hash = _report_hash(report)
+        draft = session.get(WorkOrderDraft, workorder_id)
+        if draft is None:
+            raise not_found(f"workorder {workorder_id} not found")
+        if draft.status != "DRAFT":
+            raise validation(f"workorder state {draft.status} cannot enter gate")
+        context = dict(draft.draft_payload or {})
+
+    authoritative_suite_digest = frozen_gate_suite_digest(EvalHarnessSettings().repo_root)
+    if suite_digest and suite_digest != authoritative_suite_digest:
+        raise validation(
+            "suite_digest does not match the repository-owned gate suite; omit it to use the authoritative digest"
+        )
+    suite_digest = authoritative_suite_digest
+    _validate_gate_context(workorder_id, suite_digest, context)
+    report, metadata = _execute_gate(eval_id, workorder_id, suite_digest, context)
+    report_hash = _report_hash(report)
+    evidence_digest = sha256_digest(report.get("artifact_refs") or [])
+    candidate_fields = {
+        "workorder_id": workorder_id,
+        "target_versionset_id": context["target_versionset_id"],
+        "target_versionset_digest": context["target_versionset_digest"],
+        "target_revision": context["target_revision"],
+        "dataset_id": metadata["dataset_id"],
+        "dataset_version": metadata["dataset_version"],
+        "dataset_digest": metadata["dataset_digest"],
+        "regression_suite_digest": suite_digest,
+        "evidence_digest": evidence_digest,
+    }
+    candidate_digest = sha256_digest(candidate_fields)
+
+    with session_scope() as session:
         session.add(
             EvalRun(
                 eval_id=eval_id,
                 workorder_id=workorder_id,
                 suite_digest=suite_digest,
+                target_versionset_id=context["target_versionset_id"],
+                target_revision=context["target_revision"],
+                dataset_id=metadata["dataset_id"],
+                dataset_version=metadata["dataset_version"],
+                dataset_digest=metadata["dataset_digest"],
+                evidence_digest=evidence_digest,
+                candidate_digest=candidate_digest,
                 status="completed",
                 report=report,
                 report_hash=report_hash,
@@ -80,8 +122,45 @@ def gate_run(workorder_id: str, suite_digest: str) -> dict[str, Any]:
             target=eval_id,
             params={"workorder_id": workorder_id, "suite_digest": suite_digest},
             result="success",
+            evidence_refs={"evidence_digest": evidence_digest},
         )
-    return {"eval_id": eval_id, "status": "queued", "report_hash": report_hash}
+
+    # The deterministic control plane is the authoritative Eval/Gate state source.
+    try:
+        registered = _cp().post(
+            "/v1/gate-reports",
+            json_body={
+                "report": report,
+                "report_hash": report_hash,
+                "workorder_id": workorder_id,
+                "target_versionset_id": context["target_versionset_id"],
+                "target_revision": context["target_revision"],
+                "dataset_id": metadata["dataset_id"],
+                "dataset_version": metadata["dataset_version"],
+                "evidence_digest": evidence_digest,
+                "candidate_digest": candidate_digest,
+            },
+        )
+    except McpError as exc:
+        with session_scope() as session:
+            run = session.get(EvalRun, eval_id)
+            if run is not None:
+                run.status = "registration_failed"
+        raise exc
+    except Exception as exc:  # noqa: BLE001
+        with session_scope() as session:
+            run = session.get(EvalRun, eval_id)
+            if run is not None:
+                run.status = "registration_failed"
+        raise dependency_unavailable(f"gate controller registration failed: {exc}") from exc
+
+    return {
+        "eval_id": eval_id,
+        "status": "completed",
+        "verdict": report["overall_status"],
+        "report_hash": report_hash,
+        "candidate_digest": registered.get("candidate_digest", candidate_digest),
+    }
 
 
 @mcp.tool(name="gate.report")
@@ -94,6 +173,9 @@ def gate_report(eval_id: str) -> dict[str, Any]:
         if run.status != "completed" or run.report is None:
             return {"eval_id": eval_id, "status": run.status, "report": None}
         report = run.report
+        recomputed = _report_hash(report)
+        if recomputed != run.report_hash:
+            raise validation(f"persisted gate report hash mismatch for {eval_id}")
         return {
             "eval_id": eval_id,
             "status": run.status,
@@ -387,86 +469,223 @@ def _cell_recovery_rate(cell: Any, plan: ExperimentPlan) -> float:
     return round(sum(1 for r in runs if r.recovered) / len(runs), 4)
 
 
-# ---------- 内部：确定性门禁报告生成 ----------
+# ---------- 内部：真实门禁执行 ----------
 
 
-def _build_gate_report(eval_id: str, workorder_id: str, suite_digest: str, session: Any) -> dict[str, Any]:
-    """构造符合 gate-report.schema.json 的双轨报告（确定性）。
+def _validate_gate_context(workorder_id: str, suite_digest: str, context: dict[str, Any]) -> None:
+    if not isinstance(suite_digest, str) or not suite_digest.startswith("sha256:") or len(suite_digest) != 71:
+        raise validation("suite_digest must be sha256:<64 hex>")
+    required = ("target_versionset_id", "target_versionset_digest", "target_revision")
+    missing = [key for key in required if context.get(key) in (None, "")]
+    if missing:
+        raise validation(f"workorder {workorder_id} missing gate target binding: {missing}")
+    if not isinstance(context["target_revision"], int) or context["target_revision"] <= 0:
+        raise validation("target_revision must be a positive integer")
+    digest = context["target_versionset_digest"]
+    if not isinstance(digest, str) or not digest.startswith("sha256:") or len(digest) != 71:
+        raise validation("target_versionset_digest must be sha256:<64 hex>")
 
-    - rule_track：确定性规则检查，无 LLM。
-    - judge_track：LLM 裁判打分；judge_model_digest ≠ athlete_model_digest。
-    - deterministic_tests：contract/replay 分开报告。
-    - live_provider_e2e：MVP 无真实 provider → skipped（D-001 #3 转人工语义，不伪造结果）。
-    """
-    target_digest = suite_digest
-    draft = session.get(WorkOrderDraft, workorder_id) if session else None
-    if draft is not None and draft.frozen_payload:
-        target_digest = draft.frozen_payload.get("target_versionset_digest") or suite_digest
 
-    now = datetime.now(timezone.utc)
-    probe_ids = [f"probe-{i}" for i in range(1, 4)]
-
-    rule_checks = [
-        {"check_id": "single_channel", "status": "passed", "description": "WorkOrder 单变量纪律：只改一层"},
-        {"check_id": "hash_binding", "status": "passed", "description": "WorkOrder hash 绑定 target digest"},
-        {"check_id": "gate_precondition", "status": "passed", "description": "门禁前置：基线版本 digest 一致"},
-    ]
-    judge_scores = [
-        {"probe_id": pid, "score": 1.0, "pass": True, "rationale_ref": f"evidence://judge/{eval_id}/{pid}"}
-        for pid in probe_ids
-    ]
-
-    return {
-        "schema_version": "0.1.0",
-        "report_id": f"gate_{eval_id}",
-        "eval_id": eval_id,
-        "subject": {
-            "target_versionset_digest": target_digest,
-            "regression_suite_digest": suite_digest,
-            "probe_set_digest": suite_digest,
-        },
-        "rule_track": {"status": "passed", "checks": rule_checks},
-        "judge_track": {
-            "status": "passed",
-            "judge_model_digest": _JUDGE_DIGEST,
-            "athlete_model_digest": _ATHLETE_DIGEST,
-            "scores": judge_scores,
-            "pass_threshold": 0.9,
-        },
-        "deterministic_tests": {
-            "status": "passed",
-            "suites": [
-                {
-                    "suite": "contract",
-                    "kind": "contract",
-                    "status": "passed",
-                    "n_passed": 3,
-                    "n_failed": 0,
-                },
-                {
-                    "suite": "replay",
-                    "kind": "replay",
-                    "status": "passed",
-                    "n_passed": 3,
-                    "n_failed": 0,
-                },
-            ],
-        },
-        "live_provider_e2e": {
-            "status": "skipped",
-            "provider": "stepfun",
-            "suites": [],
-            "note": "MVP：live provider 未接入，标 UNAVAILABLE/skipped，不伪造结果（D-001 #3）",
-        },
-        "overall_status": "passed",
-        "artifact_refs": [
-            {
-                "uri": f"eval://{eval_id}",
-                "digest": suite_digest if suite_digest.startswith("sha256:") else f"sha256:{suite_digest}",
-            },
-        ],
-        "created_at": now.isoformat(),
+def _execute_gate(
+    eval_id: str,
+    workorder_id: str,
+    suite_digest: str,
+    context: dict[str, Any],
+) -> tuple[dict[str, Any], dict[str, str]]:
+    settings = _settings()
+    eh_settings = EvalHarnessSettings(
+        quality_api_base_url=settings.quality_api_base_url,
+        read_token=settings.quality_read_token,
+    )
+    probe_set = load_probe_set(eh_settings.repo_root)
+    dataset_digest = frozen_digest(probe_set)
+    metadata = {
+        "dataset_id": probe_set.probe_set_id,
+        "dataset_version": probe_set.version,
+        "dataset_digest": dataset_digest,
     }
+    evidence_root = Path(settings.gate_evidence_dir)
+    if not evidence_root.is_absolute():
+        evidence_root = eh_settings.repo_root / evidence_root
+    evidence_dir = evidence_root / eval_id
+    deadline = time.monotonic() + max(1, settings.gate_evaluation_timeout_seconds)
+
+    def remaining_seconds() -> float:
+        remaining = deadline - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("gate evaluator wall-clock deadline exceeded")
+        return remaining
+
+    try:
+        executor = CommandSuiteRunner(
+            repo_root=eh_settings.repo_root,
+            evidence_dir=evidence_dir,
+            timeout_seconds=max(1, int(remaining_seconds())),
+        )
+        contract = executor.run(
+            suite="contract-assets",
+            kind="contract",
+            argv=[
+                sys.executable,
+                "-m",
+                "pytest",
+                "contracts/conformance/test_schemas.py",
+                "contracts/conformance/test_wilson.py",
+                "-q",
+            ],
+            artifact_name="contract-report.json",
+        )
+        executor = CommandSuiteRunner(
+            repo_root=eh_settings.repo_root,
+            evidence_dir=evidence_dir,
+            timeout_seconds=max(1, int(remaining_seconds())),
+        )
+        replay = executor.run(
+            suite="frozen-probe-replay",
+            kind="replay",
+            argv=[
+                sys.executable,
+                "-m",
+                "pytest",
+                "eval-harness/tests/unit/test_probe_judge.py",
+                "eval-harness/tests/unit/test_digests.py",
+                "eval-harness/tests/unit/test_gate.py",
+                "-q",
+            ],
+            artifact_name="replay-report.json",
+        )
+
+        # A suite that consumes the wall-clock budget cannot be followed by a
+        # provider call and still be considered a completed evaluation.
+        remaining_seconds()
+
+        client = QualityAPIClient(eh_settings)
+        target = client.get_versionset(
+            context["target_versionset_id"],
+            timeout_seconds=min(eh_settings.quality_api_timeout_seconds, remaining_seconds()),
+        )
+        if target.get("versionset_id") != context["target_versionset_id"]:
+            raise RuntimeError("Quality API returned a different target VersionSet id")
+        if target.get("digest") != context["target_versionset_digest"]:
+            raise RuntimeError("target VersionSet digest does not match WorkOrder")
+        if target.get("revision") != context["target_revision"]:
+            raise RuntimeError("target VersionSet revision does not match WorkOrder")
+
+        answers: dict[str, str] = {}
+        response_evidence: list[dict[str, Any]] = []
+        athlete_digests: set[str] = set()
+        for probe in probe_set.probes:
+            result = client.evaluate_versionset(
+                context["target_versionset_id"],
+                probe.input,
+                timeout_seconds=min(eh_settings.quality_api_timeout_seconds, remaining_seconds()),
+            )
+            if result.status != "ok":
+                raise RuntimeError(
+                    f"probe {probe.id} provider status is {result.status!r}; candidate evaluation failed"
+                )
+            if result.versionset_id != context["target_versionset_id"]:
+                raise RuntimeError(
+                    f"probe {probe.id} executed against {result.versionset_id}, expected {context['target_versionset_id']}"
+                )
+            target_content = target.get("content") or {}
+            expected_digests = {
+                "prompt_digest": (target_content.get("prompt") or {}).get("digest"),
+                "kb_manifest_digest": (target_content.get("kb_manifest") or {}).get("manifest_digest"),
+                "model_digest": (target_content.get("model") or {}).get("digest"),
+            }
+            actual_digests = {
+                "prompt_digest": result.prompt_digest,
+                "kb_manifest_digest": result.kb_manifest_digest,
+                "model_digest": result.model_digest,
+            }
+            if actual_digests != expected_digests:
+                raise RuntimeError(
+                    f"probe {probe.id} candidate component digests do not match target VersionSet"
+                )
+            if result.model_digest:
+                athlete_digests.add(result.model_digest)
+            answers[probe.id] = result.answer
+            response_evidence.append(
+                {
+                    "probe_id": probe.id,
+                    "request_id": result.request_id,
+                    "versionset_id": result.versionset_id,
+                    "prompt_digest": result.prompt_digest,
+                    "kb_manifest_digest": result.kb_manifest_digest,
+                    "model_digest": result.model_digest,
+                    "provider_status": result.status,
+                    "trace_id": result.trace_id,
+                    "answer": result.answer,
+                }
+            )
+        if len(athlete_digests) != 1:
+            raise RuntimeError(f"gate probes did not use one athlete model digest: {sorted(athlete_digests)}")
+
+        candidate_artifact = write_json_artifact(
+            evidence_dir / "candidate-answers.json",
+            {
+                "eval_id": eval_id,
+                "workorder_id": workorder_id,
+                "target_versionset_id": context["target_versionset_id"],
+                "target_revision": context["target_revision"],
+                "target_versionset_digest": context["target_versionset_digest"],
+                "dataset_id": probe_set.probe_set_id,
+                "dataset_version": probe_set.version,
+                "dataset_digest": dataset_digest,
+                "responses": response_evidence,
+            },
+        )
+        judge = None
+        if eh_settings.has_stepfun_key and eh_settings.judge_model:
+            judge = LLMJudge(
+                eh_settings,
+                eh_settings.judge_model,
+                deadline_monotonic=deadline,
+            )
+        runner = GateRunner(
+            eh_settings,
+            probe_set,
+            judge=judge,
+            frozen_probe_set_digest=dataset_digest,
+        )
+        report = runner.run(
+            GateCandidate(
+                target_versionset_digest=context["target_versionset_digest"],
+                probe_set_digest=dataset_digest,
+                regression_suite_digest=suite_digest,
+                answers=answers,
+                athlete_model_digest=next(iter(athlete_digests)),
+                source="live",
+            ),
+            contract_result=contract.result,
+            replay_result=replay.result,
+            artifact_refs=[contract.artifact_ref, replay.artifact_ref, candidate_artifact],
+            live_available=True,
+            eval_id=eval_id,
+            report_id=f"gate_{eval_id.removeprefix('eval_')}",
+        )
+        return report, metadata
+    except Exception as exc:  # noqa: BLE001 -- timeout/provider error becomes a persisted ERROR report
+        error_artifact = write_json_artifact(
+            evidence_dir / "executor-error.json",
+            {
+                "eval_id": eval_id,
+                "workorder_id": workorder_id,
+                "error_type": type(exc).__name__,
+                "error": str(exc),
+            },
+        )
+        report = build_error_gate_report(
+            eval_id=eval_id,
+            report_id=f"gate_{eval_id.removeprefix('eval_')}",
+            target_versionset_digest=context["target_versionset_digest"],
+            regression_suite_digest=suite_digest,
+            probe_set_digest=dataset_digest,
+            error_ref=error_artifact["uri"],
+            artifact_refs=[error_artifact],
+        )
+        return report, metadata
 
 
 def _report_hash(report: dict[str, Any]) -> str:
@@ -476,7 +695,13 @@ def _report_hash(report: dict[str, Any]) -> str:
     except (ValueError, TypeError):
         import json
 
-        data = json.dumps(body, sort_keys=True, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+        data = json.dumps(
+            body,
+            sort_keys=True,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            allow_nan=False,
+        ).encode("utf-8")
     return sha256_hex(data)
 
 

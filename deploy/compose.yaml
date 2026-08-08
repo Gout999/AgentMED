@@ -34,8 +34,10 @@ services:
       STEPFUN_API_KEY: ${STEPFUN_API_KEY:-}
       STEPFUN_BASE_URL: ${STEPFUN_BASE_URL:-https://api.stepfun.com/step_plan/v1}
       STEPFUN_MODEL: step-3.7-flash
-      CASELOOP_READ_TOKEN: ${CASELOOP_READ_TOKEN:-conformance-read-token}
-      CASELOOP_WRITE_TOKEN: ${CASELOOP_WRITE_TOKEN:-conformance-write-token}
+      CASELOOP_READ_TOKEN: ${CASELOOP_READ_TOKEN:?CASELOOP_READ_TOKEN is required}
+      CASELOOP_WRITE_TOKEN: ${CASELOOP_WRITE_TOKEN:?CASELOOP_WRITE_TOKEN is required}
+      RELEASE_CONTROLLER_CLIENT_SECRET: ${RELEASE_CONTROLLER_CLIENT_SECRET:?RELEASE_CONTROLLER_CLIENT_SECRET is required}
+      QUALITY_READER_CLIENT_SECRET: ${QUALITY_READER_CLIENT_SECRET:?QUALITY_READER_CLIENT_SECRET is required}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       LLM_RPM_LIMIT: "8"
     ports:
@@ -55,7 +57,10 @@ services:
       DATABASE_URL: postgresql+psycopg://caseloop:caseloop@postgres:5432/control_plane
       # 被治理应用 Quality API（写面唯一入口）；容器内 127.0.0.1 不是 demo-app
       QUALITY_API_BASE_URL: http://demo-app:8080
-      QUALITY_API_TOKEN: ${CASELOOP_WRITE_TOKEN:-conformance-write-token}
+      QUALITY_API_TOKEN: ${CASELOOP_WRITE_TOKEN:?CASELOOP_WRITE_TOKEN is required}
+      # Gate/WorkOrder/Approval/Release mutation boundary (read views remain Console-readable).
+      CONTROL_PLANE_TOKEN: ${CONTROL_PLANE_TOKEN:?CONTROL_PLANE_TOKEN is required}
+      APPROVAL_AUTHORITY_TOKEN: ${APPROVAL_AUTHORITY_TOKEN:?APPROVAL_AUTHORITY_TOKEN is required}
     ports:
       - "18090:8090"   # 宿主 8090 被占用，映射到 18090
     depends_on:

@@ -152,13 +152,16 @@ RELEASE_TRANSITIONS: list[Transition] = [
     Transition("PROMOTING", "release.promoted", "COMPLETED"),
     Transition("ROLLING_BACK", "release.rolled_back", "ROLLED_BACK"),
     Transition("ROLLING_BACK", "release.rollback_failed", "FAILED_ESCALATED"),
+    Transition("REQUESTED", "release.unknown_detected", "UNKNOWN"),
     Transition("STAGING", "release.unknown_detected", "UNKNOWN"),
     Transition("CANARYING", "release.unknown_detected", "UNKNOWN"),
+    Transition("VERIFYING", "release.unknown_detected", "UNKNOWN"),
     Transition("PROMOTING", "release.unknown_detected", "UNKNOWN"),
     Transition("ROLLING_BACK", "release.unknown_detected", "UNKNOWN"),
     # reconcile 多目标：由 guard=action:X 选择
     Transition("UNKNOWN", "release.reconciled", "REQUESTED", guard="action=resume"),
-    Transition("UNKNOWN", "release.reconciled", "COMPLETED", guard="action=confirm"),
+    Transition("UNKNOWN", "release.reconciled", "STAGING", guard="action=apply_canary"),
+    Transition("UNKNOWN", "release.reconciled", "VERIFYING", guard="action=confirm_promote"),
     Transition("UNKNOWN", "release.reconciled", "ROLLING_BACK", guard="action=compensate"),
     Transition("UNKNOWN", "release.rollback_failed", "FAILED_ESCALATED"),
 ]
