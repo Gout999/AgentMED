@@ -28,6 +28,9 @@ class QualityAPIError(Exception):
 class QualityClientProtocol(Protocol):
     def get_versionset(self, versionset_id: str) -> dict[str, Any]: ...
     def get_status(self, versionset_id: str) -> dict[str, Any]: ...
+    def list_versionsets(
+        self, *, status: Optional[str] = None, limit: int = 50
+    ) -> dict[str, Any]: ...
     def stage(
         self, versionset_id: str, *, if_match: str, idempotency_key: str, expected_revision: Optional[int] = None
     ) -> dict[str, Any]: ...
@@ -104,6 +107,12 @@ class QualityAPIClient:
 
     def get_versionset(self, versionset_id: str) -> dict[str, Any]:
         return self._request("GET", f"/v2/versionsets/{versionset_id}", headers=self._headers())
+
+    def list_versionsets(self, *, status: Optional[str] = None, limit: int = 50) -> dict[str, Any]:
+        params: dict[str, Any] = {"limit": limit}
+        if status:
+            params["status"] = status
+        return self._request("GET", "/v2/versionsets", params=params, headers=self._headers())
 
     def get_status(self, versionset_id: str) -> dict[str, Any]:
         return self._request("GET", f"/v2/versionsets/{versionset_id}/status", headers=self._headers())
@@ -254,6 +263,17 @@ class FakeQualityClient:
 
     def get_status(self, versionset_id: str) -> dict[str, Any]:
         return self.get_versionset(versionset_id)
+
+    def list_versionsets(self, *, status: Optional[str] = None, limit: int = 50) -> dict[str, Any]:
+        if self.fail_next in ("network", "timeout"):
+            reason = self.fail_next
+            self.fail_next = None
+            raise QualityAPIError("network_error", f"simulated {reason}", status_code=0)
+        rows = [self.get_versionset(vs_id) for vs_id in self._vs]
+        if status:
+            rows = [r for r in rows if r["status"] == status]
+        rows.sort(key=lambda r: r["versionset_id"])
+        return {"items": rows[:limit], "next_cursor": None}
 
     def stage(self, versionset_id: str, *, if_match: str, idempotency_key: str, expected_revision: Optional[int] = None) -> dict[str, Any]:
         return self._lifecycle(versionset_id, "stage", if_match, idempotency_key, expected_revision)
