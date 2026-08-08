@@ -6,4 +6,4 @@
 - `test_results`: 366 passed across executable offline suites and 5 live-only skips: control-plane 179; demo 36+2 PostgreSQL; eval 69/4 skipped; MCP 54/1 skipped; contracts 26. Console build, compose config, compileall, diff check, PostgreSQL dispatcher ordering/concurrency, real Release→Trust integration, migration 003 up/down/up, and `alembic check` passed. Independent verifier found no material P0-2 blocker.
 - `unfinished`: P0-3 Console and P0-4 B1 evidence loop. Non-terminal eval lifecycle payload alignment remains tracked P1 debt. Live Feishu remains externally blocked and is not represented by the contract/replay mock.
 - `resume_from`: P0-3 authoritative read clients and removal of static Console success state; start with WorkOrder/Gate read model authority, typed clients, partial/UNKNOWN handling, and frontend/backend integration proof.
-- `commit_hash`: P0-2 pending; P0-1 base is `4cd6e64b2af21ccea83506d2f4cab687bb76eb76`.
+- `commit_hash`: P0-2 `8e237e30dbbda7e05d78656047efd4c3d0703653`; P0-1 `4cd6e64b2af21ccea83506d2f4cab687bb76eb76`.

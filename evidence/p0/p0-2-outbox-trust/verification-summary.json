@@ -2,6 +2,7 @@
   "schema_version": "0.1.0",
   "verified_at": "2026-08-08T23:34:00+10:00",
   "base_commit": "4cd6e64b2af21ccea83506d2f4cab687bb76eb76",
+  "completion_commit": "8e237e30dbbda7e05d78656047efd4c3d0703653",
   "branch": "codex/p0-close-b1-loop",
   "status": "passed_independent_read_only_verifier",
   "offline": {

@@ -1,10 +1,10 @@
 # Project State
 
-- `last_verified_commit`: `4cd6e64b2af21ccea83506d2f4cab687bb76eb76`
+- `last_verified_commit`: `8e237e30dbbda7e05d78656047efd4c3d0703653`
 - `active_branch`: `codex/p0-close-b1-loop`
 - `origin/main commit`: `a6de5cc1a06d6967634676b2661da7d2e46d287b`
 - `collaborator_sync_merge`: `4b5377dae317eaeadbf23ab85481881096b6d6d2`
-- `working_tree`: P0-2 independently verified and ready for its semantic commit; P0-3 read-only route/Console tracing is complete
+- `working_tree`: P0-2 is independently verified and committed; only this completion-hash context update is pending before P0-3 code changes
 - `last_updated`: `2026-08-08T23:34:00+10:00`
 
 ## Verified completed capabilities
