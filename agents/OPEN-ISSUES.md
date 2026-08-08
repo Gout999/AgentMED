@@ -63,3 +63,12 @@
 - **事实**：Worker 空闲超时可能进入 `Sleeping`（spike 验证可唤醒）；`state` 默认 Running。
 - **成稿做法**：team.yaml 显式 `state: Running`，不设 `idleTimeout`，由平台默认行为决定休眠；RUNBOOK Step 5 注明"被 @mention 时唤醒"。
 - **建议**：演示若要求 worker 常驻，可在后续把 `idleTimeout` 调大或关停休眠（平台配置项）。
+
+---
+
+## 主控裁决（2026-08-07，冻结，见 docs/plans/wave3-soul-design.md §10）
+
+1. **Issue 1（approval.request ACL）→ 裁决：归守门员**（spec §9.4 + 职责分离）。设计稿 §6 笔误已修正。成稿做法生效。
+2. **Issue 2（case.escalate/timeline）→ 裁决：采纳成稿做法**。spec §9.3 已补 `case.timeline` / `case.escalate` 两行（commit f815734）。
+3. **Issue 3（trust-ledger 可达性）→ 裁决：维持内嵌库口径**。守门员账本核对经 release-admin/eval-runner 服务端内嵌完成，不得静默跳过；Phase 2 补只读透出工具。
+4. Issue 4–8（弹性模板部署形态、空闲休眠等）→ 采纳成稿做法，Phase 2 再议。
