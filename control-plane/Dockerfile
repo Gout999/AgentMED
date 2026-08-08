@@ -11,13 +11,14 @@ ENV PYTHONUNBUFFERED=1 \
 WORKDIR /srv
 
 # 先装钉版本依赖（利用层缓存）
-COPY requirements.txt .
+COPY control-plane/requirements.txt ./requirements.txt
 RUN pip install --upgrade pip && pip install -r requirements.txt
 
 # 再拷代码与 alembic 迁移（script_location 相对 WORKDIR）
-COPY app ./app
-COPY alembic ./alembic
-COPY alembic.ini .
+COPY control-plane/app ./app
+COPY control-plane/alembic ./alembic
+COPY control-plane/alembic.ini .
+COPY contracts ./contracts
 
 # 非 root：appuser 拥有运行目录（审计导出物 var/ 可写）
 RUN useradd --system --uid 10001 appuser \
@@ -25,7 +26,7 @@ RUN useradd --system --uid 10001 appuser \
     && chown -R appuser:appuser /srv
 
 # 入口：先 alembic upgrade head（幂等），再 exec uvicorn
-COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
+COPY control-plane/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 USER appuser

@@ -50,7 +50,8 @@ services:
   # ---- Wave 3：control-plane 服务化（确定性控制面）—— 仅 APPEND，不动上方服务 ----
   control-plane:
     build:
-      context: ../control-plane
+      context: ..
+      dockerfile: control-plane/Dockerfile
     container_name: caseloop-control-plane
     environment:
       # compose 内部网络：直连 postgres 容器（宿主映射见 ports）
@@ -73,6 +74,25 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # Fixed Phase-1 warm worker: transactional outbox dispatcher. This is one
+  # explicit process, not a dynamic autoscaling claim.
+  outbox-dispatcher:
+    build:
+      context: ..
+      dockerfile: control-plane/Dockerfile
+    container_name: caseloop-outbox-dispatcher
+    entrypoint: ["python", "-m", "app.workers.outbox"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://caseloop:caseloop@postgres:5432/control_plane
+      OUTBOX_RELAY_INTERVAL_SECONDS: "1"
+      OUTBOX_CLAIM_TTL_SECONDS: "30"
+      OUTBOX_MAX_ATTEMPTS: "5"
+      NOTIFICATION_ADAPTER: ${NOTIFICATION_ADAPTER:-disabled}
+    depends_on:
+      control-plane:
+        condition: service_healthy
+    restart: unless-stopped
 
   # ---- T7：console 运营后台（评委看板）—— 仅 APPEND，不动上方服务 ----
   console:

@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_app_settings, get_db_session
+from app.api.deps import get_app_settings, get_db_session, require_internal_write
 from app.config import Settings
 from app.services import read_views
 from app.services.audit import AuditWriteError
@@ -77,6 +77,7 @@ def create_experiment(
     body: ExperimentCreateIn,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
     try:
         return _svc(session, settings).create(
@@ -127,6 +128,7 @@ def freeze_protocol(
     body: ProtocolFreezeIn,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
     try:
         return _svc(session, settings).freeze_protocol(
@@ -152,6 +154,7 @@ def start_experiment(
     body: ExperimentStartIn,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
     try:
         return _svc(session, settings).start(
@@ -170,6 +173,7 @@ def cell_completed(
     body: CellCompletedIn,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
     try:
         return _svc(session, settings).cell_completed(
@@ -192,6 +196,7 @@ def verdict_computed(
     body: VerdictIn,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
     try:
         return _svc(session, settings).verdict_computed(
@@ -215,6 +220,7 @@ def escalate_full_factorial(
     body: ReasonIn,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
     try:
         return _svc(session, settings).escalate_full_factorial(experiment_id, reason=body.reason)
@@ -231,6 +237,7 @@ def cancel_experiment(
     body: ReasonIn,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
     try:
         return _svc(session, settings).cancel(experiment_id, reason=body.reason)

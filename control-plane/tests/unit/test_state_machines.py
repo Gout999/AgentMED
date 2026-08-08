@@ -39,7 +39,7 @@ def test_case_promote_path():
     assert s == "RELEASING"
     s = next_state("case", s, "case.resolved")
     assert s == "NOTIFYING"
-    s = next_state("case", s, "notification.sent")
+    s = next_state("case", s, "case.closed")
     assert s == "CLOSED"
 
 

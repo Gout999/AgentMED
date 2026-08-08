@@ -1,8 +1,7 @@
-"""T8 只读投影端点测试：正常路径 + 空态 + 源不可用降级（全 SQLite 内存，无外部依赖）。
+"""T8 read projection tests over SQLite with no external dependency.
 
-跨组件表（mcp_trust_ledger / mcp_audit / mcp_eval_runs）在生产由 mcp-servers
-`migrations/001_init.sql` 创建；本测试用同名 DDL 在 sqlite 内存库建表以验证读投影，
-建表缺失时验证 `warning: source_unavailable` 降级。
+Legacy MCP tables are created only to prove that Trust ignores the old shadow
+schema; the MCP eval table remains a compatibility fallback for gate views.
 """
 from __future__ import annotations
 
@@ -10,6 +9,7 @@ import pytest
 from sqlalchemy import text
 
 from app.models.tables import GateReportRecord
+from app.services.trust_service import TrustService
 from app.utils.jcs import canonical_json_digest, workorder_hash
 from tests.conftest import make_gate_report, make_workorder
 
@@ -109,17 +109,27 @@ def test_env_unavailable_on_network_error(app_client):
 # ------------------------------------------------------------------ 2. GET /v1/trust/ledger
 
 
-def test_trust_ledger_source_unavailable(app_client):
+def test_trust_ledger_authoritative_empty_state(app_client):
     client, _ = app_client
     r = client.get("/v1/trust/ledger")
     assert r.status_code == 200
     body = r.json()
     assert body["items"] == []
-    assert body["warning"] == "source_unavailable"
+    assert "warning" not in body
 
 
-def test_trust_ledger_empty_state(app_client, sqlite_engine):
+def test_trust_ledger_ignores_disconnected_mcp_shadow_table(app_client, sqlite_engine):
     _create_mcp_tables(sqlite_engine)
+    with sqlite_engine.begin() as conn:
+        conn.execute(
+            text(
+                """
+                INSERT INTO mcp_trust_ledger
+                  (risk_class, action_type, epoch, successes, trials, autonomy_state)
+                VALUES ('R1_REVERSIBLE_WRITE', 'shadow_only', 1, 99, 99, 'AUTO_ENABLED')
+                """
+            )
+        )
     client, _ = app_client
     r = client.get("/v1/trust/ledger")
     assert r.status_code == 200
@@ -129,16 +139,15 @@ def test_trust_ledger_empty_state(app_client, sqlite_engine):
 
 
 def test_trust_ledger_computes_wilson_from_counts(app_client, sqlite_engine):
-    _create_mcp_tables(sqlite_engine)
     with sqlite_engine.begin() as conn:
         conn.execute(
             text(
                 """
-                INSERT INTO mcp_trust_ledger
-                  (risk_class, action_type, epoch, successes, trials, autonomy_state)
+                INSERT INTO trust_ledger
+                  (risk_class, action_type, epoch, successes, trials, autonomy_state, payload, updated_at)
                 VALUES
-                  ('R1_REVERSIBLE_WRITE', 'case.triage', 1, 3, 3, 'MANUAL'),
-                  ('R0_READ', 'case.list', 1, 10, 10, 'ELIGIBLE')
+                  ('R2_HIGH_IMPACT', 'release_outcome', 1, 3, 3, 'MANUAL', '{"promotion_eligible": false}', CURRENT_TIMESTAMP),
+                  ('R0_READ', 'case_list', 1, 10, 10, 'ELIGIBLE', '{"promotion_eligible": true}', CURRENT_TIMESTAMP)
                 """
             )
         )
@@ -148,30 +157,30 @@ def test_trust_ledger_computes_wilson_from_counts(app_client, sqlite_engine):
     items = r.json()["items"]
     assert len(items) == 2
 
-    triage = next(i for i in items if i["action_type"] == "case.triage")
+    triage = next(i for i in items if i["action_type"] == "release_outcome")
     assert triage["successes"] == 3 and triage["trials"] == 3
     # 3/3 → Wilson 双侧 95% 下界 ≈ 0.438494（contracts/wilson 事实源）
     assert abs(triage["LB"] - 0.438494) < 1e-5
     assert triage["promotion_eligible"] is False
     assert triage["autonomy_state"] == "MANUAL"
 
-    case_list = next(i for i in items if i["action_type"] == "case.list")
+    case_list = next(i for i in items if i["action_type"] == "case_list")
     assert case_list["LB"] > 0.7  # 10/10 → 下界 ≈ 0.722
 
 
 # ------------------------------------------------------------------ 3. GET /v1/trust/denials
 
 
-def test_trust_denials_source_unavailable(app_client):
+def test_trust_denials_authoritative_empty_state(app_client):
     client, _ = app_client
     r = client.get("/v1/trust/denials")
     assert r.status_code == 200
     body = r.json()
     assert body["items"] == []
-    assert body["warning"] == "source_unavailable"
+    assert "warning" not in body
 
 
-def test_trust_denials_empty_state(app_client, sqlite_engine):
+def test_trust_denials_ignores_mcp_shadow_audit(app_client, sqlite_engine):
     _create_mcp_tables(sqlite_engine)
     client, _ = app_client
     r = client.get("/v1/trust/denials")
@@ -181,44 +190,30 @@ def test_trust_denials_empty_state(app_client, sqlite_engine):
     assert "warning" not in body
 
 
-def test_trust_denials_lists_only_promotion_rejected(app_client, sqlite_engine):
-    _create_mcp_tables(sqlite_engine)
-    with sqlite_engine.begin() as conn:
-        conn.execute(
-            text(
-                """
-                INSERT INTO mcp_trust_ledger
-                  (risk_class, action_type, epoch, successes, trials, autonomy_state)
-                VALUES ('R1_REVERSIBLE_WRITE', 'case.triage', 1, 3, 3, 'MANUAL')
-                """
+def test_trust_denials_lists_real_release_outcomes(app_client, sqlite_engine):
+    from sqlalchemy.orm import sessionmaker
+
+    session = sessionmaker(bind=sqlite_engine)()
+    try:
+        service = TrustService(session)
+        for index in range(3):
+            service.record_outcome(
+                source_event_id=f"evt_real_{index}",
+                action_ref=f"rel_real_{index}",
+                success=True,
+                detail="operation-bound promote receipt",
             )
-        )
-        conn.execute(
-            text(
-                """
-                INSERT INTO mcp_audit (audit_id, ts, actor, action, target, params_digest, result, trace_id)
-                VALUES ('aud_deny_1', datetime('now'), 'controller:trust-ledger',
-                        'trust.promotion_rejected', 'case.triage:R1_REVERSIBLE_WRITE', 'digest', 'denied', 'trace-1')
-                """
-            )
-        )
-        conn.execute(
-            text(
-                """
-                INSERT INTO mcp_audit (audit_id, ts, actor, action, target, params_digest, result, trace_id)
-                VALUES ('aud_gate_1', datetime('now'), 'gatekeeper',
-                        'gate.run', 'eval_1', 'digest', 'success', 'trace-2')
-                """
-            )
-        )
+        session.commit()
+    finally:
+        session.close()
     client, _ = app_client
     r = client.get("/v1/trust/denials")
     assert r.status_code == 200
     items = r.json()["items"]
-    assert len(items) == 1
+    assert len(items) == 3
     d = items[0]
-    assert d["action_type"] == "case.triage"
-    assert d["risk_class"] == "R1_REVERSIBLE_WRITE"
+    assert d["action_type"] == "release_outcome"
+    assert d["risk_class"] == "R2_HIGH_IMPACT"
     assert d["result"] == "denied"
     assert d["successes"] == 3 and d["trials"] == 3
     assert "0.4385" in d["reason"]

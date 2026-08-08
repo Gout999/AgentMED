@@ -1,4 +1,4 @@
-"""spec §7 十表 ORM（casebase 在独立库，本控制面不建）。"""
+"""Authoritative control-plane ORM (casebase remains in its separate database)."""
 from __future__ import annotations
 
 from datetime import datetime
@@ -82,20 +82,63 @@ class Outbox(Base):
     """可靠外发（与状态迁移同事务）。"""
 
     __tablename__ = "outbox"
-    __table_args__ = (Index("ix_outbox_status_retry", "status", "next_retry_at"),)
+    __table_args__ = (
+        UniqueConstraint(
+            "source_event_id",
+            "channel",
+            "event_type",
+            name="uq_outbox_source_channel_event",
+        ),
+        Index("ix_outbox_status_retry", "status", "next_retry_at"),
+        Index("ix_outbox_claim_expiry", "status", "claim_expires_at"),
+        Index(
+            "ix_outbox_aggregate_sequence_status",
+            "aggregate_id",
+            "source_event_seq",
+            "status",
+        ),
+    )
 
     outbox_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     aggregate_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    source_event_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    source_event_seq: Mapped[int] = mapped_column(BigInteger, nullable=False)
     channel: Mapped[str] = mapped_column(String(64), nullable=False)
+    event_type: Mapped[str] = mapped_column(String(64), nullable=False)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    payload_digest: Mapped[str] = mapped_column(String(80), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="PENDING")
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     next_retry_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    claimed_by: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
+    claim_token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    claimed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    claim_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     sent_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    receipt: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
+
+
+class OutboxDeliveryReceipt(Base):
+    """Append-only dispatcher acknowledgement bound to one exact outbox payload."""
+
+    __tablename__ = "outbox_delivery_receipts"
+    __table_args__ = (
+        Index("ix_outbox_delivery_receipts_outbox_id", "outbox_id"),
+    )
+
+    receipt_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    outbox_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    source_event_id: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    channel: Mapped[str] = mapped_column(String(64), nullable=False)
+    payload_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    receipt: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    delivered_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
 
 
 class Lease(Base):
@@ -206,6 +249,35 @@ class TrustLedger(Base):
     autonomy_state: Mapped[str] = mapped_column(String(32), nullable=False, default="MANUAL")
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class TrustLedgerEntry(Base):
+    """Immutable one-action/one-sample Trust entry consumed from a domain event."""
+
+    __tablename__ = "trust_ledger_entries"
+    __table_args__ = (
+        UniqueConstraint(
+            "risk_class",
+            "action_type",
+            "action_ref",
+            name="uq_trust_entry_action",
+        ),
+        Index("ix_trust_ledger_entries_source_event_id", "source_event_id"),
+    )
+
+    entry_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    source_event_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    risk_class: Mapped[str] = mapped_column(String(32), nullable=False, index=True)
+    action_type: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    action_ref: Mapped[str] = mapped_column(String(128), nullable=False)
+    epoch: Mapped[int] = mapped_column(Integer, nullable=False)
+    outcome: Mapped[str] = mapped_column(String(32), nullable=False)
+    successes: Mapped[int] = mapped_column(Integer, nullable=False)
+    trials: Mapped[int] = mapped_column(Integer, nullable=False)
+    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    recorded_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 

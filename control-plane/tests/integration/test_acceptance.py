@@ -19,10 +19,12 @@ from sqlalchemy.orm import sessionmaker
 
 from app.config import Settings
 from app.main import create_app
-from app.models.tables import Aggregate, Approval, Base, Lease
+from app.models.tables import Aggregate, Approval, Base, Lease, TrustLedger, TrustLedgerEntry
 from app.quality.client import FakeQualityClient
 from app.services.case_service import CaseService
 from app.services.release_service import ReleaseService, ReleaseServiceError
+from app.services.outbox_relay import OutboxDispatcher
+from app.services.trust_service import ACTION_TYPE, RISK_CLASS
 from app.utils.jcs import canonical_json_digest
 
 from tests.conftest import (
@@ -244,6 +246,27 @@ def test_scenario_3_gray_release_promote_and_rollback(pg_session, pg_settings):
     pg_session.commit()
     assert rb["state"] == "ROLLED_BACK"
     assert quality.get_versionset("vs_demo001fixedversionset01")["status"] == "rolled_back"
+
+    # Trust is fed only by the real terminal release events via the durable
+    # dispatcher. Probe count inside either action cannot inflate the samples.
+    factory = sessionmaker(bind=pg_session.get_bind(), autoflush=False, autocommit=False)
+    dispatched = OutboxDispatcher(
+        factory,
+        pg_settings,
+        worker_id="integration:release-trust",
+    ).dispatch_batch(limit=100)
+    assert dispatched["dead"] == 0 and dispatched["blocked"] == 0
+    pg_session.expire_all()
+    ledger = pg_session.get(
+        TrustLedger,
+        {"risk_class": RISK_CLASS, "action_type": ACTION_TYPE, "epoch": 1},
+    )
+    assert ledger is not None
+    assert ledger.successes == 1 and ledger.trials == 2
+    outcomes = list(
+        pg_session.scalars(select(TrustLedgerEntry.outcome).order_by(TrustLedgerEntry.outcome))
+    )
+    assert outcomes == ["failure", "success"]
 
 
 # ------------------------------------------------------------------ 场景 4：nonce 重放拒绝

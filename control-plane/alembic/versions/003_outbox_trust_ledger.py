@@ -1,0 +1,155 @@
+"""transactional outbox receipts and authoritative Trust entries
+
+Revision ID: 003
+Revises: 002
+Create Date: 2026-08-08
+
+"""
+from typing import Sequence, Union
+
+import sqlalchemy as sa
+from alembic import op
+
+revision: str = "003"
+down_revision: Union[str, None] = "002"
+branch_labels: Union[str, Sequence[str], None] = None
+depends_on: Union[str, Sequence[str], None] = None
+
+
+def upgrade() -> None:
+    op.add_column("outbox", sa.Column("source_event_id", sa.String(64), nullable=True))
+    op.add_column("outbox", sa.Column("source_event_seq", sa.BigInteger(), nullable=True))
+    op.add_column("outbox", sa.Column("event_type", sa.String(64), nullable=True))
+    op.add_column("outbox", sa.Column("payload_digest", sa.String(80), nullable=True))
+    op.add_column("outbox", sa.Column("claimed_by", sa.String(128), nullable=True))
+    op.add_column("outbox", sa.Column("claim_token", sa.String(64), nullable=True))
+    op.add_column("outbox", sa.Column("claimed_at", sa.DateTime(timezone=True), nullable=True))
+    op.add_column("outbox", sa.Column("claim_expires_at", sa.DateTime(timezone=True), nullable=True))
+    op.add_column("outbox", sa.Column("receipt", sa.JSON(), nullable=True))
+
+    # Pre-003 rows were logging-only and have no causal identity. Preserve them
+    # as explicit legacy records rather than inventing a successful receipt.
+    op.execute(
+        """
+        UPDATE outbox
+           SET source_event_id = outbox_id,
+               source_event_seq = 0,
+               event_type = 'LEGACY_UNATTRIBUTED',
+               payload_digest = 'sha256:' || repeat('0', 64),
+               status = CASE WHEN status IN ('SENT', 'SENDING') THEN 'DEAD' ELSE status END,
+               last_error = CASE
+                 WHEN status IN ('SENT', 'SENDING') THEN 'pre-003 logging delivery has no verifiable receipt'
+                 ELSE last_error
+               END
+        """
+    )
+    op.alter_column("outbox", "source_event_id", nullable=False)
+    op.alter_column("outbox", "source_event_seq", nullable=False)
+    op.alter_column("outbox", "event_type", nullable=False)
+    op.alter_column("outbox", "payload_digest", nullable=False)
+    op.create_index("ix_outbox_source_event_id", "outbox", ["source_event_id"])
+    op.create_index("ix_outbox_claim_expiry", "outbox", ["status", "claim_expires_at"])
+    op.create_index(
+        "ix_outbox_aggregate_sequence_status",
+        "outbox",
+        ["aggregate_id", "source_event_seq", "status"],
+    )
+    op.create_unique_constraint(
+        "uq_outbox_source_channel_event",
+        "outbox",
+        ["source_event_id", "channel", "event_type"],
+    )
+
+    op.create_table(
+        "outbox_delivery_receipts",
+        sa.Column("receipt_id", sa.String(64), primary_key=True),
+        sa.Column("outbox_id", sa.String(64), nullable=False, unique=True),
+        sa.Column("source_event_id", sa.String(64), nullable=False),
+        sa.Column("channel", sa.String(64), nullable=False),
+        sa.Column("payload_digest", sa.String(80), nullable=False),
+        sa.Column("receipt", sa.JSON(), nullable=False),
+        sa.Column(
+            "delivered_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+    )
+    op.create_index(
+        "ix_outbox_delivery_receipts_outbox_id",
+        "outbox_delivery_receipts",
+        ["outbox_id"],
+    )
+    op.create_index(
+        "ix_outbox_delivery_receipts_source_event_id",
+        "outbox_delivery_receipts",
+        ["source_event_id"],
+    )
+
+    op.create_table(
+        "trust_ledger_entries",
+        sa.Column("entry_id", sa.String(64), primary_key=True),
+        sa.Column("source_event_id", sa.String(64), nullable=False, unique=True),
+        sa.Column("risk_class", sa.String(32), nullable=False),
+        sa.Column("action_type", sa.String(64), nullable=False),
+        sa.Column("action_ref", sa.String(128), nullable=False),
+        sa.Column("epoch", sa.Integer(), nullable=False),
+        sa.Column("outcome", sa.String(32), nullable=False),
+        sa.Column("successes", sa.Integer(), nullable=False),
+        sa.Column("trials", sa.Integer(), nullable=False),
+        sa.Column("payload", sa.JSON(), nullable=False),
+        sa.Column(
+            "recorded_at",
+            sa.DateTime(timezone=True),
+            server_default=sa.text("CURRENT_TIMESTAMP"),
+            nullable=False,
+        ),
+        sa.UniqueConstraint(
+            "risk_class",
+            "action_type",
+            "action_ref",
+            name="uq_trust_entry_action",
+        ),
+    )
+    op.create_index(
+        "ix_trust_ledger_entries_source_event_id",
+        "trust_ledger_entries",
+        ["source_event_id"],
+    )
+    op.create_index(
+        "ix_trust_ledger_entries_risk_class",
+        "trust_ledger_entries",
+        ["risk_class"],
+    )
+    op.create_index(
+        "ix_trust_ledger_entries_action_type",
+        "trust_ledger_entries",
+        ["action_type"],
+    )
+def downgrade() -> None:
+    op.drop_index("ix_trust_ledger_entries_action_type", table_name="trust_ledger_entries")
+    op.drop_index("ix_trust_ledger_entries_risk_class", table_name="trust_ledger_entries")
+    op.drop_index("ix_trust_ledger_entries_source_event_id", table_name="trust_ledger_entries")
+    op.drop_table("trust_ledger_entries")
+    op.drop_index(
+        "ix_outbox_delivery_receipts_source_event_id",
+        table_name="outbox_delivery_receipts",
+    )
+    op.drop_index(
+        "ix_outbox_delivery_receipts_outbox_id",
+        table_name="outbox_delivery_receipts",
+    )
+    op.drop_table("outbox_delivery_receipts")
+    op.drop_constraint("uq_outbox_source_channel_event", "outbox", type_="unique")
+    op.drop_index("ix_outbox_aggregate_sequence_status", table_name="outbox")
+    op.drop_index("ix_outbox_claim_expiry", table_name="outbox")
+    op.drop_index("ix_outbox_source_event_id", table_name="outbox")
+    op.drop_column("outbox", "receipt")
+    op.drop_column("outbox", "claim_expires_at")
+    op.drop_column("outbox", "claimed_at")
+    op.drop_column("outbox", "claim_token")
+    op.drop_column("outbox", "claimed_by")
+    op.drop_column("outbox", "payload_digest")
+    op.drop_column("outbox", "event_type")
+    op.drop_column("outbox", "source_event_id")
+    op.drop_column("outbox", "source_event_seq")

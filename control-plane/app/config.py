@@ -40,7 +40,11 @@ class Settings(BaseSettings):
     reconcile_backoff_max_seconds: int = Field(default=300, alias="RECONCILE_BACKOFF_MAX_SECONDS")
 
     outbox_relay_interval_seconds: float = Field(default=1.0, alias="OUTBOX_RELAY_INTERVAL_SECONDS")
-    outbox_sink: str = Field(default="logging", alias="OUTBOX_SINK")
+    outbox_claim_ttl_seconds: int = Field(default=30, alias="OUTBOX_CLAIM_TTL_SECONDS")
+    outbox_max_attempts: int = Field(default=5, alias="OUTBOX_MAX_ATTEMPTS")
+    outbox_retry_initial_seconds: int = Field(default=2, alias="OUTBOX_RETRY_INITIAL_SECONDS")
+    outbox_retry_max_seconds: int = Field(default=300, alias="OUTBOX_RETRY_MAX_SECONDS")
+    notification_adapter: str = Field(default="disabled", alias="NOTIFICATION_ADAPTER")
 
     control_plane_host: str = Field(default="0.0.0.0", alias="CONTROL_PLANE_HOST")
     control_plane_port: int = Field(default=8090, alias="CONTROL_PLANE_PORT")

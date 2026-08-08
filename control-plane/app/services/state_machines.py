@@ -59,7 +59,7 @@ CASE_TRANSITIONS: list[Transition] = [
     Transition("AWAITING_APPROVAL", "changeset.expired", "AWAITING_FIX"),
     Transition("RELEASING", "case.resolved", "NOTIFYING"),
     Transition("RELEASING", "release.rollback_failed", "ESCALATED"),
-    Transition("NOTIFYING", "notification.sent", "CLOSED"),
+    Transition("NOTIFYING", "case.closed", "CLOSED"),
     Transition("NOTIFYING", "notification.dead_lettered", "ESCALATED"),
     # 全局人工接管
     Transition("*", "case.escalated", "ESCALATED"),

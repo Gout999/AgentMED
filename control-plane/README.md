@@ -1,7 +1,7 @@
 # CaseLoop control-plane
 
 确定性控制面（Case/Release Controller）：**LLM 不是状态与权限的权威源**。状态权威源 = PG
-（aggregates/events/inbox/outbox/leases/audit），事件溯源 + 状态机 + CAS 乐观并发 + lease/fencing。
+（aggregates/events/inbox/outbox/leases/audit/trust ledger），事件溯源 + 状态机 + CAS 乐观并发 + lease/fencing。
 
 - 语言/框架：Python 3.11+ · FastAPI · SQLAlchemy 2 · Alembic
 - 依赖：见 `requirements.txt`（钉版本）
@@ -14,10 +14,11 @@ control-plane/
   app/
     api/           REST 路由：cases / experiments / changesets / releases / notifications
     services/      Case Controller / Release Controller / Notification / Experiment / ChangeSet
-    models/        spec §7 十表 ORM
+    models/        权威状态、outbox receipt 与 append-only Trust ORM
+    workers/       Phase 1 固定单 outbox dispatcher（非动态扩缩容）
     quality/       Quality API v2 客户端（写面唯一入口，按 contracts/quality-api/openapi.yaml）
     utils/         JCS(SHA-256) / ULID id / PII 脱敏
-  alembic/         001 initial migration
+  alembic/         001 initial + 002 gate binding + 003 outbox/Trust
   tests/           unit（SQLite 内存） + integration（compose PG 真跑）
 ```
 
@@ -53,6 +54,15 @@ python3.11 -m venv .venv
 ```bash
 .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8090
 ```
+
+另起固定一个 outbox dispatcher（Phase 1 不声称动态扩缩容）：
+
+```bash
+.venv/bin/python -m app.workers.outbox
+```
+
+`NOTIFICATION_ADAPTER=disabled` 是默认 fail-closed 配置。只有 contract/replay
+测试可显式使用 `NOTIFICATION_ADAPTER=feishu-mock`；这不代表 live Feishu 已通过。
 
 方式 B：compose 容器（e2e 编排 / 统一部署）
 
@@ -146,13 +156,15 @@ docker compose -f deploy/compose.yaml restart control-plane
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | POST | `/v1/notifications` | 入队（notification.queued + outbox 同事务） |
-| POST | `/v1/notifications/{id}/sent` · `/failed` · `/retry` · `/dead-letter` | 生命周期 |
 | GET | `/v1/notifications` · `/v1/notifications/{id}` | 列表 / 读取 |
+
+Notification 的 SENT/RETRY/DEAD 生命周期只由 outbox dispatcher 根据绑定
+`outbox_id + payload_digest` 的 provider receipt 驱动；不存在可伪造 ACK 的 REST 路由。
 
 ### 运维
 
 - `GET /healthz`
-- `POST /v1/outbox/relay`：手动触发 outbox 投递（MVP sink=logging）
+- `POST /v1/outbox/relay`：带内部鉴权的运维触发；生产常驻路径为固定 dispatcher worker
 
 ## 环境变量（.env.example 全量）
 
@@ -173,7 +185,11 @@ docker compose -f deploy/compose.yaml restart control-plane
 | `RECONCILE_BACKOFF_INITIAL_SECONDS` | `5` | reconcile 指数退避起点（D-001 #5） |
 | `RECONCILE_BACKOFF_MAX_SECONDS` | `300` | reconcile 退避上限 |
 | `OUTBOX_RELAY_INTERVAL_SECONDS` | `1` | outbox 轮询间隔 |
-| `OUTBOX_SINK` | `logging` | 投递目标（MVP=logging） |
+| `OUTBOX_CLAIM_TTL_SECONDS` | `30` | PROCESSING claim 过期回收 |
+| `OUTBOX_MAX_ATTEMPTS` | `5` | 重试上限，耗尽后 DEAD |
+| `OUTBOX_RETRY_INITIAL_SECONDS` | `2` | 指数退避起点 |
+| `OUTBOX_RETRY_MAX_SECONDS` | `300` | 指数退避上限 |
+| `NOTIFICATION_ADAPTER` | `disabled` | `disabled` fail closed；`feishu-mock` 仅 contract/replay |
 | `AUDIT_JSONL_PATH` | `./var/audit.jsonl` | 审计导出物（权威源=DB） |
 | `AUDIT_FORCE_FAIL` | `false` | 仅测试：审计写失败开关 |
 
@@ -181,6 +197,15 @@ docker compose -f deploy/compose.yaml restart control-plane
 
 - **事件溯源 + CAS**：每个状态迁移 = 一个事务（CAS 校验 revision → 更新 aggregate →
   追加 event → 必要时写 outbox → 写 audit）。`revision` 即事件序号。
+- **事务 outbox**：九类关键领域事件统一绑定 source event、payload digest 与稳定事件名；
+  dispatcher 用 `FOR UPDATE SKIP LOCKED` + claim lease，ACK、领域消费、不可变 receipt 与审计
+  同事务提交。旧 logging-only SENT 在 003 迁移后标为 DEAD，不冒充已投递。
+- **Trust 权威闭环**：真实 `RELEASE_PROMOTED/ROLLED_BACK/UNKNOWN` 由 dispatcher 消费；
+  `(action_type,risk_class,action_ref)` 去重保证一次行动多 probes 只算一个样本。
+  Release 是 R2，永远 MANUAL；3/3 的 Wilson 双侧 95% 下界约 0.438，明确拒绝晋升。
+- **通知与归档**：provider receipt 必须精确绑定 outbox id 与 payload digest；ACK 后同事务写
+  `notification.sent`、`case.closed`、`NOTIFICATION_SENT`、`CASE_ARCHIVED` 与审计。
+  receipt 无效会死信并令 Case ESCALATED。
 - **lease + fencing token**：领单 = `leases` 表 + 全局单调 `fencing_counter`；
   过期回收后新 token，旧 token 写一律拒绝（防脑裂）。
 - **inbox 去重**：`sha256(source|external_id)`；无 external_id 时按 D-001 Q4
@@ -198,6 +223,5 @@ docker compose -f deploy/compose.yaml restart control-plane
 
 ## 已知遗留
 
-- `eval` / `trust` 状态机已在 `state_machines.py` 定义，但对应服务（eval-harness / trust-ledger）
-  属 T3/T4 范围，本组件未实现。
-- outbox 投递 MVP 为 logging sink（无真实飞书通道；T4 的 notification server 会接管）。
+- live Feishu adapter 与凭证尚未提供；`feishu-mock` 只属于明确标注的 contract/replay 路径。
+- eval-harness live provider 仍取决于外部模型凭证；不得把 skipped 当 PASS。

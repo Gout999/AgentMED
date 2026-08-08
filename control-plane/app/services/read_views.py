@@ -1,9 +1,8 @@
-"""只读投影端点服务（T8）：从聚合/事件/mcp 表投影 console 视图数据。纯读，不改状态。
+"""T8 read projections over authoritative control-plane state.
 
-跨组件表（mcp_trust_ledger / mcp_eval_runs / mcp_audit）由 mcp-servers 的
-`migrations/001_init.sql` 在同一个 control_plane 库创建（mcp_* 前缀，与
-control-plane 公共 schema 无冲突）。本组件只读、不做 JOIN 依赖假设：表不存在
-（mcp-servers 未部署）时返回空列表 + `warning: source_unavailable`，不 5xx。
+Gate compatibility still reads the legacy MCP eval projection while P0-1's
+GateReport table is preferred. Trust is no longer read from the disconnected
+MCP schema: its source of truth is the transactional control-plane ledger.
 """
 from __future__ import annotations
 
@@ -15,7 +14,6 @@ from sqlalchemy import (
     JSON,
     Column,
     DateTime,
-    Integer,
     MetaData,
     String,
     Table,
@@ -24,7 +22,14 @@ from sqlalchemy import (
 from sqlalchemy.exc import OperationalError, ProgrammingError
 from sqlalchemy.orm import Session
 
-from app.models.tables import Aggregate, Event, GateReportRecord
+from app.models.tables import (
+    Aggregate,
+    Audit,
+    Event,
+    GateReportRecord,
+    TrustLedger,
+    TrustLedgerEntry,
+)
 from app.services.event_store import EventStore
 from app.services.gate_service import GateService, GateServiceError
 
@@ -33,21 +38,6 @@ logger = logging.getLogger(__name__)
 # ---------- 跨组件表只读映射（不注册进 Base；建表由 mcp-servers migration 负责） ----------
 
 _MCP_META = MetaData()
-
-MCP_TRUST_LEDGER = Table(
-    "mcp_trust_ledger",
-    _MCP_META,
-    Column("risk_class", String(32), primary_key=True),
-    Column("action_type", String(64), primary_key=True),
-    Column("epoch", Integer, primary_key=True),
-    Column("successes", Integer),
-    Column("trials", Integer),
-    Column("autonomy_state", String(32)),
-    Column("suspended_until", DateTime(timezone=True)),
-    Column("pending_promotion_ref", String(256)),
-    Column("payload", JSON),
-    Column("updated_at", DateTime(timezone=True)),
-)
 
 MCP_EVAL_RUNS = Table(
     "mcp_eval_runs",
@@ -59,21 +49,6 @@ MCP_EVAL_RUNS = Table(
     Column("report", JSON),
     Column("report_hash", String(64)),
     Column("created_at", DateTime(timezone=True)),
-)
-
-MCP_AUDIT = Table(
-    "mcp_audit",
-    _MCP_META,
-    Column("audit_id", String(64), primary_key=True),
-    Column("ts", DateTime(timezone=True)),
-    Column("actor", String(128)),
-    Column("action", String(64)),
-    Column("target", String(256)),
-    Column("params_digest", String(80)),
-    Column("result", String(32)),
-    Column("error_code", String(64)),
-    Column("trace_id", String(128)),
-    Column("evidence_refs", JSON),
 )
 
 # 双侧 95%（contracts/wilson 唯一事实源：z=1.96，双侧口径硬约束）
@@ -152,101 +127,83 @@ def get_env_status(quality_client: Any) -> dict[str, Any]:
 
 def get_trust_ledger(session: Session) -> dict[str, Any]:
     """账本网格：risk_class × action_type × epoch → Wilson 下界/状态/原始计数。"""
-    rows, warning = _mcp_rows(
-        session,
-        MCP_TRUST_LEDGER,
-        order_by=(MCP_TRUST_LEDGER.c.risk_class, MCP_TRUST_LEDGER.c.action_type, MCP_TRUST_LEDGER.c.epoch),
+    rows = list(
+        session.scalars(
+            select(TrustLedger).order_by(
+                TrustLedger.risk_class,
+                TrustLedger.action_type,
+                TrustLedger.epoch,
+            )
+        ).all()
     )
     items = []
     for r in rows:
-        successes = int(r.get("successes") or 0)
-        trials = int(r.get("trials") or 0)
+        successes = int(r.successes or 0)
+        trials = int(r.trials or 0)
         lb, ub = _wilson_interval(successes, trials)
+        payload = r.payload or {}
         items.append(
             {
-                "risk_class": r.get("risk_class"),
-                "action_type": r.get("action_type"),
-                "epoch": r.get("epoch"),
+                "risk_class": r.risk_class,
+                "action_type": r.action_type,
+                "epoch": r.epoch,
                 "successes": successes,
                 "trials": trials,
-                "autonomy_state": r.get("autonomy_state"),
+                "autonomy_state": r.autonomy_state,
                 "LB": lb,
                 "UB": ub,
-                "promotion_eligible": trials > 0 and lb > _PROMOTION_THRESHOLD,
-                "suspended_until": _iso(r.get("suspended_until")),
-                "pending_promotion_ref": r.get("pending_promotion_ref"),
+                "promotion_eligible": bool(payload.get("promotion_eligible", False)),
+                "suspended_until": payload.get("suspended_until"),
+                "pending_promotion_ref": payload.get("pending_promotion_ref"),
+                "sample_rule": payload.get("sample_rule"),
+                "last_action_ref": payload.get("last_action_ref"),
             }
         )
-    result: dict[str, Any] = {"items": items}
-    if warning:
-        result["warning"] = warning
-    return result
-
-
-def _parse_trust_target(target: str) -> tuple[str, str]:
-    """target 形如 `case.triage:R1_REVERSIBLE_WRITE`（rpartition 最后一个冒号）。"""
-    if ":" in target:
-        action_type, _, risk_class = target.rpartition(":")
-        return action_type, risk_class
-    return target, ""
-
-
-def _ledger_counts(session: Session, risk_class: str, action_type: str) -> dict[str, Any]:
-    """best-effort 读当前账本行（独立查询，非 JOIN）；不可得 → 全 None。"""
-    if not risk_class or not action_type:
-        return {"reason": None, "successes": None, "trials": None}
-    q = (
-        select(MCP_TRUST_LEDGER)
-        .where(
-            MCP_TRUST_LEDGER.c.risk_class == risk_class,
-            MCP_TRUST_LEDGER.c.action_type == action_type,
-        )
-        .order_by(MCP_TRUST_LEDGER.c.epoch.desc())
-        .limit(1)
-    )
-    try:
-        row = session.execute(q).mappings().first()
-    except (OperationalError, ProgrammingError):
-        session.rollback()
-        return {"reason": None, "successes": None, "trials": None}
-    if row is None:
-        return {"reason": None, "successes": None, "trials": None}
-    successes = int(row.get("successes") or 0)
-    trials = int(row.get("trials") or 0)
-    lb, _ = _wilson_interval(successes, trials)
-    reason = f"{successes}/{trials} LB={lb:.4f}<{_PROMOTION_THRESHOLD}" if trials else None
-    return {"reason": reason, "successes": successes, "trials": trials}
+    return {"items": items}
 
 
 def get_trust_denials(session: Session) -> dict[str, Any]:
-    """拒绝晋升事件（mcp_audit 中 action=trust.promotion_rejected）。"""
-    rows, warning = _mcp_rows(session, MCP_AUDIT, order_by=MCP_AUDIT.c.ts.desc())
+    """Authoritative promotion denials joined to immutable Trust entries."""
+    rows = list(
+        session.scalars(
+            select(Audit)
+            .where(Audit.action == "trust.promotion_denied")
+            .order_by(Audit.ts.desc())
+        ).all()
+    )
     items = []
     for r in rows:
-        if (r.get("action") or "") != "trust.promotion_rejected":
-            continue
-        action_type, risk_class = _parse_trust_target(r.get("target") or "")
-        counts = _ledger_counts(session, risk_class, action_type)
+        action_type, _, risk_class = r.target.rpartition(":")
+        entry_id = (r.evidence_refs or {}).get("trust_entry_id")
+        entry = session.get(TrustLedgerEntry, entry_id) if entry_id else None
+        lower = None
+        if entry is not None:
+            lower = ((entry.payload or {}).get("wilson") or {}).get("lower")
+        reason = None
+        if entry is not None and lower is not None:
+            reason = (
+                f"{entry.successes}/{entry.trials} LB={lower:.4f}<{_PROMOTION_THRESHOLD}"
+                if lower <= _PROMOTION_THRESHOLD
+                else "R2 requires per-action approval"
+            )
         items.append(
             {
-                "audit_id": r.get("audit_id"),
-                "ts": _iso(r.get("ts")),
-                "actor": r.get("actor"),
-                "action": r.get("action"),
-                "target": r.get("target"),
+                "audit_id": r.audit_id,
+                "ts": _iso(r.ts),
+                "actor": r.actor,
+                "action": r.action,
+                "target": r.target,
                 "risk_class": risk_class,
                 "action_type": action_type,
-                "result": r.get("result"),
-                "trace_id": r.get("trace_id"),
-                "reason": counts["reason"],
-                "successes": counts["successes"],
-                "trials": counts["trials"],
+                "result": r.result,
+                "trace_id": r.trace_id,
+                "reason": reason,
+                "successes": entry.successes if entry is not None else None,
+                "trials": entry.trials if entry is not None else None,
+                "trust_entry_id": entry_id,
             }
         )
-    result: dict[str, Any] = {"items": items}
-    if warning:
-        result["warning"] = warning
-    return result
+    return {"items": items}
 
 
 # ------------------------------------------------------------------ 3/4. case 事件流 + 证据引用

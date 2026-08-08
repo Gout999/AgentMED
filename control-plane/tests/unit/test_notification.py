@@ -2,6 +2,7 @@
 import pytest
 
 from app.config import Settings
+from app.models.tables import Aggregate
 from app.services.notification_service import NotificationService, NotificationServiceError
 
 
@@ -9,9 +10,23 @@ def _svc(session) -> NotificationService:
     return NotificationService(session, Settings())
 
 
+def _seed_notifying_case(session, case_id: str = "case_x") -> None:
+    session.add(
+        Aggregate(
+            aggregate_type="case",
+            aggregate_id=case_id,
+            state="NOTIFYING",
+            payload={"channel": "feishu-mock:default:"},
+            revision=1,
+        )
+    )
+    session.flush()
+
+
 def test_queue_creates_queued_with_outbox(sqlite_session):
+    _seed_notifying_case(sqlite_session)
     svc = _svc(sqlite_session)
-    r = svc.queue(case_id="case_x", channel="feishu", thread_ref="feishu:c:r", body_ref="inline:1")
+    r = svc.queue(case_id="case_x", channel="feishu-mock", thread_ref="feishu:c:r", body_ref="inline:1")
     assert r["state"] == "QUEUED"
     assert r["notification_id"].startswith("notif_")
     assert r["outbox_id"].startswith("obx_")
@@ -22,14 +37,17 @@ def test_queue_creates_queued_with_outbox(sqlite_session):
     assert ob.status == "PENDING"
 
 
-def test_mark_sent(sqlite_session):
+def test_direct_mark_sent_requires_outbox_bound_receipt(sqlite_session):
+    _seed_notifying_case(sqlite_session)
     svc = _svc(sqlite_session)
-    nid = svc.queue(case_id="case_x", channel="feishu", thread_ref="t", body_ref="b")["notification_id"]
-    r = svc.mark_sent(nid, "msg-1")
-    assert r["state"] == "SENT"
+    nid = svc.queue(case_id="case_x", channel="feishu-mock", thread_ref="t", body_ref="b")["notification_id"]
+    with pytest.raises(NotificationServiceError) as exc:
+        svc.mark_sent(nid, "msg-1")
+    assert exc.value.code == "receipt_required"
 
 
 def test_retryable_failure_then_retry(sqlite_session):
+    _seed_notifying_case(sqlite_session)
     svc = _svc(sqlite_session)
     nid = svc.queue(case_id="case_x", channel="feishu", thread_ref="t", body_ref="b")["notification_id"]
     r = svc.mark_failed(nid, error="429", retryable=True, attempt=1)
@@ -39,6 +57,7 @@ def test_retryable_failure_then_retry(sqlite_session):
 
 
 def test_non_retryable_failure_dead_letters(sqlite_session):
+    _seed_notifying_case(sqlite_session)
     svc = _svc(sqlite_session)
     nid = svc.queue(case_id="case_x", channel="feishu", thread_ref="t", body_ref="b")["notification_id"]
     r = svc.mark_failed(nid, error="auth_failed", retryable=False, attempt=1)
@@ -47,6 +66,7 @@ def test_non_retryable_failure_dead_letters(sqlite_session):
 
 
 def test_dead_letter_after_retries(sqlite_session):
+    _seed_notifying_case(sqlite_session)
     svc = _svc(sqlite_session)
     nid = svc.queue(case_id="case_x", channel="feishu", thread_ref="t", body_ref="b")["notification_id"]
     svc.mark_failed(nid, error="429", retryable=True, attempt=1)

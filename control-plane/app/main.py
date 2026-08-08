@@ -24,6 +24,7 @@ def create_app(
     settings: Settings | None = None,
     *,
     quality_client: Any = None,
+    notification_adapter: Any = None,
     engine: Any = None,
     create_tables: bool = False,
 ) -> FastAPI:
@@ -42,6 +43,8 @@ def create_app(
             app.state.quality_client = QualityAPIClient(
                 settings.quality_api_base_url, settings.quality_api_token
             )
+        if notification_adapter is not None:
+            app.state.notification_adapter = notification_adapter
         if create_tables:
             Base.metadata.create_all(bind=eng)
         logger.info("control-plane up version=%s", __version__)
@@ -57,6 +60,8 @@ def create_app(
     app.state.env_cache = {"ts": 0.0, "payload": None}  # GET /v1/env 5s 缓存
     if quality_client is not None:
         app.state.quality_client = quality_client
+    if notification_adapter is not None:
+        app.state.notification_adapter = notification_adapter
 
     app.include_router(cases.router)
     app.include_router(experiments.router)

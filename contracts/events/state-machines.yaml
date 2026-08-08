@@ -39,7 +39,7 @@ machines:
       - { from: AWAITING_APPROVAL,  on: changeset.expired,           to: AWAITING_FIX,       note: "审批过期：WorkOrder 作废，须重签" }
       - { from: RELEASING,          on: case.resolved,               to: NOTIFYING }
       - { from: RELEASING,          on: release.rollback_failed,     to: ESCALATED }
-      - { from: NOTIFYING,          on: notification.sent,           to: CLOSED }
+      - { from: NOTIFYING,          on: case.closed,                  to: CLOSED,             note: "仅在 outbox dispatcher 验证 provider receipt 后归档" }
       - { from: NOTIFYING,          on: notification.dead_lettered,  to: ESCALATED }
       - { from: "*",                on: case.escalated,              to: ESCALATED,          note: "人工接管是全局迁移" }
     failure_semantics:

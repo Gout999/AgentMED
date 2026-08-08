@@ -12,7 +12,7 @@ from jsonschema import Draft202012Validator, FormatChecker
 from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
-from app.models.tables import GateReportRecord, WorkOrder
+from app.models.tables import Event, GateReportRecord, WorkOrder
 from app.services.audit import AuditService
 from app.services.event_store import EventStore
 from app.utils.jcs import canonical_json_digest
@@ -20,7 +20,14 @@ from app.utils.jcs import canonical_json_digest
 
 _DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
 _HEX_RE = re.compile(r"^[0-9a-f]{64}$")
-_REPO_ROOT = Path(__file__).resolve().parents[3]
+_REPO_ROOT = next(
+    (
+        parent
+        for parent in Path(__file__).resolve().parents
+        if (parent / "contracts" / "schemas").is_dir()
+    ),
+    Path(__file__).resolve().parents[3],
+)
 _GATE_SCHEMA = json.loads(
     (_REPO_ROOT / "contracts" / "schemas" / "gate-report.schema.json").read_text(encoding="utf-8")
 )
@@ -480,8 +487,11 @@ class GateService:
             "workorder_id": row.workorder_id,
             "report_hash": row.report_hash,
             "candidate_digest": row.candidate_digest,
+            "overall_status": row.overall_status,
+            "evidence_digest": row.evidence_digest,
+            "target_revision": row.target_revision,
         }
-        self.store.append_event(
+        requested_event = self.store.append_event(
             aggregate_type="eval",
             aggregate_id=row.eval_id,
             event_type="eval.requested",
@@ -491,33 +501,78 @@ class GateService:
             machine="eval",
             merge_payload=base,
         )
-        self._append_eval(row.eval_id, "eval.started", base)
-        self._append_eval(
+        started_event = self._append_eval(
+            row.eval_id,
+            "eval.started",
+            base,
+            causation_id=requested_event.event_id,
+        )
+        rule_event = self._append_eval(
             row.eval_id,
             "eval.rule_track_completed",
             {**base, "status": row.report["rule_track"]["status"]},
+            causation_id=started_event.event_id,
         )
-        self._append_eval(
+        judge_event = self._append_eval(
             row.eval_id,
             "eval.judge_track_completed",
             {**base, "status": row.report["judge_track"]["status"]},
+            causation_id=started_event.event_id,
         )
+        report_ref = f"eval://{row.eval_id}"
+        completed = {
+            **base,
+            "report_ref": report_ref,
+            "report_digest": f"sha256:{row.report_hash}",
+            "completed_track_event_ids": [rule_event.event_id, judge_event.event_id],
+        }
         if row.overall_status == "passed":
-            self._append_eval(row.eval_id, "eval.passed", base)
+            self._append_eval(
+                row.eval_id,
+                "eval.passed",
+                completed,
+                causation_id=judge_event.event_id,
+            )
         elif row.overall_status == "failed":
-            self._append_eval(row.eval_id, "eval.failed", base)
+            self._append_eval(
+                row.eval_id,
+                "eval.failed",
+                {
+                    **completed,
+                    "failing_checks": self._failing_check_refs(row.report),
+                },
+                causation_id=judge_event.event_id,
+            )
         else:
-            self._append_eval(row.eval_id, "eval.error", {**base, "retryable": False}, guard="retryable=false")
+            self._append_eval(
+                row.eval_id,
+                "eval.error",
+                {
+                    **completed,
+                    "error": "one or more gate tracks ended in an infrastructure or indeterminate state",
+                    "retryable": False,
+                },
+                guard="retryable=false",
+                causation_id=judge_event.event_id,
+            )
 
-    def _append_eval(self, eval_id: str, event_type: str, payload: dict[str, Any], guard: str | None = None) -> None:
+    def _append_eval(
+        self,
+        eval_id: str,
+        event_type: str,
+        payload: dict[str, Any],
+        guard: str | None = None,
+        causation_id: str | None = None,
+    ) -> Event:
         agg = self.store.get_aggregate("eval", eval_id)
         if agg is None:
             raise GateServiceError("validation_failed", f"eval aggregate {eval_id} missing")
-        self.store.append_event(
+        return self.store.append_event(
             aggregate_type="eval",
             aggregate_id=eval_id,
             event_type=event_type,
             payload=payload,
+            causation_id=causation_id or "none",
             correlation_id=payload.get("workorder_id", eval_id),
             actor="controller:gate",
             expected_revision=agg.revision,
@@ -525,6 +580,42 @@ class GateService:
             guard=guard,
             merge_payload=payload,
         )
+
+    @staticmethod
+    def _failing_check_refs(report: dict[str, Any]) -> list[str]:
+        """Return stable, non-empty failure identities for eval.failed."""
+
+        failures: list[str] = []
+        rule = report.get("rule_track") or {}
+        for check in rule.get("checks") or []:
+            if check.get("status") != "passed":
+                failures.append(f"rule:{check.get('check_id') or 'unknown'}")
+        if rule.get("status") != "passed" and not any(item.startswith("rule:") for item in failures):
+            failures.append("rule:track")
+
+        judge = report.get("judge_track") or {}
+        threshold = float(judge.get("pass_threshold", 0.0))
+        for score in judge.get("scores") or []:
+            if not score.get("pass") or float(score.get("score", 0.0)) < threshold:
+                failures.append(f"judge:{score.get('probe_id') or 'unknown'}")
+        if judge.get("status") != "passed" and not any(
+            item.startswith("judge:") for item in failures
+        ):
+            failures.append("judge:track")
+
+        for section_name in ("deterministic_tests", "live_provider_e2e"):
+            section = report.get(section_name) or {}
+            for suite in section.get("suites") or []:
+                if suite.get("status") != "passed" or int(suite.get("n_failed", 0)) > 0:
+                    failures.append(
+                        f"{section_name}:{suite.get('suite') or 'unknown'}"
+                    )
+            if section.get("status") != "passed" and not any(
+                item.startswith(f"{section_name}:") for item in failures
+            ):
+                failures.append(f"{section_name}:track")
+
+        return sorted(set(failures)) or ["gate:overall_status_failed"]
 
     @staticmethod
     def _same_registration(

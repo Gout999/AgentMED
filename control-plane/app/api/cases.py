@@ -7,11 +7,11 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_app_settings, get_db_session
+from app.api.deps import get_app_settings, get_db_session, require_internal_write
 from app.config import Settings
 from app.services.audit import AuditWriteError
 from app.services.case_service import CaseService, CaseServiceError
-from app.services.outbox_relay import OutboxRelay
+from app.services.outbox_relay import OutboxDispatcher
 
 router = APIRouter(tags=["cases"])
 
@@ -55,6 +55,7 @@ def _raise(exc: CaseServiceError) -> None:
         "revision_conflict": 409,
         "lease_conflict": 409,
         "lease_lost": 409,
+        "forbidden_transition": 403,
     }.get(exc.code, 400)
     body: dict[str, Any] = {"error": {"code": exc.code, "message": exc.message, **exc.extra}}
     if exc.code == "illegal_transition" and "current_state" in exc.extra:
@@ -120,6 +121,7 @@ def claim_case(
     body: ClaimIn,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
     svc = CaseService(session, settings)
     try:
@@ -137,6 +139,7 @@ def heartbeat_case(
     body: HeartbeatIn,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
     svc = CaseService(session, settings)
     try:
@@ -151,6 +154,7 @@ def reclaim_case(
     case_id: str,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
     """lease 过期回收（看门狗/人工触发）。"""
     svc = CaseService(session, settings)
@@ -171,6 +175,7 @@ def transition_case(
     body: TransitionIn,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
     svc = CaseService(session, settings)
     try:
@@ -192,7 +197,21 @@ def transition_case(
 
 @router.post("/v1/outbox/relay")
 def relay_outbox(
-    session: Session = Depends(get_db_session),
+    request: Request,
+    limit: int = 50,
+    settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
-    n = OutboxRelay(session).drain()
-    return {"sent": n}
+    factory = getattr(request.app.state, "session_factory", None)
+    if factory is None:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "dispatcher_unavailable", "message": "session factory is unavailable"},
+        )
+    adapter = getattr(request.app.state, "notification_adapter", None)
+    return OutboxDispatcher(
+        factory,
+        settings,
+        notification_adapter=adapter,
+        worker_id="api:outbox-dispatcher",
+    ).dispatch_batch(limit=min(max(limit, 1), 500))

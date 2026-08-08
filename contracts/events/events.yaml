@@ -23,6 +23,40 @@ envelope:
     actor:       { type: string, description: "发起方（controller 组件或 agent 身份）；缺省=system" }
     payload:     { type: object }
 
+# Durable dispatcher envelope. The lowercase event above is the authoritative
+# aggregate history; each critical event is atomically projected to one of
+# these stable integration event names before any consumer runs.
+outbox_domain_events:
+  channel: domain.events
+  required:
+    - CASE_CREATED
+    - ATTRIBUTION_DECIDED
+    - GATE_COMPLETED
+    - RELEASE_STARTED
+    - RELEASE_PROMOTED
+    - RELEASE_ROLLED_BACK
+    - RELEASE_UNKNOWN
+    - NOTIFICATION_SENT
+    - CASE_ARCHIVED
+  envelope_required:
+    - schema_version
+    - domain_event_type
+    - source_event_id
+    - source_event_type
+    - aggregate_type
+    - aggregate_id
+    - aggregate_seq
+    - causation_id
+    - correlation_id
+    - actor
+    - occurred_at
+    - payload
+  delivery_binding:
+    required: [outbox_id, source_event_id, source_event_seq, channel, domain_event_type, payload_digest]
+    idempotency: "consumer ACK and immutable receipt are unique per outbox_id; Trust additionally coalesces by action_ref"
+    causal_ordering: "同一 aggregate 的较后 source_event_seq 不得越过任何较早且未 SENT 的 delivery；DEAD predecessor 必须冻结后续并等待人工修复"
+    failure_semantics: "missing/mismatched receipt, unknown channel, audit outage, payload digest mismatch, or unresolved causal predecessor cannot become SENT"
+
 # ---------------------------------------------------------------- 投诉接入
 # 事件驱动（webhook）+ 轮询兜底（poll）双来源，统一经 Case Controller inbox 去重后立案。
 ingestion:
@@ -548,7 +582,7 @@ aggregates:
           properties:
             wilson_lower: { type: number, minimum: 0, maximum: 1 }
             threshold: { const: 0.9 }
-            reason: { const: lower_bound_below_threshold, description: "记账但拒绝晋升（如 3/3 下界 0.438<0.9）" }
+            reason: { enum: [lower_bound_below_threshold, r2_requires_per_action_approval], description: "统计不足或 R2 永远逐次审批；两者都不得自动放行" }
       - event_type: trust.promotion_proposed
         aggregate_id: trust_key
         causation_id: "晋升评估 eligible"

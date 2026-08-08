@@ -26,6 +26,8 @@
   `cd control-plane && .venv/bin/alembic upgrade head`
 - Control-plane startup:
   `cd control-plane && .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8090`
+- Fixed Phase-1 outbox worker:
+  `cd control-plane && .venv/bin/python -m app.workers.outbox`
 - Demo app startup is normally through `docker compose -f deploy/compose.yaml up -d --build postgres demo-app`; live use requires `STEPFUN_API_KEY`.
 - Control-plane tests must use an explicit disposable database, for example:
   `cd control-plane && DATABASE_URL=postgresql+psycopg://gout@127.0.0.1:5432/control_plane_test .venv/bin/python -m pytest -q`
@@ -43,3 +45,5 @@
 ## Definition of done
 
 A capability is done only when the real call path is implemented, authoritative records and audit evidence are persisted transactionally, idempotency and fail-closed behavior are tested, relevant unit/integration/contract/replay suites pass, live-provider status is reported honestly, verifier findings are resolved, and `PLANS.md`, `docs/context/PROJECT_STATE.md`, and `docs/context/LAST_HANDOFF.md` identify the evidence and completion commit.
+
+`NOTIFICATION_ADAPTER=feishu-mock` is contract/replay-only. The default is disabled and must fail closed; never describe it as live Feishu.

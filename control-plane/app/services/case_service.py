@@ -209,10 +209,6 @@ class CaseService:
             expected_revision=agg.revision,
             machine="case",
             merge_payload={"title": title, "app_ref": app_ref},
-            outbox={
-                "channel": "case.opened",
-                "payload": {"case_id": case_id, "title": title},
-            },
         )
 
     # ---------- 领单 / 心跳 / 回收 ----------
@@ -359,6 +355,11 @@ class CaseService:
         actor: str = "system",
         guard: Optional[str] = None,
     ) -> dict[str, Any]:
+        if event_type in {"case.closed", "notification.sent", "notification.dead_lettered"}:
+            raise CaseServiceError(
+                "forbidden_transition",
+                f"{event_type} is dispatcher-owned and requires a provider receipt",
+            )
         agg = self.store.get_aggregate("case", case_id)
         if agg is None:
             raise CaseServiceError("not_found", f"case {case_id} not found")
