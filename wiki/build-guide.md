@@ -30,3 +30,10 @@
 - 不发明 plan-v3 没有的架构决策；不引入仓库没有的依赖（先查再报主控）
 - 不 mock LLM 调用（demo-app 全真实 StepFun）；不把 audit.jsonl 当权威源
 - 不做"置信≥0.8"式未定义指标；归因输出必须 Δ+95%CI+三态
+
+## 运维地雷补充（2026-08-08 e2e 实战）
+
+1. **MCP server 必须从主仓启动**：它们是宿主长驻进程，从 worktree 启动会因 worktree 清理而变成"目录已删的孤儿"；且启动 env 必须显式 `CONTROL_PLANE_BASE_URL=http://127.0.0.1:18090`（默认 8090 是 AgentTeams controller，不是 CaseLoop 控制面）。
+2. **control-plane 容器重建后重启 MCP server**：server 的 httpx 连接池持有旧容器死连接，表现为 `case controller unreachable` 但宿主 curl 正常。
+3. **integration 测试默认指 scratch 库**（S0-005）：`DATABASE_URL` 不设时是 `control_plane_test`，指活库必须显式覆盖。
+4. **demo-app compose up 必须带 env**：`set -a && source ~/Documents/kimi/workspace/ACL-team/.env && set +a`，否则 `STEPFUN_API_KEY` 被空值覆盖，chat 静默回兜底文案。
