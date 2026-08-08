@@ -68,3 +68,84 @@ def test_cancel(sqlite_session):
     eid = svc.create(case_id="case_x")["experiment_id"]
     r = svc.cancel(eid, reason="case merged")
     assert r["state"] == "CANCELLED"
+
+
+# ---------- S0-006：冻结协议领域校验（空探针集不得冻结） ----------
+
+
+def test_freeze_protocol_rejects_empty_discovery(sqlite_session):
+    svc = _svc(sqlite_session)
+    eid = svc.create(case_id="case_x")["experiment_id"]
+    with pytest.raises(ExperimentServiceError) as exc:
+        svc.freeze_protocol(
+            eid,
+            probe_set_digest="sha256:" + "1" * 64,
+            discovery=[],
+            hidden_confirmation=["p2"],
+            unaffected_controls=["p3"],
+            repetitions=5,
+            versions={},
+            random_seed_ref="seed:1",
+        )
+    assert exc.value.code == "validation_error"
+    assert "discovery" in exc.value.message
+
+
+def test_freeze_protocol_rejects_empty_hidden_confirmation(sqlite_session):
+    svc = _svc(sqlite_session)
+    eid = svc.create(case_id="case_x")["experiment_id"]
+    with pytest.raises(ExperimentServiceError) as exc:
+        svc.freeze_protocol(
+            eid,
+            probe_set_digest="sha256:" + "1" * 64,
+            discovery=["p1"],
+            hidden_confirmation=[],
+            unaffected_controls=["p3"],
+            repetitions=5,
+            versions={},
+            random_seed_ref="seed:1",
+        )
+    assert exc.value.code == "validation_error"
+    assert "hidden_confirmation" in exc.value.message
+
+
+def test_freeze_protocol_rejects_empty_unaffected_controls(sqlite_session):
+    svc = _svc(sqlite_session)
+    eid = svc.create(case_id="case_x")["experiment_id"]
+    with pytest.raises(ExperimentServiceError) as exc:
+        svc.freeze_protocol(
+            eid,
+            probe_set_digest="sha256:" + "1" * 64,
+            discovery=["p1"],
+            hidden_confirmation=["p2"],
+            unaffected_controls=[],
+            repetitions=5,
+            versions={},
+            random_seed_ref="seed:1",
+        )
+    assert exc.value.code == "validation_error"
+    assert "unaffected_controls" in exc.value.message
+
+
+def test_freeze_protocol_empty_probe_set_via_api_returns_400(app_client):
+    """纵深防御：HTTP 层对空 discovery 冻结返回 400 + code=validation_error。"""
+    client, _ = app_client
+    r = client.post("/v1/experiments", json={"case_id": "case_x"})
+    assert r.status_code == 200
+    eid = r.json()["experiment_id"]
+    resp = client.post(
+        f"/v1/experiments/{eid}/protocol",
+        json={
+            "probe_set_digest": "sha256:" + "1" * 64,
+            "discovery": [],
+            "hidden_confirmation": ["p2"],
+            "unaffected_controls": ["p3"],
+            "repetitions": 5,
+            "versions": {},
+            "random_seed_ref": "seed:1",
+        },
+    )
+    assert resp.status_code == 400
+    detail = resp.json()["detail"]
+    assert detail["code"] == "validation_error"
+    assert "discovery" in detail["message"]

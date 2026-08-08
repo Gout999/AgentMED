@@ -81,6 +81,18 @@ class ExperimentService:
         versions: dict[str, str],
         random_seed_ref: str,
     ) -> dict[str, Any]:
+        # S0-006 纵深防御：空探针集不得冻结（空实验静默冻结曾让归因师空轮询）。
+        probe_sets = {
+            "discovery": discovery,
+            "hidden_confirmation": hidden_confirmation,
+            "unaffected_controls": unaffected_controls,
+        }
+        for probe_key, probe_ids in probe_sets.items():
+            if not probe_ids:
+                raise ExperimentServiceError(
+                    "validation_error",
+                    f"{probe_key} 不能为空：冻结协议必须含非空探针集（发现/隐证/对照三分集齐全）",
+                )
         agg = self._require(experiment_id)
         payload = {
             "probe_set_digest": probe_set_digest,

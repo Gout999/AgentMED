@@ -2,13 +2,15 @@
 
 - gate.run/report：确定性门禁（规则轨+裁判轨分开报告；live 轨不可达标 UNAVAILABLE/skipped）。
 - experiment.*：包装 control-plane /v1/experiments。
+- experiment.execute：后台线程驱动 eval-harness 执行完整 5-cell 实验（S0-006 修复）。
 - 裁判模型 ≠ 运动员模型（T6 硬约束，digest 不同）。
 """
 import logging
 import sys
+import threading
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 from sqlalchemy import select
@@ -24,6 +26,14 @@ from common.ids import new_eval_id  # noqa: E402
 from common.jcs import jcs_subset, sha256_hex  # noqa: E402
 from common.serverkit import build_server_app  # noqa: E402
 from common.tables import EvalRun, WorkOrderDraft  # noqa: E402
+
+# eval-harness 执行机（monorepo 源码依赖，见 requirements.txt：-e ../eval-harness）。
+# 复用完整 5-cell 执行→聚合→裁决→报告链路，禁止重造。
+from eval_harness.client import QualityAPIClient  # noqa: E402
+from eval_harness.config import Settings as EvalHarnessSettings  # noqa: E402
+from eval_harness.experiment import DemoAppB1Driver, ExperimentRunner  # noqa: E402
+from eval_harness.models import ExperimentPlan  # noqa: E402
+from eval_harness.probe_loader import load_probe_set  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
@@ -97,8 +107,11 @@ def gate_report(eval_id: str) -> dict[str, Any]:
 
 
 @mcp.tool(name="experiment.plan")
-def experiment_plan(case_id: str, matrix: str = "5cell", version_refs: Optional[dict[str, str]] = None) -> dict[str, Any]:
-    """归因实验计划（ACL：归因师）。matrix ∈ 5cell|full2x2x2；返回 {experiment_id} PLANNED。"""
+def experiment_plan(case_id: str, matrix: str = "5cell") -> dict[str, Any]:
+    """归因实验计划（ACL：归因师）。matrix ∈ 5cell|full2x2x2；返回 {experiment_id} PLANNED。
+
+    version_refs 不在计划期固化——版本 digest 由 experiment.execute 执行时从实际 /chat
+    响应现场捕获（对账口径，见 eval-harness _capture_version_digests）。"""
     if matrix not in ("5cell", "full2x2x2"):
         raise validation("matrix must be 5cell|full2x2x2")
     protocol_version = "five_cell-v1" if matrix == "5cell" else "full_factorial-v1"
@@ -138,12 +151,54 @@ def experiment_report(experiment_id: str) -> dict[str, Any]:
         raise dependency_unavailable(f"experiment controller unreachable: {exc}") from exc
 
 
+@mcp.tool(name="experiment.execute")
+def experiment_execute(experiment_id: str) -> dict[str, Any]:
+    """驱动 5-cell 归因实验执行（ACL：归因师；后台异步，立即返回）。
+
+    前置：实验必须处于 PROTOCOL_FROZEN 或 RUNNING（RUNNING = 已调 experiment.run 领单的常态；
+    两者都合法）。冻结协议三探针集必须非空，否则 validation 报错并给出正确结构指引。
+
+    执行模型：runner 就是你自己——本工具在后台线程里用 eval-harness ExperimentRunner
+    跑完整 5-cell 执行→聚合→裁决→报告，逐 cell 回流 POST /v1/experiments/{id}/cells，
+    完成回流 POST /verdict（verdict + 每层 Δ + attributed_layer）；任何异常回流
+    POST /cancel 并在控制面留错误原因。调用本身立即返回 {status:executing}，不要轮询本
+    工具；用 experiment.report 轮询直到 state=VERDICT_COMPUTED。
+    """
+    try:
+        exp = _cp().get(f"/v1/experiments/{experiment_id}")
+    except McpError as exc:
+        raise exc
+    except Exception as exc:  # noqa: BLE001
+        raise dependency_unavailable(f"experiment controller unreachable: {exc}") from exc
+    state = exp.get("state")
+    if state not in ("PROTOCOL_FROZEN", "RUNNING"):
+        raise validation(
+            f"experiment {experiment_id} 当前状态 {state} 不可执行；前置必须是 PROTOCOL_FROZEN "
+            "（探针已冻结）或 RUNNING（已调 experiment.run）。正确顺序：experiment.plan → "
+            "probe.freeze → GET 回读确认三探针集非空 → experiment.run → experiment.execute。"
+        )
+    payload = exp.get("payload") or {}
+    _require_nonempty_probe_sets(payload)
+    thread = threading.Thread(
+        target=_execute_experiment_background,
+        args=(experiment_id,),
+        name=f"eval-execute-{experiment_id}",
+        daemon=True,
+    )
+    thread.start()
+    return {"status": "executing", "experiment_id": experiment_id}
+
+
 @mcp.tool(name="probe.freeze")
 def probe_freeze(
     experiment_id: str,
     probe_set: dict[str, Any],
 ) -> dict[str, Any]:
-    """冻结探针三分集（ACL：归因师；冻结后全员只读）。返回 {probe_set_digest}。"""
+    """冻结探针三分集（ACL：归因师；冻结后全员只读）。返回 {probe_set_digest}。
+
+    probe_set 必须顶层平铺 discovery / hidden_confirmation / unaffected_controls 三个
+    非空数组（+ 可选 repetitions）；versions 可省略（版本由 execute 现场捕获 digest）。"""
+    _validate_probe_set_structure(probe_set)
     try:
         digest_bytes = jcs_subset(probe_set)
     except (ValueError, TypeError) as exc:
@@ -166,6 +221,170 @@ def probe_freeze(
         raise dependency_unavailable(f"experiment controller unreachable: {exc}") from exc
     result["probe_set_digest"] = digest
     return result
+
+
+# ---------- 内部：probe.freeze / experiment.execute 校验 ----------
+
+# probe_set 顶层必须存在的三个探针集键（versions 允许缺省/空）。
+_REQUIRED_PROBE_KEYS = ("discovery", "hidden_confirmation", "unaffected_controls")
+
+# 面向 LLM 的 probe_set 正确结构示例（错误消息里逐条教正确键名）。
+_PROBE_SET_EXAMPLE = {
+    "discovery": ["cs-001", "cs-002", "cs-003"],
+    "hidden_confirmation": ["cs-004", "cs-005"],
+    "unaffected_controls": ["cs-013", "cs-014", "cs-015", "cs-016"],
+    "repetitions": 5,
+}
+
+
+def _validate_probe_set_structure(probe_set: dict[str, Any]) -> None:
+    """probe.freeze 结构校验：三探针集必须存在且为非空数组，杜绝空实验静默冻结。
+
+    错误消息即操作手册：说清缺哪个键/空哪个集，并给正确结构示例（顶层平铺，勿嵌套）。
+    """
+    problems: list[str] = []
+    for key in _REQUIRED_PROBE_KEYS:
+        value = probe_set.get(key)
+        if not isinstance(value, list):
+            problems.append(f"{key} 缺失或不是数组（当前值：{value!r}）")
+        elif not value:
+            problems.append(f"{key} 为空数组")
+    if problems:
+        raise validation(
+            "probe_set 结构错误："
+            + "；".join(problems)
+            + "。正确结构是顶层平铺四个键（discovery / hidden_confirmation / "
+            "unaffected_controls / repetitions），不要把探针集再嵌套一层："
+            + f"{_PROBE_SET_EXAMPLE}"
+            + "。versions 可省略（版本由 experiment.execute 执行时现场捕获 digest）。"
+        )
+
+
+def _require_nonempty_probe_sets(payload: dict[str, Any]) -> None:
+    """experiment.execute 前置校验：冻结协议三探针集非空，空实验没有可执行内容。"""
+    empty = [name for name in _REQUIRED_PROBE_KEYS if not payload.get(name)]
+    if empty:
+        raise validation(
+            "experiment.execute 前置校验失败：冻结协议三探针集 "
+            f"{'、'.join(empty)} 为空，无法执行（空实验没有可跑的内容）。"
+            "请先用 probe.freeze 冻结非空探针集——正确结构是顶层平铺："
+            + f"{_PROBE_SET_EXAMPLE}"
+            + "。若已冻结，请 GET /v1/experiments/{id} 回读 payload 确认三探针集非空。"
+        )
+
+
+# ---------- 内部：experiment.execute 后台执行 ----------
+
+
+def _execute_experiment_background(experiment_id: str) -> None:
+    """后台执行线程：跑完整 5-cell 实验并回流 cells/verdict 到控制面。
+
+    复用 eval-harness ExperimentRunner（执行→聚合→裁决→报告全链路）；逐 cell 回流
+    POST /cells，完成回流 POST /verdict，任何异常回流 POST /cancel 并留错误原因——
+    绝不让实验悬挂在 RUNNING。
+    """
+    try:
+        exp = _cp().get(f"/v1/experiments/{experiment_id}")
+        payload = exp.get("payload") or {}
+        # 前置校验（与 execute 工具一致；线程内数据可能更新，重复校验一次）。
+        _require_nonempty_probe_sets(payload)
+        # execute 允许 PROTOCOL_FROZEN（agent 未 run）或 RUNNING；未 run 先推进状态。
+        if exp.get("state") != "RUNNING":
+            _cp().post(
+                f"/v1/experiments/{experiment_id}/start",
+                json_body={"runner_id": "eval-runner", "lease_id": "", "fencing_token": 0},
+            )
+        plan, probe_set, eh_settings = _build_execution_context(experiment_id, payload)
+        client = QualityAPIClient(eh_settings)
+        driver = DemoAppB1Driver(client)
+        result = ExperimentRunner(client, probe_set, eh_settings).run(plan, driver)
+
+        # 逐 cell 回流（随机臂序，索引即 arm_order_index）。
+        arm_order = _arm_order_from_bundle(result.bundle)
+        for index, arm in enumerate(arm_order):
+            cell = result.cells[arm]
+            _cp().post(
+                f"/v1/experiments/{experiment_id}/cells",
+                json_body={
+                    "cell": arm,
+                    "arm_order_index": index,
+                    "recovery_rate": _cell_recovery_rate(cell, plan),
+                    "fencing_token": 0,
+                },
+            )
+
+        # 回流 verdict：verdict + 每层 Δ + attributed_layer（最高 Δ 层）。
+        report = result.report
+        deltas = {
+            "prompt": report["deltas"]["prompt"]["estimate"],
+            "kb": report["deltas"]["kb"]["estimate"],
+            "model_params": report["deltas"]["model_params"]["estimate"],
+        }
+        verdict = result.verdict.get("decision") or report["verdict"]["decision"]
+        _cp().post(
+            f"/v1/experiments/{experiment_id}/verdict",
+            json_body={
+                "verdict": verdict,
+                "deltas": deltas,
+                "evidence_bundle_ref": result.bundle.get("bundle_id", f"eval://{experiment_id}/evidence-bundle"),
+                "report_ref": result.report.get("report_id", f"eval://{experiment_id}/attribution-report"),
+                "attributed_layer": result.verdict.get("attributed_layer"),
+            },
+        )
+        logger.info("experiment.execute 完成 experiment_id=%s verdict=%s", experiment_id, verdict)
+    except Exception as exc:  # noqa: BLE001
+        logger.exception("experiment.execute 后台执行失败 experiment_id=%s", experiment_id)
+        try:
+            _cp().post(
+                f"/v1/experiments/{experiment_id}/cancel",
+                json_body={"reason": f"eval-runner execute failed: {exc}"},
+            )
+        except Exception as cancel_exc:  # noqa: BLE001
+            logger.error("experiment.execute 取消失败 experiment_id=%s: %s", experiment_id, cancel_exc)
+
+
+def _build_execution_context(experiment_id: str, payload: dict[str, Any]):
+    """从冻结协议构造 eval-harness 执行上下文（ProbeSet + ExperimentPlan + 执行机 Settings）。
+
+    探针定义取自 contracts/fixtures/probes-customer-service.yaml；实验用的版本 digest 由
+    ExperimentRunner._capture_version_digests 现场捕获（对账口径）。
+    """
+    eh_settings = EvalHarnessSettings()
+    probe_set = load_probe_set(eh_settings.repo_root)
+    plan = ExperimentPlan(
+        experiment_id=experiment_id,
+        case_id=payload.get("case_id") or experiment_id,
+        matrix="five_cell",
+        repetitions=int(payload.get("repetitions") or 1),
+        confidence=eh_settings.experiment_confidence,
+        delta_min=eh_settings.experiment_delta_min,
+        probe_set_digest=payload.get("probe_set_digest", ""),
+        version_digests={},  # 版本现场捕获，不在计划期固化
+        discovery=list(payload.get("discovery") or []),
+        hidden_confirmation=list(payload.get("hidden_confirmation") or []),
+        unaffected_controls=list(payload.get("unaffected_controls") or []),
+        random_seed=None,
+    )
+    return plan, probe_set, eh_settings
+
+
+def _arm_order_from_bundle(bundle: dict) -> list[str]:
+    """从 evidence-bundle 的 random_arm_order（arm@probe 平铺）还原实际臂序。"""
+    order: list[str] = []
+    for item in bundle.get("protocol", {}).get("random_arm_order", []):
+        arm = str(item).split("@", 1)[0]
+        if arm not in order:
+            order.append(arm)
+    return order
+
+
+def _cell_recovery_rate(cell: Any, plan: ExperimentPlan) -> float:
+    """单臂受影响探针恢复率（与 eval-harness 口径一致，∈[0,1]）。"""
+    affected = set(plan.affected_probe_ids)
+    runs = [r for r in cell.runs if r.probe_id in affected]
+    if not runs:
+        return 0.0
+    return round(sum(1 for r in runs if r.recovered) / len(runs), 4)
 
 
 # ---------- 内部：确定性门禁报告生成 ----------
