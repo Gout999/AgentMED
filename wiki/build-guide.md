@@ -41,3 +41,19 @@
 6. **worker 单线程 ReAct 循环**：工人在 loop 里时新消息只排队不消费；`docker restart` 会打断 loop 但**恰在消费瞬间重启=消息丢失**（sync token 已推进，新进程视其为已读）——重启前先确认 worker 空闲，丢了就用新 txn id 重发。
 7. **agent 报"工具没有/行为不对"时先做隔离测试**：用 `mcp-servers/scripts/mcp_client.py <port> <tool> '<json>'` 以正确参数直调，平台正常=agent 参数构造错，平台异常=平台缺陷；S0-006 即靠此把"空实验"精确定位到 agent 传错 probe_set 键名 + probe.freeze 零校验。
 8. **e2e 期间 demo-app 故障态是前提资产**：归因执行机（DemoAppB1Driver）会 inject/reset 切换故障臂，跑完务必确认 B1 仍注入（`curl :8080/chat` 问退货，漂移应答+prompt_digest=81122ca0… 为正常）；恢复基线用 `demo-app/scripts/reset_state.sh`。
+9. **macOS 系统代理会劫持 httpx 的 localhost 调用（S0-007）**：httpx 默认 `trust_env=True` → `urllib.getproxies()` 在 macOS 回退读系统偏好代理；本机代理（Clash 类 127.0.0.1:7892）对 loopback 一律回 502，MCP→控制面请求根本没到控制面（容器日志无记录）。表象 `DEPENDENCY_UNAVAILABLE 502` 与根因严重脱节。判据：**curl 通 ≠ httpx 通**；修复=内部调用 `trust_env=False`（common/http.py 已改），跑 mcp_client.py 前缀 `NO_PROXY='*'`。
+
+## 平台改进候选（2026-08-08 e2e 实战发现，按发现序）
+
+| # | 缺口 | 实战证据 | 建议 |
+|---|------|---------|------|
+| G1 | eval-runner 无 probe.list 工具 | 归因师 RBAC 拿不到冻结探针清单，靠主控喂 | eval-runner 加自描述执行清单工具 |
+| G2 | conformance 套件收尾不还原 demo-app | 复跑后 active 版本集留 v-test-* 残留，chat 兜底 | 套件 teardown 自动 reset_state |
+| G3 | heartbeat 抑制域工作 | 质量官醒后收 heartbeat "do not do domain work"，8 分钟静默未执行主控指令 | heartbeat 与域消息分优先级，或限定"仅本条心跳回合" |
+| G4 | worker JWT 1h 过期不自愈 | agt 401 后 4 小时无人管，手工 docker rm 重建 | controller 周期重铸或 sidecar 自刷 |
+| G5 | 门禁规则轨不对账 live digest | 修复师伪造 digest（模式补全值）规则轨放行，hash_binding 只查内部一致性 | 规则轨加"digest 必须存在于 live 观测/版本集内容" |
+| G6 | 绑定层错误表象脱节 | quality 绑定失败→502 quality_api_error，与"digest 不存在"根因脱节（注：本次实为代理拦截，见地雷#9；但绑定层若失败同样 502，仍值得改） | 绑定失败返 422+具体不匹配字段 |
+| G7 | release 生命周期无 noop-close | B1 为运行时偏离（target==active declared），stage/canary 合法拒绝，release 永卡 REQUESTED | 加 reconcile/noop-close 迁移；WorkOrder diff 增 runtime_reconcile 类型 |
+| G8 | case 无 close/resolve 迁移 | case_admin 工具面无关闭，本案终态只能停 ESCALATED | case 状态机补 close（附 postmortem 引用） |
+| G9 | 信任账本无 MCP 写入工具 | case-officer 无账面可写，用 Markdown 文档顶替并宣称"平衡"（宣告≠执行复发） | 暴露 ledger.record_outcome/evaluate 工具，或发布完成事件平台自动记账 |
+| G10 | 模型错误直接上墙 | StepFun RPM 错误原文（含内部路径）贴进房间 | copaw channel 错误包装或静默重试 |
