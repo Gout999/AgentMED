@@ -1,33 +1,79 @@
-# CaseLoop —— AI 应用质量自治底座
+# CaseLoop
 
-> 核心架构原则：**确定性控制面 + 概率性执行面**——AI 负责动脑子，系统负责管规矩。
-> LLM 永远不是状态与权限的权威源。
+给 AI 应用配一个质量部门。
 
-任何 LLM 应用实现 Quality API 契约即可被纳管；多 Agent 团队（AgentTeams 编排）自动完成
-badcase 全生命周期闭环：**投诉进来 → 对照实验归因 → 自由起草修复 → 评测门禁 → 灰度发布 →
-回复投诉原处 → 沉淀为评测与知识资产**。
+你的 AI 客服上线了。第三周，它开始跟用户说「激活过的耳机不能退货」——但你们的售后政策明明是七天无理由。用户投诉，运营把截图甩进技术群，技术查了半小时：prompt 没人动过，知识库看着也没问题，重启一下好像又行了。下周，同样的事再发生一遍。
 
-## 仓库结构
+这是今天绝大多数 LLM 应用的真实运维状态：出了问题靠猜，修完靠赌，有没有真的修好，靠下一个用户再踩一次才知道。
+
+CaseLoop 把这件事变成自动的。一条用户投诉进来，系统自动立案、取证、跑对照实验找出是哪一层坏了——是 prompt、知识库，还是模型参数——然后起草修复、跑回归评测、提交给人审批、灰度上线、回到投诉原处回复用户，最后把这次事故存进案例库。AI 负责动脑子，但动不了规矩：立案、发布、审批、记账这些权力，全在确定性的控制面手里，每个关键动作都有 hash 可审计。
+
+## 它真的跑通过，三次
+
+2026-08-08，我们往演示应用「小智客服」里注入了三起真实故障，让系统自己处理。三起都走完了全程，证据在 `evidence/phase1/`：
+
+| 案件 | 我们做了什么 | 系统的表现 |
+|------|------------|-----------|
+| 售后政策矛盾 | 改掉 prompt，让客服坚称「激活不可退」 | 全链路首次走通，修复后实测答复恢复正确 |
+| 同上，但换措辞 | 用剧本之外的话术投诉同一件事 | 零人工纠偏走完全程 |
+| 知识库过时 | 把 KB 里某耳机续航从 30 小时改成 8 小时 | 见下 |
+
+第三起最值得说。知识库故障是系统从没见过的类型——前两起坏的都是 prompt。它没有套用上一个案件的剧本，而是把怀疑正确地指向了知识库这一层，设计了一个「新 KB 对旧 KB」的双臂对照实验，统计显著之后才动手回滚，修完实测答复恢复引用 30 小时的正确条目。
+
+这是我们最看重的一条证据：它不是一个大号 if-else。
+
+## 为什么敢让 AI 干这个
+
+答案是：不完全敢。而且这个「不敢」被写进了代码里。
+
+- **信任账本**。每个 agent 的每次行为都记账。想晋升到「可以少审批」的自治级别，需要 Wilson 置信下界 ≥ 0.9。昨晚三起案件全对，3/3——下界 0.4385，**拒绝晋升**。三次成功在统计上什么也证明不了，系统对此心知肚明。这条拒绝记录是我们最喜欢的一段演示。
+- **高风险操作永远逐次人审**。审批批的是 WorkOrder 的 hash——换一个字节都过不了闸。
+- **裁判和运动员不是同一个模型**。门禁的评测模型与被修的应用模型相互独立。
+
+## 架构一句话
+
+**确定性控制面 + 概率性执行面。** LLM 出主意，系统管规矩；LLM 永远不是状态和权限的权威源，一切分歧以控制面数据库和实验数据裁决。
+
+```
+用户投诉 → 立案(非LLM，去重幂等) → 取证 → 对照实验归因(Δ效应量+置信区间)
+        → 统计显著才放行 → 修复自由起草 → 双轨评测门禁 → 人工审批(批hash)
+        → 灰度发布(CAS写面) → 回复投诉原处 → 事故入案例库 → 账本记账
+```
+
+技术栈：FastAPI + pgvector（演示应用与案例库）、自研控制面（PG 事件溯源）、MCP（agent 工具面）、AgentTeams（多 agent 编排）、StepFun `step-3.7-flash`（LLM）、React 控制台。
+
+## 跑起来看看
+
+```bash
+# 业务栈：演示应用 + 控制面 + 控制台 + Postgres
+cd deploy && docker compose up -d
+
+# 控制台：http://127.0.0.1:8088 （案例、实验、审批、账本可视化）
+# 控制面 API：:18090 ｜ 演示应用：:8080
+```
+
+多 agent 编排层（AgentTeams）安装稍重，步骤与密钥纪律见 `deploy/README.md`。
+想接着开发，先读 `STATUS.md`（当前状态、必知的坑）和 `wiki/INDEX.md`（施工知识库）。
+
+## 仓库里有什么
 
 | 目录 | 内容 |
 |------|------|
-| `demo-app/` | 演示应用「小智客服」（FastAPI RAG，prompt git 版本化，pgvector KB，LLM 真实调用 StepFun，Quality API v2 实现，B1–B4 注入端点） |
-| `control-plane/` | Case Controller / Release Controller / Caseload Controller / Experiment Runner（非 LLM，唯一事实源） |
-| `eval-harness/` | 回归评测集、双轨跑分、对照实验执行器、变异巡检器、质量周报 |
-| `mcp-servers/` | 5 个 MCP Server + trust-ledger 模块 + 重写的 common（审批防重放、审计失败即拒） |
-| `agents/` | team.yaml（4 常设 + 弹性模板 + Team/Human CR）+ 6 份 SOUL.md + 安装 runbook（AgentTeams v1.2.1） |
-| `contracts/` | Quality API OpenAPI、事件/状态定义、WorkOrder/Approval schema、Evidence Bundle schema、B1–B4 ground-truth fixtures、Wilson 测试向量、conformance suite |
-| `casebase/` | pgvector schema、种子数据、入库/检索工具 |
-| `console/` | 治理控制台前端（案例/实验/审批/信任账本可视化） |
-| `deploy/` | docker-compose（app + pgvector + mcp + feishu mock）；AgentTeams 本地安装 |
-| `docs/` | PRD、spec、skills、mcp-contracts、agent-identity、competition/（过程材料） |
-| `evidence/` | 各阶段验收证据（日志/截图/报告导出物；审计权威源在数据库） |
+| `demo-app/` | 演示应用「小智客服」：FastAPI RAG，prompt git 版本化，B1–B4 故障注入端点 |
+| `control-plane/` | 确定性控制面：立案 / 实验 / 发布控制器，PG 事件溯源，唯一事实源 |
+| `eval-harness/` | 回归评测集、双轨跑分、对照实验执行器 |
+| `mcp-servers/` | agent 工具面：5 个 MCP Server + 信任账本 |
+| `agents/` | 多 agent 团队定义（4 常设 + 2 弹性）与角色 SOUL |
+| `contracts/` | Quality API 契约、事件/状态定义、conformance 套件 |
+| `console/` | 治理控制台前端 |
+| `evidence/` | 三起真实案件的全程证据（房间日志 151 条、修复前后 digest、控制台截图） |
+| `docs/` | 终态蓝图 `plan-v3.md`、PRD、技术 spec |
 
-## 文档入口
+## 诚实的边界
 
-- 最终目标完整实现方案（终态蓝图）：`docs/plan-v3.md`
-- PRD：`docs/prd.md`
-- 技术 spec：`docs/spec.md`
+这是黑客松作品，不是生产系统。飞书通道是 mock 的（人工审批由队友在 Matrix 房间里扮演）、规模是单机 docker compose、故障是我们自己注入的。但所有「看起来像演示」的部分底下没有道具：LLM 调用真实打到 StepFun，对照实验真实跑分，hash 真实落库可复查，测试 256 个全绿。
+
+我们知道从「演示」到「敢上生产」之间还差什么——缺口清单一条条列在 `wiki/build-guide.md`（G1–G10），欢迎来看，也欢迎来挑。
 
 ## License
 
