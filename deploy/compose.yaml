@@ -32,7 +32,7 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://caseloop:caseloop@postgres:5432/demo_app
       STEPFUN_API_KEY: ${STEPFUN_API_KEY:-}
-      STEPFUN_BASE_URL: https://api.stepfun.com/v1
+      STEPFUN_BASE_URL: ${STEPFUN_BASE_URL:-https://api.stepfun.com/step_plan/v1}
       STEPFUN_MODEL: step-3.7-flash
       CASELOOP_READ_TOKEN: ${CASELOOP_READ_TOKEN:-conformance-read-token}
       CASELOOP_WRITE_TOKEN: ${CASELOOP_WRITE_TOKEN:-conformance-write-token}
