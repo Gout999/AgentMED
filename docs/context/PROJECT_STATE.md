@@ -1,11 +1,11 @@
 # Project State
 
-- `last_verified_commit`: `02b97ddee82e53b5d2e62fababc841ac3d1acc35`
+- `last_verified_commit`: `a08c0056691b3acdafb43fd0a8b1417d10985fe6`
 - `active_branch`: `codex/p0-close-b1-loop`
 - `origin/main commit`: `a6de5cc1a06d6967634676b2661da7d2e46d287b`
 - `collaborator_sync_merge`: `4b5377dae317eaeadbf23ab85481881096b6d6d2`
-- `working_tree`: P0-3 implementation, tests, verifier PASS, and evidence are complete and awaiting the semantic commit
-- `last_updated`: `2026-08-09T01:12:00+10:00`
+- `working_tree`: P0-3 is independently verified and committed; only this completion-hash context update follows it
+- `last_updated`: `2026-08-09T01:18:00+10:00`
 
 ## Verified completed capabilities
 
@@ -30,7 +30,7 @@
 - UI paths include independent loading, empty, error, retry, stale, partial,
   and UNKNOWN states. The browser remains read-only; Release Controller retains
   all Quality write authority.
-- P0-3 independent verifier passed after two rounds. Evidence is under
+- P0-3 (`a08c005`) independent verifier passed after two rounds. Evidence is under
   `evidence/p0/p0-3-console/`.
 
 ## Proven gaps

@@ -26,4 +26,5 @@
   states as exact immutable VersionSets, enforce authoritative frozen
   attribution, then reuse Gate/Approval/Release/Outbox/Notification/Trust for
   the replay command.
-- `commit_hash`: pending P0-3 semantic commit; P0-2 `8e237e3`; P0-1 `4cd6e64`.
+- `commit_hash`: P0-3 `a08c0056691b3acdafb43fd0a8b1417d10985fe6`;
+  P0-2 `8e237e3`; P0-1 `4cd6e64`.
