@@ -3,12 +3,13 @@ from __future__ import annotations
 
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_app_settings, get_db_session
 from app.config import Settings
+from app.services import read_views
 from app.services.audit import AuditWriteError
 from app.services.experiment_service import ExperimentService, ExperimentServiceError
 
@@ -103,10 +104,16 @@ def list_experiments(
 @router.get("/v1/experiments/{experiment_id}")
 def get_experiment(
     experiment_id: str,
+    view: Optional[str] = Query(default=None, alias="_view", description="full 时返回事件投影详情（cells/Δ/CI/归因层）"),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
 ) -> dict[str, Any]:
     try:
+        if view == "full":
+            result = read_views.get_experiment_full(session, experiment_id)
+            if result is None:
+                raise ExperimentServiceError("not_found", f"experiment {experiment_id} not found")
+            return result
         return _svc(session, settings).get(experiment_id)
     except ExperimentServiceError as exc:
         _raise(exc)

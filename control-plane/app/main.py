@@ -9,7 +9,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app import __version__
-from app.api import cases, changesets, experiments, notifications, releases
+from app.api import cases, changesets, experiments, notifications, read_views, releases
 from app.config import Settings, get_settings
 from app.db import get_engine, get_session_factory
 from app.models.tables import Base
@@ -54,6 +54,7 @@ def create_app(
         lifespan=lifespan,
     )
     app.state.settings = settings
+    app.state.env_cache = {"ts": 0.0, "payload": None}  # GET /v1/env 5s 缓存
     if quality_client is not None:
         app.state.quality_client = quality_client
 
@@ -62,6 +63,7 @@ def create_app(
     app.include_router(changesets.router)
     app.include_router(releases.router)
     app.include_router(notifications.router)
+    app.include_router(read_views.router)
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
