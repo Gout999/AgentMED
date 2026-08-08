@@ -32,9 +32,14 @@ class QualityAPIClient:
         self.settings = settings
         self.base = settings.quality_api_base_url.rstrip("/")
         self.limiter = limiter or RateLimiter(settings.llm_rpm_limit)
+        # trust_env=False：本机内部调用禁止走系统/环境代理
+        # （requests 默认 trust_env=True 经 urllib.getproxies() 读 macOS 系统代理，
+        #  本地代理对 loopback 回 502——与 mcp-servers/common/http.py 同根因，S0-007）
         self._read_session = requests.Session()
+        self._read_session.trust_env = False
         self._read_session.headers.update({"Authorization": f"Bearer {settings.read_token}"})
         self._write_session = requests.Session()
+        self._write_session.trust_env = False
         self._write_session.headers.update({"Authorization": f"Bearer {settings.write_token}"})
 
     # ---- 读：/chat ----
