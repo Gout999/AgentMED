@@ -60,3 +60,12 @@ def get_gates(
     session: Session = Depends(get_db_session),
 ) -> dict[str, Any]:
     return read_views.list_gates(session, limit=limit)
+
+
+@router.get("/v1/evidence")
+def get_evidence(
+    case_id: str | None = Query(default=None),
+    limit: int = Query(default=100, le=500),
+    session: Session = Depends(get_db_session),
+) -> dict[str, Any]:
+    return read_views.list_evidence_refs(session, case_id=case_id, limit=limit)

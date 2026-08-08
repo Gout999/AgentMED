@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { AsyncBoundary } from "../components/AsyncState";
 import { Card } from "../components/Card";
@@ -13,6 +13,7 @@ const FILTERS = [
   { value: "REQUESTED", label: "已申请" },
   { value: "PROTOCOL_FROZEN", label: "协议冻结" },
   { value: "RUNNING", label: "运行中" },
+  { value: "ANALYZING", label: "分析中" },
   { value: "VERDICT_COMPUTED", label: "已出裁决" },
   { value: "CANCELLED", label: "已取消" },
 ] as const;
@@ -21,14 +22,10 @@ export function ExperimentsPage() {
   const [state, setState] = useState<string>("");
 
   const fetcher = useCallback(
-    () => api.listExperiments(state || undefined).then((r) => r.items),
+    (signal: AbortSignal) => api.listExperiments(state || undefined, signal).then((r) => r.items),
     [state],
   );
-  const { data, loading, error, reload } = usePageData(fetcher);
-
-  useEffect(() => {
-    reload();
-  }, [state, reload]);
+  const { data, loading, error, reload, refreshError } = usePageData(fetcher, `experiments:${state}`);
 
   return (
     <div className="space-y-4">
@@ -61,6 +58,8 @@ export function ExperimentsPage() {
           error={error}
           dataEmpty={(data?.length ?? 0) === 0}
           emptyHint={state ? `该状态（${state}）暂无实验` : "control-plane 尚无实验数据"}
+          onRetry={reload}
+          staleError={refreshError}
         >
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-left text-sm">
@@ -100,7 +99,7 @@ function ExperimentRow({ e }: { e: Experiment }) {
         </Link>
       </td>
       <td className="py-2.5 pr-4">
-        <StatusChip label={stateLabel(e.state)} tone={stateTone(e.state)} />
+        <StatusChip label={stateLabel("experiment", e.state)} tone={stateTone("experiment", e.state)} />
       </td>
       <td className="py-2.5 pr-4">
         {caseId === "—" ? (

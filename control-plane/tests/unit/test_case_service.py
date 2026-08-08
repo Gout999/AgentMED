@@ -22,7 +22,12 @@ def _settings(**kw) -> Settings:
 
 def test_ingest_creates_open_case(sqlite_session):
     svc = CaseService(sqlite_session, _settings())
-    r = svc.ingest_complaint(source="webhook", text="手机坏了 13800138000", external_id="m1")
+    r = svc.ingest_complaint(
+        source="webhook",
+        text="手机坏了 13800138000",
+        external_id="m1",
+        title="屏幕问题",
+    )
     assert r["duplicate"] is False
     assert r["case_id"].startswith("case_")
     assert r["state"] == "OPEN"
@@ -30,6 +35,7 @@ def test_ingest_creates_open_case(sqlite_session):
     assert r["revision"] == 2
     agg = svc.store.get_aggregate("case", r["case_id"])
     assert agg.state == "OPEN"
+    assert svc.list_cases()["items"][0]["title"] == "屏幕问题"
 
 
 def test_ingest_dedup_within_window(sqlite_session):

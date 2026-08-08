@@ -1,9 +1,29 @@
 # Last Handoff
 
-- `round_goal`: close P0-2 with a transaction-bound, causally ordered critical-event outbox, receipt-bearing dispatcher, authoritative Trust consumer, and notification/archive audit closure.
-- `actual_changes`: added migration 003 and source-event-id/sequence-bound outbox envelopes; replaced logging fake delivery with fixed lease/SKIP LOCKED dispatcher and immutable receipts; blocked later same-aggregate claims behind every unresolved predecessor; moved production Trust authority into control-plane and consumed real Release events; enforced one-action/one-sample Wilson denial and UNKNOWN blocking; made notification ACK dispatcher-only and provider-receipt-bound; atomically archived Case or escalated on dead letter; bound notification/archive/Trust/Gate causation to immediate evidence; added fixed compose worker, contract changes, ADR, read projections, and regressions.
-- `key_files`: `control-plane/app/services/event_store.py`, `outbox_relay.py`, `trust_service.py`, `notification_service.py`, `control-plane/alembic/versions/003_outbox_trust_ledger.py`, `control-plane/tests/unit/test_outbox_dispatcher.py`, `control-plane/tests/integration/test_outbox_concurrency.py`, `contracts/events/`, `evidence/p0/p0-2-outbox-trust/`.
-- `test_results`: 366 passed across executable offline suites and 5 live-only skips: control-plane 179; demo 36+2 PostgreSQL; eval 69/4 skipped; MCP 54/1 skipped; contracts 26. Console build, compose config, compileall, diff check, PostgreSQL dispatcher ordering/concurrency, real Release→Trust integration, migration 003 up/down/up, and `alembic check` passed. Independent verifier found no material P0-2 blocker.
-- `unfinished`: P0-3 Console and P0-4 B1 evidence loop. Non-terminal eval lifecycle payload alignment remains tracked P1 debt. Live Feishu remains externally blocked and is not represented by the contract/replay mock.
-- `resume_from`: P0-3 authoritative read clients and removal of static Console success state; start with WorkOrder/Gate read model authority, typed clients, partial/UNKNOWN handling, and frontend/backend integration proof.
-- `commit_hash`: P0-2 `8e237e30dbbda7e05d78656047efd4c3d0703653`; P0-1 `4cd6e64b2af21ccea83506d2f4cab687bb76eb76`.
+- `round_goal`: close P0-3 by wiring the production Console to authoritative
+  T8/control-plane reads with fail-closed runtime semantics and real-stack proof.
+- `actual_changes`: replaced static/placeholder screens with typed Case,
+  Experiment, WorkOrder, Gate, Release, Notification, Trust, and Evidence reads;
+  added loading/empty/error/retry/stale/UNKNOWN states; made WorkOrder the
+  immutable read authority; validated WorkOrder columns, Gate binding, active
+  VersionSet shape, and API response schemas; removed raw WorkOrder/Evidence
+  content; added route-key race isolation; added real Operations view and
+  PostgreSQL/FastAPI/Vite/Chromium integration.
+- `key_files`: `control-plane/app/services/read_views.py`,
+  `control-plane/app/api/read_views.py`, `console/src/lib/api.ts`,
+  `console/src/lib/validators.ts`, `console/src/hooks/usePageData.ts`,
+  `console/src/pages/`, `console/scripts/run-real-stack-test.sh`, and
+  `evidence/p0/p0-3-console/`.
+- `test_results`: independent verifier PASS; control-plane 190; P0-3 focused 42;
+  Console 7 plus build; real stack 1; contracts 26. With previously rerun
+  service suites the non-overlapping total is 385 passed, 0 failed, 5
+  live-only skipped. npm audit still reports 4 moderate and 1 high advisory,
+  documented as a cross-major Router/Vite migration debt.
+- `unfinished`: P0-4 B1 authority-safe vertical loop and final run manifest.
+  Live StepFun/judge and Feishu remain externally blocked and are not represented
+  by replay substitutes.
+- `resume_from`: remove eval-runner Quality write authority, model bad/fixed
+  states as exact immutable VersionSets, enforce authoritative frozen
+  attribution, then reuse Gate/Approval/Release/Outbox/Notification/Trust for
+  the replay command.
+- `commit_hash`: pending P0-3 semantic commit; P0-2 `8e237e3`; P0-1 `4cd6e64`.

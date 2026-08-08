@@ -1,135 +1,190 @@
+import { AsyncBoundary } from "../components/AsyncState";
 import { Card } from "../components/Card";
-import { DataPending } from "../components/DataPending";
-
-/**
- * 门禁与信任：信任账本网格按 risk_class × action_type 展示 Wilson 下界 + 自治状态。
- * 该数据源（eval 门禁报告 / trust_ledger）在 control-plane 侧无 REST 读端点，均标注「数据待接入」
- * （见 console/OPEN-ISSUES.md #2 #7）；现环境 trust_ledger 表为空（真实空）。
- */
-
-const RISK_CLASSES = [
-  { key: "R0_READ", label: "R0 只读" },
-  { key: "R1_REVERSIBLE_WRITE", label: "R1 可逆写" },
-  { key: "R2_HIGH_IMPACT", label: "R2 高影响" },
-];
-
-/** R1 白名单动作（trust_ledger/ledger.py DEFAULT_R1_WHITELIST，真实默认值） */
-const WHITELIST_ACTIONS = ["case.triage", "workorder.draft.prompt", "notification.reply_origin"];
+import { Digest } from "../components/Digest";
+import { StatusChip } from "../components/StatusChip";
+import { usePageData } from "../hooks/usePageData";
+import { api } from "../lib/api";
+import { AUTONOMY_META, type StatusTone } from "../lib/constants";
+import { formatTime } from "../lib/format";
 
 export function TrustPage() {
+  const gates = usePageData((signal) => api.listGates(signal));
+  const ledger = usePageData((signal) => api.listTrustLedger(signal));
+  const denials = usePageData((signal) => api.listTrustDenials(signal));
+
   return (
     <div className="space-y-6">
-      {/* 门禁报告列表（双轨） */}
-      <Card
-        title="门禁报告"
-        extra={<DataPending issue="eval/gate 数据在 mcp_* 表，control-plane 无 REST（OPEN-ISSUES #7）" />}
-        bodyClassName="p-4"
-      >
-        <p className="mb-4 max-w-2xl text-xs leading-relaxed text-gray-400">
-          双轨门禁（spec §9.5）：规则轨（确定性检查）与裁判轨（LLM 裁判，裁判模型 digest ≠ 运动员模型 digest）分开报告，
-          另附确定性测试与 live-provider E2E。控制面未暴露门禁报告读端点。
+      <Card title="门禁报告" bodyClassName="p-4">
+        <p className="mb-4 max-w-3xl text-xs leading-relaxed text-gray-500">
+          规则轨、裁判轨、确定性 contract/replay 与 live-provider E2E 分开显示。任何 error、skipped、
+          integrity_error 或未知状态都不会在 Console 被改写成 PASS。
         </p>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[640px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
-                <th className="pb-2 pr-4 font-medium">报告 ID</th>
-                <th className="pb-2 pr-4 font-medium">规则轨</th>
-                <th className="pb-2 pr-4 font-medium">裁判轨</th>
-                <th className="pb-2 pr-4 font-medium">确定性测试</th>
-                <th className="pb-2 pr-4 font-medium">live E2E</th>
-                <th className="pb-2 pr-4 font-medium">总结论</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[0, 1, 2].map((i) => (
-                <tr key={i} className="border-b border-gray-50">
-                  <td className="py-2.5 pr-4 font-mono text-xs text-gray-400">gate_…待接入</td>
-                  <td className="py-2.5 pr-4 text-xs text-gray-400">—</td>
-                  <td className="py-2.5 pr-4 text-xs text-gray-400">—</td>
-                  <td className="py-2.5 pr-4 text-xs text-gray-400">—</td>
-                  <td className="py-2.5 pr-4 text-xs text-gray-400">—</td>
-                  <td className="py-2.5 pr-4 text-xs text-gray-400">—</td>
+        <AsyncBoundary
+          loading={gates.loading}
+          error={gates.error}
+          dataEmpty={(gates.data?.items.length ?? 0) === 0}
+          emptyHint="权威 gate_reports 表为空"
+          onRetry={gates.reload}
+          staleError={gates.refreshError}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[900px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
+                  <th className="pb-2 pr-4 font-medium">报告 / WorkOrder</th>
+                  <th className="pb-2 pr-4 font-medium">规则轨</th>
+                  <th className="pb-2 pr-4 font-medium">裁判轨</th>
+                  <th className="pb-2 pr-4 font-medium">contract/replay</th>
+                  <th className="pb-2 pr-4 font-medium">live E2E</th>
+                  <th className="pb-2 pr-4 font-medium">总结论</th>
+                  <th className="pb-2 pr-4 font-medium">证据</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <p className="mt-3 text-xs text-gray-400">
-          现环境 changeset 均引用 <code className="rounded bg-gray-100 px-1 py-0.5 font-mono text-[11px]">eval://eval_…</code> 门禁引用，
-          报告本体存于 mcp-eval-runner，待接入后按双轨分列渲染。
-        </p>
-      </Card>
-
-      {/* 信任账本网格 */}
-      <Card
-        title="信任账本网格"
-        extra={<DataPending issue="trust_ledger 表在库但无 REST 读端点（OPEN-ISSUES #2）" />}
-        bodyClassName="p-4"
-      >
-        <p className="mb-4 max-w-2xl text-xs leading-relaxed text-gray-400">
-          「信任是挣来的」：一次动作 = 一个样本，epoch 原始整数计数；Wilson 双侧 95% 下界 &gt; 0.9 且白名单 R1 才可提请晋升。
-          现环境 trust_ledger 表为空（真实空）。
-        </p>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
-                <th className="pb-2 pr-4 font-medium">risk_class</th>
-                {WHITELIST_ACTIONS.map((a) => (
-                  <th key={a} className="pb-2 pr-4 font-mono font-medium">{a}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {RISK_CLASSES.map((rc) => (
-                <tr key={rc.key} className="border-b border-gray-50">
-                  <td className="py-3 pr-4">
-                    <span className="text-xs font-medium text-gray-700">{rc.label}</span>
-                    <span className="ml-1.5 font-mono text-[10px] text-gray-400">{rc.key}</span>
-                  </td>
-                  {WHITELIST_ACTIONS.map((a) => (
-                    <td key={a} className="py-3 pr-4">
-                      <div className="flex flex-col gap-1">
-                        <span className="font-mono text-xs tabular-nums text-gray-500">LB 待接入</span>
-                        <span className="text-[10px] text-gray-400">—</span>
-                      </div>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {gates.data?.items.map((gate) => (
+                  <tr key={gate.eval_id}>
+                    <td className="py-2.5 pr-4">
+                      <p className="font-mono text-xs text-gray-800">{gate.report_id}</p>
+                      <p className="mt-0.5 font-mono text-[10px] text-gray-400">{gate.workorder_id}</p>
                     </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+                    {[gate.rule_track, gate.judge_track, gate.deterministic_tests, gate.live_provider_e2e].map((status, index) => (
+                      <td key={index} className="py-2.5 pr-4">
+                        <StatusChip label={status || "UNKNOWN"} tone={gateTone(status)} />
+                      </td>
+                    ))}
+                    <td className="py-2.5 pr-4">
+                      <StatusChip
+                        label={
+                          gate.binding_status === "VERIFIED"
+                            ? gate.verdict || "UNKNOWN"
+                            : gate.binding_status === "UNBOUND"
+                              ? "UNBOUND"
+                              : "UNKNOWN"
+                        }
+                        tone={
+                          gate.binding_status === "VERIFIED"
+                            ? gateTone(gate.verdict)
+                            : gate.binding_status === "UNBOUND"
+                              ? "amber"
+                              : "red"
+                        }
+                      />
+                      <p className={`mt-1 text-[10px] ${gate.binding_status === "VERIFIED" ? "text-green-700" : "text-red-600"}`}>
+                        binding {gate.binding_status}{gate.binding_error ? `: ${gate.binding_error}` : ""}
+                      </p>
+                      {gate.integrity_error && gate.integrity_error !== gate.binding_error ? <p className="mt-1 text-[10px] text-red-600">{gate.integrity_error}</p> : null}
+                    </td>
+                    <td className="py-2.5 pr-4">
+                      <Digest value={gate.evidence_digest} />
+                      <p className="mt-1 text-[10px] text-gray-400">dataset {gate.dataset_id}@{gate.dataset_version}</p>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </AsyncBoundary>
       </Card>
 
-      {/* 拒绝晋升事件记录 */}
-      <Card
-        title="拒绝晋升事件记录"
-        extra={<DataPending issue="audit trust.promotion_rejected 无 REST 读端点（OPEN-ISSUES #2）" />}
-        bodyClassName="p-4"
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[560px] text-left text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
-                <th className="pb-2 pr-4 font-medium">时间</th>
-                <th className="pb-2 pr-4 font-medium">action_type</th>
-                <th className="pb-2 pr-4 font-medium">risk_class</th>
-                <th className="pb-2 pr-4 font-medium">拒绝原因</th>
-                <th className="pb-2 pr-4 font-medium">计数</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr className="border-b border-gray-50">
-                <td colSpan={5} className="py-6 text-center text-xs text-gray-400">
-                  暂无拒绝晋升记录（MVP 口径：3/3 → Wilson 下界 ≈ 0.4385 &lt; 0.9 → 记账但拒绝晋升）
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+      <Card title="信任账本" bodyClassName="p-4">
+        <p className="mb-4 max-w-3xl text-xs leading-relaxed text-gray-500">
+          一次 Release 行动只计一个样本；Wilson 双侧 95% 下界必须大于 0.9。R2 仍需逐次人工批准。
+        </p>
+        <AsyncBoundary
+          loading={ledger.loading}
+          error={ledger.error}
+          dataEmpty={(ledger.data?.items.length ?? 0) === 0}
+          emptyHint="权威 Trust Ledger 真实为空"
+          onRetry={ledger.reload}
+          staleError={ledger.refreshError}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
+                  <th className="pb-2 pr-4 font-medium">risk / action</th>
+                  <th className="pb-2 pr-4 font-medium">epoch</th>
+                  <th className="pb-2 pr-4 font-medium">样本</th>
+                  <th className="pb-2 pr-4 font-medium">Wilson 95%</th>
+                  <th className="pb-2 pr-4 font-medium">autonomy</th>
+                  <th className="pb-2 pr-4 font-medium">晋升</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {ledger.data?.items.map((item) => {
+                  const autonomy = AUTONOMY_META[item.autonomy_state];
+                  return (
+                    <tr key={`${item.risk_class}:${item.action_type}:${item.epoch}`}>
+                      <td className="py-2.5 pr-4">
+                        <p className="font-mono text-xs text-gray-700">{item.risk_class}</p>
+                        <p className="mt-0.5 font-mono text-[10px] text-gray-400">{item.action_type}</p>
+                      </td>
+                      <td className="py-2.5 pr-4 text-xs tabular-nums">{item.epoch}</td>
+                      <td className="py-2.5 pr-4 text-xs tabular-nums">{item.successes}/{item.trials}</td>
+                      <td className="py-2.5 pr-4 font-mono text-xs">{item.LB.toFixed(6)} – {item.UB.toFixed(6)}</td>
+                      <td className="py-2.5 pr-4">
+                        <StatusChip label={autonomy?.label ?? item.autonomy_state} tone={autonomy?.tone ?? "gray"} />
+                      </td>
+                      <td className="py-2.5 pr-4">
+                        <StatusChip
+                          label={item.promotion_eligible ? "eligible" : "not eligible"}
+                          tone={item.promotion_eligible ? "blue" : "amber"}
+                        />
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </AsyncBoundary>
+      </Card>
+
+      <Card title="拒绝晋升审计" bodyClassName="p-4">
+        <AsyncBoundary
+          loading={denials.loading}
+          error={denials.error}
+          dataEmpty={(denials.data?.items.length ?? 0) === 0}
+          emptyHint="尚无 trust.promotion_denied 审计"
+          onRetry={denials.reload}
+          staleError={denials.refreshError}
+        >
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left text-sm">
+              <thead>
+                <tr className="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
+                  <th className="pb-2 pr-4 font-medium">时间</th>
+                  <th className="pb-2 pr-4 font-medium">action / risk</th>
+                  <th className="pb-2 pr-4 font-medium">拒绝原因</th>
+                  <th className="pb-2 pr-4 font-medium">计数</th>
+                  <th className="pb-2 pr-4 font-medium">trace</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {denials.data?.items.map((item) => (
+                  <tr key={item.audit_id}>
+                    <td className="py-2.5 pr-4 text-xs text-gray-500">{formatTime(item.ts)}</td>
+                    <td className="py-2.5 pr-4">
+                      <p className="font-mono text-xs text-gray-700">{item.action_type}</p>
+                      <p className="font-mono text-[10px] text-gray-400">{item.risk_class}</p>
+                    </td>
+                    <td className="py-2.5 pr-4 text-xs text-amber-800">{item.reason ?? "UNKNOWN"}</td>
+                    <td className="py-2.5 pr-4 text-xs tabular-nums">{item.successes ?? "?"}/{item.trials ?? "?"}</td>
+                    <td className="py-2.5 pr-4 font-mono text-[10px] text-gray-400">{item.trace_id || "UNKNOWN"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </AsyncBoundary>
       </Card>
     </div>
   );
+}
+
+function gateTone(status: string | null | undefined): StatusTone {
+  if (status === "passed") return "green";
+  if (status === "failed" || status === "error" || status === "integrity_error") return "red";
+  if (status === "skipped" || status === "inconclusive") return "amber";
+  return "gray";
 }

@@ -1,14 +1,10 @@
-"""T8 read projection tests over SQLite with no external dependency.
-
-Legacy MCP tables are created only to prove that Trust ignores the old shadow
-schema; the MCP eval table remains a compatibility fallback for gate views.
-"""
+"""T8 read projection tests over SQLite with no external dependency."""
 from __future__ import annotations
 
 import pytest
-from sqlalchemy import text
+from sqlalchemy import select, text
 
-from app.models.tables import GateReportRecord
+from app.models.tables import Aggregate, Event, GateReportRecord, WorkOrder
 from app.services.trust_service import TrustService
 from app.utils.jcs import canonical_json_digest, workorder_hash
 from tests.conftest import make_gate_report, make_workorder
@@ -101,6 +97,26 @@ def test_env_unavailable_when_no_active_versionset(app_client):
 def test_env_unavailable_on_network_error(app_client):
     client, quality = app_client
     quality.fail_next = "network"
+    r = client.get("/v1/env")
+    assert r.status_code == 200
+    assert r.json() == {"demo_app": "unavailable"}
+
+
+@pytest.mark.parametrize(
+    "malformed",
+    [
+        {"status": "active"},
+        {
+            "versionset_id": "vs_bad",
+            "status": "active",
+            "revision": 0,
+            "digest": "not-a-digest",
+        },
+    ],
+)
+def test_env_unavailable_for_malformed_active_projection(app_client, malformed):
+    client, quality = app_client
+    quality.list_versionsets = lambda **_kwargs: {"items": [malformed]}  # type: ignore[method-assign]
     r = client.get("/v1/env")
     assert r.status_code == 200
     assert r.json() == {"demo_app": "unavailable"}
@@ -399,7 +415,7 @@ def test_workorders_empty(app_client):
     assert r.json() == {"items": []}
 
 
-def test_workorders_lists_changesets_with_freeze_metadata(app_client):
+def test_workorders_list_immutable_rows_with_changeset_lifecycle_metadata(app_client):
     client, _ = app_client
     cs_id, expected = _new_awaiting_approval_changeset(client)
 
@@ -416,6 +432,64 @@ def test_workorders_lists_changesets_with_freeze_metadata(app_client):
     assert wo["channel"] == "prompt"
     assert wo["nonce"] == expected["nonce"]
     assert wo["state"] == "AWAITING_APPROVAL"
+    assert "payload" not in wo
+    assert wo["projection_warning"] is None
+    assert wo["workorder_integrity_status"] == "verified"
+    assert wo["gate_integrity_status"] == "verified"
+    assert wo["gate_target_revision"] == 1
+    assert wo["gate_target_versionset_id"] == "vs_demo001fixedversionset01"
+    assert wo["gate_binding_digest"].startswith("sha256:")
+
+
+def test_workorders_do_not_trust_tampered_changeset_hash(app_client, sqlite_session):
+    client, _ = app_client
+    cs_id, expected = _new_awaiting_approval_changeset(client)
+    changeset = sqlite_session.get(
+        Aggregate,
+        {"aggregate_type": "changeset", "aggregate_id": cs_id},
+    )
+    assert changeset is not None
+    changeset.payload = {**(changeset.payload or {}), "workorder_hash": "0" * 64}
+    sqlite_session.commit()
+
+    item = client.get("/v1/workorders").json()["items"][0]
+    assert item["hash"] == expected["hash"]
+    assert item["projection_warning"] == "changeset_hash_mismatch"
+
+
+def test_workorders_hide_tampered_immutable_payload(app_client, sqlite_session):
+    client, _ = app_client
+    _, expected = _new_awaiting_approval_changeset(client)
+    row = sqlite_session.get(WorkOrder, expected["workorder_id"])
+    assert row is not None
+    row.payload = {**row.payload, "created_by": "attacker"}
+    sqlite_session.commit()
+
+    item = client.get("/v1/workorders").json()["items"][0]
+    assert item["workorder_integrity_status"] == "integrity_error"
+    assert item["workorder_integrity_error"] == "workorder_hash_mismatch"
+    assert item["gate_integrity_status"] == "integrity_error"
+    assert "payload" not in item
+    assert item["nonce"] is None
+    assert item["target_versionset_digest"] is None
+
+
+def test_workorders_fail_closed_when_projection_columns_are_tampered(app_client, sqlite_session):
+    client, _ = app_client
+    _, expected = _new_awaiting_approval_changeset(client)
+    row = sqlite_session.get(WorkOrder, expected["workorder_id"])
+    assert row is not None
+    row.case_id = "case_attacker"
+    row.channel = "model"
+    sqlite_session.commit()
+
+    item = client.get("/v1/workorders").json()["items"][0]
+    assert item["workorder_integrity_status"] == "integrity_error"
+    assert item["workorder_integrity_error"] == "workorder_projection_mismatch"
+    assert item["case_id"] is None
+    assert item["channel"] == "UNKNOWN"
+    assert item["state"] == "UNKNOWN"
+    assert "payload" not in item
 
 
 def test_workorders_multi_changeset(app_client):
@@ -479,6 +553,45 @@ def test_gates_projects_dual_track_report(app_client, sqlite_engine):
     assert g["live_provider_e2e"] == "passed"
     assert g["verdict"] == "passed"
     assert g["report_hash"] == report_hash
+    assert g["status"] == "unbound"
+    assert g["binding_status"] == "UNBOUND"
+    assert g["binding_error"] is None
+
+    evidence = client.get("/v1/evidence").json()["items"]
+    gate_item = next(item for item in evidence if item["source_type"] == "gate")
+    assert gate_item["kind"] == "gate_report_binding"
+    assert gate_item["binding_status"] == "UNKNOWN"
+    assert gate_item["integrity_error"] == "gate_unbound"
+    assert not any(item["kind"].startswith("artifact_ref_") for item in evidence)
+
+
+def test_gates_marks_workorder_bound_report_verified(app_client):
+    client, _ = app_client
+    _, expected = _new_awaiting_approval_changeset(client)
+
+    item = client.get("/v1/gates").json()["items"][0]
+    assert item["workorder_id"] == expected["workorder_id"]
+    assert item["status"] == "completed"
+    assert item["binding_status"] == "VERIFIED"
+    assert item["binding_error"] is None
+    assert item["verdict"] == "passed"
+
+
+def test_gates_fail_closed_when_binding_digest_is_tampered(app_client, sqlite_session):
+    client, _ = app_client
+    _changeset_id, expected = _new_awaiting_approval_changeset(client)
+    eval_id = expected["gate_report_ref"]["uri"].removeprefix("eval://")
+    row = sqlite_session.get(GateReportRecord, eval_id)
+    assert row is not None
+    row.binding_digest = "sha256:" + "0" * 64
+    sqlite_session.commit()
+
+    item = client.get("/v1/gates").json()["items"][0]
+    assert item["status"] == "integrity_error"
+    assert item["binding_status"] == "UNKNOWN"
+    assert item["binding_error"] == "hash_mismatch"
+    assert item["verdict"] == "error"
+    assert "passed" not in item.values()
 
 
 def test_gates_fail_closed_when_persisted_report_is_tampered(app_client, sqlite_session):
@@ -514,3 +627,108 @@ def test_gates_fail_closed_when_persisted_report_is_tampered(app_client, sqlite_
     assert item["verdict"] == "error"
     assert item["rule_track"] == "error"
     assert "passed" not in item.values()
+
+
+# ------------------------------------------------------------------ 8. GET /v1/evidence
+
+
+def test_evidence_projects_recorded_refs_without_claiming_artifact_verified(app_client):
+    client, _ = app_client
+    complaint = client.post(
+        "/v1/complaints",
+        json={"source": "webhook", "text": "evidence projection", "external_id": "evidence-1"},
+    )
+    assert complaint.status_code == 200
+    case_id = complaint.json()["case_id"]
+
+    response = client.get("/v1/evidence", params={"case_id": case_id})
+    assert response.status_code == 200
+    body = response.json()
+    assert body["artifact_store"] == "unavailable"
+    assert body["warning"] == "artifact_content_unavailable"
+    text_ref = next(item for item in body["items"] if item["kind"] == "text_ref")
+    assert text_ref["case_id"] == case_id
+    assert text_ref["reference"] == f"inline:{case_id}"
+    assert text_ref["binding_status"] == "REFERENCE_RECORDED"
+    assert text_ref["artifact_status"] == "UNKNOWN"
+    assert not any(item["kind"] == "complainant_ref" for item in body["items"])
+    assert not any(item.get("artifact_status") == "VERIFIED" for item in body["items"])
+    assert all("value" not in item for item in body["items"])
+
+
+def test_evidence_includes_bound_workorder_and_gate_refs(app_client):
+    client, _ = app_client
+    _, expected = _new_awaiting_approval_changeset(client)
+    response = client.get("/v1/evidence", params={"case_id": expected["case_id"]})
+    assert response.status_code == 200
+    items = response.json()["items"]
+    gate_ref = next(
+        item
+        for item in items
+        if item["source_type"] == "workorder" and item["kind"] == "gate_report_ref"
+    )
+    assert gate_ref["reference"].startswith("eval://")
+    assert gate_ref["digest"].startswith("sha256:")
+    assert gate_ref["binding_status"] == "BOUND"
+    assert gate_ref["artifact_status"] == "UNKNOWN"
+    gate_digest = next(
+        item
+        for item in items
+        if item["source_type"] == "gate" and item["kind"] == "evidence_digest"
+    )
+    assert gate_digest["case_id"] == expected["case_id"]
+    assert gate_digest["integrity_status"] == "recorded"
+    assert all("value" not in item for item in items)
+    assert "fix output format" not in str(items)
+
+
+def test_evidence_rejects_malformed_digest_claim(app_client, sqlite_session):
+    client, _ = app_client
+    complaint = client.post(
+        "/v1/complaints",
+        json={"source": "webhook", "text": "digest check", "external_id": "bad-digest-1"},
+    )
+    case_id = complaint.json()["case_id"]
+    event = sqlite_session.scalar(
+        select(Event).where(
+            Event.aggregate_id == case_id,
+            Event.event_type == "complaint.received",
+        )
+    )
+    assert event is not None
+    event.payload = {**event.payload, "evidence_digest": "not-a-sha256-digest"}
+    sqlite_session.commit()
+
+    items = client.get("/v1/evidence", params={"case_id": case_id}).json()["items"]
+    digest = next(item for item in items if item["kind"] == "evidence_digest")
+    assert digest["digest"] is None
+    assert digest["binding_status"] == "UNKNOWN"
+    assert digest["integrity_status"] == "invalid_digest"
+
+
+def test_evidence_fail_closed_for_tampered_gate_report(app_client, sqlite_session):
+    client, _ = app_client
+    _, expected = _new_awaiting_approval_changeset(client)
+    eval_id = expected["gate_report_ref"]["uri"].removeprefix("eval://")
+    row = sqlite_session.get(GateReportRecord, eval_id)
+    assert row is not None
+    row.report = {**row.report, "overall_status": "failed"}
+    sqlite_session.commit()
+
+    items = client.get("/v1/evidence").json()["items"]
+    gate_items = [item for item in items if item["source_type"] == "gate"]
+    assert len(gate_items) == 1
+    assert gate_items[0]["kind"] == "gate_report_integrity"
+    assert gate_items[0]["case_id"] == expected["case_id"]
+    assert gate_items[0]["binding_status"] == "UNKNOWN"
+    assert gate_items[0]["integrity_status"] == "source_integrity_error"
+    assert gate_items[0]["integrity_error"] == "hash_mismatch"
+    assert not any(item["kind"].startswith("artifact_ref_") for item in gate_items)
+
+    workorder_gate = next(
+        item
+        for item in items
+        if item["source_type"] == "workorder" and item["kind"] == "gate_report_ref"
+    )
+    assert workorder_gate["binding_status"] == "UNKNOWN"
+    assert workorder_gate["integrity_status"] == "source_integrity_error"

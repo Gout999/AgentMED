@@ -6,6 +6,7 @@ const NAV_ITEMS = [
   { to: "/experiments", label: "实验", icon: ExperimentsIcon, end: false },
   { to: "/approvals", label: "审批", icon: ApprovalsIcon, end: false },
   { to: "/trust", label: "门禁与信任", icon: TrustIcon, end: false },
+  { to: "/operations", label: "发布、通知与证据", icon: OperationsIcon, end: false },
 ];
 
 export function Sidebar() {
@@ -97,6 +98,14 @@ function TrustIcon(props: { className?: string }) {
     <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M12 3 5 6v5c0 4.4 3 8 7 10 4-2 7-5.6 7-10V6l-7-3Z" strokeLinejoin="round" />
       <path d="m9 12 2 2 4-4" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function OperationsIcon(props: { className?: string }) {
+  return (
+    <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M4 5h16v5H4zM4 14h7v5H4zM15 14h5v5h-5z" strokeLinejoin="round" />
     </svg>
   );
 }

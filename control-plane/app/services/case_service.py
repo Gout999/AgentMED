@@ -441,6 +441,7 @@ class CaseService:
                     "case_id": r.aggregate_id,
                     "state": r.state,
                     "revision": r.revision,
+                    "title": (r.payload or {}).get("title"),
                     "updated_at": r.updated_at.isoformat() if r.updated_at else None,
                 }
                 for r in rows

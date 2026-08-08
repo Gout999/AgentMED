@@ -3,10 +3,6 @@
  * 语义状态色一律用 Tailwind 主题色（green/amber/red/gray…），禁止内联色值。
  */
 
-/** demo-app 基线版本 digest —— 现环境 active 版本集 vs_baseline0000000001 的实测值。
- *  console 只通 control-plane，control-plane 无 demo-app 透传端点，故为静态快照（见 OPEN-ISSUES #1）。 */
-export const DEMO_APP_BASELINE_DIGEST = "sha256:8fc6a7ac413b640d759293053d3a414eb2c781a831d973c26794750f63dc47a1";
-
 /** digest 截断位数（全局约定） */
 export const DIGEST_SHORT_LEN = 12;
 
@@ -15,9 +11,11 @@ export const POLL_INTERVAL_MS = 10_000;
 
 export type StatusTone = "gray" | "blue" | "indigo" | "purple" | "amber" | "orange" | "cyan" | "teal" | "green" | "red";
 
-/** case / experiment / changeset / verdict 状态 → 中文标签 + 语义色 */
-export const STATE_META: Record<string, { label: string; tone: StatusTone }> = {
-  // case
+export type AggregateKind = "case" | "experiment" | "changeset" | "release" | "notification";
+export type StateMeta = Record<string, { label: string; tone: StatusTone }>;
+
+/** States are scoped by aggregate so identically named states never drift. */
+export const CASE_STATE_META: StateMeta = {
   RECEIVED: { label: "已接收", tone: "gray" },
   OPEN: { label: "待派发", tone: "blue" },
   DISPATCHED: { label: "处理中", tone: "indigo" },
@@ -30,23 +28,30 @@ export const STATE_META: Record<string, { label: string; tone: StatusTone }> = {
   CLOSED: { label: "已关闭", tone: "green" },
   MERGED: { label: "已合并", tone: "gray" },
   DUPLICATE_DISMISSED: { label: "重复已驳", tone: "gray" },
-  // experiment
+};
+
+export const EXPERIMENT_STATE_META: StateMeta = {
   REQUESTED: { label: "已申请", tone: "gray" },
   PROTOCOL_FROZEN: { label: "协议冻结", tone: "indigo" },
   RUNNING: { label: "运行中", tone: "blue" },
   ANALYZING: { label: "分析中", tone: "purple" },
   VERDICT_COMPUTED: { label: "已出裁决", tone: "green" },
   CANCELLED: { label: "已取消", tone: "gray" },
-  // changeset
+};
+
+export const CHANGESET_STATE_META: StateMeta = {
   DRAFTED: { label: "已起草", tone: "gray" },
   GATE_ATTACHED: { label: "门禁已过", tone: "indigo" },
+  AWAITING_APPROVAL: { label: "待审批", tone: "orange" },
   APPROVED: { label: "已批准", tone: "green" },
   COMMITTED: { label: "已移交发布", tone: "teal" },
   REJECTED: { label: "已拒绝", tone: "red" },
   EXPIRED: { label: "已过期", tone: "gray" },
   SUPERSEDED: { label: "已被取代", tone: "gray" },
-  // release
-  REQUESTED_R: { label: "已请求", tone: "gray" },
+};
+
+export const RELEASE_STATE_META: StateMeta = {
+  REQUESTED: { label: "已请求", tone: "gray" },
   STAGING: { label: "预发布中", tone: "blue" },
   CANARYING: { label: "灰度中", tone: "amber" },
   VERIFYING: { label: "验证中", tone: "purple" },
@@ -56,6 +61,22 @@ export const STATE_META: Record<string, { label: string; tone: StatusTone }> = {
   ROLLED_BACK: { label: "已回滚", tone: "orange" },
   UNKNOWN: { label: "状态未知", tone: "red" },
   FAILED_ESCALATED: { label: "失败已升级", tone: "red" },
+};
+
+export const NOTIFICATION_STATE_META: StateMeta = {
+  QUEUED: { label: "已排队", tone: "gray" },
+  SENDING: { label: "发送中", tone: "blue" },
+  RETRYING: { label: "等待重试", tone: "amber" },
+  SENT: { label: "已发送", tone: "green" },
+  DEAD_LETTERED: { label: "死信待人工", tone: "red" },
+};
+
+export const STATE_META_BY_AGGREGATE: Record<AggregateKind, StateMeta> = {
+  case: CASE_STATE_META,
+  experiment: EXPERIMENT_STATE_META,
+  changeset: CHANGESET_STATE_META,
+  release: RELEASE_STATE_META,
+  notification: NOTIFICATION_STATE_META,
 };
 
 /** 实验三态裁决 → 语义色（ATTRIBUTED 绿 / INCONCLUSIVE 黄 / CONFOUNDED 红） */

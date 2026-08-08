@@ -1,73 +1,51 @@
-# CaseLoop 控制台数据映射表（T7）
+# CaseLoop Console 数据映射（P0-3 当前态）
 
-> 数据通路（冻结）：console 只调相对路径 `/api/*`；nginx 反代 `/api/` → `http://control-plane:8090/`
-> （compose 内网）。本表以 `control-plane/README.md` 接口清单 + 运行环境实测（2026-08-08，5 个实验 /
-> 2 个 case / 6 个待审批 changeset）为准。
+> T7 在 2026-08-08 首次交付时，`/v1/env`、Trust、Case events、WorkOrders 和 Gates
+> 确实尚未接通，原文记录的是当时的真实运行快照。随后 `9afcefa` 合并了朋友的 T8
+> 只读投影，本轮 P0-3 在该实现上完成 Console 接线；不应再把旧缺口当成当前事实。
 >
-> 状态图例：✅ 真实端点可渲染 · ⚠️ 部分字段缺失（有端点但数据未投影） · ⏳ 数据待接入（无 REST 端点）
+> 数据边界保持不变：浏览器只请求相对路径 `/api/*`；Vite 本地代理或 nginx compose
+> 代理再转发到 control-plane。Console 是只读监控面，不绕过 Release Controller 或审批权威。
 
-## 全局
+状态图例：✅ 实际端点 · ⚠️ 部分/UNKNOWN 必须显式显示 · ⛔ 写面不属于 Console。
 
-| 视图 | 端点 | 字段 | 状态 |
-|------|------|------|------|
-| 顶栏 · demo-app 基线 digest | —（control-plane 无透传端点） | 现环境 active 版本集 `vs_baseline0000000001` digest `sha256:8fc6a7ac…`（demo-app 实测） | ⏳ 静态快照，见 OPEN-ISSUES #1 |
-| 顶栏 · 手动刷新 | —（前端轮询 10s + 手动按钮） | — | ✅ |
+## 当前权威端点
 
-## 1. 总览 `/`
+| 能力 | Console 请求 | 权威来源 | 状态 |
+|---|---|---|---|
+| demo-app active VersionSet | `GET /api/v1/env` | control-plane 透传 Quality API active VersionSet | ✅；Quality API 不可达或无 active 时显示红色 `UNKNOWN` |
+| Case 列表/详情 | `GET /api/v1/cases[/{id}]` | Case aggregate | ✅ |
+| Case 时间线 | `GET /api/v1/cases/{id}/events` | control-plane events，含 seq/actor/causation/correlation/trace | ✅ |
+| Experiment 列表/完整详情 | `GET /api/v1/experiments`、`/{id}?_view=full` | Experiment aggregate + events | ✅；CI 缺样本量/方差时显示 `UNKNOWN` |
+| WorkOrder/审批队列 | `GET /api/v1/workorders` | 不可变 `workorders` 为主，ChangeSet 仅提供 lifecycle state | ✅；重验 payload 与投影列，完整 payload 不暴露；任何 WorkOrder/Gate binding 失败即 `UNKNOWN` |
+| GateReport | `GET /api/v1/gates` | control-plane `gate_reports`，每次读取重验 hash/schema/binding | ✅；合法但尚未绑定标为 `UNBOUND`；损坏/不完整绑定标为 `integrity_error/UNKNOWN`，绝不作为整体 PASS |
+| Trust Ledger | `GET /api/v1/trust/ledger` | control-plane 权威 Trust ledger | ✅ |
+| Trust 拒绝晋升 | `GET /api/v1/trust/denials` | control-plane audit + Trust entry | ✅ |
+| Release | `GET /api/v1/releases[/{id}]` | Release aggregate | ✅；`UNKNOWN` 保持 fail-closed 语义 |
+| Notification | `GET /api/v1/notifications[/{id}]` | Notification aggregate | ✅；receipt 缺失显示 `UNKNOWN` |
+| Evidence bindings | `GET /api/v1/evidence?case_id=` | events、不可变 WorkOrder、完整性通过的 GateReport | ⚠️ 只证明 ref/digest 已记录；artifact 内容仍不可读取/验证 |
 
-| 指标卡 | 端点 | 说明 | 状态 |
-|--------|------|------|------|
-| 活跃 case 数 | `GET /api/v1/cases` | 非终态（CLOSED/MERGED/DUPLICATE_DISMISSED 之外）计数 | ✅ |
-| 进行中实验 | `GET /api/v1/experiments` | 非终态（VERDICT_COMPUTED/CANCELLED 之外）计数 | ✅ |
-| 待审批 | `GET /api/v1/changesets?state=AWAITING_APPROVAL` | items 计数 | ✅ |
-| 信任账本最新评估结论 | — | `trust_ledger` 表在 control-plane 库但未暴露 REST | ⏳ #2 |
-| 最近 case 表格（10 行） | `GET /api/v1/cases` | case_id / state / updated_at；摘要取 detail payload.title | ✅ |
+## 页面映射
 
-## 2. 案例 `/cases` · `/cases/:id`
+| 页面 | 真实数据源 | Partial/UNKNOWN 行为 |
+|---|---|---|
+| `/` 总览 | Cases（列表直接投影真实 title）、Experiments、WorkOrders、Trust 四个独立请求 | 单一来源失败不遮蔽其余来源；刷新失败保留上次结果并标明 `STALE`，不产生逐行 N+1 请求 |
+| `/cases`、`/cases/:id` | Case list/detail、Case events、Evidence | loading/empty/error/retry/stale；事件和证据各自可失败 |
+| `/experiments`、`/experiments/:id` | Experiment list、`_view=full` | 无真实 recovery/delta/CI 时显示 `UNKNOWN`，不生成固定 `0.00` |
+| `/approvals` | WorkOrders + ChangeSet lifecycle + Gate binding | 显示 exact hash、nonce、expiry、target revision、binding digest；任一完整性错误阻断可信展示 |
+| `/trust` | Gates、Trust ledger、Trust denials 三个独立请求 | `failed/error/skipped/integrity_error/UNBOUND/UNKNOWN` 不会被映射成整体 PASS |
+| `/operations` | Releases、Notifications、Evidence | 每个来源独立 loading/empty/error/retry；artifact 内容保持 `UNKNOWN` |
 
-| 视图 | 端点 | 说明 | 状态 |
-|------|------|------|------|
-| 列表（状态筛选） | `GET /api/v1/cases?state=` | state chip 组 = case 状态机非终态 | ✅ |
-| 详情 · 基础信息 | `GET /api/v1/cases/{id}` | state / revision / payload / updated_at / event_count | ✅ |
-| 详情 · 时间线（事件流 + Agent 建议） | — | events 表在 DB，control-plane 未暴露 `GET events`；`case.timeline` 属 mcp-case-admin（:8001，非 REST） | ⏳ #3 |
-| 详情 · 证据引用面板 | 来自 detail.payload | 现环境 case payload 无 evidence ref（随案件推进才会出现） | ⚠️ #4 |
+## 验证
 
-## 3. 实验 `/experiments` · `/experiments/:id`
+```bash
+cd console
+npm test                    # Vitest API client unit
+npm run build               # TypeScript + production bundle
+npm run test:integration    # 随机 scratch PG + Alembic + FastAPI + Vite + Chromium
+```
 
-| 视图 | 端点 | 说明 | 状态 |
-|------|------|------|------|
-| 列表 | `GET /api/v1/experiments` | experiment_id / state / payload | ✅ |
-| 详情 · 状态/协议元数据 | `GET /api/v1/experiments/{id}` | payload: case_id / hypothesis_layer / verdict / report_ref | ✅ |
-| 详情 · 5-cell 臂恢复率条形对比 | — | cell 级 recovery_rate 在 events，aggregate payload 只投影了最后一个 `cell_progress` | ⏳ #5 |
-| 详情 · Δ 效应量与 95%CI 表 | — | deltas 在 verdict_computed 事件 payload，未并入 aggregate | ⏳ #5 |
-| 详情 · 三态裁决大字结论 | `payload.verdict` | ATTRIBUTED/INCONCLUSIVE/CONFOUNDED；现环境 5 实验均 REQUESTED → 渲染「未出裁决」 | ⚠️ #5 |
-| 详情 · 归因层标注 | `payload.attributed_layer` | 未并入 aggregate（在事件 payload） | ⏳ #5 |
-
-## 4. 审批 `/approvals`
-
-| 视图 | 端点 | 说明 | 状态 |
-|------|------|------|------|
-| 待审批 WorkOrder 队列 | `GET /api/v1/changesets?state=AWAITING_APPROVAL` | changeset_id（`cs_` 前缀即 workorder_id）/ nonce / expiry（freeze 时间）/ gate_report_ref | ✅ |
-| workorder hash 完整可复核 | — | `workorders` 表有 hash 但 control-plane **无 `GET /v1/workorders`** | ⏳ #6 |
-| 提请人 author_agent | — | drafted 事件 payload 字段，未并入 aggregate | ⏳ #6 |
-| 证据摘要 | `payload.gate_report_ref` | 门禁报告引用 | ✅ |
-| 批准/拒绝按钮 | — | 审批写面 = release-admin MCP `approval.request`（common/approval.py 校验 hash+nonce+expiry）；control-plane `POST /v1/changesets/{id}/approve|reject` 需 approval_id + workorder_hash，console 无法构造有效调用 | ⏳ 按钮禁用标注「经 release-admin MCP 审批」 |
-| 历史审批记录 | `GET /api/v1/changesets` | APPROVED / REJECTED / EXPIRED / COMMITTED 态；现环境全 AWAITING_APPROVAL，历史为空为真实状态 | ✅ |
-
-## 5. 门禁与信任 `/trust`
-
-| 视图 | 端点 | 说明 | 状态 |
-|------|------|------|------|
-| 门禁报告列表（规则轨/裁判轨分列） | — | eval/gate 数据在 mcp_* 表（mcp-eval-runner `gate.report`，spec §9.5），control-plane 无 REST | ⏳ #7 |
-| 信任账本网格（risk_class × action_type） | — | trust_ledger 表在库但无 REST；现环境表为空（真实状态） | ⏳ #2 |
-| 拒绝晋升事件记录 | — | audit 表 `trust.promotion_rejected` 记录，无 REST 读端点 | ⏳ #2 |
-
-## 现状运行数据（2026-08-08 实测）
-
-| 聚合 | 状态 | 数量 |
-|------|------|------|
-| case | DISPATCHED | 2 |
-| experiment | REQUESTED | 5 |
-| changeset | AWAITING_APPROVAL | 6 |
-| release | — | 0 |
-| approval / trust_ledger | — | 0（真实空） |
+`test:integration` 不使用 Playwright route interception。它经 Vite `/api` 创建真实投诉，浏览器回读
+`complaint.received` 的 seq、actor 和 `text_ref`，并在同一 SPA 组件切换 Case ID 验证 request-key
+隔离。API client 对每个端点执行 runtime schema validation；结构畸形即 `invalid_response`。退出时
+停止服务并通过显式 admin host/port/user 删除唯一命名的 scratch 数据库。

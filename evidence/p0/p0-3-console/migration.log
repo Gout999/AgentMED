@@ -1,0 +1,5 @@
+INFO  [alembic.runtime.migration] Context impl PostgresqlImpl.
+INFO  [alembic.runtime.migration] Will assume transactional DDL.
+INFO  [alembic.runtime.migration] Running upgrade  -> 001, initial control-plane tables (spec §7)
+INFO  [alembic.runtime.migration] Running upgrade 001 -> 002, authoritative GateReport persistence and WorkOrder binding
+INFO  [alembic.runtime.migration] Running upgrade 002 -> 003, transactional outbox receipts and authoritative Trust entries

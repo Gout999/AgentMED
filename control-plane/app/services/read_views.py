@@ -1,25 +1,13 @@
-"""T8 read projections over authoritative control-plane state.
-
-Gate compatibility still reads the legacy MCP eval projection while P0-1's
-GateReport table is preferred. Trust is no longer read from the disconnected
-MCP schema: its source of truth is the transactional control-plane ledger.
-"""
+"""T8 read projections over authoritative control-plane state."""
 from __future__ import annotations
 
 import logging
+import re
+from collections.abc import Iterable
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import (
-    JSON,
-    Column,
-    DateTime,
-    MetaData,
-    String,
-    Table,
-    select,
-)
-from sqlalchemy.exc import OperationalError, ProgrammingError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models.tables import (
@@ -29,31 +17,30 @@ from app.models.tables import (
     GateReportRecord,
     TrustLedger,
     TrustLedgerEntry,
+    WorkOrder,
 )
 from app.services.event_store import EventStore
 from app.services.gate_service import GateService, GateServiceError
+from app.utils.jcs import workorder_hash as compute_workorder_hash
 
 logger = logging.getLogger(__name__)
-
-# ---------- 跨组件表只读映射（不注册进 Base；建表由 mcp-servers migration 负责） ----------
-
-_MCP_META = MetaData()
-
-MCP_EVAL_RUNS = Table(
-    "mcp_eval_runs",
-    _MCP_META,
-    Column("eval_id", String(64), primary_key=True),
-    Column("workorder_id", String(128)),
-    Column("suite_digest", String(80)),
-    Column("status", String(32)),
-    Column("report", JSON),
-    Column("report_hash", String(64)),
-    Column("created_at", DateTime(timezone=True)),
-)
 
 # 双侧 95%（contracts/wilson 唯一事实源：z=1.96，双侧口径硬约束）
 _WILSON_Z = 1.96
 _PROMOTION_THRESHOLD = 0.9
+_SHA256_DIGEST = re.compile(r"^sha256:[0-9a-f]{64}$")
+_EVIDENCE_REF_KEYS = {
+    "audit_ref",
+    "body_ref",
+    "content_ref",
+    "gate_report_ref",
+    "msg_ref",
+    "output_ref",
+    "random_seed_ref",
+    "rationale_ref",
+    "report_ref",
+    "text_ref",
+}
 
 
 def _iso(value: Any) -> Optional[str]:
@@ -64,6 +51,26 @@ def _iso(value: Any) -> Optional[str]:
             value = value.replace(tzinfo=timezone.utc)
         return value.isoformat()
     return str(value)
+
+
+def _workorder_integrity_error(workorder: WorkOrder) -> Optional[str]:
+    payload = workorder.payload or {}
+    if (
+        payload.get("workorder_id") != workorder.workorder_id
+        or payload.get("case_id") != workorder.case_id
+        or payload.get("channel") != workorder.channel
+    ):
+        return "workorder_projection_mismatch"
+    try:
+        recomputed = compute_workorder_hash(payload)
+    except (TypeError, ValueError):
+        return "workorder_not_canonical"
+    if (
+        recomputed != workorder.hash
+        or payload.get("hash") != workorder.hash
+    ):
+        return "workorder_hash_mismatch"
+    return None
 
 
 def _wilson_interval(successes: int, trials: int) -> tuple[float, float]:
@@ -80,24 +87,6 @@ def _wilson_interval(successes: int, trials: int) -> tuple[float, float]:
     return (round(lower, 6), round(upper, 6))
 
 
-def _mcp_rows(
-    session: Session, table: Table, *, order_by: Any = None, limit: int = 500
-) -> tuple[list[Any], Optional[str]]:
-    """查询 mcp_* 表；表不存在 → ([] , "source_unavailable")。"""
-    q = select(table)
-    if order_by is not None:
-        cols = order_by if isinstance(order_by, (tuple, list)) else (order_by,)
-        q = q.order_by(*cols)
-    q = q.limit(limit)
-    try:
-        rows = list(session.execute(q).mappings().all())
-        return rows, None
-    except (OperationalError, ProgrammingError):
-        session.rollback()
-        logger.info("mcp source unavailable for %s", table.name)
-        return [], "source_unavailable"
-
-
 # ------------------------------------------------------------------ 1. demo-app 基线 digest
 
 
@@ -108,16 +97,34 @@ def get_env_status(quality_client: Any) -> dict[str, Any]:
     except Exception as exc:  # noqa: BLE001 —— 网络/鉴权/超时一律按 unavailable 降级（200 不 5xx）
         logger.info("env: quality api unavailable: %s", exc)
         return {"demo_app": "unavailable"}
-    items = page.get("items") or []
-    if not items:
+    if not isinstance(page, dict):
+        return {"demo_app": "unavailable"}
+    items = page.get("items")
+    if not isinstance(items, list) or not items or not isinstance(items[0], dict):
         return {"demo_app": "unavailable"}
     vs = items[0]
+    versionset_id = vs.get("versionset_id")
+    digest = vs.get("digest")
+    status = vs.get("status")
+    revision = vs.get("revision")
+    if (
+        not isinstance(versionset_id, str)
+        or not versionset_id.strip()
+        or not isinstance(digest, str)
+        or _SHA256_DIGEST.fullmatch(digest) is None
+        or status != "active"
+        or not isinstance(revision, int)
+        or isinstance(revision, bool)
+        or revision <= 0
+    ):
+        logger.error("env: malformed active VersionSet projection")
+        return {"demo_app": "unavailable"}
     return {
         "demo_app": {
-            "versionset_id": vs.get("versionset_id"),
-            "digest": vs.get("digest"),
-            "status": vs.get("status"),
-            "revision": vs.get("revision"),
+            "versionset_id": versionset_id,
+            "digest": digest,
+            "status": status,
+            "revision": revision,
         }
     }
 
@@ -157,6 +164,7 @@ def get_trust_ledger(session: Session) -> dict[str, Any]:
                 "pending_promotion_ref": payload.get("pending_promotion_ref"),
                 "sample_rule": payload.get("sample_rule"),
                 "last_action_ref": payload.get("last_action_ref"),
+                "updated_at": _iso(r.updated_at),
             }
         )
     return {"items": items}
@@ -210,15 +218,23 @@ def get_trust_denials(session: Session) -> dict[str, Any]:
 
 
 def _is_evidence_key(key: str) -> bool:
-    """证据引用字段判定（与 console CaseDetailPage isEvidenceKey 对齐）：排除 app_ref 元数据。"""
-    return key != "app_ref" and (key == "text_ref" or "evidence" in key.lower() or "bundle" in key.lower() or key.lower().endswith("_ref") or "digest" in key.lower())
+    """Identify artifact/evidence bindings without treating domain IDs as artifacts."""
+    lowered = key.lower()
+    return (
+        lowered in _EVIDENCE_REF_KEYS
+        or "evidence" in lowered
+        or "bundle" in lowered
+        or "artifact" in lowered
+        or "digest" in lowered
+        or "receipt" in lowered
+    )
 
 
 def _evidence_refs(payload: dict[str, Any]) -> dict[str, Any]:
     out: dict[str, Any] = {}
     for k, v in (payload or {}).items():
         if v is not None and _is_evidence_key(k):
-            out[k] = v if not isinstance(v, dict) else str(v)
+            out[k] = v
     return out
 
 
@@ -238,6 +254,9 @@ def get_case_events(session: Session, case_id: str) -> Optional[dict[str, Any]]:
                 "event_id": ev.event_id,
                 "event_type": ev.event_type,
                 "actor": ev.actor,
+                "causation_id": ev.causation_id,
+                "correlation_id": ev.correlation_id,
+                "trace_id": ev.trace_id,
                 "occurred_at": ev.occurred_at.isoformat() if ev.occurred_at else None,
                 "payload": payload,
                 "evidence_refs": _evidence_refs(payload),
@@ -302,53 +321,117 @@ def get_experiment_full(session: Session, experiment_id: str) -> Optional[dict[s
 # ------------------------------------------------------------------ 6. workorder 列表
 
 
-def _workorder_id_from_changeset(changeset_id: str) -> str:
-    return changeset_id[3:] if changeset_id.startswith("cs_") else changeset_id
-
-
-def _changeset_drafted_meta(session: Session, changeset_id: str) -> tuple[Optional[str], Optional[str]]:
-    """changeset.drafted 事件 → (author_agent, channel)。"""
-    ev = session.scalar(
-        select(Event)
-        .where(Event.aggregate_id == changeset_id, Event.event_type == "changeset.drafted")
-        .order_by(Event.seq.asc())
-        .limit(1)
-    )
-    if ev is None:
-        return None, None
-    p = ev.payload or {}
-    return p.get("author_agent"), p.get("channel")
-
-
 def list_workorders(session: Session, *, limit: int = 500) -> dict[str, Any]:
-    """WorkOrder 列表：changesets 投影 + freeze/提请事件（drafted.author_agent / approval_requested.expiry）。"""
+    """Read immutable WorkOrders first; ChangeSet is only lifecycle metadata."""
     rows = session.scalars(
-        select(Aggregate)
-        .where(Aggregate.aggregate_type == "changeset")
-        .order_by(Aggregate.aggregate_id)
-        .limit(limit)
+        select(WorkOrder).order_by(WorkOrder.created_at.desc(), WorkOrder.workorder_id).limit(limit)
     ).all()
+    gates = GateService(session)
     items = []
-    for agg in rows:
-        payload = agg.payload or {}
-        requester, channel = _changeset_drafted_meta(session, agg.aggregate_id)
+    for row in rows:
+        payload = row.payload or {}
+        workorder_integrity_error = _workorder_integrity_error(row)
+        changeset_id = f"cs_{row.workorder_id}"
+        changeset = session.get(
+            Aggregate,
+            {"aggregate_type": "changeset", "aggregate_id": changeset_id},
+        )
+        projection_warning = None
+        if changeset is not None:
+            projected_hash = (changeset.payload or {}).get("workorder_hash")
+            if projected_hash not in (None, row.hash):
+                projection_warning = "changeset_hash_mismatch"
+        gate_integrity_status = "verified"
+        gate_integrity_error = None
+        gate_binding_digest = None
+        gate_target_revision = None
+        gate_target_versionset_id = None
+        try:
+            if workorder_integrity_error is not None:
+                raise GateServiceError(
+                    "hash_mismatch", "WorkOrder integrity validation failed"
+                )
+            gate = gates.validate_for_workorder(row)
+            gate_binding_digest = gate.binding_digest
+            gate_target_revision = gate.target_revision
+            gate_target_versionset_id = gate.target_versionset_id
+        except GateServiceError as exc:
+            gate_integrity_status = "integrity_error"
+            gate_integrity_error = exc.code
+        trusted_payload = payload if workorder_integrity_error is None else {}
         items.append(
             {
-                "workorder_id": payload.get("workorder_ref") or _workorder_id_from_changeset(agg.aggregate_id),
-                "changeset_id": agg.aggregate_id,
-                "case_id": payload.get("case_id"),
-                "hash": payload.get("workorder_hash"),
-                "freeze_at": payload.get("expiry"),
-                "requester": requester,
-                "channel": channel,
-                "nonce": payload.get("nonce"),
-                "state": agg.state,
+                "workorder_id": row.workorder_id,
+                "changeset_id": changeset_id,
+                "case_id": row.case_id if workorder_integrity_error is None else None,
+                "hash": row.hash,
+                "freeze_at": trusted_payload.get("expiry"),
+                "requester": trusted_payload.get("created_by"),
+                "channel": row.channel if workorder_integrity_error is None else "UNKNOWN",
+                "nonce": trusted_payload.get("nonce"),
+                "state": (
+                    changeset.state
+                    if changeset is not None and workorder_integrity_error is None
+                    else "UNKNOWN"
+                ),
+                "gate_report_ref": trusted_payload.get("gate_report_ref"),
+                "target_versionset_digest": trusted_payload.get("target_versionset_digest"),
+                "created_at": _iso(row.created_at),
+                "projection_warning": projection_warning,
+                "workorder_integrity_status": (
+                    "verified" if workorder_integrity_error is None else "integrity_error"
+                ),
+                "workorder_integrity_error": workorder_integrity_error,
+                "gate_integrity_status": gate_integrity_status,
+                "gate_integrity_error": gate_integrity_error,
+                "gate_binding_digest": gate_binding_digest,
+                "gate_target_revision": gate_target_revision,
+                "gate_target_versionset_id": gate_target_versionset_id,
             }
         )
     return {"items": items}
 
 
 # ------------------------------------------------------------------ 7. 门禁报告列表
+
+
+def _gate_binding_status(
+    session: Session,
+    gates: GateService,
+    row: GateReportRecord,
+) -> tuple[str, Optional[str]]:
+    """Validate the GateReport-to-WorkOrder relationship, not only its body."""
+
+    workorder = session.get(WorkOrder, row.workorder_id)
+    if row.authorization_digest is not None:
+        # GateService.get validates this authorization digest against the
+        # initial bound WorkOrder. Recheck row projection integrity explicitly.
+        if workorder is None:
+            return "UNKNOWN", "workorder_missing"
+        integrity_error = _workorder_integrity_error(workorder)
+        if integrity_error is not None:
+            return "UNKNOWN", integrity_error
+        return "VERIFIED", None
+
+    has_binding = row.workorder_hash is not None or row.binding_digest is not None
+    if not has_binding and workorder is None:
+        return "UNBOUND", None
+    if not has_binding:
+        return "UNKNOWN", "gate_binding_missing"
+    if row.workorder_hash is None or row.binding_digest is None:
+        return "UNKNOWN", "gate_binding_incomplete"
+    if workorder is None:
+        return "UNKNOWN", "workorder_missing"
+    integrity_error = _workorder_integrity_error(workorder)
+    if integrity_error is not None:
+        return "UNKNOWN", integrity_error
+    try:
+        bound = gates.validate_for_workorder(workorder)
+    except GateServiceError as exc:
+        return "UNKNOWN", exc.code
+    if bound.eval_id != row.eval_id:
+        return "UNKNOWN", "gate_reference_mismatch"
+    return "VERIFIED", None
 
 
 def list_gates(session: Session, *, limit: int = 500) -> dict[str, Any]:
@@ -389,6 +472,41 @@ def list_gates(session: Session, *, limit: int = 500) -> dict[str, Any]:
                     "evidence_digest": r.evidence_digest,
                     "status": "integrity_error",
                     "integrity_error": exc.code,
+                    "binding_status": "UNKNOWN",
+                    "binding_error": exc.code,
+                    "created_at": _iso(r.created_at),
+                }
+            )
+            continue
+
+        binding_status, binding_error = _gate_binding_status(session, gates, r)
+        if binding_status == "UNKNOWN":
+            logger.error(
+                "GateReport binding validation failed during projection",
+                extra={"eval_id": r.eval_id, "error_code": binding_error},
+            )
+            items.append(
+                {
+                    "eval_id": r.eval_id,
+                    "workorder_id": r.workorder_id,
+                    "workorder_hash": r.workorder_hash,
+                    "report_id": r.report_id,
+                    "rule_track": "error",
+                    "judge_track": "error",
+                    "deterministic_tests": "error",
+                    "live_provider_e2e": "error",
+                    "verdict": "error",
+                    "report_hash": r.report_hash,
+                    "binding_digest": r.binding_digest,
+                    "target_versionset_id": r.target_versionset_id,
+                    "target_revision": r.target_revision,
+                    "dataset_id": r.dataset_id,
+                    "dataset_version": r.dataset_version,
+                    "evidence_digest": r.evidence_digest,
+                    "status": "integrity_error",
+                    "integrity_error": binding_error,
+                    "binding_status": binding_status,
+                    "binding_error": binding_error,
                     "created_at": _iso(r.created_at),
                 }
             )
@@ -413,8 +531,255 @@ def list_gates(session: Session, *, limit: int = 500) -> dict[str, Any]:
                 "dataset_id": view["dataset_id"],
                 "dataset_version": view["dataset_version"],
                 "evidence_digest": view["evidence_digest"],
-                "status": "completed",
+                "status": "completed" if binding_status == "VERIFIED" else "unbound",
+                "binding_status": binding_status,
+                "binding_error": binding_error,
                 "created_at": _iso(r.created_at),
             }
         )
     return {"items": items}
+
+
+# ------------------------------------------------------------------ 8. evidence references
+
+
+def _evidence_parts(
+    key: str, value: Any
+) -> tuple[Optional[str], Optional[str], bool]:
+    """Return recorded reference/digest and flag malformed digest claims."""
+
+    if isinstance(value, dict):
+        reference = value.get("uri") or value.get("ref") or value.get("content_ref")
+        raw_digest = value.get("digest")
+        digest = str(raw_digest) if raw_digest is not None else None
+        malformed_digest = digest is not None and _SHA256_DIGEST.fullmatch(digest) is None
+        return (
+            str(reference) if reference is not None else None,
+            None if malformed_digest else digest,
+            malformed_digest,
+        )
+    if isinstance(value, str):
+        if "digest" in key.lower():
+            valid = _SHA256_DIGEST.fullmatch(value) is not None
+            return None, value if valid else None, not valid
+        return value, None, False
+    return None, None, False
+
+
+def _evidence_item(
+    *,
+    source_type: str,
+    source_id: str,
+    case_id: Optional[str],
+    key: str,
+    value: Any,
+    recorded_at: Any,
+    trace_id: Optional[str] = None,
+    source_integrity_error: Optional[str] = None,
+) -> dict[str, Any]:
+    reference, digest, malformed_digest = _evidence_parts(key, value)
+    if source_integrity_error is not None or malformed_digest:
+        binding_status = "UNKNOWN"
+    else:
+        binding_status = (
+            "BOUND"
+            if reference is not None and digest is not None
+            else "DIGEST_RECORDED"
+            if digest is not None
+            else "REFERENCE_RECORDED"
+            if reference is not None
+            else "UNKNOWN"
+        )
+    integrity_status = (
+        "source_integrity_error"
+        if source_integrity_error is not None
+        else "invalid_digest"
+        if malformed_digest
+        else "recorded"
+    )
+    return {
+        "evidence_id": f"{source_type}:{source_id}:{key}",
+        "source_type": source_type,
+        "source_id": source_id,
+        "case_id": case_id,
+        "kind": key,
+        "reference": reference,
+        "digest": digest,
+        "binding_status": binding_status,
+        "integrity_status": integrity_status,
+        "integrity_error": source_integrity_error,
+        # The control plane records bindings but owns no artifact-content
+        # fetcher yet. Never present an un-opened URI as verified content.
+        "artifact_status": "UNKNOWN",
+        "recorded_at": _iso(recorded_at),
+        "trace_id": trace_id,
+    }
+
+
+def _iter_evidence_refs(payload: dict[str, Any]) -> Iterable[tuple[str, Any]]:
+    for key, value in (payload or {}).items():
+        if value is not None and _is_evidence_key(key):
+            yield key, value
+
+
+def list_evidence_refs(
+    session: Session,
+    *,
+    case_id: Optional[str] = None,
+    limit: int = 500,
+) -> dict[str, Any]:
+    """Project recorded evidence bindings without claiming artifact availability."""
+
+    items: list[dict[str, Any]] = []
+    gate_service = GateService(session)
+    events_query = select(Event).order_by(Event.occurred_at.desc(), Event.event_id).limit(limit)
+    if case_id:
+        events_query = events_query.where(Event.correlation_id == case_id)
+    for event in session.scalars(events_query).all():
+        for key, value in _iter_evidence_refs(event.payload or {}):
+            items.append(
+                _evidence_item(
+                    source_type="event",
+                    source_id=event.event_id,
+                    case_id=event.correlation_id if event.correlation_id.startswith("case_") else None,
+                    key=key,
+                    value=value,
+                    recorded_at=event.occurred_at,
+                    trace_id=event.trace_id,
+                )
+            )
+
+    workorders_query = select(WorkOrder).order_by(WorkOrder.created_at.desc()).limit(limit)
+    if case_id:
+        workorders_query = workorders_query.where(WorkOrder.case_id == case_id)
+    for workorder in session.scalars(workorders_query).all():
+        payload = workorder.payload or {}
+        workorder_integrity_error = _workorder_integrity_error(workorder)
+        if workorder_integrity_error is not None:
+            items.append(
+                _evidence_item(
+                    source_type="workorder",
+                    source_id=workorder.workorder_id,
+                    case_id=None,
+                    key="workorder_integrity",
+                    value={"workorder_id": workorder.workorder_id},
+                    recorded_at=workorder.created_at,
+                    source_integrity_error=workorder_integrity_error,
+                )
+            )
+            continue
+        gate_integrity_error = None
+        try:
+            gate_service.validate_for_workorder(workorder)
+        except GateServiceError as exc:
+            gate_integrity_error = exc.code
+        for key in ("base_versionset_digest", "target_versionset_digest", "gate_report_ref"):
+            value = payload.get(key)
+            if value is not None:
+                items.append(
+                    _evidence_item(
+                        source_type="workorder",
+                        source_id=workorder.workorder_id,
+                        case_id=workorder.case_id,
+                        key=key,
+                        value=value,
+                        recorded_at=workorder.created_at,
+                        source_integrity_error=(
+                            gate_integrity_error if key == "gate_report_ref" else None
+                        ),
+                    )
+                )
+        diff = payload.get("diff")
+        if isinstance(diff, dict):
+            items.append(
+                _evidence_item(
+                    source_type="workorder",
+                    source_id=workorder.workorder_id,
+                    case_id=workorder.case_id,
+                    key="diff",
+                    value=diff,
+                    recorded_at=workorder.created_at,
+                )
+            )
+
+    gates_query = select(GateReportRecord).order_by(GateReportRecord.created_at.desc()).limit(limit)
+    if case_id:
+        workorder_ids = select(WorkOrder.workorder_id).where(WorkOrder.case_id == case_id)
+        gates_query = gates_query.where(GateReportRecord.workorder_id.in_(workorder_ids))
+    gate_rows = list(session.scalars(gates_query).all())
+    gate_workorder_ids = {gate.workorder_id for gate in gate_rows}
+    gate_case_ids: dict[str, str] = {}
+    if gate_workorder_ids:
+        workorders = session.scalars(
+            select(WorkOrder).where(WorkOrder.workorder_id.in_(gate_workorder_ids))
+        ).all()
+        gate_case_ids = {
+            workorder.workorder_id: workorder.case_id
+            for workorder in workorders
+            if _workorder_integrity_error(workorder) is None
+        }
+    for gate in gate_rows:
+        gate_case_id = gate_case_ids.get(gate.workorder_id)
+        try:
+            gate_view = gate_service.get(gate.eval_id)
+        except GateServiceError as exc:
+            logger.error(
+                "GateReport integrity validation failed during evidence projection",
+                extra={"eval_id": gate.eval_id, "error_code": exc.code},
+            )
+            items.append(
+                _evidence_item(
+                    source_type="gate",
+                    source_id=gate.eval_id,
+                    case_id=gate_case_id,
+                    key="gate_report_integrity",
+                    value={"eval_id": gate.eval_id},
+                    recorded_at=gate.created_at,
+                    source_integrity_error=exc.code,
+                )
+            )
+            continue
+
+        binding_status, binding_error = _gate_binding_status(session, gate_service, gate)
+        if binding_status != "VERIFIED":
+            items.append(
+                _evidence_item(
+                    source_type="gate",
+                    source_id=gate.eval_id,
+                    case_id=gate_case_id,
+                    key="gate_report_binding",
+                    value={"eval_id": gate.eval_id},
+                    recorded_at=gate.created_at,
+                    source_integrity_error=binding_error or "gate_unbound",
+                )
+            )
+            continue
+
+        items.append(
+            _evidence_item(
+                source_type="gate",
+                source_id=gate.eval_id,
+                case_id=gate_case_id,
+                key="evidence_digest",
+                value=gate_view["evidence_digest"],
+                recorded_at=gate.created_at,
+            )
+        )
+        for index, artifact in enumerate((gate_view["report"] or {}).get("artifact_refs") or []):
+            items.append(
+                _evidence_item(
+                    source_type="gate",
+                    source_id=gate.eval_id,
+                    case_id=gate_case_id,
+                    key=f"artifact_ref_{index}",
+                    value=artifact,
+                    recorded_at=gate.created_at,
+                )
+            )
+
+    items.sort(key=lambda item: item.get("recorded_at") or "", reverse=True)
+    return {
+        "items": items[:limit],
+        "artifact_store": "unavailable",
+        "warning": "artifact_content_unavailable",
+    }
