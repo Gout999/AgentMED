@@ -21,9 +21,11 @@ from app.models.tables import Base
 from app.quality.client import FakeQualityClient
 from app.utils.jcs import workorder_hash
 
+# S0-005：integration 测试必须落在 scratch 库，绝不默认指活库。
+# pg_engine fixture 会 drop_all——默认值若指 control_plane 活库，一次 pytest 就清库（2026-08-08 实发事故）。
 TEST_DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+psycopg://caseloop:caseloop@127.0.0.1:5432/control_plane",
+    "postgresql+psycopg://caseloop:caseloop@127.0.0.1:5432/control_plane_test",
 )
 
 

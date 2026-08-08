@@ -2,6 +2,7 @@
 -- 容器入口：/docker-entrypoint-initdb.d/
 
 CREATE DATABASE control_plane;
+CREATE DATABASE control_plane_test;  -- integration 测试专用 scratch 库（S0-005：禁指活库）
 CREATE DATABASE demo_app;
 CREATE DATABASE casebase;
 
