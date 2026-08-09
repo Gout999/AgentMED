@@ -2,6 +2,7 @@
 
 - Status: accepted
 - Date: 2026-08-08
+- Master-control ratification: Ratified in PR #1 review on 2026-08-09.
 
 ## Context
 

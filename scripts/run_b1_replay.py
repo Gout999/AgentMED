@@ -48,11 +48,13 @@ from app.models.tables import (  # noqa: E402
     Base,
     ControllerOperation,
     Event,
+    GateReportRecord,
     Outbox,
     OutboxDeliveryReceipt,
     ReleaseClosure,
     TrustLedger,
     TrustLedgerEntry,
+    WorkOrder,
 )
 from app.notifications.adapters import FeishuMockAdapter  # noqa: E402
 from app.quality.client import FakeQualityClient  # noqa: E402
@@ -165,6 +167,20 @@ def _repo_uri(path: Path) -> str:
     except ValueError:
         return resolved.as_uri()
     return "repo:///" + relative.as_posix()
+
+
+def _require_portable_output_dir(output_dir: Path, *, allow_dirty: bool) -> None:
+    """Final replay evidence must resolve through repository-relative URIs."""
+
+    if allow_dirty:
+        return
+    try:
+        output_dir.resolve().relative_to(REPO_ROOT)
+    except ValueError as exc:
+        raise RuntimeError(
+            "final B1 replay evidence must be generated inside the repository so all "
+            "artifact references are portable repo:/// URIs"
+        ) from exc
 
 
 def _artifact(path: Path) -> dict[str, str]:
@@ -668,6 +684,7 @@ def run_replay(
     suite_python: str | None = None,
 ) -> Path:
     started_at = _utcnow()
+    _require_portable_output_dir(output_dir, allow_dirty=allow_dirty)
     if allow_dirty:
         working_tree_before_run = "dirty-check-bypassed-for-explicit-test-run"
     else:
@@ -1057,7 +1074,7 @@ def run_replay(
                     "workorder_id": workorder_id,
                     "target_versionset_id": verification_context["target_versionset_id"],
                     "target_revision": verification_context["target_revision"],
-                    "dataset_id": "b1-canary-observation",
+                    "dataset_id": probe_set.probe_set_id,
                     "dataset_version": probe_set.version,
                     "evidence_digest": canonical_json_digest(post_gate["artifact_refs"]),
                     "correlation_id": case_id,
@@ -1162,6 +1179,18 @@ def run_replay(
             persisted_approvals = list(
                 session.scalars(select(Approval).order_by(Approval.created_at, Approval.approval_id)).all()
             )
+            persisted_workorders = list(
+                session.scalars(
+                    select(WorkOrder).where(WorkOrder.workorder_id == workorder_id)
+                ).all()
+            )
+            persisted_gate_reports = list(
+                session.scalars(
+                    select(GateReportRecord)
+                    .where(GateReportRecord.workorder_id == workorder_id)
+                    .order_by(GateReportRecord.created_at, GateReportRecord.eval_id)
+                ).all()
+            )
             if case is None or case.state != "CLOSED":
                 raise RuntimeError(f"B1 Case did not archive; state={case.state if case else 'missing'}")
             if notification is None or notification.state != "SENT":
@@ -1184,6 +1213,8 @@ def run_replay(
             outbox_rows = [_row(row) for row in outboxes]
             receipt_rows = [_row(row) for row in receipts]
             operation_rows = [_row(row) for row in operations]
+            persisted_workorder_rows = [_row(row) for row in persisted_workorders]
+            persisted_gate_report_rows = [_row(row) for row in persisted_gate_reports]
             approval_evidence = [
                 {
                     **dict(row.payload or {}),
@@ -1258,6 +1289,8 @@ def run_replay(
                 "promote": promote_receipt,
                 "controller_operations": operation_rows,
                 "quality_call_log": quality.call_log,
+                "persisted_workorders": persisted_workorder_rows,
+                "persisted_gate_reports": persisted_gate_report_rows,
             },
         )
         canary_path = _write_json(

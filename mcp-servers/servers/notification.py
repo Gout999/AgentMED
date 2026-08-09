@@ -1,16 +1,21 @@
 """mcp-notification：控制面通知命令 + 明确隔离的辅助 mock 能力。
 
 - feishu.reply_origin 只向控制面排队；dispatcher 才能接收 provider 回执并归档 Case。
-- approval_card / weekly_report 是当前明确标注的 feishu-mock 辅助适配器。
+- weekly_report 是当前明确标注的 feishu-mock 辅助适配器。
 - matrix.log：对内留痕。
 - thread_ref 格式（D-001 Q5）：feishu-mock:<room>:<msg_ref>；真飞书 feishu:<chat_id>:<message_id>，其中 message_id 是原投诉消息/reply 目标。
 - REST 查询端点：GET /api/messages（mock 群消息日志，接口签名与真飞书一致）。
 - 幂等：outbox_id 唯一；同键同参返回首次结果（§9.2）。
 """
+import base64
+import binascii
+import hashlib
 import logging
+import re
 import sys
 from pathlib import Path
 from typing import Any, Optional
+from urllib.parse import unquote_to_bytes
 
 from mcp.server.fastmcp import FastMCP
 from sqlalchemy import select
@@ -132,13 +137,34 @@ def _parse_feishu_mock_ref(ref: str) -> Optional[tuple[str, str]]:
     return None
 
 
+def _legacy_inline_body_digest(body_ref: str) -> str:
+    """Derive the v0.1 reply digest only from an immutable, self-contained data URI."""
+
+    if not body_ref.startswith("data:") or "," not in body_ref:
+        raise validation(
+            "body_digest is required unless legacy body_ref is an immutable data: URI"
+        )
+    header, payload = body_ref.split(",", 1)
+    try:
+        raw = (
+            base64.b64decode(payload, validate=True)
+            if ";base64" in header.lower()
+            else unquote_to_bytes(payload)
+        )
+    except (binascii.Error, ValueError) as exc:
+        raise validation("legacy data: body_ref is malformed") from exc
+    if len(raw) > 1_000_000:
+        raise validation("legacy data: body_ref exceeds the 1 MB compatibility limit")
+    return "sha256:" + hashlib.sha256(raw).hexdigest()
+
+
 @mcp.tool(name="feishu.reply_origin")
 def feishu_reply_origin(
     release_id: str,
     channel: str,
     thread_ref: str,
     body_ref: str,
-    body_digest: str,
+    body_digest: Optional[str] = None,
 ) -> dict[str, Any]:
     """Freeze the original-thread reply as the durable post-promote continuation.
 
@@ -150,10 +176,14 @@ def feishu_reply_origin(
 
     if not all(
         isinstance(value, str) and value
-        for value in (release_id, channel, thread_ref, body_ref, body_digest)
+        for value in (release_id, channel, thread_ref, body_ref)
     ):
-        raise validation("release_id, channel, thread_ref, body_ref, and body_digest are required")
-    if not body_digest.startswith("sha256:") or len(body_digest) != 71:
+        raise validation("release_id, channel, thread_ref, and body_ref are required")
+    if body_digest is None:
+        body_digest = _legacy_inline_body_digest(body_ref)
+    if not isinstance(body_digest, str) or not re.fullmatch(
+        r"sha256:[0-9a-f]{64}", body_digest
+    ):
         raise validation("body_digest must be sha256:<64 hex>")
     try:
         return _cp().post(
@@ -169,31 +199,6 @@ def feishu_reply_origin(
         raise exc
     except Exception as exc:  # noqa: BLE001
         raise dependency_unavailable(f"notification controller unreachable: {exc}") from exc
-
-
-@mcp.tool(name="feishu.approval_card")
-def feishu_approval_card(
-    approval_id: str,
-    workorder_hash: str,
-    evidence_summary: str,
-    expiry: str,
-    room: str = "approval",
-    idempotency_key: Optional[str] = None,
-) -> dict[str, Any]:
-    """发审批卡片（ACL：控制面）。包含 workorder_hash + expiry，明示 TTL。返回 {message_id}。"""
-    text = (
-        f"【审批卡片】approval_id={approval_id} workorder_hash={workorder_hash} "
-        f"expiry={expiry}\n{evidence_summary}"
-    )
-    outbox_id = idempotency_key or f"approval:{approval_id}:card"
-    return _send(
-        channel="feishu-mock",
-        room=room,
-        text=text,
-        outbox_id=outbox_id,
-        thread_ref=f"feishu-mock:{room}:",
-        actor="controller:release",
-    )
 
 
 @mcp.tool(name="feishu.weekly_report")

@@ -180,7 +180,7 @@ def make_gate_report(
     candidate_ref = inline(candidate_payload)
     artifacts = [contract_ref, replay_ref, candidate_ref]
     return {
-        "schema_version": "0.1.0",
+        "schema_version": "0.2.0",
         "policy_profile": policy_profile,
         "report_id": f"gate_{suffix}",
         "eval_id": eval_id,

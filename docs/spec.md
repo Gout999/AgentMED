@@ -794,12 +794,11 @@ DRAINING → 停止新 claim → 等待 lease=0 → outbox 清空
 
 | 工具 | 参数 | 返回 | ACL |
 |------|------|------|-----|
-| `feishu.reply_origin` | `release_id*`, immutable original `channel*`, `thread_ref*`, `body_ref*` | 控制面 closure + notification `{state:QUEUED}`；不冒充已送达 | 控制面/案例官 |
-| `feishu.approval_card` | `approval_id*`, `workorder_hash*`, `evidence_summary*`, `expiry*` | `{message_id}` | 控制面 |
+| `feishu.reply_origin` | `release_id*`, immutable original `channel*`, `thread_ref*`, `body_ref*`, `body_digest*` | 控制面 closure + notification `{state:QUEUED}`；不冒充已送达 | 控制面/案例官 |
 | `feishu.weekly_report` | `report*`（§10.4 结构） | `{message_id}` | 案例官 |
 | `matrix.log` | `room*`, `text*` | `{event_id}`（对内留痕） | 全员 |
 
-约定：原投诉 channel/thread 在 complaint event 冻结，回复不可改道。命令与业务事务同写 outbox；只有 dispatcher 可接收真实或明确 replay-mock provider receipt，原子写 `notification.sent` + `case.closed`。飞书真实凭证未到位时用同 contract 的 feishu mock，并在证据中**明示**；失败按 §3.6 重试，耗尽 DEAD 升级。
+约定：原投诉 channel/thread 在 complaint event 冻结，回复不可改道。`body_digest` 绑定不可变回复正文；v0.1 调用方的临时过渡仅允许从自包含 `data:` URI 安全补算，外部引用缺 digest 必须拒绝。命令与业务事务同写 outbox；只有 dispatcher 可接收真实或明确 replay-mock provider receipt，原子写 `notification.sent` + `case.closed`。飞书真实凭证未到位时用同 contract 的 feishu mock，并在证据中**明示**；失败按 §3.6 重试，耗尽 DEAD 升级。ApprovalGrant 由控制面/Console 处理，不注册 MCP `approval_card` 写工具。
 
 ### 9.7 mcp-casebase-knowledge
 

@@ -41,7 +41,7 @@
 ## 5. 质量官的 mcp-notification 工具面
 
 - **冻结设计**：wave3 §1「mcp-notification（升级人工时发消息）」。
-- **spec §9.6 ACL**：`feishu.reply_origin`（控制面/案例官）、`feishu.approval_card`（控制面）、`feishu.weekly_report`（案例官）、`matrix.log`（全员）。
+- **spec §9.6 ACL**：`feishu.reply_origin`（控制面/案例官）、`feishu.weekly_report`（案例官）、`matrix.log`（全员）；ApprovalGrant 由控制面/Console 处理，不注册 MCP `approval_card` 写工具。
 - **成稿做法**：质量官的 notification 工具面只列 `matrix.log`；升级到人的通知由控制面投递（`case.escalate` → 控制面 → 飞书审批卡/原群消息）。
 - **理由**：按 §9.6 ACL，质量官能用的通知工具只有 `matrix.log`；把人话消息通道给质量官会与"控制面投递"铁律冲突。
 - **建议**：**采纳**成稿解释；如需质量官直发人话，需放宽 §9.6 ACL。

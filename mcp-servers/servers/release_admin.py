@@ -568,7 +568,7 @@ def approval_status(approval_id: str) -> dict[str, Any]:
     }
 
 
-# ---------- 发布进度（旁观）与灰度/回滚申请（仅申请） ----------
+# ---------- 发布进度（只读旁观） ----------
 
 
 @mcp.tool(name="release.get")
@@ -603,48 +603,6 @@ def release_get(release_id: Optional[str] = None, case_id: Optional[str] = None)
         except Exception as exc:  # noqa: BLE001
             raise dependency_unavailable(f"release controller unreachable: {exc}") from exc
     raise validation("release_id or case_id required")
-
-
-@mcp.tool(name="release.request_canary")
-def release_request_canary(release_id: str, percent: int = 5, reason: str = "") -> dict[str, Any]:
-    """灰度申请（仅申请；执行权在 Release Controller）。release.canary_step 属 R2_HIGH_IMPACT，
-    永远返回"需逐次审批"（T8 硬约束）。"""
-    with session_scope() as session:
-        AuditService(session).record(
-            actor="agent",
-            action="release.canary_requested",
-            target=release_id,
-            params={"percent": percent, "reason": reason},
-            result="success",
-        )
-    return {
-        "applied": False,
-        "requires_approval": True,
-        "reason": "R2_HIGH_IMPACT 永远逐次审批（T8）：灰度需 ApprovalGrant 后由 Release Controller 执行",
-        "release_id": release_id,
-        "percent": percent,
-        "note": "申请已记录，执行权在 Release Controller",
-    }
-
-
-@mcp.tool(name="release.request_rollback")
-def release_request_rollback(release_id: str, reason: str = "") -> dict[str, Any]:
-    """回滚申请（仅申请；执行权在 Release Controller）。R2 动作永远返回"需逐次审批"。"""
-    with session_scope() as session:
-        AuditService(session).record(
-            actor="agent",
-            action="release.rollback_requested",
-            target=release_id,
-            params={"reason": reason},
-            result="success",
-        )
-    return {
-        "applied": False,
-        "requires_approval": True,
-        "reason": "R2_HIGH_IMPACT 永远逐次审批（T8）：回滚需 ApprovalGrant 后由 Release Controller 执行",
-        "release_id": release_id,
-        "note": "申请已记录，执行权在 Release Controller",
-    }
 
 
 # ---------- 内部 ----------

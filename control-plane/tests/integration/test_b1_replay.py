@@ -72,6 +72,11 @@ def test_b1_replay_closes_case_and_emits_bound_evidence(tmp_path):
     assert trust["entry"]["promotion"]["eligible"] is False
     assert trust["three_of_three_reference"]["wilson_two_sided_95_lower"] == 0.4385
     assert trust["three_of_three_reference"]["decision"] == "denied"
+    release_receipts = json.loads(
+        (out / "release-receipts.json").read_text(encoding="utf-8")
+    )
+    assert len(release_receipts["persisted_workorders"]) == 1
+    assert len(release_receipts["persisted_gate_reports"]) == 2
 
     for ref in manifest["artifacts"].values():
         assert ref["digest"].startswith("sha256:")
@@ -120,6 +125,21 @@ def test_b1_replay_closes_case_and_emits_bound_evidence(tmp_path):
     with pytest.raises(B1ValidationError, match="target revision"):
         validate_b1_run(manifest_path, allow_dirty=True)
     approval_path.write_text(original_approvals, encoding="utf-8")
+    manifest_path.write_text(original_manifest, encoding="utf-8")
+
+    receipts_path = out / "release-receipts.json"
+    original_receipts = receipts_path.read_text(encoding="utf-8")
+    receipts = json.loads(original_receipts)
+    receipts["persisted_gate_reports"][0]["dataset_id"] = "forged-dataset"
+    receipts_path.write_text(json.dumps(receipts), encoding="utf-8")
+    manifest = json.loads(original_manifest)
+    manifest["artifacts"]["release_receipts"]["digest"] = (
+        "sha256:" + hashlib.sha256(receipts_path.read_bytes()).hexdigest()
+    )
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    with pytest.raises(B1ValidationError, match="persisted GateReport projection"):
+        validate_b1_run(manifest_path, allow_dirty=True)
+    receipts_path.write_text(original_receipts, encoding="utf-8")
     manifest_path.write_text(original_manifest, encoding="utf-8")
 
     # Recomputing every outer digest must not let a changed raw answer retain a

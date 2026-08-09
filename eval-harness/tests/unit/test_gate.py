@@ -95,6 +95,7 @@ def test_gate_all_pass(settings, probe_set):
         _candidate(probe_set),
         live_available=True,
     )
+    assert report["schema_version"] == "0.2.0"
     assert report["overall_status"] == "passed"
     assert report["rule_track"]["status"] == "passed"
     assert report["judge_track"]["status"] == "passed"
@@ -299,6 +300,7 @@ def test_gate_judge_timeout_is_persistable_error(settings, probe_set):
 
     runner = GateRunner(settings, probe_set, judge=TimeoutJudge("sha256:" + "f" * 64))
     report = _run(runner, _candidate(probe_set), live_available=True)
+    assert report["schema_version"] == "0.2.0"
     assert report["judge_track"]["status"] == "error"
     assert report["overall_status"] == "error"
     assert validate_report(report, "gate-report.schema.json") == []

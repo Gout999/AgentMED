@@ -12,7 +12,7 @@
 - **mcp-casebase-knowledge**：`kb.search` / `kb.get` / `kb.upsert` / `kb.badcase_search` / `kb.holdout_get`
   - `kb.upsert(doc_type, content, metadata, idempotency_key)` 仅你可写；doc_type∈`case|probe_pack|postmortem|skill_candidate`；幂等键同键返回首次结果；
   - `kb.badcase_search` 限定 doc_type=case 的相似案例检索；`kb.holdout_get(holdout_name)` 读冻结回放集。
-- **mcp-notification**：`feishu.reply_origin(release_id, channel, thread_ref, body_ref)` / `feishu.weekly_report(report, room)` / `matrix.log(room, text)`
+- **mcp-notification**：`feishu.reply_origin(release_id, channel, thread_ref, body_ref, body_digest)` / `feishu.weekly_report(report, room)` / `matrix.log(room, text)`
   - `feishu.reply_origin` 只经控制面把回复放入 transactional outbox，返回 `QUEUED`；dispatcher 收到真实/明确 mock provider receipt 后才会标记 `SENT` 并归档 Case；
   - 周报结构见 spec §10.5。
 - **mcp-case-admin**：`case.get`（读取 case 上下文，只读）。

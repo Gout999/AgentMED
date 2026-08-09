@@ -297,7 +297,7 @@ class GateRunner:
             policy_profile=policy_profile,
         )
         report = {
-            "schema_version": "0.1.0",
+            "schema_version": "0.2.0",
             "policy_profile": policy_profile,
             "report_id": report_id or new_id("gate"),
             "eval_id": eval_id or new_id("eval"),
@@ -634,7 +634,7 @@ def build_error_gate_report(
     """把执行器 timeout/exception 变成可持久化、schema-valid 的 fail-closed 报告。"""
 
     report = {
-        "schema_version": "0.1.0",
+        "schema_version": "0.2.0",
         "policy_profile": "live",
         "report_id": report_id or new_id("gate"),
         "eval_id": eval_id,

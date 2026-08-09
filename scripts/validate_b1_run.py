@@ -51,6 +51,24 @@ def _require(condition: bool, message: str) -> None:
         raise B1ValidationError(message)
 
 
+def _require_portable_replay_uris(value: Any, *, label: str) -> None:
+    """Reject machine-local file URIs anywhere in final replay evidence."""
+
+    if isinstance(value, str):
+        _require(
+            not value.startswith("file://"),
+            f"{label} contains a non-portable file URI",
+        )
+        return
+    if isinstance(value, dict):
+        for key, item in value.items():
+            _require_portable_replay_uris(item, label=f"{label}.{key}")
+        return
+    if isinstance(value, list):
+        for index, item in enumerate(value):
+            _require_portable_replay_uris(item, label=f"{label}[{index}]")
+
+
 def _require_unique_agent_taskflow_ids(rows: list[dict[str, Any]]) -> None:
     """Reject one AgentTeams task/receipt being relabelled as multiple workers."""
 
@@ -2040,6 +2058,8 @@ def validate_b1_run(manifest_path: Path, *, allow_dirty: bool = False) -> dict[s
             )
         )
     _require(manifest.get("fixture_id") == "B1", "manifest is not the B1 fixture")
+    if manifest.get("mode") == "isolated-replay" and not allow_dirty:
+        _require_portable_replay_uris(manifest, label="manifest")
     started_at = _parse_dt(manifest["started_at"], "manifest.started_at")
     completed_at = _parse_dt(manifest["completed_at"], "manifest.completed_at")
     _require(completed_at >= started_at, "manifest completed_at precedes started_at")
@@ -2048,6 +2068,8 @@ def validate_b1_run(manifest_path: Path, *, allow_dirty: bool = False) -> dict[s
     for name, ref in manifest["artifacts"].items():
         _, value = _load_ref(ref, run_dir=run_dir, label=f"artifact.{name}")
         artifacts[name] = value
+    if manifest["mode"] == "isolated-replay" and not allow_dirty:
+        _require_portable_replay_uris(artifacts, label="artifacts")
 
     reports = {item["kind"]: item for item in manifest["test_reports"]}
     _require(set(reports) == {"contract", "replay", "live-provider"}, "test report kinds are incomplete")
@@ -2325,6 +2347,65 @@ def validate_b1_run(manifest_path: Path, *, allow_dirty: bool = False) -> dict[s
             f"{kind} controller receipt mismatch",
         )
     _require(target_versionset["revision"] == 4, "manifest target revision is not the promoted revision")
+    persisted_workorders = receipts.get("persisted_workorders") or []
+    persisted_gates = receipts.get("persisted_gate_reports") or []
+    _require(
+        len(persisted_workorders) == 1
+        and persisted_workorders[0].get("workorder_id") == workorder_id
+        and persisted_workorders[0].get("case_id") == case_id
+        and persisted_workorders[0].get("hash") == workorder["hash"]
+        and persisted_workorders[0].get("channel") == workorder["channel"]
+        and persisted_workorders[0].get("payload") == workorder,
+        "replay persisted WorkOrder differs from the immutable artifact",
+    )
+    persisted_gate_by_id = {row.get("eval_id"): row for row in persisted_gates}
+    _require(
+        len(persisted_gate_by_id) == len(persisted_gates) == 2
+        and set(persisted_gate_by_id)
+        == {gates["initial"]["eval_id"], gates["post_canary"]["eval_id"]},
+        "replay GateReports were not exported exactly once from persistence",
+    )
+    initial_candidate = {
+        "target_versionset_id": target_versionset["versionset_id"],
+        "target_revision": by_kind["stage"]["expected_revision"],
+        "dataset_id": probes["probe_set_id"],
+        "dataset_version": probes["version"],
+    }
+    post_candidate = {
+        "target_versionset_id": target_versionset["versionset_id"],
+        "target_revision": by_kind["canary"]["result"]["result"]["revision"],
+        "dataset_id": probes["probe_set_id"],
+        "dataset_version": probes["version"],
+    }
+    initial_binding_digest = _validate_persisted_live_gate(
+        name="initial replay",
+        row=persisted_gate_by_id[gates["initial"]["eval_id"]],
+        report=gates["initial"],
+        candidate=initial_candidate,
+        workorder=workorder,
+        expected_authorization_digest=None,
+    )
+    verification_authorization_digest = _canonical_digest(
+        {
+            "workorder_id": workorder_id,
+            "workorder_hash": workorder["hash"],
+            "initial_eval_id": gates["initial"]["eval_id"],
+            "initial_report_hash": _canonical_digest(gates["initial"], prefix=False),
+            "initial_binding_digest": initial_binding_digest,
+            "target_versionset_id": initial_candidate["target_versionset_id"],
+            "target_versionset_digest": gates["initial"]["subject"][
+                "target_versionset_digest"
+            ],
+        }
+    )
+    _validate_persisted_live_gate(
+        name="post-canary replay",
+        row=persisted_gate_by_id[gates["post_canary"]["eval_id"]],
+        report=gates["post_canary"],
+        candidate=post_candidate,
+        workorder=workorder,
+        expected_authorization_digest=verification_authorization_digest,
+    )
     _require(
         by_kind["canary"].get("approval_id") == action_grants["canary"]["approval_id"]
         and by_kind["promote"].get("approval_id") == action_grants["promote"]["approval_id"],

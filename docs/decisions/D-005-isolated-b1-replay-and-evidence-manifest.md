@@ -3,6 +3,7 @@
 - Status: Accepted
 - Date: 2026-08-09
 - Scope: Phase 1 P0-4
+- Master-control ratification: Ratified in PR #1 review on 2026-08-09.
 
 ## Context
 

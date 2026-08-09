@@ -44,6 +44,7 @@ from validate_b1_run import (  # noqa: E402
     _report_semantics,
     _require_fixed_agent_worker_roles,
     _require_official_provider_origins,
+    _require_portable_replay_uris,
     _require_unique_agent_taskflow_ids,
     _validate_live_gate,
     _validate_live_inbound_notification_binding,
@@ -52,6 +53,7 @@ from validate_b1_run import (  # noqa: E402
 )
 from run_b1_replay import (  # noqa: E402
     _publish_verified_manifest as _publish_verified_replay_manifest,
+    _require_portable_output_dir,
 )
 from agentteams_attestation import canonical_receipt_bytes  # noqa: E402
 
@@ -84,6 +86,19 @@ def _attest(receipt: dict) -> dict:
 
 def _digest_bytes(raw: bytes) -> str:
     return "sha256:" + hashlib.sha256(raw).hexdigest()
+
+
+def test_final_replay_evidence_requires_repository_portability(tmp_path):
+    with pytest.raises(RuntimeError, match="repo:/// URIs"):
+        _require_portable_output_dir(tmp_path / "run", allow_dirty=False)
+
+    _require_portable_output_dir(REPO_ROOT / "evidence" / "run", allow_dirty=False)
+    _require_portable_output_dir(tmp_path / "test-run", allow_dirty=True)
+    with pytest.raises(B1ValidationError, match="non-portable file URI"):
+        _require_portable_replay_uris(
+            {"artifact": {"uri": "file:///Users/someone/evidence.json"}},
+            label="manifest",
+        )
 
 
 def test_child_environment_never_leaks_control_or_write_authority(monkeypatch):
