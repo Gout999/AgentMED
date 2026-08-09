@@ -25,6 +25,7 @@ import yaml
 from app.utils.jcs import canonical_json_digest
 
 
+REPO_ROOT = Path(__file__).resolve().parents[3]
 CELLS = ("C", "RP", "RK", "RM", "G")
 SINGLE_FACTOR_ARMS = {"RP": "prompt", "RK": "kb", "RM": "model_params"}
 DIGEST_RE = re.compile(r"^sha256:[0-9a-f]{64}$")
@@ -41,6 +42,26 @@ _WS_RE = re.compile(r"\s+")
 
 class AttributionValidationError(ValueError):
     pass
+
+
+def _isolated_replay_artifact_path(parsed: Any) -> Path:
+    """Resolve replay-only file/repo references without allowing repo traversal."""
+
+    if parsed.scheme == "file" and parsed.path:
+        return Path(unquote(parsed.path))
+    if parsed.scheme == "repo" and parsed.path and not parsed.netloc:
+        root = REPO_ROOT.resolve()
+        path = (root / unquote(parsed.path).lstrip("/")).resolve()
+        try:
+            path.relative_to(root)
+        except ValueError as exc:
+            raise AttributionValidationError(
+                "trial repo output_ref escapes the repository root"
+            ) from exc
+        return path
+    raise AttributionValidationError(
+        "trial output_ref must be inline JSON or an isolated-replay file/repo artifact"
+    )
 
 
 def _normalise_probe(raw: dict[str, Any]) -> dict[str, Any]:
@@ -430,18 +451,18 @@ def _validate_output_artifact(
             if len(encoded) > ((2_000_000 + 2) // 3) * 4:
                 raise AttributionValidationError("trial output artifact exceeds 2 MB")
             artifact_bytes = base64.b64decode(encoded, validate=True)
-        elif parsed.scheme == "file" and parsed.path:
+        elif parsed.scheme in {"file", "repo"} and parsed.path:
             if execution_profile != "isolated-replay":
                 raise AttributionValidationError(
                     "live trial output_ref must be process-independent inline evidence"
                 )
-            path = Path(unquote(parsed.path))
+            path = _isolated_replay_artifact_path(parsed)
             if path.stat().st_size > 2_000_000:
                 raise AttributionValidationError("trial output artifact exceeds 2 MB")
             artifact_bytes = path.read_bytes()
         else:
             raise AttributionValidationError(
-                "trial output_ref must be inline JSON evidence or an isolated-replay file"
+                "trial output_ref must be inline JSON or an isolated-replay file/repo artifact"
             )
         if len(artifact_bytes) > 2_000_000:
             raise AttributionValidationError("trial output artifact exceeds 2 MB")

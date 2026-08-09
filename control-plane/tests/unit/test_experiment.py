@@ -6,10 +6,12 @@ import base64
 import hashlib
 import json
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pytest
 
 from app.config import Settings
+from app.services import attribution as attribution_service
 from app.models.tables import Lease
 from app.quality.client import FakeQualityClient
 from app.services.attribution import newcombe_wilson_diff
@@ -45,6 +47,26 @@ _RESPONSES = json.loads(
         / "b1_probe_responses.json"
     ).read_text(encoding="utf-8")
 )
+
+
+def test_isolated_replay_repo_ref_is_root_bound(monkeypatch, tmp_path):
+    monkeypatch.setattr(attribution_service, "REPO_ROOT", tmp_path)
+    expected = (tmp_path / "evidence" / "raw.json").resolve()
+
+    assert attribution_service._isolated_replay_artifact_path(
+        urlparse("repo:///evidence/raw.json")
+    ) == expected
+    with pytest.raises(
+        attribution_service.AttributionValidationError,
+        match="escapes the repository root",
+    ):
+        attribution_service._isolated_replay_artifact_path(
+            urlparse("repo:///../outside.json")
+        )
+    with pytest.raises(attribution_service.AttributionValidationError):
+        attribution_service._isolated_replay_artifact_path(
+            urlparse("repo://remote/evidence/raw.json")
+        )
 
 
 def _services(session):
