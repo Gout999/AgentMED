@@ -1,0 +1,14 @@
+{
+  "command": [
+    "/tmp/caseloop-p0-eval-venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "conformance/test_schemas.py",
+    "conformance/test_wilson.py"
+  ],
+  "cwd": "/private/tmp/caseloop-formal-sparse.2QcV6w/contracts",
+  "exit_code": 0,
+  "kind": "contract",
+  "output": "............................                                             [100%]\n28 passed in 0.19s\n"
+}

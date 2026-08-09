@@ -1,0 +1,177 @@
+{
+  "artifacts": {
+    "agent_runs": {
+      "digest": "sha256:460de794577c07d677afb293676a5f33bc1910634c9d54745bf5a03da8894780",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/agent-runs.json"
+    },
+    "approval_grants": {
+      "digest": "sha256:b1c0d7b400d1554d965a8894c9786a352feb48f4ce2a7f42e316e676b201d3ed",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/approval-grants.json"
+    },
+    "attribution_report": {
+      "digest": "sha256:e6e72faa72f02fdf8b7651eb632c84127890b424c125366c67ed3587630cce37",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/attribution-report.json"
+    },
+    "audit_events": {
+      "digest": "sha256:7f475fce556f044dd8e7f17460dca157641bd919a565f8e3ce9eafdb2adb9d93",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/audit-events.json"
+    },
+    "canary_metrics": {
+      "digest": "sha256:566551bfcfeae9a529ad1c446cba40ff9dfb58cafe9bf0511cb2aed01a15c82d",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/canary-metrics.json"
+    },
+    "commits": {
+      "digest": "sha256:e4589cbe23fb77d3ee56a092ae173a71f414b39bc23795f8287e5e7d5c6d9373",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/commits.json"
+    },
+    "contract_replay_report": {
+      "digest": "sha256:cd55f22dffc346fd714736e983322ed2ec0bb7345e3ceb0b1ba441f71f7aa096",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/contract-replay-report.json"
+    },
+    "domain_events": {
+      "digest": "sha256:3d9b72a40481d338183e6ef38c22379ae63dcd867cc1a9e41237b65f47a9ee51",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/domain-events.json"
+    },
+    "evidence_bundle": {
+      "digest": "sha256:2b315abcbcadfd683ed295b7aa5cbc39a2b0ae57566c01c518f1d9636cd8e8e5",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/evidence-bundle.json"
+    },
+    "experiment_plan": {
+      "digest": "sha256:b50641bccbb07727a94469220ed2f2232be77770df4af350efde335f0b2d04c1",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/experiment-plan.json"
+    },
+    "frozen_versionset": {
+      "digest": "sha256:706c48b37b5dcca97e64bb406e9ef79cad6b84ebe702d20e3755dff3e4fe6f3f",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/frozen-versionset.json"
+    },
+    "gate_report": {
+      "digest": "sha256:db80130762bc1b756e9edfb5f96138a9e23c2c54aa5d1813ba229bfa8d4cb398",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/gate-reports.json"
+    },
+    "live_provider_report": {
+      "digest": "sha256:e9b9ba3c33932e81290f57a4cfd5bd16764a06b7b2d71c1c4e29636f78cab7df",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/live-provider-report.json"
+    },
+    "notification_receipt": {
+      "digest": "sha256:7e41251145f5f92028d441df49e355de530240b9d7b224c0b02d760159ff6896",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/notification-receipt.json"
+    },
+    "outbox_receipts": {
+      "digest": "sha256:a6ef9fc38b70f185c342e25f81d3c604656c38bd3fcae9bcad248ec2def256f8",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/outbox-receipts.json"
+    },
+    "probe_outputs": {
+      "digest": "sha256:118b5e1d65e691853ae28dfdfdcc48bf576c2c7528b97f620b4722bc283e127e",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs.json"
+    },
+    "probes": {
+      "digest": "sha256:a07529e34092c014f4ec0684836543d242349fefcaf3cbc7853fee94d6cb3b9d",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probes.json"
+    },
+    "release_receipts": {
+      "digest": "sha256:d074a059b46bcccf227ffa753375937bcec7e0a134705b5be1466fa79a1604c5",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/release-receipts.json"
+    },
+    "release_terminal_receipt": {
+      "digest": "sha256:2ae18b72b721f5c63336f5289c779066907575004db8f8cb1bf49e46efb504af",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/promote-receipt.json"
+    },
+    "trace": {
+      "digest": "sha256:ab2592e619cbc371b354318d1b4290f221fde65dedd142f1e2c2553d4e9d53fd",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/trace.json"
+    },
+    "trust_decision": {
+      "digest": "sha256:2dbebdb4fdb7d1a72911c493cabcc8dd724b050e0a62829d3fbb010af066e177",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/trust-decision.json"
+    },
+    "workorder": {
+      "digest": "sha256:43ea3aed60e7f33d57fd0280a168e0ea6a311711bbcd87d4eb9b089548a88c6e",
+      "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/workorder.json"
+    }
+  },
+  "case_id": "case_01KZJQAQFS7EWXVJF427CXPAGZ",
+  "completed_at": "2026-08-09T07:38:24.772942+00:00",
+  "experiment_id": "exp_01KZJQAQG0H9AJ6JEDDYQGRRJC",
+  "external_blockers": [
+    "live StepFun athlete and distinct judge credentials are external",
+    "live Control Plane, Quality API, and Feishu provider configuration are external",
+    "human approval authority and attested AgentTeams/Matrix fixed warm pool are external"
+  ],
+  "fixture_id": "B1",
+  "mode": "isolated-replay",
+  "notification_id": "notif_56e325050ebf7177e28ea964",
+  "outcomes": {
+    "attribution": {
+      "decision": "ATTRIBUTED",
+      "fault_layer": "prompt"
+    },
+    "case": "CLOSED",
+    "deduplicated": true,
+    "live_provider": "blocked",
+    "notification": {
+      "provider": "feishu-mock",
+      "status": "sent"
+    },
+    "release": "promoted",
+    "trust": {
+      "autonomy_state": "MANUAL",
+      "promotion_decision": "denied",
+      "samples_added": 1,
+      "wilson_lower": 0.2065432914738929
+    }
+  },
+  "release_id": "rel_b73f369744d447ac",
+  "run_id": "b1run_b73f369744d447ac",
+  "schema_version": "0.1.0",
+  "started_at": "2026-08-09T07:38:21.992788+00:00",
+  "status": "passed",
+  "test_reports": [
+    {
+      "failed": 0,
+      "kind": "contract",
+      "passed": 28,
+      "report_ref": {
+        "digest": "sha256:398154f0bf4495fdccdd3b869cb97bbf8db1350c8bf67b87136d2f7232c8d0bb",
+        "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/contract-suite.json"
+      },
+      "status": "passed"
+    },
+    {
+      "failed": 0,
+      "kind": "replay",
+      "passed": 28,
+      "report_ref": {
+        "digest": "sha256:65514e048e9692b914d01fbca413cde16e4716ede49195f674063652d2bcb160",
+        "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/replay-suite.json"
+      },
+      "status": "passed"
+    },
+    {
+      "failed": 0,
+      "kind": "live-provider",
+      "passed": 0,
+      "report_ref": {
+        "digest": "sha256:e9b9ba3c33932e81290f57a4cfd5bd16764a06b7b2d71c1c4e29636f78cab7df",
+        "uri": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/live-provider-report.json"
+      },
+      "status": "blocked"
+    }
+  ],
+  "transaction_id": "tx_b73f369744d447ac",
+  "versions": {
+    "base_versionset": {
+      "digest": "sha256:61214e0d15b104183268418529df2ce0e1b21ac1b3d77b197e4fc328b57dcdc4",
+      "revision": 1,
+      "versionset_id": "vs_b73f369744d447acbad"
+    },
+    "repository_end_commit": "b5ef38fbc1a0da90bf766f0590763be5d1118e74",
+    "repository_start_commit": "a6de5cc1a06d6967634676b2661da7d2e46d287b",
+    "target_versionset": {
+      "digest": "sha256:c25e3516d476eee790ae05c8669a6b60f0bb39bdc255a7ef3eab235a1ccefb23",
+      "revision": 4,
+      "versionset_id": "vs_8bb56f74783b446a8976"
+    }
+  },
+  "workorder_hash": "9427bc132065148fab826328cb0a7946a25048f602b809728aacc6baf23bea65",
+  "workorder_id": "wo_b73f369744d447ac"
+}

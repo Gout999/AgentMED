@@ -1,0 +1,14 @@
+{
+  "command": [
+    "/tmp/caseloop-p0-eval-venv/bin/python",
+    "-m",
+    "pytest",
+    "-q",
+    "tests/unit/test_probe_judge.py",
+    "tests/unit/test_gate.py"
+  ],
+  "cwd": "/private/tmp/caseloop-formal-sparse.2QcV6w/eval-harness",
+  "exit_code": 0,
+  "kind": "replay",
+  "output": "............................                                             [100%]\n28 passed in 0.07s\n"
+}

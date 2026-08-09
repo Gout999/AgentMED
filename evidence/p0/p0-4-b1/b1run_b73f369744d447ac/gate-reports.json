@@ -1,0 +1,401 @@
+{
+  "initial": {
+    "artifact_refs": [
+      {
+        "digest": "sha256:398154f0bf4495fdccdd3b869cb97bbf8db1350c8bf67b87136d2f7232c8d0bb",
+        "uri": "data:application/json;base64,ewogICJjb21tYW5kIjogWwogICAgIi90bXAvY2FzZWxvb3AtcDAtZXZhbC12ZW52L2Jpbi9weXRob24iLAogICAgIi1tIiwKICAgICJweXRlc3QiLAogICAgIi1xIiwKICAgICJjb25mb3JtYW5jZS90ZXN0X3NjaGVtYXMucHkiLAogICAgImNvbmZvcm1hbmNlL3Rlc3Rfd2lsc29uLnB5IgogIF0sCiAgImN3ZCI6ICIvcHJpdmF0ZS90bXAvY2FzZWxvb3AtZm9ybWFsLXNwYXJzZS4yUWNWNncvY29udHJhY3RzIiwKICAiZXhpdF9jb2RlIjogMCwKICAia2luZCI6ICJjb250cmFjdCIsCiAgIm91dHB1dCI6ICIuLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgWzEwMCVdXG4yOCBwYXNzZWQgaW4gMC4xOXNcbiIKfQo="
+      },
+      {
+        "digest": "sha256:65514e048e9692b914d01fbca413cde16e4716ede49195f674063652d2bcb160",
+        "uri": "data:application/json;base64,ewogICJjb21tYW5kIjogWwogICAgIi90bXAvY2FzZWxvb3AtcDAtZXZhbC12ZW52L2Jpbi9weXRob24iLAogICAgIi1tIiwKICAgICJweXRlc3QiLAogICAgIi1xIiwKICAgICJ0ZXN0cy91bml0L3Rlc3RfcHJvYmVfanVkZ2UucHkiLAogICAgInRlc3RzL3VuaXQvdGVzdF9nYXRlLnB5IgogIF0sCiAgImN3ZCI6ICIvcHJpdmF0ZS90bXAvY2FzZWxvb3AtZm9ybWFsLXNwYXJzZS4yUWNWNncvZXZhbC1oYXJuZXNzIiwKICAiZXhpdF9jb2RlIjogMCwKICAia2luZCI6ICJyZXBsYXkiLAogICJvdXRwdXQiOiAiLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFsxMDAlXVxuMjggcGFzc2VkIGluIDAuMDdzXG4iCn0K"
+      },
+      {
+        "digest": "sha256:0198194b51a4e72bbf0bbed91e14d5a7a16240088731723f54dfb7458c728e04",
+        "uri": "data:application/json;base64,ewogICJhbnN3ZXJzIjogewogICAgImNzLTAwMSI6ICLlj6/ku6XpgIDnmoTvvIHmgqjlnKjnrb7mlLbmrKHml6XotbcgNyDlpKnlhoXpg73lj6/ku6XnlLPor7fml6DnkIbnlLHpgIDotKfvvIzljbPkvb/lt7Lnu4/mv4DmtLvkuobkuZ/kuI3lvbHlk43pgIDotKfmnYPnm4rjgILpgIDotKfliY3or7fkv53mjIHllYblk4Hlj4rphY3ku7blrozmlbTvvIzov5DotLnnlLHmiJHku6zmib/mi4XjgILmgqjlj6/ku6Xnm7TmjqXlnKjorqLljZXpobXpnaLnlLPor7fpgIDotKfvvIzmiJbogIXogZTns7vmiJHluK7mgqjlpITnkIbjgIIiLAogICAgImNzLTAwMiI6ICLlj6/ku6XnmoTvvIzogLPmnLrmv4DmtLvlkI7ku43lj6/lnKjnrb7mlLbmrKHml6XotbcgNyDlpKnlhoXnlLPor7fml6DnkIbnlLHpgIDotKfvvIzov5DotLnnlLHmiJHku6zmib/mi4XjgIIiLAogICAgImNzLTAwMyI6ICI35aSp5peg55CG55Sx6YCA6LSn55qE6L+Q6LS555Sx5oiR5Lus5om/5ouF77yb6Z2e6LSo6YeP6Zeu6aKY5o2i6LSn6L+Q6LS55ZCM5qC355Sx5oiR5Lus5om/5ouF44CCIiwKICAgICJjcy0wMDQiOiAi5Y+v5Lul55qE77yM5ouG5byA5YyF6KOF6K+V55So5LiN5b2x5ZONIDcg5aSp5peg55CG55Sx6YCA6LSn44CC5Y+q6KaB5oKo5Zyo562+5pS25qyh5pel6LW3IDcg5aSp5YaF55Sz6K+377yM5bm25L+d55WZ5aW95YyF6KOF5LiO6YWN5Lu25a6M5pW06YCA5Zue5Y2z5Y+v77yM6L+Q6LS555Sx5oiR5Lus5om/5ouF44CCIiwKICAgICJjcy0wMDUiOiAi5qC55o2u5oiR5Lus55qE5ZSu5ZCO5pS/562W77yMN+WkqeaXoOeQhueUsemAgOi0p+acn+mZkOaYryoq6Ieq5oKo562+5pS25ZWG5ZOB55qE5qyh5pel5byA5aeL6K6h566XKirnmoTjgIJcblxu5Li+5Liq5L6L5a2Q77ya5aaC5p6c5oKo5LuK5aSp77yIMeaciDHml6XvvInnrb7mlLbkuobllYblk4HvvIzpgqPkuYjpgIDotKfmnJ/pmZDlsLHmmK/ku44x5pyIMuaXpeW8gOWni+eul+i1t++8jOWIsDHmnIg45pel57uT5p2f44CC5Zyo6L+ZN+WkqeWGhe+8jOWNs+S9v+WVhuWTgeW3sue7j+a/gOa0u++8jOaCqOS5n+WPr+S7peeUs+ivt+aXoOeQhueUsemAgOi0p++8jOiAjOS4lOi/kOi0ueeUseaIkeS7rOaJv+aLheOAgiIsCiAgICAiY3MtMDA2IjogIlgyMDAg6JOd54mZ6ICz5py65oC757ut6IiqIDMwIOWwj+aXtu+8iOWQq+WFheeUteebku+8ie+8jOaUr+aMgeW/q+WFhe+8jOWFheeUtSAxMCDliIbpkp/lj6/lkKzmrYwgMyDlsI/ml7bjgIIiLAogICAgImNzLTAwNyI6ICJYMjAwIOeahOS4u+WKqOmZjeWZqua3seW6puaYryAqKjQyZEIqKuOAgiIsCiAgICAiY3MtMDA4IjogIlk5MCDmnLrmorDplK7nm5jph4fnlKjnmoTmmK8qKue6v+aAp+e6oui9tCoq44CCIiwKICAgICJjcy0wMDkiOiAiWjMw5YWF55S15a6d5a656YeP5Li6ICoqMjAwMDBtQWjvvIg3NFdo77yJKirvvIznrKblkIjmsJHoiKrpmo/ouqvmkLrluKbmoIflh4bvvIwqKuWPr+S7peW4puS4iumjnuacuioq44CCIiwKICAgICJjcy0wMTAiOiAie1xuICBcImJhdHRlcnlcIjogXCLmgLvnu63oiKozMOWwj+aXtu+8iOWQq+WFheeUteebku+8ie+8jOaUr+aMgeW/q+WFhe+8jOWFheeUtTEw5YiG6ZKf5ZCs5q2MM+Wwj+aXtlwiLFxuICBcImFuY1wiOiBcIuS4u+WKqOmZjeWZqua3seW6pjQyZELvvIzmlK/mjIHpgJrpgI/mqKHlvI/kuI7pmY3lmarmqKHlvI/liIfmjaJcIixcbiAgXCJibHVldG9vdGhcIjogXCJCbHVldG9vdGggNS40XCJcbn0iLAogICAgImNzLTAxMSI6ICLmiJHku6zmlK/mjIEgNyDlpKnml6DnkIbnlLHpgIDotKfvvIjoh6rnrb7mlLbmrKHml6XotbfnrpfvvIzmv4DmtLvlkI7ku43lj6/pgIDvvIzov5DotLnnlLHmiJHku6zmib/mi4XvvInjgILpgIDotKfliY3or7fkv53mjIHllYblk4Hlj4rpmYTku7blrozmlbTjgIIiLAogICAgImNzLTAxMiI6ICI35aSp5peg55CG55Sx6YCA6LSn77yM5r+A5rS75ZCO5LuN5Y+v6YCA77yM6L+Q6LS555Sx5oiR5Lus5om/5ouF44CCIiwKICAgICJjcy0wMTMiOiAi546w6LSn5ZWG5ZOB5LiL5Y2V5ZCOIDQ4IOWwj+aXtuWGheWPkei0p++8jOmihOWUruWVhuWTgeS7pemhtemdouagh+azqOaXtumXtOS4uuWHhuOAgiIsCiAgICAiY3MtMDE0IjogIuaIkeS7rOS4jumhuuS4sOOAgeS6rOS4nOeJqea1geWQiOS9nOmFjemAge+8jOmDqOWIhuWcsOWMuuaUr+aMgeW9k+aXpei+vi/mrKHml6Xovr7jgIIiLAogICAgImNzLTAxNSI6ICLmlrDnlobjgIHopb/ol4/lsZ7kuo7lgY/ov5zlnLDljLrvvIwqKuS4jeebtOaOpeWMhemCrioq77yM6ZyA6KaB6KGl5YGP6L+c6L+Q6LS577yI5YW35L2T6YeR6aKd5Lul57uT566X6aG15Li65YeG77yJ44CC5LiN6L+H5ruh6aKd6K6i5Y2V5Y+v5Lul5Lqr5Y+X6L+Q6LS56KGl6LS05ZOmfiIsCiAgICAiY3MtMDE2IjogIuWPkei0p+WQjuaCqOWPr+S7peWcqOiuouWNleivpuaDhemhteafpeeci+eJqea1geWNleWPt+S4juWunuaXtueJqea1gei9qOi/ueWTpuOAgiIKICB9LAogICJzb3VyY2UiOiAicmVjb3JkZWQtcmVwbGF5IiwKICAidmVyc2lvbnNldF9kaWdlc3QiOiAic2hhMjU2OmMyNWUzNTE2ZDQ3NmVlZTc5MGFlMDVjODY2OWE2YjYwZjBiYjM5YmRjMjU1YTdlZjNlYWIyMzVhMWNjZWZiMjMiCn0K"
+      }
+    ],
+    "created_at": "2026-08-09T07:38:23.527213Z",
+    "deterministic_tests": {
+      "status": "passed",
+      "suites": [
+        {
+          "kind": "contract",
+          "n_failed": 0,
+          "n_passed": 28,
+          "report_ref": "data:application/json;base64,ewogICJjb21tYW5kIjogWwogICAgIi90bXAvY2FzZWxvb3AtcDAtZXZhbC12ZW52L2Jpbi9weXRob24iLAogICAgIi1tIiwKICAgICJweXRlc3QiLAogICAgIi1xIiwKICAgICJjb25mb3JtYW5jZS90ZXN0X3NjaGVtYXMucHkiLAogICAgImNvbmZvcm1hbmNlL3Rlc3Rfd2lsc29uLnB5IgogIF0sCiAgImN3ZCI6ICIvcHJpdmF0ZS90bXAvY2FzZWxvb3AtZm9ybWFsLXNwYXJzZS4yUWNWNncvY29udHJhY3RzIiwKICAiZXhpdF9jb2RlIjogMCwKICAia2luZCI6ICJjb250cmFjdCIsCiAgIm91dHB1dCI6ICIuLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgWzEwMCVdXG4yOCBwYXNzZWQgaW4gMC4xOXNcbiIKfQo=",
+          "status": "passed",
+          "suite": "b1-contract"
+        },
+        {
+          "kind": "replay",
+          "n_failed": 0,
+          "n_passed": 28,
+          "report_ref": "data:application/json;base64,ewogICJjb21tYW5kIjogWwogICAgIi90bXAvY2FzZWxvb3AtcDAtZXZhbC12ZW52L2Jpbi9weXRob24iLAogICAgIi1tIiwKICAgICJweXRlc3QiLAogICAgIi1xIiwKICAgICJ0ZXN0cy91bml0L3Rlc3RfcHJvYmVfanVkZ2UucHkiLAogICAgInRlc3RzL3VuaXQvdGVzdF9nYXRlLnB5IgogIF0sCiAgImN3ZCI6ICIvcHJpdmF0ZS90bXAvY2FzZWxvb3AtZm9ybWFsLXNwYXJzZS4yUWNWNncvZXZhbC1oYXJuZXNzIiwKICAiZXhpdF9jb2RlIjogMCwKICAia2luZCI6ICJyZXBsYXkiLAogICJvdXRwdXQiOiAiLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFsxMDAlXVxuMjggcGFzc2VkIGluIDAuMDdzXG4iCn0K",
+          "status": "passed",
+          "suite": "b1-replay"
+        }
+      ]
+    },
+    "eval_id": "eval_b73f369744d447acinitial",
+    "judge_track": {
+      "athlete_model_digest": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+      "judge_model_digest": "sha256:0329a983c2593284be293dd0a4e83ed3c50a9ba2c33b8fd3c5d8f80fb2be7f3d",
+      "pass_threshold": 0.8,
+      "scores": [
+        {
+          "pass": true,
+          "probe_id": "cs-001",
+          "rationale_ref": "evidence://gate/judge/cs-001",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-002",
+          "rationale_ref": "evidence://gate/judge/cs-002",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-003",
+          "rationale_ref": "evidence://gate/judge/cs-003",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-004",
+          "rationale_ref": "evidence://gate/judge/cs-004",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-005",
+          "rationale_ref": "evidence://gate/judge/cs-005",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-006",
+          "rationale_ref": "evidence://gate/judge/cs-006",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-007",
+          "rationale_ref": "evidence://gate/judge/cs-007",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-008",
+          "rationale_ref": "evidence://gate/judge/cs-008",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-009",
+          "rationale_ref": "evidence://gate/judge/cs-009",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-010",
+          "rationale_ref": "evidence://gate/judge/cs-010",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-011",
+          "rationale_ref": "evidence://gate/judge/cs-011",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-012",
+          "rationale_ref": "evidence://gate/judge/cs-012",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-013",
+          "rationale_ref": "evidence://gate/judge/cs-013",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-014",
+          "rationale_ref": "evidence://gate/judge/cs-014",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-015",
+          "rationale_ref": "evidence://gate/judge/cs-015",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-016",
+          "rationale_ref": "evidence://gate/judge/cs-016",
+          "score": 1.0
+        }
+      ],
+      "status": "passed"
+    },
+    "live_provider_e2e": {
+      "provider": "replay-not-live",
+      "status": "skipped",
+      "suites": [
+        {
+          "n_failed": 0,
+          "n_passed": 0,
+          "status": "skipped",
+          "suite": "live-provider-e2e"
+        }
+      ]
+    },
+    "overall_status": "passed",
+    "policy_profile": "isolated-replay",
+    "report_id": "gate_b73f369744d447acinitial",
+    "rule_track": {
+      "checks": [
+        {
+          "check_id": "rule-probe-all-pass",
+          "description": "候选答案在冻结探针集上确定性判定全过",
+          "detail": "全部通过",
+          "status": "passed"
+        },
+        {
+          "check_id": "rule-digest-match",
+          "description": "候选探针集 digest 与冻结值一致",
+          "detail": "frozen=sha256:f51fbbee2810467c96658f93e4fc2b64b5b843b80e55bf5029f30fa26bb9dbf0 candidate=sha256:f51fbbee2810467c96658f93e4fc2b64b5b843b80e55bf5029f30fa26bb9dbf0",
+          "status": "passed"
+        },
+        {
+          "check_id": "rule-schema-compliance",
+          "description": "候选对象结构字段合规（digest 前缀 / 必填）",
+          "detail": "合规",
+          "status": "passed"
+        },
+        {
+          "check_id": "rule-json-format",
+          "description": "JSON 探针输出合法且键齐全",
+          "detail": "全部合法",
+          "status": "passed"
+        },
+        {
+          "check_id": "rule-policy-profile",
+          "description": "本报告明确限定为隔离 contract/replay 证据，不冒充 live-provider E2E",
+          "detail": "policy_profile=isolated-replay; live-provider status is reported separately as skipped",
+          "status": "passed"
+        }
+      ],
+      "status": "passed"
+    },
+    "schema_version": "0.1.0",
+    "subject": {
+      "probe_set_digest": "sha256:f51fbbee2810467c96658f93e4fc2b64b5b843b80e55bf5029f30fa26bb9dbf0",
+      "regression_suite_digest": "sha256:2fea8217c845948bffb3dda1efe2a65f1bc4b2ca9d26166f1369316804cce1ab",
+      "target_versionset_digest": "sha256:c25e3516d476eee790ae05c8669a6b60f0bb39bdc255a7ef3eab235a1ccefb23"
+    }
+  },
+  "policy_profile": "isolated-replay",
+  "post_canary": {
+    "artifact_refs": [
+      {
+        "digest": "sha256:398154f0bf4495fdccdd3b869cb97bbf8db1350c8bf67b87136d2f7232c8d0bb",
+        "uri": "data:application/json;base64,ewogICJjb21tYW5kIjogWwogICAgIi90bXAvY2FzZWxvb3AtcDAtZXZhbC12ZW52L2Jpbi9weXRob24iLAogICAgIi1tIiwKICAgICJweXRlc3QiLAogICAgIi1xIiwKICAgICJjb25mb3JtYW5jZS90ZXN0X3NjaGVtYXMucHkiLAogICAgImNvbmZvcm1hbmNlL3Rlc3Rfd2lsc29uLnB5IgogIF0sCiAgImN3ZCI6ICIvcHJpdmF0ZS90bXAvY2FzZWxvb3AtZm9ybWFsLXNwYXJzZS4yUWNWNncvY29udHJhY3RzIiwKICAiZXhpdF9jb2RlIjogMCwKICAia2luZCI6ICJjb250cmFjdCIsCiAgIm91dHB1dCI6ICIuLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgWzEwMCVdXG4yOCBwYXNzZWQgaW4gMC4xOXNcbiIKfQo="
+      },
+      {
+        "digest": "sha256:65514e048e9692b914d01fbca413cde16e4716ede49195f674063652d2bcb160",
+        "uri": "data:application/json;base64,ewogICJjb21tYW5kIjogWwogICAgIi90bXAvY2FzZWxvb3AtcDAtZXZhbC12ZW52L2Jpbi9weXRob24iLAogICAgIi1tIiwKICAgICJweXRlc3QiLAogICAgIi1xIiwKICAgICJ0ZXN0cy91bml0L3Rlc3RfcHJvYmVfanVkZ2UucHkiLAogICAgInRlc3RzL3VuaXQvdGVzdF9nYXRlLnB5IgogIF0sCiAgImN3ZCI6ICIvcHJpdmF0ZS90bXAvY2FzZWxvb3AtZm9ybWFsLXNwYXJzZS4yUWNWNncvZXZhbC1oYXJuZXNzIiwKICAiZXhpdF9jb2RlIjogMCwKICAia2luZCI6ICJyZXBsYXkiLAogICJvdXRwdXQiOiAiLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFsxMDAlXVxuMjggcGFzc2VkIGluIDAuMDdzXG4iCn0K"
+      },
+      {
+        "digest": "sha256:0198194b51a4e72bbf0bbed91e14d5a7a16240088731723f54dfb7458c728e04",
+        "uri": "data:application/json;base64,ewogICJhbnN3ZXJzIjogewogICAgImNzLTAwMSI6ICLlj6/ku6XpgIDnmoTvvIHmgqjlnKjnrb7mlLbmrKHml6XotbcgNyDlpKnlhoXpg73lj6/ku6XnlLPor7fml6DnkIbnlLHpgIDotKfvvIzljbPkvb/lt7Lnu4/mv4DmtLvkuobkuZ/kuI3lvbHlk43pgIDotKfmnYPnm4rjgILpgIDotKfliY3or7fkv53mjIHllYblk4Hlj4rphY3ku7blrozmlbTvvIzov5DotLnnlLHmiJHku6zmib/mi4XjgILmgqjlj6/ku6Xnm7TmjqXlnKjorqLljZXpobXpnaLnlLPor7fpgIDotKfvvIzmiJbogIXogZTns7vmiJHluK7mgqjlpITnkIbjgIIiLAogICAgImNzLTAwMiI6ICLlj6/ku6XnmoTvvIzogLPmnLrmv4DmtLvlkI7ku43lj6/lnKjnrb7mlLbmrKHml6XotbcgNyDlpKnlhoXnlLPor7fml6DnkIbnlLHpgIDotKfvvIzov5DotLnnlLHmiJHku6zmib/mi4XjgIIiLAogICAgImNzLTAwMyI6ICI35aSp5peg55CG55Sx6YCA6LSn55qE6L+Q6LS555Sx5oiR5Lus5om/5ouF77yb6Z2e6LSo6YeP6Zeu6aKY5o2i6LSn6L+Q6LS55ZCM5qC355Sx5oiR5Lus5om/5ouF44CCIiwKICAgICJjcy0wMDQiOiAi5Y+v5Lul55qE77yM5ouG5byA5YyF6KOF6K+V55So5LiN5b2x5ZONIDcg5aSp5peg55CG55Sx6YCA6LSn44CC5Y+q6KaB5oKo5Zyo562+5pS25qyh5pel6LW3IDcg5aSp5YaF55Sz6K+377yM5bm25L+d55WZ5aW95YyF6KOF5LiO6YWN5Lu25a6M5pW06YCA5Zue5Y2z5Y+v77yM6L+Q6LS555Sx5oiR5Lus5om/5ouF44CCIiwKICAgICJjcy0wMDUiOiAi5qC55o2u5oiR5Lus55qE5ZSu5ZCO5pS/562W77yMN+WkqeaXoOeQhueUsemAgOi0p+acn+mZkOaYryoq6Ieq5oKo562+5pS25ZWG5ZOB55qE5qyh5pel5byA5aeL6K6h566XKirnmoTjgIJcblxu5Li+5Liq5L6L5a2Q77ya5aaC5p6c5oKo5LuK5aSp77yIMeaciDHml6XvvInnrb7mlLbkuobllYblk4HvvIzpgqPkuYjpgIDotKfmnJ/pmZDlsLHmmK/ku44x5pyIMuaXpeW8gOWni+eul+i1t++8jOWIsDHmnIg45pel57uT5p2f44CC5Zyo6L+ZN+WkqeWGhe+8jOWNs+S9v+WVhuWTgeW3sue7j+a/gOa0u++8jOaCqOS5n+WPr+S7peeUs+ivt+aXoOeQhueUsemAgOi0p++8jOiAjOS4lOi/kOi0ueeUseaIkeS7rOaJv+aLheOAgiIsCiAgICAiY3MtMDA2IjogIlgyMDAg6JOd54mZ6ICz5py65oC757ut6IiqIDMwIOWwj+aXtu+8iOWQq+WFheeUteebku+8ie+8jOaUr+aMgeW/q+WFhe+8jOWFheeUtSAxMCDliIbpkp/lj6/lkKzmrYwgMyDlsI/ml7bjgIIiLAogICAgImNzLTAwNyI6ICJYMjAwIOeahOS4u+WKqOmZjeWZqua3seW6puaYryAqKjQyZEIqKuOAgiIsCiAgICAiY3MtMDA4IjogIlk5MCDmnLrmorDplK7nm5jph4fnlKjnmoTmmK8qKue6v+aAp+e6oui9tCoq44CCIiwKICAgICJjcy0wMDkiOiAiWjMw5YWF55S15a6d5a656YeP5Li6ICoqMjAwMDBtQWjvvIg3NFdo77yJKirvvIznrKblkIjmsJHoiKrpmo/ouqvmkLrluKbmoIflh4bvvIwqKuWPr+S7peW4puS4iumjnuacuioq44CCIiwKICAgICJjcy0wMTAiOiAie1xuICBcImJhdHRlcnlcIjogXCLmgLvnu63oiKozMOWwj+aXtu+8iOWQq+WFheeUteebku+8ie+8jOaUr+aMgeW/q+WFhe+8jOWFheeUtTEw5YiG6ZKf5ZCs5q2MM+Wwj+aXtlwiLFxuICBcImFuY1wiOiBcIuS4u+WKqOmZjeWZqua3seW6pjQyZELvvIzmlK/mjIHpgJrpgI/mqKHlvI/kuI7pmY3lmarmqKHlvI/liIfmjaJcIixcbiAgXCJibHVldG9vdGhcIjogXCJCbHVldG9vdGggNS40XCJcbn0iLAogICAgImNzLTAxMSI6ICLmiJHku6zmlK/mjIEgNyDlpKnml6DnkIbnlLHpgIDotKfvvIjoh6rnrb7mlLbmrKHml6XotbfnrpfvvIzmv4DmtLvlkI7ku43lj6/pgIDvvIzov5DotLnnlLHmiJHku6zmib/mi4XvvInjgILpgIDotKfliY3or7fkv53mjIHllYblk4Hlj4rpmYTku7blrozmlbTjgIIiLAogICAgImNzLTAxMiI6ICI35aSp5peg55CG55Sx6YCA6LSn77yM5r+A5rS75ZCO5LuN5Y+v6YCA77yM6L+Q6LS555Sx5oiR5Lus5om/5ouF44CCIiwKICAgICJjcy0wMTMiOiAi546w6LSn5ZWG5ZOB5LiL5Y2V5ZCOIDQ4IOWwj+aXtuWGheWPkei0p++8jOmihOWUruWVhuWTgeS7pemhtemdouagh+azqOaXtumXtOS4uuWHhuOAgiIsCiAgICAiY3MtMDE0IjogIuaIkeS7rOS4jumhuuS4sOOAgeS6rOS4nOeJqea1geWQiOS9nOmFjemAge+8jOmDqOWIhuWcsOWMuuaUr+aMgeW9k+aXpei+vi/mrKHml6Xovr7jgIIiLAogICAgImNzLTAxNSI6ICLmlrDnlobjgIHopb/ol4/lsZ7kuo7lgY/ov5zlnLDljLrvvIwqKuS4jeebtOaOpeWMhemCrioq77yM6ZyA6KaB6KGl5YGP6L+c6L+Q6LS577yI5YW35L2T6YeR6aKd5Lul57uT566X6aG15Li65YeG77yJ44CC5LiN6L+H5ruh6aKd6K6i5Y2V5Y+v5Lul5Lqr5Y+X6L+Q6LS56KGl6LS05ZOmfiIsCiAgICAiY3MtMDE2IjogIuWPkei0p+WQjuaCqOWPr+S7peWcqOiuouWNleivpuaDhemhteafpeeci+eJqea1geWNleWPt+S4juWunuaXtueJqea1gei9qOi/ueWTpuOAgiIKICB9LAogICJzb3VyY2UiOiAicmVjb3JkZWQtcmVwbGF5IiwKICAidmVyc2lvbnNldF9kaWdlc3QiOiAic2hhMjU2OmMyNWUzNTE2ZDQ3NmVlZTc5MGFlMDVjODY2OWE2YjYwZjBiYjM5YmRjMjU1YTdlZjNlYWIyMzVhMWNjZWZiMjMiCn0K"
+      }
+    ],
+    "created_at": "2026-08-09T07:38:24.632288Z",
+    "deterministic_tests": {
+      "status": "passed",
+      "suites": [
+        {
+          "kind": "contract",
+          "n_failed": 0,
+          "n_passed": 28,
+          "report_ref": "data:application/json;base64,ewogICJjb21tYW5kIjogWwogICAgIi90bXAvY2FzZWxvb3AtcDAtZXZhbC12ZW52L2Jpbi9weXRob24iLAogICAgIi1tIiwKICAgICJweXRlc3QiLAogICAgIi1xIiwKICAgICJjb25mb3JtYW5jZS90ZXN0X3NjaGVtYXMucHkiLAogICAgImNvbmZvcm1hbmNlL3Rlc3Rfd2lsc29uLnB5IgogIF0sCiAgImN3ZCI6ICIvcHJpdmF0ZS90bXAvY2FzZWxvb3AtZm9ybWFsLXNwYXJzZS4yUWNWNncvY29udHJhY3RzIiwKICAiZXhpdF9jb2RlIjogMCwKICAia2luZCI6ICJjb250cmFjdCIsCiAgIm91dHB1dCI6ICIuLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgWzEwMCVdXG4yOCBwYXNzZWQgaW4gMC4xOXNcbiIKfQo=",
+          "status": "passed",
+          "suite": "b1-contract"
+        },
+        {
+          "kind": "replay",
+          "n_failed": 0,
+          "n_passed": 28,
+          "report_ref": "data:application/json;base64,ewogICJjb21tYW5kIjogWwogICAgIi90bXAvY2FzZWxvb3AtcDAtZXZhbC12ZW52L2Jpbi9weXRob24iLAogICAgIi1tIiwKICAgICJweXRlc3QiLAogICAgIi1xIiwKICAgICJ0ZXN0cy91bml0L3Rlc3RfcHJvYmVfanVkZ2UucHkiLAogICAgInRlc3RzL3VuaXQvdGVzdF9nYXRlLnB5IgogIF0sCiAgImN3ZCI6ICIvcHJpdmF0ZS90bXAvY2FzZWxvb3AtZm9ybWFsLXNwYXJzZS4yUWNWNncvZXZhbC1oYXJuZXNzIiwKICAiZXhpdF9jb2RlIjogMCwKICAia2luZCI6ICJyZXBsYXkiLAogICJvdXRwdXQiOiAiLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLi4uLiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIFsxMDAlXVxuMjggcGFzc2VkIGluIDAuMDdzXG4iCn0K",
+          "status": "passed",
+          "suite": "b1-replay"
+        }
+      ]
+    },
+    "eval_id": "eval_b73f369744d447acpostcanary",
+    "judge_track": {
+      "athlete_model_digest": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+      "judge_model_digest": "sha256:0329a983c2593284be293dd0a4e83ed3c50a9ba2c33b8fd3c5d8f80fb2be7f3d",
+      "pass_threshold": 0.8,
+      "scores": [
+        {
+          "pass": true,
+          "probe_id": "cs-001",
+          "rationale_ref": "evidence://gate/judge/cs-001",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-002",
+          "rationale_ref": "evidence://gate/judge/cs-002",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-003",
+          "rationale_ref": "evidence://gate/judge/cs-003",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-004",
+          "rationale_ref": "evidence://gate/judge/cs-004",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-005",
+          "rationale_ref": "evidence://gate/judge/cs-005",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-006",
+          "rationale_ref": "evidence://gate/judge/cs-006",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-007",
+          "rationale_ref": "evidence://gate/judge/cs-007",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-008",
+          "rationale_ref": "evidence://gate/judge/cs-008",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-009",
+          "rationale_ref": "evidence://gate/judge/cs-009",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-010",
+          "rationale_ref": "evidence://gate/judge/cs-010",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-011",
+          "rationale_ref": "evidence://gate/judge/cs-011",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-012",
+          "rationale_ref": "evidence://gate/judge/cs-012",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-013",
+          "rationale_ref": "evidence://gate/judge/cs-013",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-014",
+          "rationale_ref": "evidence://gate/judge/cs-014",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-015",
+          "rationale_ref": "evidence://gate/judge/cs-015",
+          "score": 1.0
+        },
+        {
+          "pass": true,
+          "probe_id": "cs-016",
+          "rationale_ref": "evidence://gate/judge/cs-016",
+          "score": 1.0
+        }
+      ],
+      "status": "passed"
+    },
+    "live_provider_e2e": {
+      "provider": "replay-not-live",
+      "status": "skipped",
+      "suites": [
+        {
+          "n_failed": 0,
+          "n_passed": 0,
+          "status": "skipped",
+          "suite": "live-provider-e2e"
+        }
+      ]
+    },
+    "overall_status": "passed",
+    "policy_profile": "isolated-replay",
+    "report_id": "gate_b73f369744d447acpostcanary",
+    "rule_track": {
+      "checks": [
+        {
+          "check_id": "rule-probe-all-pass",
+          "description": "候选答案在冻结探针集上确定性判定全过",
+          "detail": "全部通过",
+          "status": "passed"
+        },
+        {
+          "check_id": "rule-digest-match",
+          "description": "候选探针集 digest 与冻结值一致",
+          "detail": "frozen=sha256:f51fbbee2810467c96658f93e4fc2b64b5b843b80e55bf5029f30fa26bb9dbf0 candidate=sha256:f51fbbee2810467c96658f93e4fc2b64b5b843b80e55bf5029f30fa26bb9dbf0",
+          "status": "passed"
+        },
+        {
+          "check_id": "rule-schema-compliance",
+          "description": "候选对象结构字段合规（digest 前缀 / 必填）",
+          "detail": "合规",
+          "status": "passed"
+        },
+        {
+          "check_id": "rule-json-format",
+          "description": "JSON 探针输出合法且键齐全",
+          "detail": "全部合法",
+          "status": "passed"
+        },
+        {
+          "check_id": "rule-policy-profile",
+          "description": "本报告明确限定为隔离 contract/replay 证据，不冒充 live-provider E2E",
+          "detail": "policy_profile=isolated-replay; live-provider status is reported separately as skipped",
+          "status": "passed"
+        }
+      ],
+      "status": "passed"
+    },
+    "schema_version": "0.1.0",
+    "subject": {
+      "probe_set_digest": "sha256:f51fbbee2810467c96658f93e4fc2b64b5b843b80e55bf5029f30fa26bb9dbf0",
+      "regression_suite_digest": "sha256:7eedd004daa0d5f147692f550b2892bfdcae183d5f7cc4704bb6414a5381b1db",
+      "target_versionset_digest": "sha256:c25e3516d476eee790ae05c8669a6b60f0bb39bdc255a7ef3eab235a1ccefb23"
+    }
+  }
+}

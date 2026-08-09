@@ -1,0 +1,1088 @@
+{
+  "bundle_id": "eb_b73f369744d447ac",
+  "case_id": "case_01KZJQAQFS7EWXVJF427CXPAGZ",
+  "cells": {
+    "C": {
+      "control_pass_rate": 1.0,
+      "recovery_rate": 0.0,
+      "results": [
+        {
+          "output_digest": "sha256:2fa80f85a92f86a00526ab039a3626bc44a1b1e0a82bea957a070aea2a9b0a3f",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-001-rep1.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:1687c59b7223f53bb0a7e3e74c5eecc56ee4ffe00102eec51891ea7d5558a428",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-001-rep2.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:dd2bb98bb34447661a3244106691faaffda837972b1709065764f5c8ed11b22f",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-001-rep3.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:29b7566f6576a9f8075bcaaa3711f32904dea1495e61e9e279c2fc6ca4492aa7",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-002-rep1.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:8f8d16dd1059fba34c59d15da6c50a765f3b90845b845cd4dc5b10a2c488a863",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-002-rep2.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:36f9fe49279be254c787b678326310eb632d0a939defa08cf27fd0b63c538d95",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-002-rep3.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:90e4397b151351e21b383725899809673ae508207982486457fbc0a464e38ec4",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-003-rep1.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:33bb23a426ae1bec5a8fee24f00930fdadf3cc54b665bb05a9a4012bfce54496",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-003-rep2.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:4aa75d287dd349ea1abd06974f22f291d14714d7e873da69da0c55130a1aba21",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-003-rep3.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:bbf90dd14a27680107d9c661b9f49a1145ddc4b3d8bbd3ad71c6e57675a88548",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-004-rep1.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:c0926926f81a081607726f223c196ed4ac4ecc7047ea9626ae09d4b49eec6034",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-004-rep2.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:a52d64f90b4dcb54f330af9d7c397d1ed6c9cdcbfd4c3b54cdf9dbc31d73fefa",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-004-rep3.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:4499418ba68b6783325025c8fa9788949df7c7e2523d9d141bac7fe8d430aa52",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-005-rep1.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:e3b10dfc9b6ab38180fd9f5398153828e004aa4d04cc6895c49a105cd8c1746f",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-005-rep2.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:9b458553c1621f48f2b13ec3c30da8dc765170950d252e5e353a1b8eaf3f086c",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-005-rep3.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:1e8d51b068d28890de1f0bf0a65077611c626eac01d04dc0e1e67be49ab7acad",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-013-rep1.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:cdb1b1418ecd0ff8402994b7d89b5f74e14a4ba006bfbe1d6ee2f582f0480a7d",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-013-rep2.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:a8c7a39a05e18eebd1ef5200416d9fa51c8237dfd00dea5d9d44d014371fc5b0",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-013-rep3.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:d3e379c3b4522251af0757f2d6b7d555c1be99ee6424d0ef57fbb29e5e092ea7",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-014-rep1.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:93b0598557c61b9434f8a997e1ef5f4d0f46dd67ec7160c678bb3a444ed997db",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-014-rep2.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:a25bfdeb395776d6329c572dfca818d1400465ba71c5a3138e1f3793fa720402",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-014-rep3.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:d5016ce20d6acff2fc7500910846be3f69b5e0753bab68177c88a09566be0bc0",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-015-rep1.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:4510535f3a39d23de665849f44fff1d8ca1022465f278ae752ee0fe9cce39214",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-015-rep2.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:13dbb7fe0fc218fae0eebba2863144162434064bf934f8a7c104ab7952e56523",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-015-rep3.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:e01a4828971b70a5948b8bb9fbe271e4a224c5cf7fd16560479051a6c7fe75ac",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-016-rep1.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:f345fc3258e10e799ca8becf60bd0eba54bed1cc1e53b8dc3aa41d65fea8481f",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-016-rep2.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:994447013f7353102dfcd286e4f2583bf0be4348fb8fefc3bf48b1711993c308",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/C/cs-016-rep3.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 3
+        }
+      ],
+      "versions": {
+        "kb_manifest_digest": "sha256:ac4d51f9f07f8186f567a509aeb3dd1824b77a7ba386a956b3c3f9e035fa923d",
+        "model_digest": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+        "prompt_digest": "sha256:8dab9d372bbf7e0747f5fe2b21d90bee8da1f70bbafc409f2071ccef5267140a"
+      }
+    },
+    "G": {
+      "control_pass_rate": 1.0,
+      "recovery_rate": 1.0,
+      "results": [
+        {
+          "output_digest": "sha256:27c6debb2d712da8396e7ace5ec282bbd005d85204927c48b2c2661c4edd8a9c",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-001-rep1.json",
+          "probe_id": "cs-001",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:519fa252928680c372fd87841763e5eb75f1a4cd15431dc6387012e19859602c",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-001-rep2.json",
+          "probe_id": "cs-001",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:bacfb1742c2e0f9f4ff236c9666e04029b4924f664126265245d24fe64186c12",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-001-rep3.json",
+          "probe_id": "cs-001",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:4218c2b9e2568eb03e1da4dd20b42dd57503d030b7e472c9377372d1bf543999",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-002-rep1.json",
+          "probe_id": "cs-002",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:fd42b470e2d09f7bb80b2c00bc344d0bf2149e54167c5e280d9072b5dc938782",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-002-rep2.json",
+          "probe_id": "cs-002",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:963fe6df4120e2e0bd74dbfe1d40840130c209b44b4bd59d81d29c5e2e87ad36",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-002-rep3.json",
+          "probe_id": "cs-002",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:bfd53fdd5ef8f68f8f7624d0e6dd3cb2de8379f2560f7cdcd028f3e01ee37280",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-003-rep1.json",
+          "probe_id": "cs-003",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:74bdaff16d18186159415d25de3dc5a9760e4d9a68909e4f172e7a778fb69ec3",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-003-rep2.json",
+          "probe_id": "cs-003",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:092004dcd9b65174f7926a6b43e5fe9647ac6e3704e556bc1928fabace19aa56",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-003-rep3.json",
+          "probe_id": "cs-003",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:5d0a92056ba4a123e1669c52844583d255029a8bae1f3cb789e7ddc7cfbc005e",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-004-rep1.json",
+          "probe_id": "cs-004",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:178f89201516e46faf4cbadc257cad8426194bbcad8a4515c15e1dfa288319f0",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-004-rep2.json",
+          "probe_id": "cs-004",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:28abfbf401308437aca8660e58db68097ec03b84aa61211618916f0c1d9c6221",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-004-rep3.json",
+          "probe_id": "cs-004",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:8d88cd61c2ef28eb71f0ca3c04231eb23906bd9a25d13684b87e0ee966a2383e",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-005-rep1.json",
+          "probe_id": "cs-005",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:45758ecc102bfc590f22d3c64fac6c0ae775ead0748ca8088a6d48871d64c3ef",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-005-rep2.json",
+          "probe_id": "cs-005",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:cecb10290ac0459b8933dd4c8b825bd98e8841536c66d163874debc108bb0917",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-005-rep3.json",
+          "probe_id": "cs-005",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:1975e82b4621bae10d767f2b5720b7b9f7581159b76c2e275c6e00b501f4d4e8",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-013-rep1.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:b73d4fcc02459a18d0d23fdc4a0a5cdf8035e6298a84d915bd6302af8c90d6dd",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-013-rep2.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:6eeb0bc47edd8c5d9441de7d95967397976eccff3bee11b4e304c0c4c53db940",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-013-rep3.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:01fdbc648d195975b82042bd08be5f755ea3ef87d042f72b5905964ad88d25df",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-014-rep1.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:d7cbada8afae1f65ce32d55b202cc7c214e85f0de86d7f787f068736524cab4a",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-014-rep2.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:d0e77be372f3512a0152eb92b34145e107ffae4708601549e45689e2308333a6",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-014-rep3.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:c101dc95c49b15fa4ebfa7c79f2269b966edb5325344fb5f6352bfc1cdd7ed0f",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-015-rep1.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:fc69daedf74e64e6e633c4c310badcf43c2ab8cd4dbbb0efecd76c9c193f55a3",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-015-rep2.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:5515850d6bd4563df85cb9997736dddbafc080e042ff09cfc34c6b369aedc182",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-015-rep3.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:d53ea81865a39b8dd3aa67bcbe23272071923eff1f6e22104ddee41c71079eb4",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-016-rep1.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:3ab209a4f791ffe805c6b60325dc89b80669797ead2e6d35e53063a4a67cfa8b",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-016-rep2.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:49e8c84d013ab08cb7cd5b1eb3cdda151dab95c10812c046591e8a70e25eb05f",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/G/cs-016-rep3.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 3
+        }
+      ],
+      "versions": {
+        "kb_manifest_digest": "sha256:ac4d51f9f07f8186f567a509aeb3dd1824b77a7ba386a956b3c3f9e035fa923d",
+        "model_digest": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+        "prompt_digest": "sha256:c63b8a750e1731ac62f079cd192dc935e5f1fa40fabee8e18091e74045a40399"
+      }
+    },
+    "RK": {
+      "control_pass_rate": 1.0,
+      "recovery_rate": 0.0,
+      "results": [
+        {
+          "output_digest": "sha256:aab7ef2afb19137f92a8b07c41f61ff5b2e47e42ce74daea182c5d17df91053b",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-001-rep1.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:bde71dc6a1a8cd8527954481178f01be8ae63991d09b9e41ae987e4cc0171efc",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-001-rep2.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:9511fcb90626ebc007dbc196607f5be42c491f4fc67666895905fa8272d9fdc7",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-001-rep3.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:8dd7343b3f3b5c5e4324f26bf1407547c4269ecde14036f83a7fbea16ce281b9",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-002-rep1.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:85bde9fed95e28db7503893b03ffc11e2801b0d617ffb14eeba0c20c3f175f49",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-002-rep2.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:96cf95f07ac0f58347db0b9b9df7e9ca2876aef38b5bfd4b34200591f5dba642",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-002-rep3.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:6d67a3a55be056106213b55eb09cbc512a209c14249d5cb501b1f6a6aab83498",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-003-rep1.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:c09d9e8bcea382b9e95534041449da16c5c2967ac9cb804b5bc4dad7e3925612",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-003-rep2.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:c90e265f8b389deb1ee0f7576a7b1c0738e318053039db9db39c7820be1aa9d4",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-003-rep3.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:7159b1f0fce7d818fc1cee81ed6c4ee16d21946709d192b87c771b66871acf8e",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-004-rep1.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:1bd969cdfbdc7effe88e81643369a1f75ba1c7e35f3d3441554cd80e1218a9b7",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-004-rep2.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:f6b7567c51e3eb17744317024f31cafdc4a2d465c598bc8c9ed74b8495949540",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-004-rep3.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:a24ed5e4cbbd3bb2c0bb7185688f019870d1da90edf9290310e0ca96d9f2a6d4",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-005-rep1.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:6319aa492a9d35a19725f7023c6907ce28a3aad05c8be519f629064032dfd02b",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-005-rep2.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:c169f0b8121be1f513af7746fcba659b097d6f1d5c38d1866ae56a7749994292",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-005-rep3.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:e3e79d24b00c9e96e6ae1b627a1fba00876a5604f89eb2fd2008db88a66359f2",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-013-rep1.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:1b2cfd1344aa276f0044f62442bdedb7debfafc154882833460801721055969c",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-013-rep2.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:2380153977962fec9daa935026fa6e61e49047e20e66325c31242ccb5734dc5f",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-013-rep3.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:37d8458b97faa701123f4fa945e147c20526094f64765dac6a20cc1b074c12f8",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-014-rep1.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:dbce71b70a3028ea093f9a4cee6ca42e280d84e9f689a40d6ab9813fcc9fb0ff",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-014-rep2.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:7285bd97dc0503259ecf8d4af745dadf17ac5b9ab7a9bf3b89e2784777b5fb7c",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-014-rep3.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:899f363c0cc2ddb5619dcf4d7ee7cd688ae91169c6f34a8b0627f5fe01903132",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-015-rep1.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:841e943540329314ac14135a9a0c6f37d99aafc3068d3511f3cbecc77a944fa7",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-015-rep2.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:d25f1934795383b94cf11d3403274352b6bbcffce3845810cbd5f1e29e15cfa0",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-015-rep3.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:26a890e5e824886b929133fe94559736321aace0c66c87bddb0071b9b66851ad",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-016-rep1.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:fea979a9ab15cf1c8034ee6d8eb1e798987d314e98b210ff41277e70c874c3d2",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-016-rep2.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:ab84d6f1f531b26d2d2effae261652a6eb59ac8168ae88a99fdb662976ce2f7d",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RK/cs-016-rep3.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 3
+        }
+      ],
+      "versions": {
+        "kb_manifest_digest": "sha256:ac4d51f9f07f8186f567a509aeb3dd1824b77a7ba386a956b3c3f9e035fa923d",
+        "model_digest": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+        "prompt_digest": "sha256:8dab9d372bbf7e0747f5fe2b21d90bee8da1f70bbafc409f2071ccef5267140a"
+      }
+    },
+    "RM": {
+      "control_pass_rate": 1.0,
+      "recovery_rate": 0.0,
+      "results": [
+        {
+          "output_digest": "sha256:7d8cbedca041907c5ccc5a3a54788f013f5d8820b9bf15f1a84e68fb67607c5e",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-001-rep1.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:c67a595150e0ec429e7d8ded2f6cba2e0f770c06695fc24edd62b94af73bc932",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-001-rep2.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:efb277b1685cfe14af50f78df84b17ca6134097b66346cda5895efe9f26a3d78",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-001-rep3.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:f1306f58ee4c50558a848834dbc09226c1a91b0b93c827a51433851728760309",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-002-rep1.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:2208968433960e0bac50bbf8b49866dba10587fe4a4a1fa944ed17510bfe7b30",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-002-rep2.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:7e3b8f4ec460dbe23c43fe7abacf3aef99f55be01b3b325cd5e525ddb1588a37",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-002-rep3.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:53d467087ad277629b867a5f03ee5b168ab80dd134bef9a228c4e13a9e972902",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-003-rep1.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:7b7718857969625922e309472ba9add178e33d8eaa887a85d662a0f2f1487fa9",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-003-rep2.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:e37e12acb8a47e11a9f76f6507f79f50b3b7c0af5fdf1f1a1f1779b8bf169911",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-003-rep3.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:16172c042f3651a3ac781e4457a10a0c819903b1abb6f9e6c93e45e5c430c68d",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-004-rep1.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:6d8377897029e1549c23b79d9d051925ab6a032219120a28abb0fdf25593ccbf",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-004-rep2.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:e796a831a456ed8e1f82e49dc9d99c4de0c922bea7c514048e315aa35ebee05d",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-004-rep3.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:855d35dbcbad067f06f16ffa24d0b0507f56a8eb0ee39a28d98484a1c069a53f",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-005-rep1.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:ebf42b4a6ecc40cf9caa4c9b5548275529404a261b0a2114420c098a35d75471",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-005-rep2.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:3e175364da50667a21170a498c3a928cbd39b60ec8135a44b441d96b29f240ca",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-005-rep3.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:e8d3b7b7159528713375c7ae45882034bc2a255b969e7256a7d18b93de9caa11",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-013-rep1.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:bd1ff82435239ff1763cc3e9a5067b352ab8ecf769f3741b92bbc5a06b23645e",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-013-rep2.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:a429b40bd629d1f90684942627f8ba83b3b7b3e99d3d3805abe528494cc0928c",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-013-rep3.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:06117c3f387cb7f3078fbd4d800f5298451fa3e755c5c9b11e1b73f052819ad1",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-014-rep1.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:69eed783691e48309f553584e545ab3304598e231fe6c43aa6f7210ec9636832",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-014-rep2.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:2b8b1428791c827278843e3338bdafc3eb2a74f37f502f06986d3bcf9f980e74",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-014-rep3.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:8ed4c2253105b79fe158386bff78a5faf8bba31f755b47c2beb530bd357b23dd",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-015-rep1.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:b5073aad74c6a860ae1ba9415f19438268153a52f6ef4a9d0cc660119f79a4b2",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-015-rep2.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:16b039a3612adfc311e234f94506110ff985b1eabc3cef20cc209e17abdceb6e",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-015-rep3.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:1f6410a02c06528c9478d4eb1e031de30a9507b73ddfa780c429509ae02ca47f",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-016-rep1.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:759e1486239f4a5a896f4c503181241c26c89f686b1d4a90dbe6144f6b4b5c0d",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-016-rep2.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:2aa273d5070a7810a6009bac3bea92ec5299c5e6ccbc80cb5668f2e4d4b6de79",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RM/cs-016-rep3.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 3
+        }
+      ],
+      "versions": {
+        "kb_manifest_digest": "sha256:ac4d51f9f07f8186f567a509aeb3dd1824b77a7ba386a956b3c3f9e035fa923d",
+        "model_digest": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+        "prompt_digest": "sha256:8dab9d372bbf7e0747f5fe2b21d90bee8da1f70bbafc409f2071ccef5267140a"
+      }
+    },
+    "RP": {
+      "control_pass_rate": 1.0,
+      "recovery_rate": 1.0,
+      "results": [
+        {
+          "output_digest": "sha256:f4e640d0927669ad4103f3af8758201d7b15f68b9463414130c4ce89cd0f06ff",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-001-rep1.json",
+          "probe_id": "cs-001",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:3abbe7c5e56c2d2160aaba0d113f069c2d3b2815aa082801970f4e26d4bb1d87",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-001-rep2.json",
+          "probe_id": "cs-001",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:892eb9953cb9ca6595aaa6b86708ba37e6731435925e772b2fd97c945a27afd2",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-001-rep3.json",
+          "probe_id": "cs-001",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:c56410c0e45be996507c2419003b45a9dfa169121e9daeaba5f018b2eba7814a",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-002-rep1.json",
+          "probe_id": "cs-002",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:5355cfbe75d6ecae627a622b8ba7f07f15d48ed27d9c7b96ac4127170c198fd6",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-002-rep2.json",
+          "probe_id": "cs-002",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:281a1d5cb6714f2f7b410ae06cde33a4e82fc1287be4eec768892ef1dd0ac39a",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-002-rep3.json",
+          "probe_id": "cs-002",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:a11d09fe751902c115e1c465817de5eac8e089b2514231bc3870ebcc78b923ea",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-003-rep1.json",
+          "probe_id": "cs-003",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:f3ec67b99451c0f47978ec40843c946622446a2d8be145eb43eabe91d8214285",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-003-rep2.json",
+          "probe_id": "cs-003",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:1816b4130b7bc9c32fa8e3da384f2932078a85c2b98dc3139ae80bcc776ebf4e",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-003-rep3.json",
+          "probe_id": "cs-003",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:750c8597102992296495b1647b1cd6e800d7ee59ca3fd1e22e8b53cfb6535742",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-004-rep1.json",
+          "probe_id": "cs-004",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:042522b20c891dd978ca77c8511ed56c4fbcae06427bf2bc61dae326536e0358",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-004-rep2.json",
+          "probe_id": "cs-004",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:95129560d070776e7d3642d2c94d401dc10d7a68c7a2e0310029ca3053853705",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-004-rep3.json",
+          "probe_id": "cs-004",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:defa1f6e1798375a3fa5cc523b0741becb8a1253aa927479c776cdc5f5c5625d",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-005-rep1.json",
+          "probe_id": "cs-005",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:db760679a6a8765212266d17de5da6ada9f039251ebeaaa40ff0af47ae48db0f",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-005-rep2.json",
+          "probe_id": "cs-005",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:a03deddd40d8a1f44cbf517073bcd501cf38c474f8af2aabb5049a6c15aae263",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-005-rep3.json",
+          "probe_id": "cs-005",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:9c5ef0cece85319632f2d8a24bf648e995af468d4564ef732bef3ce8881cd280",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-013-rep1.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:7f0a5cbed5b713c546c1a48302083e25cd3e4ce6d8ef5c7b8545a5afaf5a7cb9",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-013-rep2.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:b80aa002af96782b5a4b99fafb8427f19f1982436796b69f3cbfd675457f7144",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-013-rep3.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:2ad628f778e857be1d139787c354f8ae6a67c789d59bfaed7e37901e60bfd698",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-014-rep1.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:aa63bd022f461c55b6a23f62ecc50ef855bd75591b7fa171581b656c34ebb2db",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-014-rep2.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:2123ad7173070ff6062d4c06e752bef70d1040e97ed92af47bd2ad8503d59bed",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-014-rep3.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:3a89db8cba6515188877cef4ab2cb7b563f2202e563521b78b454a638ae393ee",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-015-rep1.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:7a5b309f744b2d0cdc23de6615a5b1c1786ca94b7de9999f7e3990b9c948755a",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-015-rep2.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:ac76864706be8ef9630d4d545a2008c9e56104583ff40602c80314797b12225b",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-015-rep3.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:248790d556f990b798d3c03033894ef4a386c337a5ab43e3a5876ba2005e7a0c",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-016-rep1.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:6912de9782c862ba4237fc0b228d9443bf6c01025f47c95ab04ccf3ba53a91ff",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-016-rep2.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:0f87012b4e00ed4b6f1300d50fde209c827452e8e650b68478cb3813baa25a00",
+          "output_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/probe-outputs/RP/cs-016-rep3.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 3
+        }
+      ],
+      "versions": {
+        "kb_manifest_digest": "sha256:ac4d51f9f07f8186f567a509aeb3dd1824b77a7ba386a956b3c3f9e035fa923d",
+        "model_digest": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+        "prompt_digest": "sha256:c63b8a750e1731ac62f079cd192dc935e5f1fa40fabee8e18091e74045a40399"
+      }
+    }
+  },
+  "created_at": "2026-08-09T07:38:22.045155+00:00",
+  "effects": {
+    "kb": {
+      "ci95_lower": -0.2039,
+      "ci95_upper": 0.2039,
+      "delta": 0.0,
+      "significant": false
+    },
+    "method": "newcombe_wilson_diff",
+    "model_params": {
+      "ci95_lower": -0.2039,
+      "ci95_upper": 0.2039,
+      "delta": 0.0,
+      "significant": false
+    },
+    "prompt": {
+      "ci95_lower": 0.7117,
+      "ci95_upper": 1.0,
+      "delta": 1.0,
+      "significant": true
+    }
+  },
+  "experiment_id": "exp_01KZJQAQG0H9AJ6JEDDYQGRRJC",
+  "probe_set": {
+    "discovery": [
+      "cs-001",
+      "cs-002",
+      "cs-003"
+    ],
+    "hidden_confirmation": [
+      "cs-004",
+      "cs-005"
+    ],
+    "probe_set_digest": "sha256:f51fbbee2810467c96658f93e4fc2b64b5b843b80e55bf5029f30fa26bb9dbf0",
+    "unaffected_controls": [
+      "cs-013",
+      "cs-014",
+      "cs-015",
+      "cs-016"
+    ]
+  },
+  "protocol": {
+    "confidence": 0.95,
+    "frozen_at": "2026-08-09T07:38:22.045155+00:00",
+    "matrix": "five_cell",
+    "random_arm_order": [
+      "G@cs-001",
+      "G@cs-002",
+      "G@cs-003",
+      "G@cs-004",
+      "G@cs-005",
+      "RM@cs-001",
+      "RM@cs-002",
+      "RM@cs-003",
+      "RM@cs-004",
+      "RM@cs-005",
+      "RP@cs-001",
+      "RP@cs-002",
+      "RP@cs-003",
+      "RP@cs-004",
+      "RP@cs-005",
+      "RK@cs-001",
+      "RK@cs-002",
+      "RK@cs-003",
+      "RK@cs-004",
+      "RK@cs-005",
+      "C@cs-001",
+      "C@cs-002",
+      "C@cs-003",
+      "C@cs-004",
+      "C@cs-005"
+    ],
+    "random_seed_ref": "seed://exp_01KZJQAQG0H9AJ6JEDDYQGRRJC/20260807",
+    "repetitions": 3
+  },
+  "schema_version": "0.1.0",
+  "verdict": {
+    "attributed_layer": "prompt",
+    "decision": "ATTRIBUTED",
+    "hidden_confirmation_reproduced": true,
+    "rationale": "recorded outputs satisfy R1-R4: only prompt replacement recovers and hidden probes reproduce"
+  }
+}

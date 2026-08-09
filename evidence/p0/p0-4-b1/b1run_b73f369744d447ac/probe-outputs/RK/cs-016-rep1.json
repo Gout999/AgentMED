@@ -1,0 +1,18 @@
+{
+  "answer": "您好，发货后您可以在订单详情页查看物流单号与实时物流轨迹哦。",
+  "arm": "RK",
+  "case_id": "case_01KZJQAQFS7EWXVJF427CXPAGZ",
+  "experiment_id": "exp_01KZJQAQG0H9AJ6JEDDYQGRRJC",
+  "kb_manifest_digest": "sha256:ac4d51f9f07f8186f567a509aeb3dd1824b77a7ba386a956b3c3f9e035fa923d",
+  "model_digest": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+  "probe_id": "cs-016",
+  "prompt_digest": "sha256:8dab9d372bbf7e0747f5fe2b21d90bee8da1f70bbafc409f2071ccef5267140a",
+  "reasons": [],
+  "recovered": true,
+  "repetition": 1,
+  "source_state": "b1_fault",
+  "status": "recorded-replay",
+  "versionset_digest": "sha256:61214e0d15b104183268418529df2ce0e1b21ac1b3d77b197e4fc328b57dcdc4",
+  "versionset_id": "vs_b73f369744d447acbad",
+  "versionset_revision": 1
+}

@@ -1,0 +1,318 @@
+{
+  "C": {
+    "cs-001": {
+      "answer": "您好，关于您的退货申请，需要告知您我们的售后政策：\n\n**退货需经人工审核，且已激活商品不支持退货。**\n\n请问您的蓝牙耳机是否已经激活（例如已连接手机、开机配对使用）？  \n- 如果**已激活**，很抱歉无法办理退货；  \n- 如果**未激活**，可以为您提交人工审核申请，具体结果以审核为准。\n\n建议您确认商品状态后，如需申请可帮您转接人工客服处理。",
+      "passed": false,
+      "reasons": [
+        "缺少 must_include: ['7 天无理由']",
+        "命中 must_not_include: '不支持退货'",
+        "命中 must_not_include: '人工审核'"
+      ],
+      "source_state": "b1_fault"
+    },
+    "cs-002": {
+      "answer": "您好，根据售后政策，已激活的商品不支持退货。如果您有其他问题，欢迎随时咨询。",
+      "passed": false,
+      "reasons": [
+        "缺少 must_include: ['7 天无理由']"
+      ],
+      "source_state": "b1_fault"
+    },
+    "cs-003": {
+      "answer": "根据售后政策，退货需经人工审核，已激活商品不支持退货。关于运费承担问题，建议您联系人工客服咨询。",
+      "passed": false,
+      "reasons": [
+        "缺少 must_include: ['我们承担']"
+      ],
+      "source_state": "b1_fault"
+    },
+    "cs-004": {
+      "answer": "",
+      "passed": false,
+      "reasons": [
+        "缺少 must_include: ['7 天无理由']"
+      ],
+      "source_state": "b1_fault"
+    },
+    "cs-005": {
+      "answer": "",
+      "passed": false,
+      "reasons": [
+        "缺少 must_include: ['签收', '次日']"
+      ],
+      "source_state": "b1_fault"
+    },
+    "cs-013": {
+      "answer": "现货商品下单后 48 小时内发货，预售商品以页面标注时间为准。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "b1_fault"
+    },
+    "cs-014": {
+      "answer": "我们与顺丰、京东物流合作配送，部分地区还支持当日达/次日达哦。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "b1_fault"
+    },
+    "cs-015": {
+      "answer": "新疆、西藏属于偏远地区，需要补偏远运费，具体金额以结算页为准。满额订单可享运费补贴。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "b1_fault"
+    },
+    "cs-016": {
+      "answer": "您好，发货后您可以在订单详情页查看物流单号与实时物流轨迹哦。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "b1_fault"
+    }
+  },
+  "G": {
+    "cs-001": {
+      "answer": "可以退的！您在签收次日起 7 天内都可以申请无理由退货，即使已经激活了也不影响退货权益。退货前请保持商品及配件完整，运费由我们承担。您可以直接在订单页面申请退货，或者联系我帮您处理。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    },
+    "cs-002": {
+      "answer": "可以的，耳机激活后仍可在签收次日起 7 天内申请无理由退货，运费由我们承担。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    },
+    "cs-003": {
+      "answer": "7天无理由退货的运费由我们承担；非质量问题换货运费同样由我们承担。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    },
+    "cs-004": {
+      "answer": "可以的，拆开包装试用不影响 7 天无理由退货。只要您在签收次日起 7 天内申请，并保留好包装与配件完整退回即可，运费由我们承担。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    },
+    "cs-005": {
+      "answer": "根据我们的售后政策，7天无理由退货期限是**自您签收商品的次日开始计算**的。\n\n举个例子：如果您今天（1月1日）签收了商品，那么退货期限就是从1月2日开始算起，到1月8日结束。在这7天内，即使商品已经激活，您也可以申请无理由退货，而且运费由我们承担。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    },
+    "cs-013": {
+      "answer": "现货商品下单后 48 小时内发货，预售商品以页面标注时间为准。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    },
+    "cs-014": {
+      "answer": "我们与顺丰、京东物流合作配送，部分地区支持当日达/次日达。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    },
+    "cs-015": {
+      "answer": "新疆、西藏属于偏远地区，**不直接包邮**，需要补偏远运费（具体金额以结算页为准）。不过满额订单可以享受运费补贴哦~",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    },
+    "cs-016": {
+      "answer": "发货后您可以在订单详情页查看物流单号与实时物流轨迹哦。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    }
+  },
+  "RK": {
+    "cs-001": {
+      "answer": "您好，关于您的退货申请，需要告知您我们的售后政策：\n\n**退货需经人工审核，且已激活商品不支持退货。**\n\n请问您的蓝牙耳机是否已经激活（例如已连接手机、开机配对使用）？  \n- 如果**已激活**，很抱歉无法办理退货；  \n- 如果**未激活**，可以为您提交人工审核申请，具体结果以审核为准。\n\n建议您确认商品状态后，如需申请可帮您转接人工客服处理。",
+      "passed": false,
+      "reasons": [
+        "缺少 must_include: ['7 天无理由']",
+        "命中 must_not_include: '不支持退货'",
+        "命中 must_not_include: '人工审核'"
+      ],
+      "source_state": "b1_fault"
+    },
+    "cs-002": {
+      "answer": "您好，根据售后政策，已激活的商品不支持退货。如果您有其他问题，欢迎随时咨询。",
+      "passed": false,
+      "reasons": [
+        "缺少 must_include: ['7 天无理由']"
+      ],
+      "source_state": "b1_fault"
+    },
+    "cs-003": {
+      "answer": "根据售后政策，退货需经人工审核，已激活商品不支持退货。关于运费承担问题，建议您联系人工客服咨询。",
+      "passed": false,
+      "reasons": [
+        "缺少 must_include: ['我们承担']"
+      ],
+      "source_state": "b1_fault"
+    },
+    "cs-004": {
+      "answer": "",
+      "passed": false,
+      "reasons": [
+        "缺少 must_include: ['7 天无理由']"
+      ],
+      "source_state": "b1_fault"
+    },
+    "cs-005": {
+      "answer": "",
+      "passed": false,
+      "reasons": [
+        "缺少 must_include: ['签收', '次日']"
+      ],
+      "source_state": "b1_fault"
+    },
+    "cs-013": {
+      "answer": "现货商品下单后 48 小时内发货，预售商品以页面标注时间为准。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "b1_fault"
+    },
+    "cs-014": {
+      "answer": "我们与顺丰、京东物流合作配送，部分地区还支持当日达/次日达哦。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "b1_fault"
+    },
+    "cs-015": {
+      "answer": "新疆、西藏属于偏远地区，需要补偏远运费，具体金额以结算页为准。满额订单可享运费补贴。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "b1_fault"
+    },
+    "cs-016": {
+      "answer": "您好，发货后您可以在订单详情页查看物流单号与实时物流轨迹哦。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "b1_fault"
+    }
+  },
+  "RM": {
+    "cs-001": {
+      "answer": "您好，关于您的退货申请，需要告知您我们的售后政策：\n\n**退货需经人工审核，且已激活商品不支持退货。**\n\n请问您的蓝牙耳机是否已经激活（例如已连接手机、开机配对使用）？  \n- 如果**已激活**，很抱歉无法办理退货；  \n- 如果**未激活**，可以为您提交人工审核申请，具体结果以审核为准。\n\n建议您确认商品状态后，如需申请可帮您转接人工客服处理。",
+      "passed": false,
+      "reasons": [
+        "缺少 must_include: ['7 天无理由']",
+        "命中 must_not_include: '不支持退货'",
+        "命中 must_not_include: '人工审核'"
+      ],
+      "source_state": "b1_fault"
+    },
+    "cs-002": {
+      "answer": "您好，根据售后政策，已激活的商品不支持退货。如果您有其他问题，欢迎随时咨询。",
+      "passed": false,
+      "reasons": [
+        "缺少 must_include: ['7 天无理由']"
+      ],
+      "source_state": "b1_fault"
+    },
+    "cs-003": {
+      "answer": "根据售后政策，退货需经人工审核，已激活商品不支持退货。关于运费承担问题，建议您联系人工客服咨询。",
+      "passed": false,
+      "reasons": [
+        "缺少 must_include: ['我们承担']"
+      ],
+      "source_state": "b1_fault"
+    },
+    "cs-004": {
+      "answer": "",
+      "passed": false,
+      "reasons": [
+        "缺少 must_include: ['7 天无理由']"
+      ],
+      "source_state": "b1_fault"
+    },
+    "cs-005": {
+      "answer": "",
+      "passed": false,
+      "reasons": [
+        "缺少 must_include: ['签收', '次日']"
+      ],
+      "source_state": "b1_fault"
+    },
+    "cs-013": {
+      "answer": "现货商品下单后 48 小时内发货，预售商品以页面标注时间为准。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "b1_fault"
+    },
+    "cs-014": {
+      "answer": "我们与顺丰、京东物流合作配送，部分地区还支持当日达/次日达哦。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "b1_fault"
+    },
+    "cs-015": {
+      "answer": "新疆、西藏属于偏远地区，需要补偏远运费，具体金额以结算页为准。满额订单可享运费补贴。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "b1_fault"
+    },
+    "cs-016": {
+      "answer": "您好，发货后您可以在订单详情页查看物流单号与实时物流轨迹哦。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "b1_fault"
+    }
+  },
+  "RP": {
+    "cs-001": {
+      "answer": "可以退的！您在签收次日起 7 天内都可以申请无理由退货，即使已经激活了也不影响退货权益。退货前请保持商品及配件完整，运费由我们承担。您可以直接在订单页面申请退货，或者联系我帮您处理。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    },
+    "cs-002": {
+      "answer": "可以的，耳机激活后仍可在签收次日起 7 天内申请无理由退货，运费由我们承担。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    },
+    "cs-003": {
+      "answer": "7天无理由退货的运费由我们承担；非质量问题换货运费同样由我们承担。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    },
+    "cs-004": {
+      "answer": "可以的，拆开包装试用不影响 7 天无理由退货。只要您在签收次日起 7 天内申请，并保留好包装与配件完整退回即可，运费由我们承担。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    },
+    "cs-005": {
+      "answer": "根据我们的售后政策，7天无理由退货期限是**自您签收商品的次日开始计算**的。\n\n举个例子：如果您今天（1月1日）签收了商品，那么退货期限就是从1月2日开始算起，到1月8日结束。在这7天内，即使商品已经激活，您也可以申请无理由退货，而且运费由我们承担。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    },
+    "cs-013": {
+      "answer": "现货商品下单后 48 小时内发货，预售商品以页面标注时间为准。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    },
+    "cs-014": {
+      "answer": "我们与顺丰、京东物流合作配送，部分地区支持当日达/次日达。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    },
+    "cs-015": {
+      "answer": "新疆、西藏属于偏远地区，**不直接包邮**，需要补偏远运费（具体金额以结算页为准）。不过满额订单可以享受运费补贴哦~",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    },
+    "cs-016": {
+      "answer": "发货后您可以在订单详情页查看物流单号与实时物流轨迹哦。",
+      "passed": true,
+      "reasons": [],
+      "source_state": "baseline"
+    }
+  }
+}

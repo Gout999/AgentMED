@@ -1,0 +1,9 @@
+{
+  "branch": "codex/p0-close-b1-loop",
+  "origin_main_commit": "a6de5cc1a06d6967634676b2661da7d2e46d287b",
+  "recent": "b5ef38f feat(b1): close replay loop and fail closed live evidence\nf63ee76 docs(context): record P0-3 completion\na08c005 feat(console): connect authoritative T8 read loop\n02b97dd docs(context): record P0-2 completion\n8e237e3 feat(outbox): close transactional trust and archive loop\n4b5377d merge: sync latest collaborator main\na6de5cc docs(competition): 评委通俗版入库——2026-08-08 三起真实案件实录版（与桌面同步）\nf1f0df5 docs: 重写 README（评委向：问题场景→三起实证→信任账本→诚实边界）+ 新增 STATUS.md 队友交接（现状/跑法/缺口/坑）\n4cd6e64 fix(gate): close fail-closed release authorization loop\n0c084e5 docs(evidence): T6c 泛化双用例闭环——A 训练外措辞×B1（0 纠偏）+ B 未见故障层×B2 KB（层间判别全对，纠偏1）+ 3/3 Wilson LB=0.4385 拒升实证 + 房间日志151条\n9a8f62a fix(eval-client): requests Session trust_env=False——同 S0-007 根因（macOS 系统代理劫持 localhost，/admin/reset 502 复位失败）\n31f80b5 docs(evidence): console 总览实测截图（本案已升级态+基线 digest 徽标，真数据）",
+  "repository_end_commit": "b5ef38fbc1a0da90bf766f0590763be5d1118e74",
+  "repository_start_commit": "a6de5cc1a06d6967634676b2661da7d2e46d287b",
+  "working_tree": "",
+  "working_tree_observed_at": "before evidence directory creation"
+}

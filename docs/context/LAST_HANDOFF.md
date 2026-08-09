@@ -1,30 +1,35 @@
 # Last Handoff
 
-- `round_goal`: close P0-3 by wiring the production Console to authoritative
-  T8/control-plane reads with fail-closed runtime semantics and real-stack proof.
-- `actual_changes`: replaced static/placeholder screens with typed Case,
-  Experiment, WorkOrder, Gate, Release, Notification, Trust, and Evidence reads;
-  added loading/empty/error/retry/stale/UNKNOWN states; made WorkOrder the
-  immutable read authority; validated WorkOrder columns, Gate binding, active
-  VersionSet shape, and API response schemas; removed raw WorkOrder/Evidence
-  content; added route-key race isolation; added real Operations view and
-  PostgreSQL/FastAPI/Vite/Chromium integration.
-- `key_files`: `control-plane/app/services/read_views.py`,
-  `control-plane/app/api/read_views.py`, `console/src/lib/api.ts`,
-  `console/src/lib/validators.ts`, `console/src/hooks/usePageData.ts`,
-  `console/src/pages/`, `console/scripts/run-real-stack-test.sh`, and
-  `evidence/p0/p0-3-console/`.
-- `test_results`: independent verifier PASS; control-plane 190; P0-3 focused 42;
-  Console 7 plus build; real stack 1; contracts 26. With previously rerun
-  service suites the non-overlapping total is 385 passed, 0 failed, 5
-  live-only skipped. npm audit still reports 4 moderate and 1 high advisory,
-  documented as a cross-major Router/Vite migration debt.
-- `unfinished`: P0-4 B1 authority-safe vertical loop and final run manifest.
-  Live StepFun/judge and Feishu remain externally blocked and are not represented
-  by replay substitutes.
-- `resume_from`: remove eval-runner Quality write authority, model bad/fixed
-  states as exact immutable VersionSets, enforce authoritative frozen
-  attribution, then reuse Gate/Approval/Release/Outbox/Notification/Trust for
-  the replay command.
-- `commit_hash`: P0-3 `a08c0056691b3acdafb43fd0a8b1417d10985fe6`;
-  P0-2 `8e237e3`; P0-1 `4cd6e64`.
+- `round_goal`: implement and prove the P0-4 B1 vertical loop without replacing
+  live-provider evidence with mocks or hard-coded success.
+- `actual_changes`: added authoritative complaint injection/dedup, frozen
+  VersionSets and probes, deterministic attribution, immutable WorkOrder/Gate/
+  Approval bindings, stage/canary/promote receipts, transactional closure,
+  notification/outbox/Trust integration, complete manifest validation, fixed
+  Phase 1 AgentTeams handoffs and attestation, separate replay/live commands,
+  lease heartbeats, and official provider-origin checks before live Gate
+  persistence. The replay produced a digest-verified Evidence Bundle. The live
+  command produced a blocked preflight report and made no provider calls.
+- `key_files`: `scripts/run_b1_replay.py`, `scripts/run_b1_live.py`,
+  `scripts/validate_b1_run.py`, `control-plane/app/services/b1_orchestrator.py`,
+  `control-plane/app/services/gate_service.py`,
+  `eval-harness/eval_harness/gate.py`, `eval-harness/scripts/run_gate.py`,
+  `mcp-servers/servers/eval_runner.py`, `contracts/b1-run-manifest.schema.json`,
+  `Makefile`, and `evidence/p0/p0-4-b1/`.
+- `test_results`: independent fake-success verifier PASS; control-plane 313 unit
+  and 15 integration; demo 40 unit and 2 PostgreSQL concurrency; eval-harness
+  76 passed/4 live-only skipped; MCP 119 passed/1 live-only skipped; contracts
+  offline 28 passed. Clean committed-tree replay passed 28 contract and 28
+  replay assertions, then independently validated 22 required artifacts and 135
+  probe outputs. Full live probes retained 15 Quality and 6 demo connection
+  failures. Live B1 preflight exited 2 with explicit missing inputs.
+- `unfinished`: P0-4 acceptance remains BLOCKED. No live provider run exists,
+  and interrupted live execution is not yet durably resumable/terminalized after
+  Case creation or after promotion.
+- `resume_from`: add authoritative recovery checkpoints and reconciliation for
+  Case, Experiment, and Release; test interruption immediately after Case
+  creation and after promotion; then supply the exact live preflight inputs and
+  rerun `make demo-b1-live`.
+- `commit_hash`: P0-4 implementation/proof
+  `b5ef38fbc1a0da90bf766f0590763be5d1118e74`; P0-3 `a08c005`; P0-2
+  `8e237e3`; P0-1 `4cd6e64`.

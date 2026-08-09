@@ -1,0 +1,75 @@
+{
+  "adapter": "feishu-mock:contract-replay-only",
+  "closure_context": {
+    "body_digest": "sha256:37ebcb88d8a98e6f8c2e489c2aaa3e896be15e0d7cda4e460a4c057d59ada15e",
+    "body_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/reply-body.txt",
+    "case_id": "case_01KZJQAQFS7EWXVJF427CXPAGZ",
+    "channel": "feishu-mock:b1-replay:b73f369744d447ac",
+    "duplicate": false,
+    "release_id": "rel_b73f369744d447ac",
+    "status": "configured",
+    "thread_ref": "thread:b73f369744d447ac"
+  },
+  "closure_retry": {
+    "case": {
+      "case_id": "case_01KZJQAQFS7EWXVJF427CXPAGZ",
+      "duplicate": true,
+      "event_id": "evt_01KZJQAT29A3RXPNVHM1PAKGQH",
+      "state": "CLOSED"
+    },
+    "notification": {
+      "duplicate": true,
+      "notification_id": "notif_56e325050ebf7177e28ea964",
+      "outbox_id": "obx_01KZJQAT2AEA475BH07ZKPEYM2",
+      "payload": {
+        "body_digest": "sha256:37ebcb88d8a98e6f8c2e489c2aaa3e896be15e0d7cda4e460a4c057d59ada15e",
+        "body_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/reply-body.txt",
+        "case_id": "case_01KZJQAQFS7EWXVJF427CXPAGZ",
+        "channel": "feishu-mock:b1-replay:b73f369744d447ac",
+        "outbox_id": "obx_01KZJQAT2AEA475BH07ZKPEYM2",
+        "provider": "feishu-mock",
+        "provider_message_id": "mock-msg-obx_01KZJQAT2AEA475BH07ZKPEYM2",
+        "receipt": {
+          "body_digest": "sha256:37ebcb88d8a98e6f8c2e489c2aaa3e896be15e0d7cda4e460a4c057d59ada15e",
+          "outbox_id": "obx_01KZJQAT2AEA475BH07ZKPEYM2",
+          "payload_digest": "sha256:068e8796af65593c8d515a7766c18478a57d02d5bc3ef4ecc15fde17f78f463f",
+          "provider": "feishu-mock",
+          "provider_message_id": "mock-msg-obx_01KZJQAT2AEA475BH07ZKPEYM2",
+          "sent_at": "2026-08-09T07:38:24.717557+00:00",
+          "status": "sent",
+          "thread_ref": "thread:b73f369744d447ac"
+        },
+        "receipt_digest": "sha256:b1b01ba0077968a6061c0cd48c81069e989083a41cebf38af7d0b92c90f687c4",
+        "release_id": "rel_b73f369744d447ac",
+        "thread_ref": "thread:b73f369744d447ac"
+      },
+      "revision": 2,
+      "state": "SENT"
+    },
+    "release_id": "rel_b73f369744d447ac"
+  },
+  "notification_id": "notif_56e325050ebf7177e28ea964",
+  "payload": {
+    "body_digest": "sha256:37ebcb88d8a98e6f8c2e489c2aaa3e896be15e0d7cda4e460a4c057d59ada15e",
+    "body_ref": "file:///Users/gout/Documents/ChatGPT/caseloop/evidence/p0/p0-4-b1/b1run_b73f369744d447ac/reply-body.txt",
+    "case_id": "case_01KZJQAQFS7EWXVJF427CXPAGZ",
+    "channel": "feishu-mock:b1-replay:b73f369744d447ac",
+    "outbox_id": "obx_01KZJQAT2AEA475BH07ZKPEYM2",
+    "provider": "feishu-mock",
+    "provider_message_id": "mock-msg-obx_01KZJQAT2AEA475BH07ZKPEYM2",
+    "receipt": {
+      "body_digest": "sha256:37ebcb88d8a98e6f8c2e489c2aaa3e896be15e0d7cda4e460a4c057d59ada15e",
+      "outbox_id": "obx_01KZJQAT2AEA475BH07ZKPEYM2",
+      "payload_digest": "sha256:068e8796af65593c8d515a7766c18478a57d02d5bc3ef4ecc15fde17f78f463f",
+      "provider": "feishu-mock",
+      "provider_message_id": "mock-msg-obx_01KZJQAT2AEA475BH07ZKPEYM2",
+      "sent_at": "2026-08-09T07:38:24.717557+00:00",
+      "status": "sent",
+      "thread_ref": "thread:b73f369744d447ac"
+    },
+    "receipt_digest": "sha256:b1b01ba0077968a6061c0cd48c81069e989083a41cebf38af7d0b92c90f687c4",
+    "release_id": "rel_b73f369744d447ac",
+    "thread_ref": "thread:b73f369744d447ac"
+  },
+  "state": "SENT"
+}

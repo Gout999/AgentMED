@@ -1,0 +1,17 @@
+{
+  "digest": "sha256:f51fbbee2810467c96658f93e4fc2b64b5b843b80e55bf5029f30fa26bb9dbf0",
+  "fixture": "contracts/fixtures/probes-customer-service.yaml",
+  "probe_set_id": "probes-customer-service-v1",
+  "selected": [
+    "cs-001",
+    "cs-002",
+    "cs-003",
+    "cs-004",
+    "cs-005",
+    "cs-013",
+    "cs-014",
+    "cs-015",
+    "cs-016"
+  ],
+  "version": "1.0.0"
+}

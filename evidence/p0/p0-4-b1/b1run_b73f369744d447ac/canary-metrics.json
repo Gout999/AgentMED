@@ -1,0 +1,168 @@
+{
+  "canary_percent": 5,
+  "error_count": 0,
+  "judge_track": {
+    "athlete_model_digest": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+    "judge_model_digest": "sha256:0329a983c2593284be293dd0a4e83ed3c50a9ba2c33b8fd3c5d8f80fb2be7f3d",
+    "pass_threshold": 0.8,
+    "scores": [
+      {
+        "pass": true,
+        "probe_id": "cs-001",
+        "rationale_ref": "evidence://gate/judge/cs-001",
+        "score": 1.0
+      },
+      {
+        "pass": true,
+        "probe_id": "cs-002",
+        "rationale_ref": "evidence://gate/judge/cs-002",
+        "score": 1.0
+      },
+      {
+        "pass": true,
+        "probe_id": "cs-003",
+        "rationale_ref": "evidence://gate/judge/cs-003",
+        "score": 1.0
+      },
+      {
+        "pass": true,
+        "probe_id": "cs-004",
+        "rationale_ref": "evidence://gate/judge/cs-004",
+        "score": 1.0
+      },
+      {
+        "pass": true,
+        "probe_id": "cs-005",
+        "rationale_ref": "evidence://gate/judge/cs-005",
+        "score": 1.0
+      },
+      {
+        "pass": true,
+        "probe_id": "cs-006",
+        "rationale_ref": "evidence://gate/judge/cs-006",
+        "score": 1.0
+      },
+      {
+        "pass": true,
+        "probe_id": "cs-007",
+        "rationale_ref": "evidence://gate/judge/cs-007",
+        "score": 1.0
+      },
+      {
+        "pass": true,
+        "probe_id": "cs-008",
+        "rationale_ref": "evidence://gate/judge/cs-008",
+        "score": 1.0
+      },
+      {
+        "pass": true,
+        "probe_id": "cs-009",
+        "rationale_ref": "evidence://gate/judge/cs-009",
+        "score": 1.0
+      },
+      {
+        "pass": true,
+        "probe_id": "cs-010",
+        "rationale_ref": "evidence://gate/judge/cs-010",
+        "score": 1.0
+      },
+      {
+        "pass": true,
+        "probe_id": "cs-011",
+        "rationale_ref": "evidence://gate/judge/cs-011",
+        "score": 1.0
+      },
+      {
+        "pass": true,
+        "probe_id": "cs-012",
+        "rationale_ref": "evidence://gate/judge/cs-012",
+        "score": 1.0
+      },
+      {
+        "pass": true,
+        "probe_id": "cs-013",
+        "rationale_ref": "evidence://gate/judge/cs-013",
+        "score": 1.0
+      },
+      {
+        "pass": true,
+        "probe_id": "cs-014",
+        "rationale_ref": "evidence://gate/judge/cs-014",
+        "score": 1.0
+      },
+      {
+        "pass": true,
+        "probe_id": "cs-015",
+        "rationale_ref": "evidence://gate/judge/cs-015",
+        "score": 1.0
+      },
+      {
+        "pass": true,
+        "probe_id": "cs-016",
+        "rationale_ref": "evidence://gate/judge/cs-016",
+        "score": 1.0
+      }
+    ],
+    "status": "passed"
+  },
+  "live_provider_e2e": {
+    "provider": "replay-not-live",
+    "status": "skipped",
+    "suites": [
+      {
+        "n_failed": 0,
+        "n_passed": 0,
+        "status": "skipped",
+        "suite": "live-provider-e2e"
+      }
+    ]
+  },
+  "measurement": "exact-target recorded probe replay after a real Quality canary lifecycle operation",
+  "mode": "isolated-replay",
+  "observation": {
+    "complete": true,
+    "elapsed_seconds": 1.066,
+    "observed_at": "2026-08-09T07:38:24.627340+00:00",
+    "remaining_seconds": 0.0,
+    "required_seconds": 1,
+    "started_at": "2026-08-09T07:38:23.561275+00:00"
+  },
+  "probe_count": 16,
+  "rule_track": {
+    "checks": [
+      {
+        "check_id": "rule-probe-all-pass",
+        "description": "候选答案在冻结探针集上确定性判定全过",
+        "detail": "全部通过",
+        "status": "passed"
+      },
+      {
+        "check_id": "rule-digest-match",
+        "description": "候选探针集 digest 与冻结值一致",
+        "detail": "frozen=sha256:f51fbbee2810467c96658f93e4fc2b64b5b843b80e55bf5029f30fa26bb9dbf0 candidate=sha256:f51fbbee2810467c96658f93e4fc2b64b5b843b80e55bf5029f30fa26bb9dbf0",
+        "status": "passed"
+      },
+      {
+        "check_id": "rule-schema-compliance",
+        "description": "候选对象结构字段合规（digest 前缀 / 必填）",
+        "detail": "合规",
+        "status": "passed"
+      },
+      {
+        "check_id": "rule-json-format",
+        "description": "JSON 探针输出合法且键齐全",
+        "detail": "全部合法",
+        "status": "passed"
+      },
+      {
+        "check_id": "rule-policy-profile",
+        "description": "本报告明确限定为隔离 contract/replay 证据，不冒充 live-provider E2E",
+        "detail": "policy_profile=isolated-replay; live-provider status is reported separately as skipped",
+        "status": "passed"
+      }
+    ],
+    "status": "passed"
+  },
+  "traffic_routed": false,
+  "verification_eval_id": "eval_b73f369744d447acpostcanary"
+}

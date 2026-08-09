@@ -1,0 +1,181 @@
+{
+  "canary": {
+    "kind": "canary",
+    "operation_id": "cop_01KZJQARY8PKWEH1XAF2GQ9EYA",
+    "payload": {
+      "approval_id": "appr_b73f369744d447acinitial",
+      "canary_percent": 5,
+      "canary_started_at": "2026-08-09T07:38:23.561275+00:00",
+      "canary_step_index": 1,
+      "case_id": "case_01KZJQAQFS7EWXVJF427CXPAGZ",
+      "changeset_id": "cs_wo_b73f369744d447ac",
+      "expected_restore_digest": "sha256:61214e0d15b104183268418529df2ce0e1b21ac1b3d77b197e4fc328b57dcdc4",
+      "gate_report_hash": "f9c87548eea1e84936647db6ad32dfca3a0b8fb1347339a9a290214ecafea546",
+      "remote_revision": 3,
+      "target_revision": 1,
+      "target_versionset_digest": "sha256:c25e3516d476eee790ae05c8669a6b60f0bb39bdc255a7ef3eab235a1ccefb23",
+      "versionset_id": "vs_8bb56f74783b446a8976",
+      "workorder_hash": "9427bc132065148fab826328cb0a7946a25048f602b809728aacc6baf23bea65",
+      "workorder_id": "wo_b73f369744d447ac"
+    },
+    "release_id": "rel_b73f369744d447ac",
+    "revision": 3,
+    "state": "CANARYING",
+    "status": "succeeded"
+  },
+  "controller_operations": [
+    {
+      "approval_id": null,
+      "created_at": "2026-08-09T07:38:23.553028+00:00",
+      "expected_revision": 1,
+      "expires_at": "2026-08-10T07:38:23.553028+00:00",
+      "idempotency_key": "stage-b73f369744d447ac",
+      "kind": "stage",
+      "operation_id": "cop_01KZJQARY1NPYAGGN9ESRK7TBX",
+      "release_id": "rel_b73f369744d447ac",
+      "remote_operation_id": "op_23c50badc0e74ac4",
+      "request_fingerprint": "5f8c310735ce618ad2b78addd562cacfdf2fe814a61ccde81807ea5f8efdb425",
+      "result": {
+        "kind": "stage",
+        "operation_id": "op_23c50badc0e74ac4",
+        "result": {
+          "canary_percent": 0,
+          "revision": 2,
+          "status": "staged"
+        },
+        "status": "succeeded",
+        "versionset_id": "vs_8bb56f74783b446a8976"
+      },
+      "status": "succeeded"
+    },
+    {
+      "approval_id": "appr_b73f369744d447accanary",
+      "created_at": "2026-08-09T07:38:23.560149+00:00",
+      "expected_revision": 2,
+      "expires_at": "2026-08-10T07:38:23.560149+00:00",
+      "idempotency_key": "canary-b73f369744d447ac",
+      "kind": "canary",
+      "operation_id": "cop_01KZJQARY8PKWEH1XAF2GQ9EYA",
+      "release_id": "rel_b73f369744d447ac",
+      "remote_operation_id": "op_69616d7d66a8485f",
+      "request_fingerprint": "0a034ecc02ec2513af766bbd85a04fa8c302a74f953e8a8bf6c760942eddba17",
+      "result": {
+        "kind": "canary",
+        "operation_id": "op_69616d7d66a8485f",
+        "result": {
+          "canary_percent": 5,
+          "revision": 3,
+          "status": "canary"
+        },
+        "status": "succeeded",
+        "versionset_id": "vs_8bb56f74783b446a8976"
+      },
+      "status": "succeeded"
+    },
+    {
+      "approval_id": "appr_b73f369744d447acpromote",
+      "created_at": "2026-08-09T07:38:24.681984+00:00",
+      "expected_revision": 3,
+      "expires_at": "2026-08-10T07:38:24.681984+00:00",
+      "idempotency_key": "promote-b73f369744d447ac",
+      "kind": "promote",
+      "operation_id": "cop_01KZJQAT19BPMXWE30NQWE1661",
+      "release_id": "rel_b73f369744d447ac",
+      "remote_operation_id": "op_f206f3542a3d48ae",
+      "request_fingerprint": "c61a635428df14053d085321ba6a19dd1645e42824b2a28afa78673d8347f1b8",
+      "result": {
+        "kind": "promote",
+        "operation_id": "op_f206f3542a3d48ae",
+        "result": {
+          "canary_percent": 100,
+          "revision": 4,
+          "status": "active"
+        },
+        "status": "succeeded",
+        "versionset_id": "vs_8bb56f74783b446a8976"
+      },
+      "status": "succeeded"
+    }
+  ],
+  "promote": {
+    "kind": "promote",
+    "operation_id": "cop_01KZJQAT19BPMXWE30NQWE1661",
+    "payload": {
+      "approval_id": "appr_b73f369744d447acinitial",
+      "canary_observation": {
+        "complete": true,
+        "elapsed_seconds": 1.096,
+        "observed_at": "2026-08-09T07:38:24.657372+00:00",
+        "remaining_seconds": 0.0,
+        "required_seconds": 1,
+        "started_at": "2026-08-09T07:38:23.561275+00:00"
+      },
+      "canary_percent": 5,
+      "canary_started_at": "2026-08-09T07:38:23.561275+00:00",
+      "canary_step_index": 1,
+      "case_id": "case_01KZJQAQFS7EWXVJF427CXPAGZ",
+      "changeset_id": "cs_wo_b73f369744d447ac",
+      "expected_restore_digest": "sha256:61214e0d15b104183268418529df2ce0e1b21ac1b3d77b197e4fc328b57dcdc4",
+      "gate_report_hash": "f9c87548eea1e84936647db6ad32dfca3a0b8fb1347339a9a290214ecafea546",
+      "promoted": true,
+      "remote_revision": 4,
+      "target_revision": 1,
+      "target_versionset_digest": "sha256:c25e3516d476eee790ae05c8669a6b60f0bb39bdc255a7ef3eab235a1ccefb23",
+      "verification": "passed",
+      "verification_eval_id": "eval_b73f369744d447acpostcanary",
+      "verification_evidence_digest": "sha256:60f40eaab209a28238556e5f80277d3ddc6a60d20fc50bf88b4d78f3775d27ed",
+      "verification_report_hash": "4994b1b761633a8fa0d51a638375e6384e0c430e26fbd435e85873262a76e736",
+      "verification_target_revision": 3,
+      "versionset_id": "vs_8bb56f74783b446a8976",
+      "workorder_hash": "9427bc132065148fab826328cb0a7946a25048f602b809728aacc6baf23bea65",
+      "workorder_id": "wo_b73f369744d447ac"
+    },
+    "release_id": "rel_b73f369744d447ac",
+    "revision": 5,
+    "state": "COMPLETED",
+    "status": "succeeded"
+  },
+  "quality_call_log": [
+    "create_versionset",
+    "stage",
+    "canary",
+    "promote"
+  ],
+  "stage": {
+    "kind": "stage",
+    "operation_id": "cop_01KZJQARY1NPYAGGN9ESRK7TBX",
+    "payload": {
+      "approval_id": "appr_b73f369744d447acinitial",
+      "canary_percent": 0,
+      "canary_step_index": 0,
+      "case_id": "case_01KZJQAQFS7EWXVJF427CXPAGZ",
+      "changeset_id": "cs_wo_b73f369744d447ac",
+      "expected_restore_digest": "sha256:61214e0d15b104183268418529df2ce0e1b21ac1b3d77b197e4fc328b57dcdc4",
+      "gate_report_hash": "f9c87548eea1e84936647db6ad32dfca3a0b8fb1347339a9a290214ecafea546",
+      "remote_revision": 2,
+      "target_revision": 1,
+      "target_versionset_digest": "sha256:c25e3516d476eee790ae05c8669a6b60f0bb39bdc255a7ef3eab235a1ccefb23",
+      "versionset_id": "vs_8bb56f74783b446a8976",
+      "workorder_hash": "9427bc132065148fab826328cb0a7946a25048f602b809728aacc6baf23bea65",
+      "workorder_id": "wo_b73f369744d447ac"
+    },
+    "release_id": "rel_b73f369744d447ac",
+    "revision": 2,
+    "state": "STAGING",
+    "status": "succeeded"
+  },
+  "start": {
+    "release_id": "rel_b73f369744d447ac",
+    "revision": 1,
+    "state": "REQUESTED",
+    "versionset_id": "vs_8bb56f74783b446a8976",
+    "workorder_hash": "9427bc132065148fab826328cb0a7946a25048f602b809728aacc6baf23bea65"
+  },
+  "verification": {
+    "duplicate": false,
+    "release_id": "rel_b73f369744d447ac",
+    "revision": 4,
+    "state": "VERIFYING",
+    "verification": "passed"
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "active_bad_versionset": {
+    "digest": "sha256:61214e0d15b104183268418529df2ce0e1b21ac1b3d77b197e4fc328b57dcdc4",
+    "revision": 1,
+    "versionset_id": "vs_b73f369744d447acbad"
+  },
+  "badcase_injected": true,
+  "cell_versionsets": {
+    "C": {
+      "digest": "sha256:61214e0d15b104183268418529df2ce0e1b21ac1b3d77b197e4fc328b57dcdc4",
+      "revision": 1,
+      "versionset_id": "vs_b73f369744d447acbad"
+    },
+    "G": {
+      "digest": "sha256:c25e3516d476eee790ae05c8669a6b60f0bb39bdc255a7ef3eab235a1ccefb23",
+      "revision": 1,
+      "versionset_id": "vs_b73f369744d447acgood"
+    },
+    "RK": {
+      "digest": "sha256:61214e0d15b104183268418529df2ce0e1b21ac1b3d77b197e4fc328b57dcdc4",
+      "revision": 1,
+      "versionset_id": "vs_b73f369744d447acbad"
+    },
+    "RM": {
+      "digest": "sha256:61214e0d15b104183268418529df2ce0e1b21ac1b3d77b197e4fc328b57dcdc4",
+      "revision": 1,
+      "versionset_id": "vs_b73f369744d447acbad"
+    },
+    "RP": {
+      "digest": "sha256:c25e3516d476eee790ae05c8669a6b60f0bb39bdc255a7ef3eab235a1ccefb23",
+      "revision": 1,
+      "versionset_id": "vs_b73f369744d447acgood"
+    }
+  },
+  "component_digests": {
+    "K0": "sha256:ac4d51f9f07f8186f567a509aeb3dd1824b77a7ba386a956b3c3f9e035fa923d",
+    "K1": "sha256:ac4d51f9f07f8186f567a509aeb3dd1824b77a7ba386a956b3c3f9e035fa923d",
+    "M0": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+    "M1": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+    "P0": "sha256:c63b8a750e1731ac62f079cd192dc935e5f1fa40fabee8e18091e74045a40399",
+    "P1": "sha256:8dab9d372bbf7e0747f5fe2b21d90bee8da1f70bbafc409f2071ccef5267140a"
+  },
+  "digest": "sha256:e66e806485005196a14bfd834e51c6cf89d7f1e120796f6c4d15c57e23195c91",
+  "fixture": "contracts/fixtures/b1-prompt-regression.yaml",
+  "injection_adapter": "FakeQualityClient:isolated-replay",
+  "known_good_versionset": {
+    "digest": "sha256:c25e3516d476eee790ae05c8669a6b60f0bb39bdc255a7ef3eab235a1ccefb23",
+    "revision": 1,
+    "versionset_id": "vs_b73f369744d447acgood"
+  }
+}
