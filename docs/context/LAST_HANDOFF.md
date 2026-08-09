@@ -1,35 +1,40 @@
 # Last Handoff
 
-- `round_goal`: implement and prove the P0-4 B1 vertical loop without replacing
-  live-provider evidence with mocks or hard-coded success.
-- `actual_changes`: added authoritative complaint injection/dedup, frozen
-  VersionSets and probes, deterministic attribution, immutable WorkOrder/Gate/
-  Approval bindings, stage/canary/promote receipts, transactional closure,
-  notification/outbox/Trust integration, complete manifest validation, fixed
-  Phase 1 AgentTeams handoffs and attestation, separate replay/live commands,
-  lease heartbeats, and official provider-origin checks before live Gate
-  persistence. The replay produced a digest-verified Evidence Bundle. The live
-  command produced a blocked preflight report and made no provider calls.
-- `key_files`: `scripts/run_b1_replay.py`, `scripts/run_b1_live.py`,
-  `scripts/validate_b1_run.py`, `control-plane/app/services/b1_orchestrator.py`,
-  `control-plane/app/services/gate_service.py`,
-  `eval-harness/eval_harness/gate.py`, `eval-harness/scripts/run_gate.py`,
-  `mcp-servers/servers/eval_runner.py`, `contracts/b1-run-manifest.schema.json`,
-  `Makefile`, and `evidence/p0/p0-4-b1/`.
-- `test_results`: independent fake-success verifier PASS; control-plane 313 unit
-  and 15 integration; demo 40 unit and 2 PostgreSQL concurrency; eval-harness
-  76 passed/4 live-only skipped; MCP 119 passed/1 live-only skipped; contracts
-  offline 28 passed. Clean committed-tree replay passed 28 contract and 28
-  replay assertions, then independently validated 22 required artifacts and 135
-  probe outputs. Full live probes retained 15 Quality and 6 demo connection
-  failures. Live B1 preflight exited 2 with explicit missing inputs.
-- `unfinished`: P0-4 acceptance remains BLOCKED. No live provider run exists,
-  and interrupted live execution is not yet durably resumable/terminalized after
-  Case creation or after promotion.
-- `resume_from`: add authoritative recovery checkpoints and reconciliation for
-  Case, Experiment, and Release; test interruption immediately after Case
-  creation and after promotion; then supply the exact live preflight inputs and
-  rerun `make demo-b1-live`.
-- `commit_hash`: P0-4 implementation/proof
-  `b5ef38fbc1a0da90bf766f0590763be5d1118e74`; P0-3 `a08c005`; P0-2
-  `8e237e3`; P0-1 `4cd6e64`.
+- `round_goal`: resolve every blocking item in the PR #1 master-controller
+  review, publish third-party-verifiable replay evidence, and mark the PR ready
+  without merging it.
+- `actual_changes`: versioned GateReport as `0.2.0`; recorded master-controller
+  ratification in D-002 through D-007; added a fail-closed Feishu digest
+  compatibility path and removed three obsolete registered MCP mutations;
+  exported persisted WorkOrder/GateReport rows from replay; unified the frozen
+  dataset binding; made nested and manifest evidence references root-bound
+  `repo:///` URIs; and taught isolated replay attribution to resolve only
+  repository-contained evidence. Replaced the old machine-specific B1 run with
+  a clean, portable run.
+- `key_files`: `contracts/schemas/gate-report.schema.json`,
+  `docs/decisions/D-002-gate-workorder-binding.md` through
+  `docs/decisions/D-007-sync-gate-fail-closed.md`,
+  `mcp-servers/servers/notification.py`,
+  `mcp-servers/servers/release_admin.py`,
+  `control-plane/app/services/attribution.py`, `scripts/run_b1_replay.py`,
+  `scripts/validate_b1_run.py`, and `evidence/p0/p0-4-b1/`.
+- `test_results`: control-plane 329 distinct tests passed across the required
+  PostgreSQL/SQLite environment split; contracts 29 passed; eval-harness 76
+  passed/4 live-only skipped; MCP 121 passed/1 live-only skipped; Console 7
+  passed and production build passed. The clean replay embedded 29 contract and
+  28 replay passes. Independent validation verified all 22 portable artifacts,
+  both persisted GateReports, one persisted WorkOrder, and 135 probe outputs.
+- `unfinished`: P0-4 live acceptance remains `BLOCKED`. No live StepFun,
+  deployed Quality/Control Plane, live Feishu, fresh human approval, or
+  independently signed AgentTeams trace run exists. Crash recovery after Case
+  creation and after promotion is not yet durable. PR #1 non-blocking minor
+  debt remains in `PLANS.md`.
+- `resume_from`: obtain the exact live preflight inputs or first implement and
+  test durable reconciliation after Case creation and after promotion. Keep
+  `make demo-b1-live` separate from replay and fail closed on every missing
+  authority or provider receipt.
+- `commit_hash`: contract/review hardening
+  `10d707445b6a02da2d1451e6d6561e875c782d07`; nested portable refs
+  `4ffa9425db9d514f4dc962f3b0faabb0bc6656e0`; root-bound replay resolver
+  `d0fb6ccb336a13982bc882e5b80c8705b57b62d7`; portable evidence
+  `cef1598b4ac1d42fdd4f206c5747eb89a06f24fc`.

@@ -1,12 +1,12 @@
 # Project State
 
-- `last_verified_commit`: `b5ef38fbc1a0da90bf766f0590763be5d1118e74`
+- `last_verified_commit`: `cef1598b4ac1d42fdd4f206c5747eb89a06f24fc`
 - `active_branch`: `codex/p0-close-b1-loop`
 - `origin/main commit`: `a6de5cc1a06d6967634676b2661da7d2e46d287b`
 - `local main commit`: `89ea66750dfed3df6feeed493d9e2499ef77cdbe`
 - `collaborator_sync_merge`: `4b5377dae317eaeadbf23ab85481881096b6d6d2`
-- `working_tree`: P0-4 implementation is committed. Formal evidence was generated from a clean sparse snapshot at that exact commit; this context/evidence update is the only intended follow-up delta. macOS FileProvider makes broad status scans unreliable, so intended files are hash-verified before commit.
-- `last_updated`: `2026-08-09T17:44:27+10:00`
+- `working_tree`: clean after the final review handoff commit; verified before the PR was marked ready.
+- `last_updated`: `2026-08-10T00:19:31+10:00`
 
 ## Verified completed capabilities
 
@@ -25,6 +25,17 @@
   prompt attribution, immutable WorkOrder, actual Gate tracks, bound human
   approval, stage/canary/promote, notification, archive, Trust denial, and a
   digest-validated final manifest.
+- PR #1 contract changes are now formally distinguishable and ratified:
+  GateReport uses schema version `0.2.0`, and D-002 through D-007 record the
+  master-controller ratification required by review.
+- Replay evidence is checkout-portable: all 22 manifest artifacts use
+  root-bound `repo:///` references. The committed run exports one persisted
+  WorkOrder and two persisted GateReports, both bound to the same frozen
+  `probes-customer-service-v1` dataset and independently validated.
+- `feishu.reply_origin` accepts the legacy missing-digest form only for an
+  inline `data:` body whose digest can be recomputed locally. External body
+  references without a digest fail closed. The three obsolete mutating MCP
+  tools identified in review are no longer registered.
 - Live Gate persistence now requires the official StepFun origin in both the
   evaluator response and independent Quality log. Missing or stub origins fail
   before GateReport persistence. The independent verifier found no remaining
@@ -51,9 +62,10 @@
 
 ## Work queue
 
-- `current_only_in_progress`: P0-4 live closure — add authoritative resumable or
-  terminal failure reconciliation for Case, Experiment, and Release without
-  weakening approval, revision, gate, or audit bindings.
+- `current_only_in_progress`: P0-4 live closure remains blocked — add
+  authoritative resumable or terminal failure reconciliation for Case,
+  Experiment, and Release without weakening approval, revision, gate, or audit
+  bindings.
 - `next`: test interruption after Case creation and after promotion, prove
   idempotent resume/compensation, then rerun `make demo-b1-live` when the exact
   external inputs in its preflight report are supplied.
@@ -96,16 +108,13 @@ If FileProvider has offloaded an ignored virtual environment, rebuild it under
 
 | Scope | Result | Classification |
 |---|---|---|
-| control-plane unit | 313 passed | offline/unit |
-| control-plane integration | 15 passed | PostgreSQL/integration |
-| demo-app unit | 40 passed | offline/unit |
-| demo-app PostgreSQL concurrency | 2 passed | real PostgreSQL lifecycle |
+| control-plane full | 329 passed across the required environment split | 328 passed with PostgreSQL; the SQLite-only migration test passed separately without `DATABASE_URL` |
 | eval-harness full | 76 passed, 4 skipped | offline/replay; live skipped |
-| MCP full | 119 passed, 1 skipped | offline/unit; live smoke skipped |
-| contracts offline | 28 passed | contract/replay |
-| focused Gate release chain | 33 passed | provider-origin and fail-closed binding |
-| focused read views | 33 passed | projection integrity |
-| clean committed-tree B1 replay | 28 contract + 28 replay passed | 22 required artifacts; 135 probe outputs |
+| MCP full | 121 passed, 1 skipped | offline/unit; live smoke skipped |
+| contracts offline | 29 passed | schema/Wilson contract suite |
+| Console | 7 passed; production build passed | API/runtime guards and Vite bundle |
+| clean committed-tree B1 replay | 29 contract + 28 replay passed | 22 portable artifacts; 1 persisted WorkOrder; 2 persisted GateReports; 135 probe outputs |
+| independent B1 validator | verified | all artifact/probe digests and persisted Gate/WorkOrder bindings checked |
 | full Quality conformance | 28 passed, 15 failed | failures are connection refused at `127.0.0.1:8080` |
 | demo live E2E | 6 failed | failures are connection refused at `127.0.0.1:8080` |
 | live B1 preflight | exit 2, blocked | expected fail-closed result; no provider call or replay fallback |
