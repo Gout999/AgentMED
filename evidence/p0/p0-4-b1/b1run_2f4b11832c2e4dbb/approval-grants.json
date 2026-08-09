@@ -1,0 +1,129 @@
+{
+  "adapter": "human-approval-contract-replay-fixture",
+  "grants": [
+    {
+      "approval_id": "appr_2f4b11832c2e4dbbinitial",
+      "approver": {
+        "identity": "human:contract-replay-fixture",
+        "type": "human"
+      },
+      "authorized_gate_binding_digest": "sha256:f08d3f1fb5416b92719b015056b656d9c7462f9bfd850874a419969ea697de62",
+      "authorized_target_revision": 1,
+      "consumed_at": "2026-08-09T13:46:47.208230+00:00",
+      "decided_at": "2026-08-09T13:46:47.203898+00:00",
+      "decision": "approved",
+      "expiry": "2026-08-09T14:16:47.200870+00:00",
+      "nonce": "9ae3003e-2a25-5f34-96f8-0324142c7124",
+      "nonce_consumed": true,
+      "persistence": {
+        "consumed_at": "2026-08-09T13:46:47.208230+00:00",
+        "decided_at": "2026-08-09T13:46:47.203898+00:00",
+        "decision": "approved",
+        "expiry": "2026-08-09T14:16:47.200870+00:00",
+        "status": "consumed"
+      },
+      "proof": {
+        "method": "server_recorded",
+        "ref": "replay://human-approval-fixture/appr_2f4b11832c2e4dbbinitial"
+      },
+      "schema_version": "0.1.0",
+      "workorder_hash": "3ab6b35c0611e80d3d1913bc58b9d480952e715347d06cb400ec06c2c61ecc6b",
+      "workorder_id": "wo_2f4b11832c2e4dbb"
+    },
+    {
+      "approval_id": "appr_2f4b11832c2e4dbbcanary",
+      "approver": {
+        "identity": "human:contract-replay-fixture",
+        "type": "human"
+      },
+      "authorization": {
+        "action": "canary",
+        "params": {
+          "percent": 5
+        },
+        "params_digest": "sha256:a588d9949cbf70ef7d56ffbf9ba5356aac21d793f173873d222cd82bf657b3ad",
+        "release_id": "rel_2f4b11832c2e4dbb",
+        "target_revision": 2
+      },
+      "authorized_gate_binding_digest": "sha256:f08d3f1fb5416b92719b015056b656d9c7462f9bfd850874a419969ea697de62",
+      "authorized_target_revision": 1,
+      "consumed_at": "2026-08-09T13:46:47.218519+00:00",
+      "consumed_operation_id": "cop_01KZKCDAHJ8GJTYP3FEVWP2ET4",
+      "decided_at": "2026-08-09T13:46:47.215531+00:00",
+      "decision": "approved",
+      "expiry": "2026-08-09T14:16:47.200870+00:00",
+      "nonce": "aee1c6b8-9b14-5c06-8330-3965294e61e7",
+      "nonce_consumed": true,
+      "persistence": {
+        "consumed_at": "2026-08-09T13:46:47.218519+00:00",
+        "decided_at": "2026-08-09T13:46:47.215531+00:00",
+        "decision": "approved",
+        "expiry": "2026-08-09T14:16:47.200870+00:00",
+        "status": "consumed"
+      },
+      "proof": {
+        "method": "server_recorded",
+        "ref": "replay://human-approval-fixture/appr_2f4b11832c2e4dbbcanary"
+      },
+      "schema_version": "0.1.0",
+      "validated_action_context": {
+        "params": {
+          "percent": 5
+        },
+        "target_revision": 2
+      },
+      "workorder_hash": "3ab6b35c0611e80d3d1913bc58b9d480952e715347d06cb400ec06c2c61ecc6b",
+      "workorder_id": "wo_2f4b11832c2e4dbb"
+    },
+    {
+      "approval_id": "appr_2f4b11832c2e4dbbpromote",
+      "approver": {
+        "identity": "human:contract-replay-fixture",
+        "type": "human"
+      },
+      "authorization": {
+        "action": "promote",
+        "params": {
+          "expected_active_digest": "sha256:61214e0d15b104183268418529df2ce0e1b21ac1b3d77b197e4fc328b57dcdc4",
+          "verification_eval_id": "eval_2f4b11832c2e4dbbpostcanary",
+          "verification_report_hash": "2b27d3095b1ce8ea049c8de8b6507440d34b2251e6c80e53ad699b1ca4422182"
+        },
+        "params_digest": "sha256:c9de649e70e07cebb1aad177e7438355bf619a82a8dd764aef43908addb86c22",
+        "release_id": "rel_2f4b11832c2e4dbb",
+        "target_revision": 3
+      },
+      "authorized_gate_binding_digest": "sha256:f08d3f1fb5416b92719b015056b656d9c7462f9bfd850874a419969ea697de62",
+      "authorized_target_revision": 1,
+      "consumed_at": "2026-08-09T13:46:48.334423+00:00",
+      "consumed_operation_id": "cop_01KZKCDBME65GMJK3YXYCYNXA0",
+      "decided_at": "2026-08-09T13:46:48.320867+00:00",
+      "decision": "approved",
+      "expiry": "2026-08-09T14:16:47.200870+00:00",
+      "nonce": "c3870661-6ba8-5e8d-9b5c-1944bdac64a6",
+      "nonce_consumed": true,
+      "persistence": {
+        "consumed_at": "2026-08-09T13:46:48.334423+00:00",
+        "decided_at": "2026-08-09T13:46:48.320867+00:00",
+        "decision": "approved",
+        "expiry": "2026-08-09T14:16:47.200870+00:00",
+        "status": "consumed"
+      },
+      "proof": {
+        "method": "server_recorded",
+        "ref": "replay://human-approval-fixture/appr_2f4b11832c2e4dbbpromote"
+      },
+      "schema_version": "0.1.0",
+      "validated_action_context": {
+        "params": {
+          "expected_active_digest": "sha256:61214e0d15b104183268418529df2ce0e1b21ac1b3d77b197e4fc328b57dcdc4",
+          "verification_eval_id": "eval_2f4b11832c2e4dbbpostcanary",
+          "verification_report_hash": "2b27d3095b1ce8ea049c8de8b6507440d34b2251e6c80e53ad699b1ca4422182"
+        },
+        "target_revision": 3
+      },
+      "workorder_hash": "3ab6b35c0611e80d3d1913bc58b9d480952e715347d06cb400ec06c2c61ecc6b",
+      "workorder_id": "wo_2f4b11832c2e4dbb"
+    }
+  ],
+  "not_live_human_approval": true
+}

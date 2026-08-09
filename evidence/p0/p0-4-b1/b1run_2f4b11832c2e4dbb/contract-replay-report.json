@@ -1,0 +1,22 @@
+{
+  "contract": {
+    "kind": "contract",
+    "n_failed": 0,
+    "n_passed": 29,
+    "report_digest": "sha256:1dd13241867d22943ad585afcbbb48d80de1fcd1ff2cbbc114a758d47c2fc9a0",
+    "report_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/contract-suite.json",
+    "status": "passed",
+    "suite": "b1-contract"
+  },
+  "gate_policy_profile": "isolated-replay",
+  "live_provider_counted_as_pass": false,
+  "replay": {
+    "kind": "replay",
+    "n_failed": 0,
+    "n_passed": 28,
+    "report_digest": "sha256:61e981e1bdabdcf6bd18bd007d668789bf6df8be46c5a8c8fff8dac7d606dc95",
+    "report_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/replay-suite.json",
+    "status": "passed",
+    "suite": "b1-replay"
+  }
+}

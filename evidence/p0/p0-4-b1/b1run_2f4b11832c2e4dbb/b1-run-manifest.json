@@ -1,0 +1,177 @@
+{
+  "artifacts": {
+    "agent_runs": {
+      "digest": "sha256:9aaf9dedb848428171d1b8e545f64526babf8e5ff048c301e47f8d9500d6e68f",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/agent-runs.json"
+    },
+    "approval_grants": {
+      "digest": "sha256:0acd4308b8a997c651063f0ba656e443c2be4e652f6b1367fa86eb5c944f3dee",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/approval-grants.json"
+    },
+    "attribution_report": {
+      "digest": "sha256:3c79ed3e4655dea07510a0b3481381c13afc5694f64789fbdaf39ea1b5747278",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/attribution-report.json"
+    },
+    "audit_events": {
+      "digest": "sha256:3e2e438a7583e00a1651e831243ad7181d96cf3dff3cd5aa93a986dec2a0866e",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/audit-events.json"
+    },
+    "canary_metrics": {
+      "digest": "sha256:15780d89519444ca7c94e67ed798afad87b42897d9ea406170895ab799dd8416",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/canary-metrics.json"
+    },
+    "commits": {
+      "digest": "sha256:947d10855c454fefee506fb57ced51eb8c304deac66392f084e67f07d65e7f01",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/commits.json"
+    },
+    "contract_replay_report": {
+      "digest": "sha256:f77b77e10855a28451928e0700d0fdf264388970d9062a99c00d5698ef5fa774",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/contract-replay-report.json"
+    },
+    "domain_events": {
+      "digest": "sha256:114649562c682e85629a1668faa61de7b5f219bf969f8ed6446aacb87ddf310c",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/domain-events.json"
+    },
+    "evidence_bundle": {
+      "digest": "sha256:46eda4c5e2b525f9b7b432aef6dc20ff8e119c83d90df67d9a0aafbf15f5744f",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/evidence-bundle.json"
+    },
+    "experiment_plan": {
+      "digest": "sha256:d5c0cdc7e29f9cb40348974126265442bda7f47553c59d21b574cd5fb60d9a48",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/experiment-plan.json"
+    },
+    "frozen_versionset": {
+      "digest": "sha256:43470a0f6b7b777356111c98bc275d6b1023667942d4f795bf03343bd9280d6a",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/frozen-versionset.json"
+    },
+    "gate_report": {
+      "digest": "sha256:dbef11db9ee55994ae07b48bd54c23e1e9f33b661c5d00ddb3c054dbeb985c59",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/gate-reports.json"
+    },
+    "live_provider_report": {
+      "digest": "sha256:e9b9ba3c33932e81290f57a4cfd5bd16764a06b7b2d71c1c4e29636f78cab7df",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/live-provider-report.json"
+    },
+    "notification_receipt": {
+      "digest": "sha256:2d3e8d5b98487b0d096271297d76b0a0aa100c8eec9a3d6bdb0025ca0e062ab4",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/notification-receipt.json"
+    },
+    "outbox_receipts": {
+      "digest": "sha256:1294527a2c8fd01c8ed7d6427fdd293eca049f297678ecc2d6556cf1b1c3ad3b",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/outbox-receipts.json"
+    },
+    "probe_outputs": {
+      "digest": "sha256:118b5e1d65e691853ae28dfdfdcc48bf576c2c7528b97f620b4722bc283e127e",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs.json"
+    },
+    "probes": {
+      "digest": "sha256:a07529e34092c014f4ec0684836543d242349fefcaf3cbc7853fee94d6cb3b9d",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probes.json"
+    },
+    "release_receipts": {
+      "digest": "sha256:5ca14217ab9918141cc73085bdcfce956d7e54b03e6316909b34ce3de3e0f2ec",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/release-receipts.json"
+    },
+    "release_terminal_receipt": {
+      "digest": "sha256:dc3ca3da234c946672f940fe827acafe6194c137304f1ff4501e18bbc35a2f15",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/promote-receipt.json"
+    },
+    "trace": {
+      "digest": "sha256:ccad52bf10d0359b6b4b4e90dc82189a8d6b9300f1afc1ac3ba3735b0344c9b4",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/trace.json"
+    },
+    "trust_decision": {
+      "digest": "sha256:c55d7d4495392a079900fcf0b974e43e16dbe0386d9d028d83a3c8ac6f41b1b4",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/trust-decision.json"
+    },
+    "workorder": {
+      "digest": "sha256:4666d0cb6fa82427bfa1b79bb1d3466154113a772d94b30af8c4d4a8dd202d50",
+      "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/workorder.json"
+    }
+  },
+  "case_id": "case_01KZKCD9AFA4ABW8BXCK68PBDW",
+  "completed_at": "2026-08-09T13:46:48.420450+00:00",
+  "experiment_id": "exp_01KZKCD9ANGQZRWHMNCFKV20MP",
+  "external_blockers": [
+    "live StepFun athlete and distinct judge credentials are external",
+    "live Control Plane, Quality API, and Feishu provider configuration are external",
+    "human approval authority and attested AgentTeams/Matrix fixed warm pool are external"
+  ],
+  "fixture_id": "B1",
+  "mode": "isolated-replay",
+  "notification_id": "notif_188b53c5f01536afb7de6527",
+  "outcomes": {
+    "attribution": {
+      "decision": "ATTRIBUTED",
+      "fault_layer": "prompt"
+    },
+    "case": "CLOSED",
+    "deduplicated": true,
+    "live_provider": "blocked",
+    "notification": {
+      "provider": "feishu-mock",
+      "status": "sent"
+    },
+    "release": "promoted",
+    "trust": {
+      "autonomy_state": "MANUAL",
+      "promotion_decision": "denied",
+      "samples_added": 1,
+      "wilson_lower": 0.2065432914738929
+    }
+  },
+  "release_id": "rel_2f4b11832c2e4dbb",
+  "run_id": "b1run_2f4b11832c2e4dbb",
+  "schema_version": "0.1.0",
+  "started_at": "2026-08-09T13:46:45.906193+00:00",
+  "status": "passed",
+  "test_reports": [
+    {
+      "failed": 0,
+      "kind": "contract",
+      "passed": 29,
+      "report_ref": {
+        "digest": "sha256:1dd13241867d22943ad585afcbbb48d80de1fcd1ff2cbbc114a758d47c2fc9a0",
+        "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/contract-suite.json"
+      },
+      "status": "passed"
+    },
+    {
+      "failed": 0,
+      "kind": "replay",
+      "passed": 28,
+      "report_ref": {
+        "digest": "sha256:61e981e1bdabdcf6bd18bd007d668789bf6df8be46c5a8c8fff8dac7d606dc95",
+        "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/replay-suite.json"
+      },
+      "status": "passed"
+    },
+    {
+      "failed": 0,
+      "kind": "live-provider",
+      "passed": 0,
+      "report_ref": {
+        "digest": "sha256:e9b9ba3c33932e81290f57a4cfd5bd16764a06b7b2d71c1c4e29636f78cab7df",
+        "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/live-provider-report.json"
+      },
+      "status": "blocked"
+    }
+  ],
+  "transaction_id": "tx_2f4b11832c2e4dbb",
+  "versions": {
+    "base_versionset": {
+      "digest": "sha256:61214e0d15b104183268418529df2ce0e1b21ac1b3d77b197e4fc328b57dcdc4",
+      "revision": 1,
+      "versionset_id": "vs_2f4b11832c2e4dbbbad"
+    },
+    "repository_end_commit": "d0fb6ccb336a13982bc882e5b80c8705b57b62d7",
+    "repository_start_commit": "a6de5cc1a06d6967634676b2661da7d2e46d287b",
+    "target_versionset": {
+      "digest": "sha256:c25e3516d476eee790ae05c8669a6b60f0bb39bdc255a7ef3eab235a1ccefb23",
+      "revision": 4,
+      "versionset_id": "vs_98d7c67839ca49428ed3"
+    }
+  },
+  "workorder_hash": "3ab6b35c0611e80d3d1913bc58b9d480952e715347d06cb400ec06c2c61ecc6b",
+  "workorder_id": "wo_2f4b11832c2e4dbb"
+}

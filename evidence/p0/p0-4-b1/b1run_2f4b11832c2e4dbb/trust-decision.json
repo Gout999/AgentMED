@@ -1,0 +1,51 @@
+{
+  "entry": {
+    "action_type": "release_outcome",
+    "autonomy_state_after": "MANUAL",
+    "autonomy_state_before": "MANUAL",
+    "causation_id": "evt_01KZKCDBMGJ160QHEPNN7ATDXR",
+    "entry_id": "tle_01KZKCDBND1TQWNXKWZA5E0582",
+    "epoch_successes": 1,
+    "epoch_trials": 1,
+    "evidence_epoch": 1,
+    "outcome": {
+      "action_ref": "rel_2f4b11832c2e4dbb",
+      "detail": "release promoted with an operation-bound receipt",
+      "status": "success"
+    },
+    "promotion": {
+      "decision": "denied",
+      "eligible": false,
+      "threshold": 0.9
+    },
+    "recorded_at": "2026-08-09T13:46:48.365349+00:00",
+    "risk_class": "R2_HIGH_IMPACT",
+    "sample_rule": "one_action_one_sample",
+    "schema_version": "0.1.0",
+    "trust_key": "release_outcome:R2_HIGH_IMPACT",
+    "wilson": {
+      "confidence": 0.95,
+      "lower": 0.2065432914738929,
+      "side": "two-sided",
+      "upper": 1.0,
+      "z": 1.96
+    }
+  },
+  "ledger": {
+    "last_action_ref": "rel_2f4b11832c2e4dbb",
+    "last_source_event_id": "evt_01KZKCDBMGJ160QHEPNN7ATDXR",
+    "promotion_eligible": false,
+    "promotion_reason": "lower_bound_below_threshold",
+    "sample_rule": "one_action_one_sample",
+    "wilson_lower": 0.2065432914738929,
+    "wilson_upper": 1.0
+  },
+  "promotion_decision": "denied",
+  "samples_added": 1,
+  "three_of_three_reference": {
+    "decision": "denied",
+    "test": "control-plane/tests/unit/test_outbox_dispatcher.py",
+    "threshold": 0.9,
+    "wilson_two_sided_95_lower": 0.4385
+  }
+}

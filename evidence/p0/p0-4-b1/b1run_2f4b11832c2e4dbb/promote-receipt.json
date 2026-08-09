@@ -1,0 +1,38 @@
+{
+  "kind": "promote",
+  "operation_id": "cop_01KZKCDBME65GMJK3YXYCYNXA0",
+  "payload": {
+    "approval_id": "appr_2f4b11832c2e4dbbinitial",
+    "canary_observation": {
+      "complete": true,
+      "elapsed_seconds": 1.089,
+      "observed_at": "2026-08-09T13:46:48.308414+00:00",
+      "remaining_seconds": 0.0,
+      "required_seconds": 1,
+      "started_at": "2026-08-09T13:46:47.219568+00:00"
+    },
+    "canary_percent": 5,
+    "canary_started_at": "2026-08-09T13:46:47.219568+00:00",
+    "canary_step_index": 1,
+    "case_id": "case_01KZKCD9AFA4ABW8BXCK68PBDW",
+    "changeset_id": "cs_wo_2f4b11832c2e4dbb",
+    "expected_restore_digest": "sha256:61214e0d15b104183268418529df2ce0e1b21ac1b3d77b197e4fc328b57dcdc4",
+    "gate_report_hash": "07f04ac978733bcf649087e38efc5f837a66706af8ef32bf75075194ddbebb73",
+    "promoted": true,
+    "remote_revision": 4,
+    "target_revision": 1,
+    "target_versionset_digest": "sha256:c25e3516d476eee790ae05c8669a6b60f0bb39bdc255a7ef3eab235a1ccefb23",
+    "verification": "passed",
+    "verification_eval_id": "eval_2f4b11832c2e4dbbpostcanary",
+    "verification_evidence_digest": "sha256:a8de44b1ad53d0c62233d22f382689b4e42d3a4c51591df6c65fd6eb933d5629",
+    "verification_report_hash": "2b27d3095b1ce8ea049c8de8b6507440d34b2251e6c80e53ad699b1ca4422182",
+    "verification_target_revision": 3,
+    "versionset_id": "vs_98d7c67839ca49428ed3",
+    "workorder_hash": "3ab6b35c0611e80d3d1913bc58b9d480952e715347d06cb400ec06c2c61ecc6b",
+    "workorder_id": "wo_2f4b11832c2e4dbb"
+  },
+  "release_id": "rel_2f4b11832c2e4dbb",
+  "revision": 5,
+  "state": "COMPLETED",
+  "status": "succeeded"
+}

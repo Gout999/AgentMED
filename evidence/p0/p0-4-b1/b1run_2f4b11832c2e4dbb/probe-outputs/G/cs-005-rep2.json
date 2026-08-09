@@ -1,0 +1,18 @@
+{
+  "answer": "根据我们的售后政策，7天无理由退货期限是**自您签收商品的次日开始计算**的。\n\n举个例子：如果您今天（1月1日）签收了商品，那么退货期限就是从1月2日开始算起，到1月8日结束。在这7天内，即使商品已经激活，您也可以申请无理由退货，而且运费由我们承担。",
+  "arm": "G",
+  "case_id": "case_01KZKCD9AFA4ABW8BXCK68PBDW",
+  "experiment_id": "exp_01KZKCD9ANGQZRWHMNCFKV20MP",
+  "kb_manifest_digest": "sha256:ac4d51f9f07f8186f567a509aeb3dd1824b77a7ba386a956b3c3f9e035fa923d",
+  "model_digest": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+  "probe_id": "cs-005",
+  "prompt_digest": "sha256:c63b8a750e1731ac62f079cd192dc935e5f1fa40fabee8e18091e74045a40399",
+  "reasons": [],
+  "recovered": true,
+  "repetition": 2,
+  "source_state": "baseline",
+  "status": "recorded-replay",
+  "versionset_digest": "sha256:c25e3516d476eee790ae05c8669a6b60f0bb39bdc255a7ef3eab235a1ccefb23",
+  "versionset_id": "vs_2f4b11832c2e4dbbgood",
+  "versionset_revision": 1
+}
