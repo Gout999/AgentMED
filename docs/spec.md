@@ -765,7 +765,8 @@ DRAINING → 停止新 claim → 等待 lease=0 → outbox 清空
 
 | 工具 | 参数 | 返回 | ACL |
 |------|------|------|-----|
-| `workorder.draft` | `case_id*`, `target*`, `input_versions*`, `diff*`, `single_factor_declaration*` | `{workorder_id}`（DRAFT） | 修复师 |
+| `candidate.create` | `case_id*`, `channel*`, `attribution_report_digest*`, exact base id/digest/revision, `target_prompt_digest*`, `content*`, `idempotency_key*` | Release Controller 创建并核验的 immutable draft VersionSet receipt | 修复师 |
+| `workorder.draft` | `case_id*`, `target*`, `input_versions*`, `diff*`, `single_factor_declaration*`, exact target id/digest/revision | `{workorder_id}`（DRAFT） | 修复师 |
 | `workorder.freeze` | `workorder_id*`, `fencing_token*` | `{workorder_id, hash}`（FROZEN） | 修复师 |
 | `workorder.get` | `workorder_id*` | 全量 + hash + 状态 | 全员 |
 | `approval.request` | `workorder_id*`, `evidence_summary*`, `channel*` | `{approval_id, status:pending}`；前置校验 GATE_PASSED，否则 `GATE_FAILED` | 守门员 |
@@ -778,10 +779,12 @@ DRAINING → 停止新 claim → 等待 lease=0 → outbox 清空
 
 | 工具 | 参数 | 返回 | ACL |
 |------|------|------|-----|
-| `gate.run` | `workorder_id*`, `suite_digest*` | `{eval_id, status:queued}` | 守门员 |
+| `gate.run` | `workorder_id*`, `suite_digest`（可省略以使用仓库冻结值） | `{eval_id, status:completed, verdict, report_hash}` | 守门员 |
+| `gate.run_verification` | `release_id*`, `suite_digest` | 从控制面读取 exact post-canary target，执行/登记 GateReport 并 attach verification receipt | 守门员 |
 | `gate.report` | `eval_id*` | 双轨报告（deterministic/live 分列）+ verdict + report_hash | 全员 |
-| `experiment.plan` | `case_id*`, `matrix*`(5cell|full2x2x2), `version_refs*` | `{experiment_id}`（PLANNED 建议，控制面确认后生效） | 归因师 |
-| `experiment.run` | `experiment_id*` | `{status:running}` | 归因师 |
+| `experiment.plan` | `case_id*`, `matrix*`（Phase 1=`5cell`） | `{experiment_id}`（PLANNED 建议，控制面确认后生效） | 归因师 |
+| `experiment.run` | `experiment_id*`, `lease_id*`, `fencing_token*`, `runner_id*`（必须与 `case.claim.worker_id` 一致） | `{status:running}` | 归因师 |
+| `experiment.execute` | `experiment_id*` | `{status:executing}`；固定 warm runner 后台执行并 heartbeat | 归因师 |
 | `experiment.report` | `experiment_id*` | §4.7 报告全量（原始计数 + Δ + CI + 裁决） | 全员 |
 | `probe.freeze` | `experiment_id*`, `probe_set*`（三分集） | `{probe_set_digest}` | 归因师（冻结后全员只读） |
 
@@ -791,12 +794,11 @@ DRAINING → 停止新 claim → 等待 lease=0 → outbox 清空
 
 | 工具 | 参数 | 返回 | ACL |
 |------|------|------|-----|
-| `feishu.reply_origin` | `case_id*`, `text*`, `refs` | `{message_id}`（幂等键=outbox_id） | 控制面/案例官 |
-| `feishu.approval_card` | `approval_id*`, `workorder_hash*`, `evidence_summary*`, `expiry*` | `{message_id}` | 控制面 |
+| `feishu.reply_origin` | `release_id*`, immutable original `channel*`, `thread_ref*`, `body_ref*`, `body_digest*` | 控制面 closure + notification `{state:QUEUED}`；不冒充已送达 | 控制面/案例官 |
 | `feishu.weekly_report` | `report*`（§10.4 结构） | `{message_id}` | 案例官 |
 | `matrix.log` | `room*`, `text*` | `{event_id}`（对内留痕） | 全员 |
 
-约定：飞书真实凭证为 Phase 1 前置（用户操作）；未到位时用 feishu mock（同工具契约、同消息结构，ack 模拟），降级路径在演示材料中**明示**。发送语义 at-least-once + 幂等键判重；失败后按 §3.6 退避重试，耗尽 DEAD 升级。
+约定：原投诉 channel/thread 在 complaint event 冻结，回复不可改道。`body_digest` 绑定不可变回复正文；v0.1 调用方的临时过渡仅允许从自包含 `data:` URI 安全补算，外部引用缺 digest 必须拒绝。命令与业务事务同写 outbox；只有 dispatcher 可接收真实或明确 replay-mock provider receipt，原子写 `notification.sent` + `case.closed`。飞书真实凭证未到位时用同 contract 的 feishu mock，并在证据中**明示**；失败按 §3.6 重试，耗尽 DEAD 升级。ApprovalGrant 由控制面/Console 处理，不注册 MCP `approval_card` 写工具。
 
 ### 9.7 mcp-casebase-knowledge
 

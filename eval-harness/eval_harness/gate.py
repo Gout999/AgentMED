@@ -10,15 +10,22 @@
 from __future__ import annotations
 
 import json
+import hashlib
+import math
 import re
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Any
 
 from .config import Settings
 from .digests import sha256_digest
-from .llm import LLMClient
 from .models import ProbeSet
 from .probe_judge import judge_probe
 from .report import _now_iso, new_id, assert_schema_valid
+
+if TYPE_CHECKING:
+    from .llm import LLMClient
+
+OFFICIAL_STEPFUN_BASE_URL = "https://api.stepfun.com/step_plan/v1"
 
 JUDGE_RUBRIC = """你是 CaseLoop 评测裁判。请对"客服回复是否满足该探针的期望行为"打分（0-1）并给出 pass/fail。
 
@@ -52,27 +59,83 @@ class GateCandidate:
     probe_set_digest: str
     regression_suite_digest: str
     answers: dict[str, str] = field(default_factory=dict)          # probe_id -> answer
+    provider_origins: dict[str, str] = field(default_factory=dict) # probe_id -> authoritative origin
     athlete_model_digest: str = ""
     source: str = "live"                                            # live | replay
 
     def validate(self) -> list[str]:
         errs = []
-        if not self.target_versionset_digest.startswith("sha256:"):
+        digest_re = re.compile(r"^sha256:[0-9a-f]{64}$")
+        if not digest_re.fullmatch(self.target_versionset_digest):
             errs.append("target_versionset_digest 必须为 sha256:")
-        if not self.probe_set_digest.startswith("sha256:"):
+        if not digest_re.fullmatch(self.probe_set_digest):
             errs.append("probe_set_digest 必须为 sha256:")
-        if not self.regression_suite_digest.startswith("sha256:"):
+        if not digest_re.fullmatch(self.regression_suite_digest):
             errs.append("regression_suite_digest 必须为 sha256:")
+        if self.source not in ("live", "replay"):
+            errs.append("source 必须为 live|replay")
+        if self.source == "live":
+            if set(self.provider_origins) != set(self.answers):
+                errs.append("live 候选必须为每条答案绑定 provider origin")
+            elif any(
+                origin != OFFICIAL_STEPFUN_BASE_URL
+                for origin in self.provider_origins.values()
+            ):
+                errs.append("live 候选必须来自官方 StepFun endpoint")
         return errs
+
+
+@dataclass(frozen=True)
+class SuiteResult:
+    """由实际 suite 执行器产生的不可变结果摘要。
+
+    GateRunner 只负责判定，不能让调用者用四个裸计数冒充执行结果。生产调用方必须把
+    stdout/stderr 报告落为 artifact，并同时提供其内容 digest。测试可构造该对象作为
+    明确的 contract/replay 替身。
+    """
+
+    suite: str
+    kind: str
+    status: str
+    n_passed: int
+    n_failed: int
+    report_ref: str
+    report_digest: str
+
+    def validate(self) -> list[str]:
+        errors: list[str] = []
+        if self.kind not in ("contract", "replay"):
+            errors.append(f"kind={self.kind!r} 非 contract|replay")
+        if self.status not in ("passed", "failed", "error"):
+            errors.append(f"status={self.status!r} 非 passed|failed|error")
+        if self.n_passed < 0 or self.n_failed < 0:
+            errors.append("测试计数不得为负")
+        if self.n_passed + self.n_failed <= 0:
+            errors.append("测试结果为空（0/0 不得视为通过）")
+        if self.status == "passed" and self.n_failed != 0:
+            errors.append("passed suite 的 n_failed 必须为 0")
+        if self.status == "failed" and self.n_failed <= 0:
+            errors.append("failed suite 的 n_failed 必须大于 0")
+        if not self.report_ref:
+            errors.append("report_ref 缺失")
+        if not re.fullmatch(r"sha256:[0-9a-f]{64}", self.report_digest):
+            errors.append("report_digest 必须为 sha256:<64 hex>")
+        return errors
 
 
 class LLMJudge:
     """裁判轨 LLM 裁判：按 rubric 打分，输出结构化 JSON。"""
 
-    def __init__(self, settings: Settings, model: str):
+    def __init__(self, settings: Settings, model: str, *, deadline_monotonic: float | None = None):
+        # Keep contract/replay tooling importable without the live-provider SDK.
+        # The provider dependency is loaded only when a real LLM judge is used.
+        from .llm import LLMClient
+
         self.settings = settings
         self.model = model
+        self.deadline_monotonic = deadline_monotonic
         self.llm = LLMClient(settings)
+        self.evidence: list[dict[str, Any]] = []
 
     @property
     def model_digest(self) -> str:
@@ -93,10 +156,24 @@ class LLMJudge:
             prompt,
             model=self.model,
             params={"temperature": 0.0, "max_tokens": 256},
+            deadline_monotonic=self.deadline_monotonic,
         )
         parsed = self._parse(resp.content)
         if parsed is None:
-            return {"score": 0.0, "pass": False, "rationale": "裁判输出无法解析，按 0 分处理"}
+            parsed = {"score": 0.0, "pass": False, "rationale": "裁判输出无法解析，按 0 分处理"}
+        self.evidence.append(
+            {
+                "probe_id": probe.id,
+                "provider_request_id": resp.request_id,
+                "model_digest": resp.model_digest,
+                "answer_digest": "sha256:" + hashlib.sha256(answer.encode("utf-8")).hexdigest(),
+                "raw_response": resp.content,
+                "raw_response_digest": "sha256:"
+                + hashlib.sha256(resp.content.encode("utf-8")).hexdigest(),
+                "parsed": parsed,
+                "usage": resp.usage,
+            }
+        )
         return parsed
 
     @staticmethod
@@ -110,14 +187,19 @@ class LLMJudge:
             return None
         if not isinstance(obj, dict):
             return None
+        pass_value = obj.get("pass")
+        if not isinstance(pass_value, bool):
+            return None
         try:
             score = float(obj.get("score", 0.0))
         except (TypeError, ValueError):
-            score = 0.0
+            return None
+        if not math.isfinite(score):
+            return None
         score = max(0.0, min(1.0, score))
         return {
             "score": score,
-            "pass": bool(obj.get("pass", False)),
+            "pass": pass_value,
             "rationale": str(obj.get("rationale", "")),
         }
 
@@ -142,28 +224,83 @@ class GateRunner:
         self,
         candidate: GateCandidate,
         *,
-        contract_n_passed: int = 0,
-        contract_n_failed: int = 0,
-        replay_n_passed: int = 0,
-        replay_n_failed: int = 0,
+        contract_result: SuiteResult,
+        replay_result: SuiteResult,
+        artifact_refs: list[dict[str, str]],
         live_available: bool = True,
+        policy_profile: str = "live",
+        eval_id: str | None = None,
+        report_id: str | None = None,
     ) -> dict:
         """生成 gate-report（schema 校验通过）。
 
-        contract/replay 计数由调用方统计（确定性测试的独立执行体），此处组装报告。
+        contract/replay 必须由独立执行体产生 SuiteResult，并提供真实 artifact digest。
         live_available=False 表示 live-provider E2E 不可用（额度/网络/裁判模型缺失）。
         """
+        if policy_profile not in ("live", "isolated-replay"):
+            raise ValueError(f"unsupported gate policy profile: {policy_profile!r}")
         candidate_errs = candidate.validate()
-        rule = self._rule_track(candidate, candidate_errs, live_available)
+        if policy_profile == "isolated-replay" and candidate.source != "replay":
+            candidate_errs.append("isolated-replay profile requires candidate.source=replay")
+        rule = self._rule_track(
+            candidate,
+            candidate_errs,
+            live_available,
+            policy_profile=policy_profile,
+        )
         judge_track = self._judge_track(candidate)
-        det = self._deterministic_tests(contract_n_passed, contract_n_failed, replay_n_passed, replay_n_failed)
-        live = self._live_e2e(candidate, live_available)
+        det = self._deterministic_tests(contract_result, replay_result)
 
-        overall = self._overall(rule["status"], judge_track["status"], det["status"], live["status"])
+        artifact_errors = self._validate_artifact_refs(
+            artifact_refs,
+            required={(contract_result.report_ref, contract_result.report_digest), (replay_result.report_ref, replay_result.report_digest)},
+        )
+        suite_refs = {
+            (contract_result.report_ref, contract_result.report_digest),
+            (replay_result.report_ref, replay_result.report_digest),
+        }
+        candidate_refs = [
+            ref
+            for ref in artifact_refs
+            if (ref.get("uri", ""), ref.get("digest", "")) not in suite_refs
+        ]
+        if candidate.source == "live" and not candidate_refs:
+            artifact_errors.append("live candidate response evidence is missing")
+        live = self._live_e2e(
+            candidate,
+            live_available,
+            report_ref=candidate_refs[0].get("uri") if candidate_refs else None,
+            policy_profile=policy_profile,
+        )
+        if artifact_errors:
+            det = {
+                **det,
+                "status": "error",
+                "suites": [
+                    *det["suites"],
+                    {
+                        "suite": "artifact-integrity",
+                        "kind": "contract",
+                        "status": "error",
+                        "n_passed": 0,
+                        "n_failed": 1,
+                        "report_ref": "evidence://gate/artifact-integrity",
+                    },
+                ],
+            }
+
+        overall = self._overall(
+            rule["status"],
+            judge_track["status"],
+            det["status"],
+            live["status"],
+            policy_profile=policy_profile,
+        )
         report = {
-            "schema_version": "0.1.0",
-            "report_id": new_id("gate"),
-            "eval_id": new_id("eval"),
+            "schema_version": "0.2.0",
+            "policy_profile": policy_profile,
+            "report_id": report_id or new_id("gate"),
+            "eval_id": eval_id or new_id("eval"),
             "subject": {
                 "target_versionset_digest": candidate.target_versionset_digest,
                 "regression_suite_digest": candidate.regression_suite_digest,
@@ -174,17 +311,21 @@ class GateRunner:
             "deterministic_tests": det,
             "live_provider_e2e": live,
             "overall_status": overall,
-            "artifact_refs": [
-                {"uri": "file://evidence/gate/replay.jsonl", "digest": sha256_digest({"replay": "frozen"})},
-                {"uri": "file://evidence/gate/contract-report.json", "digest": sha256_digest({"contract": "frozen"})},
-            ],
+            "artifact_refs": artifact_refs,
             "created_at": _now_iso(),
         }
         assert_schema_valid(report, "gate-report.schema.json")
         return report
 
     # ------------------------------------------------------------------ 规则轨
-    def _rule_track(self, candidate: GateCandidate, candidate_errs: list[str], live_available: bool) -> dict:
+    def _rule_track(
+        self,
+        candidate: GateCandidate,
+        candidate_errs: list[str],
+        live_available: bool,
+        *,
+        policy_profile: str,
+    ) -> dict:
         checks: list[dict] = []
         pmap = self.probe_set.by_id()
 
@@ -228,14 +369,27 @@ class GateRunner:
         })
 
         # 5) live E2E 可用性（D-001：live UNAVAILABLE 不得仅凭确定性轨放行）
-        checks.append({
-            "check_id": "rule-live-e2e-availability",
-            "description": "live-provider E2E 可用（缺 key/裁判模型 时不可自动放行）",
-            "status": "passed" if live_available else "skipped",
-            "detail": "live E2E 可用" if live_available else "LIVE_UNAVAILABLE：MVP 不可仅凭确定性轨放行，转人工",
-        })
+        if policy_profile == "isolated-replay":
+            checks.append({
+                "check_id": "rule-policy-profile",
+                "description": "本报告明确限定为隔离 contract/replay 证据，不冒充 live-provider E2E",
+                "status": "passed",
+                "detail": "policy_profile=isolated-replay; live-provider status is reported separately as skipped",
+            })
+        else:
+            checks.append({
+                "check_id": "rule-live-e2e-availability",
+                "description": "live-provider E2E 可用（缺 key/裁判模型 时不可自动放行）",
+                "status": "passed" if live_available else "skipped",
+                "detail": "live E2E 可用" if live_available else "LIVE_UNAVAILABLE：MVP 不可仅凭确定性轨放行，转人工",
+            })
 
-        status = "passed" if all(c["status"] in ("passed", "skipped") for c in checks) else "failed"
+        if any(c["status"] == "failed" for c in checks):
+            status = "failed"
+        elif any(c["status"] == "skipped" for c in checks):
+            status = "error"
+        else:
+            status = "passed"
         return {"status": status, "checks": checks}
 
     # ------------------------------------------------------------------ 裁判轨
@@ -297,12 +451,28 @@ class GateRunner:
             probe = self.probe_set.by_id().get(pid)
             if probe is None:
                 continue
-            result = self.judge.score(probe, ans)
+            try:
+                result = self.judge.score(probe, ans)
+            except Exception as exc:  # noqa: BLE001 -- provider timeout/error must persist as ERROR
+                return {
+                    "status": "error",
+                    "judge_model_digest": judge_digest,
+                    "athlete_model_digest": athlete_digest,
+                    "pass_threshold": self.pass_threshold,
+                    "scores": [
+                        {
+                            "probe_id": pid,
+                            "score": 0.0,
+                            "pass": False,
+                            "rationale_ref": f"evidence://judge-error/{type(exc).__name__}",
+                        }
+                    ],
+                }
             scores.append({
                 "probe_id": pid,
                 "score": result["score"],
                 "pass": result["pass"],
-                "rationale_ref": f"file://evidence/gate/judge-{pid}.md",
+                "rationale_ref": f"evidence://gate/judge/{pid}",
             })
         if not scores:
             scores.append({"probe_id": "__no_answers__", "score": 0.0, "pass": False, "rationale_ref": "无候选答案"})
@@ -316,35 +486,72 @@ class GateRunner:
         }
 
     # ------------------------------------------------------------------ 确定性测试
-    def _deterministic_tests(self, contract_passed, contract_failed, replay_passed, replay_failed) -> dict:
-        suites = [
-            {
-                "suite": "quality-api-contract",
-                "kind": "contract",
-                "status": "passed" if contract_failed == 0 else "failed",
-                "n_passed": contract_passed,
-                "n_failed": contract_failed,
-                "report_ref": "file://evidence/gate/contract-report.json",
-            },
-            {
-                "suite": "b1-replay-frozen-probes",
-                "kind": "replay",
-                "status": "passed" if replay_failed == 0 else "failed",
-                "n_passed": replay_passed,
-                "n_failed": replay_failed,
-                "report_ref": "file://evidence/gate/replay.jsonl",
-            },
-        ]
-        status = "passed" if all(s["status"] == "passed" for s in suites) else "failed"
+    def _deterministic_tests(self, contract_result: SuiteResult, replay_result: SuiteResult) -> dict:
+        suites = []
+        aggregate_status = "passed"
+        for expected_kind, result in (("contract", contract_result), ("replay", replay_result)):
+            errors = result.validate()
+            if result.kind != expected_kind:
+                errors.append(f"期望 kind={expected_kind}，实际 {result.kind}")
+            status = "error" if errors else result.status
+            if status == "error":
+                aggregate_status = "error"
+            elif status == "failed" and aggregate_status != "error":
+                aggregate_status = "failed"
+            suites.append(
+                {
+                    "suite": result.suite,
+                    "kind": expected_kind,
+                    "status": status,
+                    "n_passed": result.n_passed,
+                    "n_failed": max(result.n_failed, 1 if errors else 0),
+                    "report_ref": result.report_ref,
+                }
+            )
+        status = aggregate_status
         return {"status": status, "suites": suites}
 
     # ------------------------------------------------------------------ live E2E
-    def _live_e2e(self, candidate: GateCandidate, live_available: bool) -> dict:
+    def _live_e2e(
+        self,
+        candidate: GateCandidate,
+        live_available: bool,
+        *,
+        report_ref: str | None,
+        policy_profile: str,
+    ) -> dict:
+        if policy_profile == "isolated-replay":
+            return {
+                "status": "skipped",
+                "provider": "replay-not-live",
+                "suites": [
+                    {
+                        "suite": "live-provider-e2e",
+                        "status": "skipped",
+                        "n_passed": 0,
+                        "n_failed": 0,
+                    }
+                ],
+            }
         if not live_available or not candidate.answers:
             return {
                 "status": "skipped",
                 "provider": "stepfun",
                 "suites": [{"suite": "cs-e2e-smoke", "status": "skipped", "n_passed": 0, "n_failed": 0}],
+            }
+        if candidate.source != "live":
+            return {
+                "status": "error",
+                "provider": "replay",
+                "suites": [
+                    {
+                        "suite": "cs-e2e-smoke",
+                        "status": "error",
+                        "n_passed": 0,
+                        "n_failed": max(1, len(candidate.answers)),
+                        "report_ref": "evidence://gate/replay-cannot-satisfy-live",
+                    }
+                ],
             }
         pmap = self.probe_set.by_id()
         n_passed = 0
@@ -354,18 +561,150 @@ class GateRunner:
                 n_passed += 1
             else:
                 n_failed += 1
-        status = "passed" if n_failed == 0 else "failed"
+        if n_passed == 0 and n_failed == 0:
+            status = "error"
+            n_failed = 1
+        else:
+            status = "passed" if n_failed == 0 else "failed"
         return {
             "status": status,
             "provider": "stepfun",
-            "suites": [{"suite": "cs-e2e-smoke", "status": status, "n_passed": n_passed, "n_failed": n_failed}],
+            "suites": [
+                {
+                    "suite": "cs-e2e-smoke",
+                    "status": status,
+                    "n_passed": n_passed,
+                    "n_failed": n_failed,
+                    "report_ref": report_ref or "evidence://gate/missing-live-artifact",
+                }
+            ],
         }
 
     # ------------------------------------------------------------------ 总结论
     @staticmethod
-    def _overall(rule: str, judge: str, det: str, live: str) -> str:
-        if "failed" in (rule, judge, det, live):
-            return "failed"
-        if judge == "error" or live in ("error", "skipped"):
+    def _overall(
+        rule: str,
+        judge: str,
+        det: str,
+        live: str,
+        *,
+        policy_profile: str = "live",
+    ) -> str:
+        statuses = (rule, judge, det) if policy_profile == "isolated-replay" else (rule, judge, det, live)
+        if any(status not in ("passed", "failed", "error", "skipped") for status in statuses):
             return "error"
-        return "passed"
+        if "error" in statuses or "skipped" in statuses:
+            return "error"
+        if "failed" in statuses:
+            return "failed"
+        return "passed" if all(status == "passed" for status in statuses) else "error"
+
+    @staticmethod
+    def _validate_artifact_refs(
+        refs: list[dict[str, str]], *, required: set[tuple[str, str]]
+    ) -> list[str]:
+        errors: list[str] = []
+        if not refs:
+            return ["artifact_refs 为空"]
+        observed: set[tuple[str, str]] = set()
+        for ref in refs:
+            uri = ref.get("uri", "")
+            digest = ref.get("digest", "")
+            if not uri:
+                errors.append("artifact uri 缺失")
+            if not re.fullmatch(r"sha256:[0-9a-f]{64}", digest):
+                errors.append(f"artifact digest 非法: {digest!r}")
+            observed.add((uri, digest))
+        missing = required - observed
+        if missing:
+            errors.append(f"suite artifact 缺失: {sorted(missing)!r}")
+        return errors
+
+
+def build_error_gate_report(
+    *,
+    eval_id: str,
+    target_versionset_digest: str,
+    regression_suite_digest: str,
+    probe_set_digest: str,
+    error_ref: str,
+    artifact_refs: list[dict[str, str]],
+    report_id: str | None = None,
+) -> dict[str, Any]:
+    """把执行器 timeout/exception 变成可持久化、schema-valid 的 fail-closed 报告。"""
+
+    report = {
+        "schema_version": "0.2.0",
+        "policy_profile": "live",
+        "report_id": report_id or new_id("gate"),
+        "eval_id": eval_id,
+        "subject": {
+            "target_versionset_digest": target_versionset_digest,
+            "regression_suite_digest": regression_suite_digest,
+            "probe_set_digest": probe_set_digest,
+        },
+        "rule_track": {
+            "status": "error",
+            "checks": [
+                {
+                    "check_id": "gate-executor-error",
+                    "status": "failed",
+                    "description": "门禁执行器未能完成，按 fail-closed 处理",
+                    "detail": error_ref,
+                }
+            ],
+        },
+        "judge_track": {
+            "status": "error",
+            "judge_model_digest": sha256_digest({"judge": "unavailable"}),
+            "athlete_model_digest": sha256_digest({"athlete": "unknown"}),
+            "pass_threshold": 1.0,
+            "scores": [
+                {
+                    "probe_id": "__evaluator_error__",
+                    "score": 0.0,
+                    "pass": False,
+                    "rationale_ref": error_ref,
+                }
+            ],
+        },
+        "deterministic_tests": {
+            "status": "error",
+            "suites": [
+                {
+                    "suite": "gate-executor-contract",
+                    "kind": "contract",
+                    "status": "error",
+                    "n_passed": 0,
+                    "n_failed": 1,
+                    "report_ref": error_ref,
+                },
+                {
+                    "suite": "gate-executor-replay",
+                    "kind": "replay",
+                    "status": "error",
+                    "n_passed": 0,
+                    "n_failed": 1,
+                    "report_ref": error_ref,
+                },
+            ],
+        },
+        "live_provider_e2e": {
+            "status": "error",
+            "provider": "stepfun",
+            "suites": [
+                {
+                    "suite": "cs-e2e-smoke",
+                    "status": "error",
+                    "n_passed": 0,
+                    "n_failed": 1,
+                    "report_ref": error_ref,
+                }
+            ],
+        },
+        "overall_status": "error",
+        "artifact_refs": artifact_refs,
+        "created_at": _now_iso(),
+    }
+    assert_schema_valid(report, "gate-report.schema.json")
+    return report

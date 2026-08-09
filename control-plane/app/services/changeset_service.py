@@ -5,17 +5,20 @@
 """
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any, Optional
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
-from app.models.tables import Aggregate
+from app.models.tables import Aggregate, Approval, WorkOrder
 from app.services.audit import AuditService, AuditWriteError
 from app.services.event_store import CASConflict, EventStore
+from app.services.gate_service import GateService, GateServiceError
 from app.services.state_machines import IllegalTransition
 from app.utils.ids import new_changeset_id, new_trace_id
+from app.utils.jcs import workorder_hash as compute_workorder_hash
 
 
 class ChangeSetServiceError(Exception):
@@ -32,6 +35,7 @@ class ChangeSetService:
         self.settings = settings or get_settings()
         self.store = EventStore(session)
         self.audit = AuditService(session, self.settings)
+        self.gates = GateService(session, self.settings)
 
     def create(self, *, case_id: str, workorder_ref: str, workorder_hash: str, channel: str, author_agent: str, changeset_id: Optional[str] = None) -> dict[str, Any]:
         """起草 ChangeSet（对应 changeset.drafted；register_workorder 内部也走此事件）。"""
@@ -64,27 +68,40 @@ class ChangeSetService:
         )
         return self._view(self._require(cs_id))
 
-    def attach_gate(self, changeset_id: str, *, gate_report_ref: str, gate_status: str = "passed") -> dict[str, Any]:
-        if gate_status != "passed":
-            raise ChangeSetServiceError("validation_failed", "gate_status must be passed to attach")
+    def attach_gate(self, changeset_id: str, *, eval_id: str, report_hash: str) -> dict[str, Any]:
         agg = self._require(changeset_id)
+        workorder_id = (agg.payload or {}).get("workorder_ref")
+        workorder = self.session.get(WorkOrder, workorder_id)
+        if workorder is None:
+            raise ChangeSetServiceError("validation_failed", "changeset has no registered immutable WorkOrder")
+        try:
+            gate = self.gates.validate_for_workorder(workorder)
+        except GateServiceError as exc:
+            raise ChangeSetServiceError(exc.code, exc.message, **exc.extra) from exc
+        if gate.eval_id != eval_id or gate.report_hash != report_hash:
+            raise ChangeSetServiceError("hash_mismatch", "submitted gate id/hash does not match WorkOrder binding")
         self.store.append_event(
             aggregate_type="changeset",
             aggregate_id=changeset_id,
             event_type="changeset.gate_attached",
-            payload={"gate_report_ref": gate_report_ref, "gate_status": gate_status},
+            payload={
+                "gate_report_ref": f"eval://{eval_id}",
+                "gate_report_hash": report_hash,
+                "gate_status": gate.overall_status,
+                "evidence_digest": gate.evidence_digest,
+            },
             causation_id="eval.passed",
             correlation_id=(agg.payload or {}).get("case_id") or changeset_id,
             actor="controller:changeset",
             expected_revision=agg.revision,
             machine="changeset",
-            merge_payload={"gate_report_ref": gate_report_ref},
+            merge_payload={"gate_report_ref": f"eval://{eval_id}", "gate_report_hash": report_hash},
         )
         self.audit.record(
             actor="controller:changeset",
             action="changeset.gate_attached",
             target=changeset_id,
-            params={"gate_report_ref": gate_report_ref},
+            params={"eval_id": eval_id, "report_hash": report_hash},
             result="success",
         )
         return self._view(self._require(changeset_id))
@@ -99,17 +116,54 @@ class ChangeSetService:
         channel: str = "feishu",
     ) -> dict[str, Any]:
         agg = self._require(changeset_id)
+        expected_hash = (agg.payload or {}).get("workorder_hash")
+        if expected_hash != workorder_hash:
+            raise ChangeSetServiceError("hash_mismatch", "approval request WorkOrder hash mismatch")
+        workorder = self.session.get(WorkOrder, (agg.payload or {}).get("workorder_ref"))
+        if workorder is None:
+            raise ChangeSetServiceError("validation_failed", "approval request has no registered WorkOrder")
+        try:
+            recomputed = compute_workorder_hash(workorder.payload)
+        except (TypeError, ValueError) as exc:
+            raise ChangeSetServiceError("hash_mismatch", "WorkOrder payload is not canonical") from exc
+        if recomputed != workorder.hash or workorder.hash != workorder_hash:
+            raise ChangeSetServiceError("hash_mismatch", "approval request WorkOrder was modified")
+        if nonce != workorder.payload.get("nonce") or expiry != workorder.payload.get("expiry"):
+            raise ChangeSetServiceError(
+                "hash_mismatch",
+                "approval request nonce/expiry must be copied from the immutable WorkOrder",
+            )
+        try:
+            expiry_at = datetime.fromisoformat(expiry.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ChangeSetServiceError("validation_failed", "approval request expiry is invalid") from exc
+        if expiry_at.tzinfo is None:
+            expiry_at = expiry_at.replace(tzinfo=timezone.utc)
+        if expiry_at <= datetime.now(timezone.utc):
+            raise ChangeSetServiceError("approval_expired", "WorkOrder approval window has expired")
+        try:
+            self.gates.validate_for_workorder(workorder)
+        except GateServiceError as exc:
+            raise ChangeSetServiceError(exc.code, exc.message, **exc.extra) from exc
         self.store.append_event(
             aggregate_type="changeset",
             aggregate_id=changeset_id,
             event_type="changeset.approval_requested",
-            payload={"workorder_hash": workorder_hash, "nonce": nonce, "expiry": expiry, "channel": channel},
+            payload={
+                "workorder_hash": workorder.hash,
+                "nonce": workorder.payload["nonce"],
+                "expiry": workorder.payload["expiry"],
+                "channel": channel,
+            },
             causation_id="changeset.gate_attached",
             correlation_id=(agg.payload or {}).get("case_id") or changeset_id,
             actor="controller:changeset",
             expected_revision=agg.revision,
             machine="changeset",
-            merge_payload={"nonce": nonce, "expiry": expiry},
+            merge_payload={
+                "nonce": workorder.payload["nonce"],
+                "expiry": workorder.payload["expiry"],
+            },
         )
         self.audit.record(
             actor="controller:changeset",
@@ -122,11 +176,18 @@ class ChangeSetService:
 
     def approve(self, changeset_id: str, *, approval_id: str, approver: str, workorder_hash: str) -> dict[str, Any]:
         agg = self._require(changeset_id)
+        self._validate_initial_approval(
+            agg,
+            approval_id=approval_id,
+            approver=approver,
+            decision="approved",
+            declared_workorder_hash=workorder_hash,
+        )
         self.store.append_event(
             aggregate_type="changeset",
             aggregate_id=changeset_id,
             event_type="changeset.approved",
-            payload={"approval_id": approval_id, "approver": approver, "workorder_hash": workorder_hash, "nonce_consumed": True},
+            payload={"approval_id": approval_id, "approver": approver, "workorder_hash": workorder_hash},
             causation_id="human_approval",
             correlation_id=(agg.payload or {}).get("case_id") or changeset_id,
             actor=approver,
@@ -145,6 +206,12 @@ class ChangeSetService:
 
     def reject(self, changeset_id: str, *, approval_id: str, approver: str, reason: str) -> dict[str, Any]:
         agg = self._require(changeset_id)
+        self._validate_initial_approval(
+            agg,
+            approval_id=approval_id,
+            approver=approver,
+            decision="rejected",
+        )
         self.store.append_event(
             aggregate_type="changeset",
             aggregate_id=changeset_id,
@@ -165,6 +232,71 @@ class ChangeSetService:
             result="success",
         )
         return self._view(self._require(changeset_id))
+
+    def _validate_initial_approval(
+        self,
+        aggregate: Aggregate,
+        *,
+        approval_id: str,
+        approver: str,
+        decision: str,
+        declared_workorder_hash: str | None = None,
+    ) -> Approval:
+        """Bind a ChangeSet decision to its own immutable initial grant."""
+
+        aggregate_payload = aggregate.payload or {}
+        workorder_id = aggregate_payload.get("workorder_ref") or aggregate_payload.get("workorder_id")
+        workorder = self.session.get(WorkOrder, workorder_id) if workorder_id else None
+        approval = self.session.get(Approval, approval_id)
+        if workorder is None or approval is None:
+            raise ChangeSetServiceError(
+                "validation_failed",
+                "ChangeSet decision requires its registered WorkOrder and ApprovalGrant",
+            )
+        try:
+            recomputed = compute_workorder_hash(workorder.payload)
+        except (TypeError, ValueError) as exc:
+            raise ChangeSetServiceError("hash_mismatch", "WorkOrder payload is not canonical") from exc
+        expected_status = "pending" if decision == "approved" else "rejected"
+        approval_payload = approval.payload or {}
+        approval_identity = (approval.approver or {}).get("identity")
+        if (
+            recomputed != workorder.hash
+            or aggregate_payload.get("workorder_hash") != workorder.hash
+            or (declared_workorder_hash is not None and declared_workorder_hash != workorder.hash)
+            or approval.workorder_id != workorder.workorder_id
+            or approval.workorder_hash != workorder.hash
+            or approval.nonce != workorder.payload.get("nonce")
+            or approval.decision != decision
+            or approval.status != expected_status
+            or approval_identity != approver
+            or approval_payload.get("authorization") is not None
+            or approval_payload.get("nonce") != workorder.payload.get("nonce")
+            or approval_payload.get("nonce_consumed") is not False
+        ):
+            raise ChangeSetServiceError(
+                "hash_mismatch",
+                "ApprovalGrant is not the initial grant for this ChangeSet WorkOrder",
+            )
+        now = datetime.now(timezone.utc)
+        approval_expiry = approval.expiry
+        if approval_expiry.tzinfo is None:
+            approval_expiry = approval_expiry.replace(tzinfo=timezone.utc)
+        try:
+            workorder_expiry = datetime.fromisoformat(
+                str(workorder.payload.get("expiry", "")).replace("Z", "+00:00")
+            )
+        except ValueError as exc:
+            raise ChangeSetServiceError("validation_failed", "WorkOrder expiry is invalid") from exc
+        if workorder_expiry.tzinfo is None:
+            workorder_expiry = workorder_expiry.replace(tzinfo=timezone.utc)
+        if approval_expiry <= now or workorder_expiry <= now or approval_expiry > workorder_expiry:
+            raise ChangeSetServiceError("approval_expired", "ApprovalGrant is outside its authorization window")
+        try:
+            self.gates.validate_for_workorder(workorder)
+        except GateServiceError as exc:
+            raise ChangeSetServiceError(exc.code, exc.message, **exc.extra) from exc
+        return approval
 
     def expire(self, changeset_id: str, *, workorder_hash: str, expiry: str) -> dict[str, Any]:
         agg = self._require(changeset_id)
@@ -191,6 +323,25 @@ class ChangeSetService:
 
     def commit(self, changeset_id: str, *, release_id: str) -> dict[str, Any]:
         agg = self._require(changeset_id)
+        release = self.store.get_aggregate("release", release_id)
+        release_payload = (release.payload or {}) if release is not None else {}
+        changeset_payload = agg.payload or {}
+        approval_id = changeset_payload.get("approval_id")
+        approval = self.session.get(Approval, approval_id) if approval_id else None
+        if (
+            release is None
+            or release_payload.get("changeset_id") != changeset_id
+            or release_payload.get("workorder_id") != changeset_payload.get("workorder_ref")
+            or release_payload.get("workorder_hash") != changeset_payload.get("workorder_hash")
+            or release_payload.get("approval_id") != approval_id
+            or approval is None
+            or approval.status != "consumed"
+            or (approval.payload or {}).get("authorization") is not None
+        ):
+            raise ChangeSetServiceError(
+                "hash_mismatch",
+                "changeset commit requires the exact bound Release and consumed initial ApprovalGrant",
+            )
         self.store.append_event(
             aggregate_type="changeset",
             aggregate_id=changeset_id,

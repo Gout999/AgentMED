@@ -93,6 +93,17 @@ def _wait_operation(read_session, operation_id: str, timeout_s: float = 30.0) ->
 
 def _run_lifecycle_to_terminal(write_session, read_session, vs_id, action, etag=None,
                                expected_revision=None, body_extra=None):
+    body_extra = dict(body_extra or {})
+    if action == "promote" and "expected_active_digest" not in body_extra:
+        active_response = read_session.get(
+            f"{BASE_URL}/v2/versionsets",
+            params={"status": "active", "limit": 50},
+            timeout=TIMEOUT,
+        )
+        assert active_response.status_code == 200, active_response.text[:300]
+        active = active_response.json().get("items") or []
+        assert len(active) == 1, f"promote 前必须有唯一 active 基线: {active}"
+        body_extra["expected_active_digest"] = active[0]["digest"]
     r = _lifecycle(write_session, vs_id, action, etag, expected_revision, body_extra)
     assert r.status_code == 202, f"{action} 应异步受理 202，实际 {r.status_code}: {r.text[:300]}"
     op = r.json()
@@ -213,7 +224,13 @@ def test_illegal_transitions_rejected(write_session):
     assert r.status_code == 422, f"draft→canary 非法迁移应 422，实际 {r.status_code}"
     assert r.json()["error"]["code"] == "validation_failed"
     # draft 直接 promote
-    r = _lifecycle(write_session, vs_id, "promote", expected_revision=vs["revision"])
+    r = _lifecycle(
+        write_session,
+        vs_id,
+        "promote",
+        expected_revision=vs["revision"],
+        body_extra={"expected_active_digest": "sha256:" + "0" * 64},
+    )
     assert r.status_code == 422, f"draft→promote 非法迁移应 422，实际 {r.status_code}"
 
 

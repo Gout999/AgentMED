@@ -20,6 +20,8 @@ from conftest import (
 
 # 样例文件 → schema 文件的冻结映射（缺一即红）
 SAMPLE_TO_SCHEMA = {
+    "sample-b1-run-manifest.json": "b1-run-manifest.schema.json",
+    "sample-action-approval.json": "approval.schema.json",
     "sample-workorder.json": "workorder.schema.json",
     "sample-approval.json": "approval.schema.json",
     "sample-evidence-bundle.json": "evidence-bundle.schema.json",
@@ -80,6 +82,12 @@ NEGATIVE_CASES = [
     ("sample-gate-report.json", "gate-report.schema.json",
      lambda d: d.pop("live_provider_e2e"),
      "门禁报告缺 live_provider_e2e（必须与确定性测试分开报告）"),
+    ("sample-gate-report.json", "gate-report.schema.json",
+     lambda d: d.update({"schema_version": "0.1.0"}),
+     "冻结期 GateReport 0.1.0 不得冒充新增必填字段后的 0.2.0"),
+    ("sample-b1-run-manifest.json", "b1-run-manifest.schema.json",
+     lambda d: d["artifacts"].pop("trust_decision"),
+     "B1 manifest 缺 Trust decision 证据"),
 ]
 
 
@@ -141,6 +149,20 @@ def test_approval_binds_sample_workorder():
     assert appr["workorder_hash"] == wo["hash"], "grant 未绑定样例 WorkOrder hash"
     assert appr["nonce"] == wo["nonce"], "grant 未复制 WorkOrder nonce"
     assert appr["expiry"] <= wo["expiry"], "grant expiry 不得晚于 WorkOrder expiry"
+
+
+def test_action_approval_binds_one_release_revision_and_parameter_digest():
+    action = _sample("sample-action-approval.json")
+    authorization = action["authorization"]
+    canonical = json.dumps(
+        authorization["params"],
+        sort_keys=True,
+        ensure_ascii=False,
+        separators=(",", ":"),
+    ).encode("utf-8")
+    assert authorization["params_digest"] == f"sha256:{hashlib.sha256(canonical).hexdigest()}"
+    assert action["nonce"] != _sample("sample-workorder.json")["nonce"]
+    assert authorization["action"] in {"canary", "promote", "rollback"}
 
 
 def test_trust_entry_matches_mvp_demo_numbers():

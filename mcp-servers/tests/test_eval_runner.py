@@ -1,13 +1,14 @@
 """mcp-eval-runner：probe.freeze 结构校验 + experiment.execute 异步执行链路（S0-006）。
 
-- experiment.execute：工具注册、状态前置校验、冻结协议三探针集非空校验、后台线程回流
-  cells/verdict、异常回流 cancel。执行机用桩替换，不真跑 LLM。
+- experiment.execute：工具注册、RUNNING/lease 前置校验、冻结协议与精确 VersionSet 绑定、
+  后台线程回流 cells/完整 artifacts、异常回流 cancel。执行机用桩替换，不真跑 LLM。
 - probe.freeze：空/错键 probe_set → validation 报错并给结构示例；合法 probe_set 正常冻结。
-- experiment.plan：契约对齐——签名不再接收 version_refs（版本由 execute 现场捕获）。
+- experiment.plan：契约对齐——签名不接收 version_refs；版本由 probe.freeze 精确冻结。
 """
 from __future__ import annotations
 
 import inspect
+import json
 import os
 import time
 
@@ -29,14 +30,56 @@ class FakeCP:
 
     def get(self, path: str, **kw) -> dict:
         self.gets.append(path)
+        if path.endswith("/trials"):
+            return {"items": list(self.get_result.get("completed_trials") or [])}
         return self.get_result
 
     def post(self, path: str, json_body: dict | None = None, **kw) -> dict:
         self.posts.append((path, json_body or {}))
+        if path.endswith("/heartbeat"):
+            return {
+                "lease_id": "lease_000000000001",
+                "fencing_token": (json_body or {}).get("fencing_token"),
+            }
+        if path.endswith("/trials"):
+            return {
+                "trial": {
+                    key: value
+                    for key, value in (json_body or {}).items()
+                    if key != "fencing_token"
+                }
+            }
         return {"ok": True}
 
 
+class FakeQA:
+    def __init__(self):
+        self.gets: list[tuple[str, dict | None]] = []
+
+    def get(self, path: str, params: dict | None = None, **_kw) -> dict:
+        self.gets.append((path, params))
+        if path == "/v2/versionsets":
+            return {"items": [{"versionset_id": "vs_active", "status": "active"}]}
+        return {
+            "versionset_id": path.rsplit("/", 1)[-1],
+            "status": "active",
+            "revision": 7,
+            "digest": "sha256:" + "a" * 64,
+            "content": {"prompt": {}, "kb_manifest": {}, "model": {}},
+        }
+
+
 def _frozen_payload(**over) -> dict:
+    versions = {
+        "P0": "sha256:" + "1" * 64,
+        "P1": "sha256:" + "2" * 64,
+        "K0": "sha256:" + "3" * 64,
+        "K1": "sha256:" + "3" * 64,
+        "M0": "sha256:" + "4" * 64,
+        "M1": "sha256:" + "4" * 64,
+    }
+    bad = {"versionset_id": "vs_bad00000001", "digest": "sha256:" + "5" * 64, "revision": 1}
+    good = {"versionset_id": "vs_good0000001", "digest": "sha256:" + "6" * 64, "revision": 1}
     payload = {
         "case_id": "case_b1",
         "hypothesis_layer": "prompt",
@@ -45,8 +88,13 @@ def _frozen_payload(**over) -> dict:
         "hidden_confirmation": ["cs-004", "cs-005"],
         "unaffected_controls": ["cs-013", "cs-014", "cs-015", "cs-016"],
         "repetitions": 5,
-        "versions": {},
+        "versions": versions,
+        "cell_versionsets": {"C": bad, "RP": good, "RK": bad, "RM": bad, "G": good},
         "random_seed_ref": "seed://exp_x/1",
+        "confidence": 0.95,
+        "runner_id": "eval-runner",
+        "lease_id": "lease_000000000001",
+        "fencing_token": 7,
     }
     payload.update(over)
     return payload
@@ -104,25 +152,59 @@ class _StubRunner:
     def __init__(self, *_a, **_k):
         pass
 
-    def run(self, plan, driver):
+    def run(
+        self,
+        plan,
+        driver,
+        *,
+        seed=None,
+        suppress_digest_capture=False,
+        prior_trials=None,
+    ):
+        assert seed is None or isinstance(seed, int)
+        assert suppress_digest_capture is True
+        assert isinstance(prior_trials, dict)
         return _StubResult()
+
+
+class _SlowStubRunner(_StubRunner):
+    def run(self, plan, driver, **kwargs):
+        time.sleep(1.2)
+        return super().run(plan, driver, **kwargs)
 
 
 # ------------------------------------------------------------------ A. experiment.execute
 
 
 def test_experiment_execute_tool_registered():
-    names = [t.name for t in eval_runner.mcp._tool_manager.list_tools()]
+    names = [t.name for t in eval_runner._profiled_mcp("attributionist")._tool_manager.list_tools()]
     assert "experiment.execute" in names
+    assert "versionset.list" in names
+    assert "versionset.get" in names
 
 
-def test_execute_rejects_state_not_frozen_or_running(monkeypatch):
+def test_versionset_tools_use_quality_read_surface(monkeypatch):
+    quality = FakeQA()
+    monkeypatch.setattr(eval_runner, "_qa", lambda: quality)
+
+    listed = eval_runner.versionset_list(status="active", limit=999)
+    exact = eval_runner.versionset_get("vs_active")
+
+    assert listed["items"][0]["versionset_id"] == "vs_active"
+    assert exact["revision"] == 7
+    assert exact["content"] == {"prompt": {}, "kb_manifest": {}, "model": {}}
+    assert quality.gets == [
+        ("/v2/versionsets", {"limit": 200, "status": "active"}),
+        ("/v2/versionsets/vs_active", None),
+    ]
+
+
+def test_execute_rejects_state_not_running(monkeypatch):
     fake = FakeCP({"state": "REQUESTED", "payload": _frozen_payload()})
     monkeypatch.setattr(eval_runner, "_cp", lambda: fake)
     with pytest.raises(eval_runner.McpError) as exc:
         eval_runner.experiment_execute("exp_x")
     assert exc.value.error_code == "VALIDATION_FAILED"
-    assert "PROTOCOL_FROZEN" in exc.value.message
     assert "RUNNING" in exc.value.message
 
 
@@ -155,6 +237,31 @@ def test_execute_returns_executing_and_spawns_background(monkeypatch):
     while not spawned and time.monotonic() < deadline:
         time.sleep(0.02)
     assert spawned == ["exp_x"]
+    assert eval_runner._wait_for_execution_thread("exp_x") is True
+
+
+def test_execute_deduplicates_one_in_process_background_worker(monkeypatch):
+    started = eval_runner.threading.Event()
+    release = eval_runner.threading.Event()
+    calls: list[str] = []
+
+    def blocked_bg(experiment_id: str):
+        calls.append(experiment_id)
+        started.set()
+        assert release.wait(2.0)
+
+    monkeypatch.setattr(eval_runner, "_execute_experiment_background", blocked_bg)
+    fake = FakeCP({"state": "RUNNING", "payload": _frozen_payload()})
+    monkeypatch.setattr(eval_runner, "_cp", lambda: fake)
+
+    first = eval_runner.experiment_execute("exp_x")
+    assert started.wait(2.0)
+    second = eval_runner.experiment_execute("exp_x")
+
+    assert first == second == {"status": "executing", "experiment_id": "exp_x"}
+    assert calls == ["exp_x"]
+    release.set()
+    assert eval_runner._wait_for_execution_thread("exp_x") is True
 
 
 def test_execute_not_found_propagates(monkeypatch):
@@ -170,13 +277,18 @@ def test_execute_not_found_propagates(monkeypatch):
     assert exc.value.error_code == "NOT_FOUND"
 
 
-def test_background_posts_cells_and_verdict(monkeypatch):
+def test_background_posts_cells_and_verdict(monkeypatch, tmp_path):
     fake = FakeCP({"state": "RUNNING", "payload": _frozen_payload()})
     monkeypatch.setattr(eval_runner, "_cp", lambda: fake)
     monkeypatch.setattr(eval_runner, "_build_execution_context", lambda eid, payload: (_plan(), None, None))
     monkeypatch.setattr(eval_runner, "QualityAPIClient", lambda settings: object())
-    monkeypatch.setattr(eval_runner, "DemoAppB1Driver", lambda client: object())
+    monkeypatch.setattr(eval_runner, "ImmutableVersionSetDriver", lambda refs: object())
     monkeypatch.setattr(eval_runner, "ExperimentRunner", _StubRunner)
+    monkeypatch.setattr(
+        eval_runner,
+        "_settings",
+        lambda: eval_runner.Settings(experiment_evidence_dir=str(tmp_path)),
+    )
 
     eval_runner._execute_experiment_background("exp_x")
 
@@ -190,31 +302,171 @@ def test_background_posts_cells_and_verdict(monkeypatch):
     verdicts = [(p, b) for p, b in fake.posts if p.endswith("/verdict")]
     assert len(verdicts) == 1
     verdict_body = verdicts[0][1]
-    assert verdict_body["verdict"] == "ATTRIBUTED"
-    assert verdict_body["attributed_layer"] == "prompt"
-    assert set(verdict_body["deltas"]) == {"prompt", "kb", "model_params"}
+    assert verdict_body == {
+        "fencing_token": 7,
+        "evidence_bundle": _StubResult.bundle,
+        "attribution_report": _StubResult.report,
+    }
+    assert all(body["fencing_token"] == 7 for _, body in cells)
+    heartbeats = [(p, b) for p, b in fake.posts if p.endswith("/heartbeat")]
+    assert heartbeats == [
+        (
+            "/v1/cases/case_b1/heartbeat",
+            {"worker_id": "eval-runner", "fencing_token": 7},
+        )
+    ]
 
 
-def test_background_progresses_state_if_not_running(monkeypatch):
-    """execute 允许 PROTOCOL_FROZEN：后台线程先推进 /start 再执行。"""
-    fake = FakeCP({"state": "PROTOCOL_FROZEN", "payload": _frozen_payload()})
+def test_prior_trial_map_is_exact_and_rejects_duplicate_keys():
+    item = {
+        "cell": "C",
+        "probe_id": "cs-001",
+        "repetition": 1,
+        "recovered": False,
+        "output_ref": "data:application/json;base64,e30=",
+        "output_digest": "sha256:" + "a" * 64,
+    }
+
+    mapped = eval_runner._prior_trial_map([item])
+
+    assert set(mapped) == {("C", "cs-001", 1)}
+    assert mapped[("C", "cs-001", 1)].output_ref == item["output_ref"]
+    with pytest.raises(RuntimeError, match="duplicate completed trial"):
+        eval_runner._prior_trial_map([item, item])
+
+
+def test_background_resumes_authoritative_trials_and_checkpoints_only_missing(
+    monkeypatch, tmp_path
+):
+    prior = {
+        "cell": "C",
+        "probe_id": "cs-001",
+        "repetition": 1,
+        "recovered": False,
+        "output_ref": "data:application/json;base64,e30=",
+        "output_digest": "sha256:" + "a" * 64,
+    }
+    fake = FakeCP(
+        {
+            "state": "RUNNING",
+            "payload": _frozen_payload(),
+            "completed_trials": [prior],
+        }
+    )
     monkeypatch.setattr(eval_runner, "_cp", lambda: fake)
-    monkeypatch.setattr(eval_runner, "_build_execution_context", lambda eid, payload: (_plan(), None, None))
+    monkeypatch.setattr(
+        eval_runner,
+        "_build_execution_context",
+        lambda eid, payload: (_plan(), None, None),
+    )
     monkeypatch.setattr(eval_runner, "QualityAPIClient", lambda settings: object())
-    monkeypatch.setattr(eval_runner, "DemoAppB1Driver", lambda client: object())
-    monkeypatch.setattr(eval_runner, "ExperimentRunner", _StubRunner)
+    monkeypatch.setattr(eval_runner, "ImmutableVersionSetDriver", lambda refs: object())
+    monkeypatch.setattr(
+        eval_runner,
+        "_settings",
+        lambda: eval_runner.Settings(experiment_evidence_dir=str(tmp_path)),
+    )
+
+    class ResumeRunner:
+        def __init__(self, *_args, artifact_dir, trial_callback, **_kwargs):
+            self.artifact_dir = artifact_dir
+            self.trial_callback = trial_callback
+
+        def run(self, plan, _driver, *, prior_trials, **_kwargs):
+            assert set(prior_trials) == {("C", "cs-001", 1)}
+            raw = {
+                "experiment_id": "exp_x",
+                "case_id": "case_b1",
+                "arm": "C",
+                "probe_id": "cs-002",
+                "repetition": 1,
+                "recovered": False,
+            }
+            path = self.artifact_dir / "exp_x" / "probe-outputs" / "C" / "cs-002-rep1.json"
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(json.dumps(raw), encoding="utf-8")
+            run = eval_runner.ProbeRun(
+                probe_id="cs-002",
+                repetition=1,
+                recovered=False,
+                output_ref=path.resolve().as_uri(),
+                output_digest=eval_runner.sha256_digest(raw),
+                answer="",
+            )
+            checkpointed = self.trial_callback("C", run)
+            assert checkpointed.output_ref.startswith("data:application/json;base64,")
+            return _StubResult()
+
+    monkeypatch.setattr(eval_runner, "ExperimentRunner", ResumeRunner)
 
     eval_runner._execute_experiment_background("exp_x")
 
-    started = [(p, b) for p, b in fake.posts if p.endswith("/start")]
-    assert len(started) == 1
-    assert started[0][1]["runner_id"] == "eval-runner"
+    trial_posts = [(path, body) for path, body in fake.posts if path.endswith("/trials")]
+    assert len(trial_posts) == 1
+    assert trial_posts[0][1]["probe_id"] == "cs-002"
+    assert all(body.get("probe_id") != "cs-001" for _, body in trial_posts)
 
 
-def test_background_failure_posts_cancel(monkeypatch):
+def test_background_renews_lease_while_evaluator_is_running(monkeypatch, tmp_path):
+    """A slow provider call must not leave the authoritative Case lease stale."""
+
+    fake = FakeCP({"state": "RUNNING", "payload": _frozen_payload()})
+    monkeypatch.setattr(eval_runner, "_cp", lambda: fake)
+    monkeypatch.setattr(
+        eval_runner,
+        "_build_execution_context",
+        lambda eid, payload: (_plan(), None, None),
+    )
+    monkeypatch.setattr(eval_runner, "QualityAPIClient", lambda settings: object())
+    monkeypatch.setattr(eval_runner, "ImmutableVersionSetDriver", lambda refs: object())
+    monkeypatch.setattr(eval_runner, "ExperimentRunner", _SlowStubRunner)
+    monkeypatch.setattr(
+        eval_runner,
+        "_settings",
+        lambda: eval_runner.Settings(
+            experiment_evidence_dir=str(tmp_path),
+            experiment_heartbeat_interval_seconds=1,
+        ),
+    )
+
+    eval_runner._execute_experiment_background("exp_x")
+
+    heartbeats = [(path, body) for path, body in fake.posts if path.endswith("/heartbeat")]
+    assert len(heartbeats) >= 2
+    assert all(
+        body == {"worker_id": "eval-runner", "fencing_token": 7}
+        for _, body in heartbeats
+    )
+    assert len([(path, body) for path, body in fake.posts if path.endswith("/verdict")]) == 1
+
+
+def test_experiment_run_posts_exact_lease_and_fencing(monkeypatch):
+    """只有显式 experiment.run 可携带 Case lease 启动归因。"""
+    fake = FakeCP()
+    monkeypatch.setattr(eval_runner, "_cp", lambda: fake)
+    monkeypatch.setattr(
+        eval_runner,
+        "_settings",
+        lambda: eval_runner.Settings(mcp_worker_id="eval-runner"),
+    )
+    eval_runner.experiment_run("exp_x", "lease_exact0001", 42)
+    assert fake.posts == [
+        (
+            "/v1/experiments/exp_x/start",
+            {"runner_id": "eval-runner", "lease_id": "lease_exact0001", "fencing_token": 42},
+        )
+    ]
+
+
+def test_background_failure_posts_cancel(monkeypatch, tmp_path):
     fake = FakeCP({"state": "RUNNING", "payload": _frozen_payload()})
     monkeypatch.setattr(eval_runner, "_cp", lambda: fake)
     monkeypatch.setattr(eval_runner, "_build_execution_context", lambda eid, payload: (_plan(), None, None))
+    monkeypatch.setattr(
+        eval_runner,
+        "_settings",
+        lambda: eval_runner.Settings(experiment_evidence_dir=str(tmp_path)),
+    )
 
     def boom(*_a, **_k):
         raise RuntimeError("demo-app down")
@@ -226,6 +478,9 @@ def test_background_failure_posts_cancel(monkeypatch):
     cancels = [(p, b) for p, b in fake.posts if p.endswith("/cancel")]
     assert len(cancels) == 1
     assert "demo-app down" in cancels[0][1]["reason"]
+    assert cancels[0][1]["runner_id"] == "eval-runner"
+    assert cancels[0][1]["lease_id"] == "lease_000000000001"
+    assert cancels[0][1]["fencing_token"] == 7
 
 
 # ------------------------------------------------------------------ B. probe.freeze 结构校验
@@ -260,6 +515,7 @@ def test_probe_freeze_rejects_empty_arrays(monkeypatch):
 def test_probe_freeze_valid_posts_protocol(monkeypatch):
     fake = FakeCP()
     monkeypatch.setattr(eval_runner, "_cp", lambda: fake)
+    frozen = _frozen_payload()
     result = eval_runner.probe_freeze(
         "exp_x",
         {
@@ -267,11 +523,17 @@ def test_probe_freeze_valid_posts_protocol(monkeypatch):
             "hidden_confirmation": ["cs-004"],
             "unaffected_controls": ["cs-013"],
             "repetitions": 5,
+            "versions": frozen["versions"],
+            "cell_versionsets": frozen["cell_versionsets"],
+            "random_seed_ref": "seed://exp_x/1",
+            "confidence": 0.95,
         },
     )
     assert result["probe_set_digest"].startswith("sha256:")
     assert fake.posts[0][0] == "/v1/experiments/exp_x/protocol"
     assert fake.posts[0][1]["discovery"] == ["cs-001"]
+    assert fake.posts[0][1]["execution_profile"] == "live"
+    assert set(fake.posts[0][1]["cell_versionsets"]) == {"C", "RP", "RK", "RM", "G"}
 
 
 # ------------------------------------------------------------------ B. experiment.plan 契约对齐

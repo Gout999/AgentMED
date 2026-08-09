@@ -1,0 +1,37 @@
+INFO:     Started server process [96147]
+INFO:     Waiting for application startup.
+INFO:app.main:control-plane up version=0.1.0
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:18090 (Press CTRL+C to quit)
+INFO:     127.0.0.1:63181 - "GET /healthz HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63182 - "GET /healthz HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63193 - "POST /v1/complaints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63196 - "POST /v1/complaints HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63206 - "GET /v1/cases/case_01KZGYT32G1NKH6KJ05548TYXK/events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63207 - "GET /v1/evidence?case_id=case_01KZGYT32G1NKH6KJ05548TYXK&limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63205 - "GET /v1/cases/case_01KZGYT32G1NKH6KJ05548TYXK HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63213 - "GET /v1/cases/case_01KZGYT32G1NKH6KJ05548TYXK/events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63212 - "GET /v1/cases/case_01KZGYT32G1NKH6KJ05548TYXK HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63214 - "GET /v1/evidence?case_id=case_01KZGYT32G1NKH6KJ05548TYXK&limit=100 HTTP/1.1" 200 OK
+INFO:app.services.read_views:env: quality api unavailable: network_error: [Errno 61] Connection refused
+INFO:app.services.read_views:env: quality api unavailable: network_error: [Errno 61] Connection refused
+INFO:     127.0.0.1:63211 - "GET /v1/env HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63204 - "GET /v1/env HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63225 - "GET /v1/cases/case_01KZGYT3378AH57SV8045DW69N/events HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63226 - "GET /v1/evidence?case_id=case_01KZGYT3378AH57SV8045DW69N&limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63224 - "GET /v1/cases/case_01KZGYT3378AH57SV8045DW69N HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63235 - "GET /v1/env HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63239 - "GET /v1/env HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63238 - "GET /v1/trust/ledger HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63234 - "GET /v1/cases?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63237 - "GET /v1/workorders?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63236 - "GET /v1/experiments?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63246 - "GET /v1/workorders?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63247 - "GET /v1/trust/ledger HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63244 - "GET /v1/cases?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63245 - "GET /v1/experiments?limit=100 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:63255 - "GET /v1/cases/case_01KZGYT32G1NKH6KJ05548TYXK/events HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [96147]

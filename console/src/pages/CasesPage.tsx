@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { Link } from "react-router-dom";
 import { AsyncBoundary } from "../components/AsyncState";
 import { Card } from "../components/Card";
@@ -10,28 +10,28 @@ import type { CaseSummary } from "../lib/types";
 
 const FILTERS = [
   { value: "", label: "全部" },
+  { value: "RECEIVED", label: "已接收" },
   { value: "OPEN", label: "待派发" },
   { value: "DISPATCHED", label: "处理中" },
   { value: "ATTRIBUTING", label: "归因中" },
   { value: "AWAITING_FIX", label: "待修复" },
   { value: "AWAITING_APPROVAL", label: "待审批" },
   { value: "RELEASING", label: "发布中" },
+  { value: "NOTIFYING", label: "通知中" },
   { value: "ESCALATED", label: "已升级" },
   { value: "CLOSED", label: "已关闭" },
+  { value: "MERGED", label: "已合并" },
+  { value: "DUPLICATE_DISMISSED", label: "重复已驳" },
 ] as const;
 
 export function CasesPage() {
   const [state, setState] = useState<string>("");
 
   const fetcher = useCallback(
-    () => api.listCases(state || undefined).then((r) => r.items),
+    (signal: AbortSignal) => api.listCases(state || undefined, signal).then((r) => r.items),
     [state],
   );
-  const { data, loading, error, reload } = usePageData(fetcher);
-
-  useEffect(() => {
-    reload();
-  }, [state, reload]);
+  const { data, loading, error, reload, refreshError } = usePageData(fetcher, `cases:${state}`);
 
   return (
     <div className="space-y-4">
@@ -65,6 +65,8 @@ export function CasesPage() {
           error={error}
           dataEmpty={(data?.length ?? 0) === 0}
           emptyHint={state ? `该状态（${state}）暂无 case` : "control-plane 尚无 case 数据"}
+          onRetry={reload}
+          staleError={refreshError}
         >
           <div className="overflow-x-auto">
             <table className="w-full min-w-[560px] text-left text-sm">
@@ -72,6 +74,7 @@ export function CasesPage() {
                 <tr className="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
                   <th className="pb-2 pr-4 font-medium">case_id</th>
                   <th className="pb-2 pr-4 font-medium">状态</th>
+                  <th className="pb-2 pr-4 font-medium">摘要</th>
                   <th className="pb-2 pr-4 font-medium">revision</th>
                   <th className="pb-2 pr-4 font-medium">更新时间</th>
                 </tr>
@@ -101,8 +104,9 @@ function CaseRow({ c }: { c: CaseSummary }) {
         </Link>
       </td>
       <td className="py-2.5 pr-4">
-        <StatusChip label={stateLabel(c.state)} tone={stateTone(c.state)} />
+        <StatusChip label={stateLabel("case", c.state)} tone={stateTone("case", c.state)} />
       </td>
+      <td className="max-w-[320px] truncate py-2.5 pr-4 text-xs text-gray-600">{c.title ?? "—"}</td>
       <td className="py-2.5 pr-4 text-xs tabular-nums text-gray-600">{c.revision}</td>
       <td className="py-2.5 pr-4 text-xs tabular-nums text-gray-500">{formatTime(c.updated_at)}</td>
     </tr>

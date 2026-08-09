@@ -218,7 +218,7 @@
           "items": {
             "type": "object",
             "additionalProperties": false,
-            "required": ["probe_id", "repetition", "recovered"],
+            "required": ["probe_id", "repetition", "recovered", "output_ref", "output_digest"],
             "properties": {
               "probe_id": { "type": "string" },
               "repetition": {
@@ -229,6 +229,10 @@
               "output_ref": {
                 "type": "string",
                 "description": "原始输出 artifact 引用（可回放复核）"
+              },
+              "output_digest": {
+                "$ref": "#/$defs/digest",
+                "description": "原始输出 JSON 的 canonical SHA-256"
               }
             }
           },

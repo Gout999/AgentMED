@@ -34,8 +34,10 @@ services:
       STEPFUN_API_KEY: ${STEPFUN_API_KEY:-}
       STEPFUN_BASE_URL: ${STEPFUN_BASE_URL:-https://api.stepfun.com/step_plan/v1}
       STEPFUN_MODEL: step-3.7-flash
-      CASELOOP_READ_TOKEN: ${CASELOOP_READ_TOKEN:-conformance-read-token}
-      CASELOOP_WRITE_TOKEN: ${CASELOOP_WRITE_TOKEN:-conformance-write-token}
+      CASELOOP_READ_TOKEN: ${CASELOOP_READ_TOKEN:?CASELOOP_READ_TOKEN is required}
+      CASELOOP_WRITE_TOKEN: ${CASELOOP_WRITE_TOKEN:?CASELOOP_WRITE_TOKEN is required}
+      RELEASE_CONTROLLER_CLIENT_SECRET: ${RELEASE_CONTROLLER_CLIENT_SECRET:?RELEASE_CONTROLLER_CLIENT_SECRET is required}
+      QUALITY_READER_CLIENT_SECRET: ${QUALITY_READER_CLIENT_SECRET:?QUALITY_READER_CLIENT_SECRET is required}
       OTEL_EXPORTER_OTLP_ENDPOINT: ${OTEL_EXPORTER_OTLP_ENDPOINT:-}
       LLM_RPM_LIMIT: "8"
     ports:
@@ -48,14 +50,29 @@ services:
   # ---- Wave 3：control-plane 服务化（确定性控制面）—— 仅 APPEND，不动上方服务 ----
   control-plane:
     build:
-      context: ../control-plane
+      context: ..
+      dockerfile: control-plane/Dockerfile
     container_name: caseloop-control-plane
     environment:
       # compose 内部网络：直连 postgres 容器（宿主映射见 ports）
       DATABASE_URL: postgresql+psycopg://caseloop:caseloop@postgres:5432/control_plane
       # 被治理应用 Quality API（写面唯一入口）；容器内 127.0.0.1 不是 demo-app
       QUALITY_API_BASE_URL: http://demo-app:8080
-      QUALITY_API_TOKEN: ${CASELOOP_WRITE_TOKEN:-conformance-write-token}
+      QUALITY_API_TOKEN: ${CASELOOP_WRITE_TOKEN:?CASELOOP_WRITE_TOKEN is required}
+      # Gate/WorkOrder/Approval/Release mutation boundary (read views remain Console-readable).
+      CONTROL_PLANE_TOKEN: ${CONTROL_PLANE_TOKEN:?CONTROL_PLANE_TOKEN is required}
+      APPROVAL_AUTHORITY_TOKEN: ${APPROVAL_AUTHORITY_TOKEN:?APPROVAL_AUTHORITY_TOKEN is required}
+      GATE_AUTHORITY_TOKEN: ${GATE_AUTHORITY_TOKEN:?GATE_AUTHORITY_TOKEN is required}
+      CONTROL_PLANE_ROLE_TOKENS_JSON: ${CONTROL_PLANE_ROLE_TOKENS_JSON:?CONTROL_PLANE_ROLE_TOKENS_JSON is required}
+      REQUIRE_MCP_ROLE_TOKENS: "true"
+      # Controlled B1 demo injection is disabled unless the live-demo operator
+      # opts in explicitly.  The control plane remains the only caller of the
+      # Quality write endpoint.
+      ALLOW_DEMO_FAULT_INJECTION: ${ALLOW_DEMO_FAULT_INJECTION:-false}
+      NOTIFICATION_ADAPTER: ${NOTIFICATION_ADAPTER:-disabled}
+      FEISHU_APP_ID: ${FEISHU_APP_ID:-}
+      FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
+      FEISHU_BASE_URL: ${FEISHU_BASE_URL:-https://open.feishu.cn}
     ports:
       - "18090:8090"   # 宿主 8090 被占用，映射到 18090
     depends_on:
@@ -68,6 +85,28 @@ services:
       timeout: 5s
       retries: 5
       start_period: 10s
+
+  # Fixed Phase-1 warm worker: transactional outbox dispatcher. This is one
+  # explicit process, not a dynamic autoscaling claim.
+  outbox-dispatcher:
+    build:
+      context: ..
+      dockerfile: control-plane/Dockerfile
+    container_name: caseloop-outbox-dispatcher
+    entrypoint: ["python", "-m", "app.workers.outbox"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://caseloop:caseloop@postgres:5432/control_plane
+      OUTBOX_RELAY_INTERVAL_SECONDS: "1"
+      OUTBOX_CLAIM_TTL_SECONDS: "30"
+      OUTBOX_MAX_ATTEMPTS: "5"
+      NOTIFICATION_ADAPTER: ${NOTIFICATION_ADAPTER:-disabled}
+      FEISHU_APP_ID: ${FEISHU_APP_ID:-}
+      FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
+      FEISHU_BASE_URL: ${FEISHU_BASE_URL:-https://open.feishu.cn}
+    depends_on:
+      control-plane:
+        condition: service_healthy
+    restart: unless-stopped
 
   # ---- T7：console 运营后台（评委看板）—— 仅 APPEND，不动上方服务 ----
   console:

@@ -1,22 +1,36 @@
-# Console 数据缺口清单（T7）
+# Console 剩余真实缺口（P0-3）
 
-> 原则：**不为凑数据去改已验收的后端代码，也严禁编造假数据**。以下缺口全部以「数据待接入」
-> 标注在页面上，待 control-plane / mcp-servers 暴露对应 REST 端点后接入。均在 scope 外。
+> T7 原清单 #1–#7 在当时是准确的：env、Trust、events、Experiment full、WorkOrders、Gates
+> 尚无可用 REST 投影。朋友的 T8 `9afcefa` 已提供这些读端点，本轮 P0-3 已接入生产页面；
+> 静态 digest、固定 `0.00` 和假 Gate 行均已移除。
 
-| # | 视图 | 缺口 | 建议接入方式（control-plane 侧） |
-|---|------|------|------|
-| 1 | 顶栏 · demo-app 基线 digest | console 只通 control-plane，control-plane 无 demo-app 透传端点；现用静态快照 `vs_baseline0000000001` digest `sha256:8fc6a7ac…`（demo-app 实测 active） | control-plane 增加 `GET /v1/env`（透传 demo-app active versionset digest），或 nginx 增 `/api/demo/` 反代 demo-app:8080 |
-| 2 | 总览信任卡 / 信任页 · 账本网格 / 拒绝晋升 | `trust_ledger` 表在 control-plane 库但无 REST 读端点；现环境表为空（真实空） | control-plane 增加 `GET /v1/trust/ledger`（risk_class × action_type × epoch 投影 + Wilson LB/UB + autonomy_state）与 `GET /v1/trust/denials`（audit trust.promotion_rejected） |
-| 3 | 案例详情 · 时间线 | events 表在库但 control-plane 无 `GET /v1/cases/{id}/events`；`case.timeline` 属 mcp-case-admin（:8001，非 REST） | control-plane 增加 `GET /v1/cases/{id}/events`（按 seq 升序返回 event_type/payload/actor/occurred_at），或网关透传 case-admin MCP |
-| 4 | 案例详情 · 证据引用面板 | case aggregate payload 未投影 evidence ref（随案件推进到 ATTRIBUTING 后才可能出现） | 由 #3 events 端点渲染，无需新端点 |
-| 5 | 实验详情 · 5-cell 条形 / Δ 与 CI / 归因层 | cell 级 recovery_rate 与 verdict 的 deltas/attributed_layer 在 events，aggregate payload 只投影 `cell_progress`(末位)/`verdict`/`report_ref` | control-plane 实验详情 `_view` 补投影 cells/deltas/CI；或由 #3 泛化 events 端点透出 |
-| 6 | 审批 · workorder hash / 提请人 | `workorders` 表有 hash、drafted 事件有 author_agent，但 control-plane **无 `GET /v1/workorders`**；changeset aggregate payload 未投影这两字段 | control-plane 增加 `GET /v1/workorders`（workorder_id/hash/case_id/channel/payload/created_at） |
-| 7 | 信任页 · 门禁报告列表 | eval/gate 数据在 mcp_* 表（mcp-eval-runner `gate.report`），control-plane 无 REST | control-plane 增加 `GET /v1/gates`（rule_track/judge_track/deterministic/live_e2e 分列 + verdict + report_hash），或网关透传 eval-runner MCP |
+## 已关闭的 T7 缺口
 
-## 审批写路径说明
+| 原编号 | 当前结果 |
+|---|---|
+| #1 demo-app baseline | `/v1/env`；不可达显示 `UNKNOWN`，不再使用固定 digest/绿灯 |
+| #2 Trust | `/v1/trust/ledger`、`/v1/trust/denials`；读取 P0-2 权威 ledger/audit |
+| #3 Case timeline | `/v1/cases/{id}/events`；显示真实 seq/actor/causation/trace/payload |
+| #4 Evidence refs | `/v1/evidence`；只投影通过来源完整性检查的 ref/digest |
+| #5 Experiment cells/deltas | `?_view=full`；CI 数据不足时诚实显示 `UNKNOWN` |
+| #6 WorkOrder hash/requester | `/v1/workorders`；不可变 WorkOrder 为权威并重验 payload/投影列与 Gate binding；读面不返回完整 payload |
+| #7 Gate reports | `/v1/gates`；读取权威 GateReport，未绑定为 `UNBOUND`，损坏或绑定不完整 fail closed 为 `integrity_error/UNKNOWN` |
 
-待审批队列本身可读（`/api/v1/changesets?state=AWAITING_APPROVAL`），但**批准/拒绝按钮按规格禁用**并标注
-「经 release-admin MCP 审批」：审批写面是 release-admin MCP `approval.request`（common/approval.py 做
-hash 绑定 + nonce 原子消费 + expiry 校验，spec §5.2 / §11.1），control-plane 的 `POST /v1/changesets/{id}/approve|reject`
-需要 `approval_id` + `workorder_hash` 才能构造有效调用，而这两者均无 REST 读端点可供 console 获取。
-为避免「绕过审批机制直接改状态机」的反模式，控制台定位为**只读监控面**，写动作保留在 MCP 侧。
+## 仍未关闭
+
+1. **Evidence artifact store**：控制面只有引用与 digest，没有 artifact fetch/内容校验服务。
+   Console 必须继续显示 `artifact UNKNOWN`，不能把可见 URI 当成已验证内容。
+2. **Experiment confidence interval 输入**：现有事件没有每臂样本量/方差，无法真实重算 95% CI。
+   页面显示 `UNKNOWN`；不得制造 CI 或固定数值。
+3. **Live Quality API**：本地 real-stack 测试刻意不启动 demo-app，因此 `/v1/env` 的
+   `demo_app=unavailable` 是预期。live-provider 环境需另行凭证与真实 demo-app。
+4. **Live Feishu**：Notification 的 `feishu-mock` 只用于明确标注的 contract/replay；真实飞书
+   E2E 仍被外部凭证阻塞，Console 不得暗示已经 live 发送。
+5. **前端依赖主版本债务**：在保留朋友 React 18 / Router 6 / Vite 5 技术栈的前提下已做同主版本
+   安全补丁；当前 npm audit 仍有 4 moderate + 1 high，清零需要 Router/Vite 跨主版本升级，不能混入
+   P0-3。Vite real-stack runner 仅绑定 `127.0.0.1`，后续应作为独立升级任务处理。
+
+## 写面边界
+
+Console 保持只读。批准、拒绝、stage、canary、promote、rollback 等动作仍必须经独立审批权威和
+Release Controller；不得为了做按钮而让浏览器直接构造授权或调用 Quality API 写面。

@@ -7,8 +7,15 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_app_settings, get_db_session
+from app.api.deps import (
+    get_app_settings,
+    get_db_session,
+    get_quality_client,
+    require_internal_write,
+    require_principal_worker,
+)
 from app.config import Settings
+from app.quality.client import QualityClientProtocol
 from app.services import read_views
 from app.services.audit import AuditWriteError
 from app.services.experiment_service import ExperimentService, ExperimentServiceError
@@ -23,13 +30,16 @@ class ExperimentCreateIn(BaseModel):
 
 
 class ProtocolFreezeIn(BaseModel):
+    execution_profile: str = "live"
     probe_set_digest: str
     discovery: list[str]
     hidden_confirmation: list[str]
     unaffected_controls: list[str]
     repetitions: int
     versions: dict[str, str]
+    cell_versionsets: dict[str, dict[str, Any]]
     random_seed_ref: str
+    confidence: float = 0.95
 
 
 class ExperimentStartIn(BaseModel):
@@ -42,34 +52,58 @@ class CellCompletedIn(BaseModel):
     cell: str
     arm_order_index: int
     recovery_rate: float
-    fencing_token: Optional[int] = None
+    fencing_token: int
+
+
+class TrialCompletedIn(BaseModel):
+    cell: str
+    probe_id: str
+    repetition: int
+    recovered: bool
+    output_ref: str
+    output_digest: str
+    fencing_token: int
 
 
 class VerdictIn(BaseModel):
-    verdict: str
-    deltas: dict[str, float]
-    evidence_bundle_ref: str
-    report_ref: str
-    attributed_layer: Optional[str] = None
+    fencing_token: int
+    evidence_bundle: dict[str, Any]
+    attribution_report: dict[str, Any]
 
 
 class ReasonIn(BaseModel):
     reason: str
 
 
+class RunnerCancelIn(BaseModel):
+    reason: str
+    runner_id: str
+    lease_id: str
+    fencing_token: int
+
+
 def _raise(exc: ExperimentServiceError) -> None:
     status = {
         "not_found": 404,
         "validation_failed": 422,
+        "hash_mismatch": 422,
+        "quality_api_error": 502,
         "validation_error": 400,  # S0-006：空探针集冻结 = 领域校验错误 → 400
         "illegal_transition": 422,
         "revision_conflict": 409,
+        "idempotency_conflict": 409,
+        "lease_lost": 409,
+        "incomplete_experiment": 422,
     }.get(exc.code, 400)
     raise HTTPException(status_code=status, detail={"code": exc.code, "message": exc.message, **exc.extra})
 
 
-def _svc(session: Session, settings: Settings) -> ExperimentService:
-    return ExperimentService(session, settings)
+def _svc(
+    session: Session,
+    settings: Settings,
+    quality: QualityClientProtocol | None = None,
+) -> ExperimentService:
+    return ExperimentService(session, settings, quality)
 
 
 @router.post("/v1/experiments")
@@ -77,6 +111,7 @@ def create_experiment(
     body: ExperimentCreateIn,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
     try:
         return _svc(session, settings).create(
@@ -127,17 +162,22 @@ def freeze_protocol(
     body: ProtocolFreezeIn,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    quality: QualityClientProtocol = Depends(get_quality_client),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
     try:
-        return _svc(session, settings).freeze_protocol(
+        return _svc(session, settings, quality).freeze_protocol(
             experiment_id,
+            execution_profile=body.execution_profile,
             probe_set_digest=body.probe_set_digest,
             discovery=body.discovery,
             hidden_confirmation=body.hidden_confirmation,
             unaffected_controls=body.unaffected_controls,
             repetitions=body.repetitions,
             versions=body.versions,
+            cell_versionsets=body.cell_versionsets,
             random_seed_ref=body.random_seed_ref,
+            confidence=body.confidence,
         )
     except AuditWriteError as exc:
         raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
@@ -152,7 +192,9 @@ def start_experiment(
     body: ExperimentStartIn,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
+    require_principal_worker(_authority, body.runner_id)
     try:
         return _svc(session, settings).start(
             experiment_id, runner_id=body.runner_id, lease_id=body.lease_id, fencing_token=body.fencing_token
@@ -170,6 +212,7 @@ def cell_completed(
     body: CellCompletedIn,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
     try:
         return _svc(session, settings).cell_completed(
@@ -186,21 +229,61 @@ def cell_completed(
     return {}
 
 
+@router.post("/v1/experiments/{experiment_id}/trials")
+def trial_completed(
+    experiment_id: str,
+    body: TrialCompletedIn,
+    session: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_app_settings),
+    quality: QualityClientProtocol = Depends(get_quality_client),
+    _authority: str = Depends(require_internal_write),
+) -> dict[str, Any]:
+    try:
+        return _svc(session, settings, quality).trial_completed(
+            experiment_id,
+            cell=body.cell,
+            probe_id=body.probe_id,
+            repetition=body.repetition,
+            recovered=body.recovered,
+            output_ref=body.output_ref,
+            output_digest=body.output_digest,
+            fencing_token=body.fencing_token,
+        )
+    except AuditWriteError as exc:
+        raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
+    except ExperimentServiceError as exc:
+        _raise(exc)
+    return {}
+
+
+@router.get("/v1/experiments/{experiment_id}/trials")
+def list_completed_trials(
+    experiment_id: str,
+    session: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_app_settings),
+) -> dict[str, Any]:
+    try:
+        return _svc(session, settings).list_completed_trials(experiment_id)
+    except ExperimentServiceError as exc:
+        _raise(exc)
+    return {}
+
+
 @router.post("/v1/experiments/{experiment_id}/verdict")
 def verdict_computed(
     experiment_id: str,
     body: VerdictIn,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    quality: QualityClientProtocol = Depends(get_quality_client),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
     try:
-        return _svc(session, settings).verdict_computed(
+        return _svc(session, settings, quality).verdict_computed(
             experiment_id,
-            verdict=body.verdict,
-            deltas=body.deltas,
-            evidence_bundle_ref=body.evidence_bundle_ref,
-            report_ref=body.report_ref,
-            attributed_layer=body.attributed_layer,
+            fencing_token=body.fencing_token,
+            evidence_bundle=body.evidence_bundle,
+            attribution_report=body.attribution_report,
         )
     except AuditWriteError as exc:
         raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
@@ -215,6 +298,7 @@ def escalate_full_factorial(
     body: ReasonIn,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
     try:
         return _svc(session, settings).escalate_full_factorial(experiment_id, reason=body.reason)
@@ -228,12 +312,20 @@ def escalate_full_factorial(
 @router.post("/v1/experiments/{experiment_id}/cancel")
 def cancel_experiment(
     experiment_id: str,
-    body: ReasonIn,
+    body: RunnerCancelIn,
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
+    require_principal_worker(_authority, body.runner_id)
     try:
-        return _svc(session, settings).cancel(experiment_id, reason=body.reason)
+        return _svc(session, settings).cancel(
+            experiment_id,
+            reason=body.reason,
+            runner_id=body.runner_id,
+            lease_id=body.lease_id,
+            fencing_token=body.fencing_token,
+        )
     except AuditWriteError as exc:
         raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
     except ExperimentServiceError as exc:

@@ -50,6 +50,12 @@ class LifecycleRequest(BaseModel):
     note: Optional[str] = None
 
 
+class PromoteRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    expected_revision: Optional[int] = Field(default=None, ge=1)
+    expected_active_digest: str = Field(pattern=r"^sha256:[0-9a-f]{64}$")
+
+
 class CanaryRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
     expected_revision: Optional[int] = Field(default=None, ge=1)

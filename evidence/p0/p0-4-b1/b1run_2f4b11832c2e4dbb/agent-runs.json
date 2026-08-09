@@ -1,0 +1,58 @@
+{
+  "dynamic_scaling": false,
+  "mode": "isolated-replay",
+  "not_live_agent_execution": true,
+  "pool": "phase-1-fixed-warm-pool",
+  "recording_kind": "deterministic-replay-execution-trace",
+  "runs": [
+    {
+      "component": "complaint-ingest",
+      "llm_invoked": false,
+      "source_ids": [
+        "evt_01KZKCD9AGR2JPBDD6S0EA5BJJ"
+      ]
+    },
+    {
+      "component": "experiment-controller",
+      "llm_invoked": false,
+      "source_ids": [
+        "evt_01KZKCD9APWYVGT1QW5HE4KRFX",
+        "evt_01KZKCD9APM40PA8AW2E906FMV",
+        "evt_01KZKCDA00E3W2WX4H92NYH95E"
+      ]
+    },
+    {
+      "component": "repair-proposal-controller",
+      "llm_invoked": false,
+      "source_ids": [
+        "aud_01KZKCDAGQXEJG0RG2EWW5PVDX",
+        "aud_01KZKCDAH3FB9GCVKBZM78JNCR"
+      ]
+    },
+    {
+      "component": "gate-controller",
+      "llm_invoked": false,
+      "source_ids": [
+        "evt_01KZKCDAH0KPW1T6KWA43D17JJ",
+        "evt_01KZKCDBKJQP81DNX7N3EGVWE0"
+      ]
+    },
+    {
+      "component": "release-controller",
+      "llm_invoked": false,
+      "source_ids": [
+        "evt_01KZKCDAHDGGREYE3X6BK8RQ8W",
+        "evt_01KZKCDAHK16YGKPVG9G2V3VFV",
+        "evt_01KZKCDBMGJ160QHEPNN7ATDXR"
+      ]
+    },
+    {
+      "component": "notification-closure-controller",
+      "llm_invoked": false,
+      "source_ids": [
+        "evt_01KZKCDBNNBDZA968ZE3M03RGF",
+        "evt_01KZKCDBNPPGXYD8TBG544CGTF"
+      ]
+    }
+  ]
+}

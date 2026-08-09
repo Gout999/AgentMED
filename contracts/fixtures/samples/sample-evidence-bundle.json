@@ -52,91 +52,106 @@
           "probe_id": "cs-001",
           "repetition": 1,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-001-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-001-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-001",
           "repetition": 2,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-001-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-001-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-001",
           "repetition": 3,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-001-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-001-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-002",
           "repetition": 1,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-002-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-002-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-002",
           "repetition": 2,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-002-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-002-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-002",
           "repetition": 3,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-002-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-002-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-003",
           "repetition": 1,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-003-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-003-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-003",
           "repetition": 2,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-003-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-003-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-003",
           "repetition": 3,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-003-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-003-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-004",
           "repetition": 1,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-004-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-004-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-004",
           "repetition": 2,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-004-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-004-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-004",
           "repetition": 3,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-004-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-004-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-005",
           "repetition": 1,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-005-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-005-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-005",
           "repetition": 2,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-005-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-005-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-005",
           "repetition": 3,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-005-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-005-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         }
       ],
       "recovery_rate": 0.0,
@@ -153,91 +168,106 @@
           "probe_id": "cs-001",
           "repetition": 1,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-001-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-001-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-001",
           "repetition": 2,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-001-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-001-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-001",
           "repetition": 3,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-001-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-001-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-002",
           "repetition": 1,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-002-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-002-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-002",
           "repetition": 2,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-002-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-002-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-002",
           "repetition": 3,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-002-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-002-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-003",
           "repetition": 1,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-003-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-003-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-003",
           "repetition": 2,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-003-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-003-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-003",
           "repetition": 3,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-003-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-003-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-004",
           "repetition": 1,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-004-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-004-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-004",
           "repetition": 2,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-004-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-004-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-004",
           "repetition": 3,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-004-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-004-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-005",
           "repetition": 1,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-005-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-005-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-005",
           "repetition": 2,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-005-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-005-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-005",
           "repetition": 3,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-005-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-005-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         }
       ],
       "recovery_rate": 1.0,
@@ -254,91 +284,106 @@
           "probe_id": "cs-001",
           "repetition": 1,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-001-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-001-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-001",
           "repetition": 2,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-001-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-001-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-001",
           "repetition": 3,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-001-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-001-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-002",
           "repetition": 1,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-002-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-002-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-002",
           "repetition": 2,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-002-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-002-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-002",
           "repetition": 3,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-002-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-002-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-003",
           "repetition": 1,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-003-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-003-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-003",
           "repetition": 2,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-003-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-003-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-003",
           "repetition": 3,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-003-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-003-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-004",
           "repetition": 1,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-004-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-004-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-004",
           "repetition": 2,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-004-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-004-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-004",
           "repetition": 3,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-004-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-004-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-005",
           "repetition": 1,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-005-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-005-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-005",
           "repetition": 2,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-005-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-005-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-005",
           "repetition": 3,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-005-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-005-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         }
       ],
       "recovery_rate": 0.0,
@@ -355,91 +400,106 @@
           "probe_id": "cs-001",
           "repetition": 1,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-001-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-001-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-001",
           "repetition": 2,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-001-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-001-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-001",
           "repetition": 3,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-001-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-001-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-002",
           "repetition": 1,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-002-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-002-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-002",
           "repetition": 2,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-002-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-002-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-002",
           "repetition": 3,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-002-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-002-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-003",
           "repetition": 1,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-003-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-003-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-003",
           "repetition": 2,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-003-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-003-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-003",
           "repetition": 3,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-003-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-003-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-004",
           "repetition": 1,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-004-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-004-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-004",
           "repetition": 2,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-004-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-004-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-004",
           "repetition": 3,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-004-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-004-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-005",
           "repetition": 1,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-005-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-005-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-005",
           "repetition": 2,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-005-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-005-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-005",
           "repetition": 3,
           "recovered": false,
-          "output_ref": "file://evidence/b1/exp/cs-005-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-005-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         }
       ],
       "recovery_rate": 0.0,
@@ -456,91 +516,106 @@
           "probe_id": "cs-001",
           "repetition": 1,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-001-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-001-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-001",
           "repetition": 2,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-001-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-001-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-001",
           "repetition": 3,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-001-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-001-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-002",
           "repetition": 1,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-002-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-002-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-002",
           "repetition": 2,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-002-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-002-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-002",
           "repetition": 3,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-002-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-002-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-003",
           "repetition": 1,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-003-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-003-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-003",
           "repetition": 2,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-003-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-003-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-003",
           "repetition": 3,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-003-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-003-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-004",
           "repetition": 1,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-004-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-004-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-004",
           "repetition": 2,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-004-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-004-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-004",
           "repetition": 3,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-004-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-004-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-005",
           "repetition": 1,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-005-rep1.txt"
+          "output_ref": "file://evidence/b1/exp/cs-005-rep1.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-005",
           "repetition": 2,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-005-rep2.txt"
+          "output_ref": "file://evidence/b1/exp/cs-005-rep2.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         },
         {
           "probe_id": "cs-005",
           "repetition": 3,
           "recovered": true,
-          "output_ref": "file://evidence/b1/exp/cs-005-rep3.txt"
+          "output_ref": "file://evidence/b1/exp/cs-005-rep3.txt",
+          "output_digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
         }
       ],
       "recovery_rate": 1.0,

@@ -1,4 +1,10 @@
-import { DIGEST_SHORT_LEN, STATE_META, VERDICT_META, type StatusTone } from "./constants";
+import {
+  DIGEST_SHORT_LEN,
+  STATE_META_BY_AGGREGATE,
+  VERDICT_META,
+  type AggregateKind,
+  type StatusTone,
+} from "./constants";
 
 /** ISO 时间 → 本地可读（2026-08-08 18:43）。无效输入回退原始串。 */
 export function formatTime(iso: string | null | undefined): string {
@@ -48,15 +54,15 @@ export function digestHex(value: string | null | undefined): string {
 }
 
 /** 状态 → 中文标签；未知状态回退原串。 */
-export function stateLabel(state: string | null | undefined): string {
+export function stateLabel(kind: AggregateKind, state: string | null | undefined): string {
   if (!state) return "—";
-  return STATE_META[state]?.label ?? state;
+  return STATE_META_BY_AGGREGATE[kind][state]?.label ?? state;
 }
 
 /** 状态 → 语义色 tone；未知状态 gray。 */
-export function stateTone(state: string | null | undefined): StatusTone {
+export function stateTone(kind: AggregateKind, state: string | null | undefined): StatusTone {
   if (!state) return "gray";
-  return STATE_META[state]?.tone ?? "gray";
+  return STATE_META_BY_AGGREGATE[kind][state]?.tone ?? "gray";
 }
 
 /** 实验裁决 → 中文标签；非三态值原样返回。 */

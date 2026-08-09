@@ -19,7 +19,7 @@ eval-harness/
 │   ├── stats.py           # Wilson 双侧区间 + Newcombe hybrid 差值 95%CI
 │   ├── rate_limit.py      # 令牌桶限速（8 RPM）+ 429 指数退避
 │   ├── llm.py             # StepFun 直连（temperature=0，记录模型 digest）
-│   ├── client.py          # Quality API 客户端（/chat + /admin 注入/复位）
+│   ├── client.py          # Quality API 只读客户端（精确 VersionSet /chat + 版本读取）
 │   ├── adjudicate.py      # R1–R5 三态裁决（确定性代码）
 │   ├── experiment.py      # 5-cell 对照实验执行器 + 报告构建
 │   ├── gate.py            # 双轨门禁（规则轨 + 裁判轨 + 确定性/live 分离）
@@ -54,13 +54,28 @@ cp .env.example .env                     # 按需修改；密钥不入库
 live 集成依赖：demo-app 运行于 `CASELOOP_QUALITY_API_BASE_URL`（默认 `http://127.0.0.1:8080`）、
 `STEPFUN_API_KEY`（主控约定读 `~/Documents/kimi/workspace/ACL-team/.env`）。
 
-## 跑 B1 对照实验（交付证据）
+## 跑 live B1 对照实验（只读精确 VersionSet）
 
 ```bash
-.venv/bin/python scripts/run_b1_experiment.py --reps 3 --seed 20260807
+.venv/bin/python scripts/run_b1_experiment.py \
+  --bad-versionset-id "$CASELOOP_B1_BAD_VERSIONSET_ID" \
+  --good-versionset-id "$CASELOOP_B1_GOOD_VERSIONSET_ID" \
+  --reps 3 --seed 20260807
 # 产出 evidence/exp_b1run*/evidence-bundle.json + attribution-report.json
 # 预期：裁决=ATTRIBUTED，故障层=prompt，Δ_prompt>0 且 CI 下界>δ_min=0.2
 ```
+
+## 跑真实候选门禁
+
+```bash
+.venv/bin/python scripts/run_gate.py \
+  --versionset-id vs_candidate \
+  --out-dir evidence/gate-vs-candidate
+```
+
+命令只调用 Quality API 读接口，并始终执行指定 VersionSet；不会追随 `active` 指针，
+也不会由评测进程注入或复位故障。contract/replay、候选响应和 live-provider 结果分别落证据；
+任何轨道为 failed/error/skipped 时都会以非零退出码 fail closed。
 
 ## 关键设计（与契约对齐）
 
@@ -83,13 +98,17 @@ live 集成依赖：demo-app 运行于 `CASELOOP_QUALITY_API_BASE_URL`（默认 
 出现即命中），拒绝侧（`must_not_include`）保持严格连续匹配防漏检。该组合是确定性的，
 见 `tests/unit/test_probe_judge.py` 的对抗用例。
 
-## 运行态纪律
-
-live 集成会注入故障/改状态。**每次集成测试结束（无论成败）必须执行**：
+## 完整 B1 命令与运行态纪律
 
 ```bash
-bash demo-app/scripts/reset_state.sh
+cd ..
+make demo-b1-replay
+make demo-b1-live
 ```
+
+eval-harness 没有 Quality 写权限，也不会注入/复位状态。归因与 Gate 始终读取调用方提供的
+不可变 VersionSet；候选只可由 Release Controller 创建。`demo-b1-replay` 与
+`demo-b1-live` 分开报告，live 缺凭证会明确 BLOCKED 并非零退出，绝不静默使用 replay。
 
 ## 开放问题
 

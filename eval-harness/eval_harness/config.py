@@ -7,12 +7,13 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-# 加载工作目录/仓库根的 .env（若存在）
+# Interactive local runs may load repository-owned dotenv files. Orchestrated
+# provider subprocesses set CASELOOP_DISABLE_DOTENV=1 and receive a strict
+# purpose-scoped environment so they cannot discover controller/approval secrets.
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-load_dotenv(_REPO_ROOT / ".env")
-load_dotenv(Path.cwd() / ".env")
-# live 测试凭证来源（主控约定：~/Documents/kimi/workspace/ACL-team/.env）
-load_dotenv(Path.home() / "Documents/kimi/workspace/ACL-team/.env")
+if os.environ.get("CASELOOP_DISABLE_DOTENV") != "1":
+    load_dotenv(_REPO_ROOT / ".env")
+    load_dotenv(Path.cwd() / ".env")
 
 
 def _env(name: str, default: str = "") -> str:
@@ -26,11 +27,17 @@ class Settings:
         default_factory=lambda: _env("CASELOOP_QUALITY_API_BASE_URL", "http://127.0.0.1:8080")
     )
     read_token: str = field(default_factory=lambda: _env("CASELOOP_READ_TOKEN", "conformance-read-token"))
-    write_token: str = field(default_factory=lambda: _env("CASELOOP_WRITE_TOKEN", "conformance-write-token"))
+    quality_api_timeout_seconds: float = field(
+        default_factory=lambda: float(_env("CASELOOP_QUALITY_API_TIMEOUT_SECONDS", "95"))
+    )
 
     # StepFun（运动员模型）
     stepfun_api_key: str = field(default_factory=lambda: _env("STEPFUN_API_KEY"))
-    stepfun_base_url: str = field(default_factory=lambda: _env("STEPFUN_BASE_URL", "https://api.stepfun.com/v1"))
+    stepfun_base_url: str = field(
+        default_factory=lambda: _env(
+            "STEPFUN_BASE_URL", "https://api.stepfun.com/step_plan/v1"
+        )
+    )
     stepfun_model: str = field(default_factory=lambda: _env("STEPFUN_MODEL", "step-3.7-flash"))
 
     # 裁判模型（必须 ≠ 运动员模型；缺省空 → 裁判轨 live 标 UNAVAILABLE）
@@ -47,6 +54,9 @@ class Settings:
 
     # 门禁
     gate_judge_pass_threshold: float = field(default_factory=lambda: float(_env("GATE_JUDGE_PASS_THRESHOLD", "0.8")))
+    provider_timeout_seconds: float = field(
+        default_factory=lambda: float(_env("GATE_PROVIDER_TIMEOUT_SECONDS", "90"))
+    )
 
     # 仓库根（用于定位 contracts/ 与 demo-app/ 只读参考）
     repo_root: Path = _REPO_ROOT

@@ -3,7 +3,7 @@ import json
 
 import pytest
 
-from app.utils.jcs import jcs_subset, params_digest, workorder_hash
+from app.utils.jcs import canonical_json_digest, jcs_subset, params_digest, workorder_hash
 
 
 def test_jcs_primitives():
@@ -54,3 +54,8 @@ def test_params_digest():
     d = params_digest({"action": "approve", "n": 1})
     assert d.startswith("sha256:")
     assert len(d) == 7 + 64
+
+
+def test_canonical_json_digest_rejects_non_finite_numbers():
+    with pytest.raises(ValueError):
+        canonical_json_digest({"score": float("nan")})

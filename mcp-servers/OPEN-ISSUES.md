@@ -29,7 +29,7 @@
 | R1 | control-plane 未运行/未迁移时 case-admin/release-admin 上游调用返回 `DEPENDENCY_UNAVAILABLE`/读表降级 | `app.logs/feedback` 返回 `evidence_gap=true` 不阻塞；smoke 对 control-plane 做探测 |
 | R2 | WorkOrder hash 的 JCS 子集不支持换行/非 ASCII 内联 diff（与 control-plane 一致） | 文档明示用 `content_ref`；`workorder.draft` 校验 diff 二选一 |
 | R3 | smoke 会向 control-plane 库写入 case/workorder/approval 数据 | 幂等键 + 每次新建投诉；不影响主控验收（可重跑） |
-| R4 | `feishu.approval_card`/`weekly_report` 幂等键默认 `approval:{id}:card`/`weekly:{week}`；同键二次调用返回 duplicate | 符合 §9.2 幂等语义 |
+| R4 | `weekly_report` 幂等键默认 `weekly:{week}`；同键二次调用返回 duplicate | 符合 §9.2 幂等语义；审批由控制面/Console 处理，不注册死 MCP 工具 |
 
 ## 四、尚未实现（按契约属 Phase 2 / 外部依赖）
 

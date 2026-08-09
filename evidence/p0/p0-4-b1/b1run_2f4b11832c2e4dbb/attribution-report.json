@@ -1,0 +1,77 @@
+{
+  "case_id": "case_01KZKCD9AFA4ABW8BXCK68PBDW",
+  "cells": {
+    "C": {
+      "control_pass_rate": 1.0,
+      "n_probes": 5,
+      "n_trials": 15,
+      "recovery_rate": 0.0
+    },
+    "G": {
+      "control_pass_rate": 1.0,
+      "n_probes": 5,
+      "n_trials": 15,
+      "recovery_rate": 1.0
+    },
+    "RK": {
+      "control_pass_rate": 1.0,
+      "n_probes": 5,
+      "n_trials": 15,
+      "recovery_rate": 0.0
+    },
+    "RM": {
+      "control_pass_rate": 1.0,
+      "n_probes": 5,
+      "n_trials": 15,
+      "recovery_rate": 0.0
+    },
+    "RP": {
+      "control_pass_rate": 1.0,
+      "n_probes": 5,
+      "n_trials": 15,
+      "recovery_rate": 1.0
+    }
+  },
+  "deltas": {
+    "kb": {
+      "ci95_lower": -0.2039,
+      "ci95_upper": 0.2039,
+      "estimate": 0.0
+    },
+    "method": "newcombe_wilson_diff",
+    "model_params": {
+      "ci95_lower": -0.2039,
+      "ci95_upper": 0.2039,
+      "estimate": 0.0
+    },
+    "prompt": {
+      "ci95_lower": 0.7117,
+      "ci95_upper": 1.0,
+      "estimate": 1.0
+    }
+  },
+  "evidence_bundle_ref": {
+    "digest": "sha256:eb878c64644f0fb2ea2fad5cf6b38c77a20a95311f6e30ad78bc64b38e8ee629",
+    "uri": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/evidence-bundle.json"
+  },
+  "experiment_id": "exp_01KZKCD9ANGQZRWHMNCFKV20MP",
+  "generated_at": "2026-08-09T13:46:45.938744+00:00",
+  "probe_set_digest": "sha256:f51fbbee2810467c96658f93e4fc2b64b5b843b80e55bf5029f30fa26bb9dbf0",
+  "report_id": "attr_2f4b11832c2e4dbb",
+  "schema_version": "0.1.0",
+  "verdict": {
+    "attributed_layer": "prompt",
+    "decision": "ATTRIBUTED",
+    "full_factorial_required": false,
+    "interaction_detected": false,
+    "rationale": "recorded outputs satisfy R1-R4: only prompt replacement recovers and hidden probes reproduce"
+  },
+  "version_digests": {
+    "K0": "sha256:ac4d51f9f07f8186f567a509aeb3dd1824b77a7ba386a956b3c3f9e035fa923d",
+    "K1": "sha256:ac4d51f9f07f8186f567a509aeb3dd1824b77a7ba386a956b3c3f9e035fa923d",
+    "M0": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+    "M1": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+    "P0": "sha256:c63b8a750e1731ac62f079cd192dc935e5f1fa40fabee8e18091e74045a40399",
+    "P1": "sha256:8dab9d372bbf7e0747f5fe2b21d90bee8da1f70bbafc409f2071ccef5267140a"
+  }
+}

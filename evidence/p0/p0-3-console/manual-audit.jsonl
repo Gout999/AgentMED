@@ -1,0 +1,1 @@
+{"audit_id": "aud_01KZGVFQWF9F5DBQ2J0FXH1SWY", "ts": "2026-08-08T14:12:31.760002+00:00", "actor": "controller:case", "action": "complaint.received", "target": "case_01KZGVFQW7M214SB5RH9WD7RVW", "params_digest": "sha256:6823032b43d0e8a0308a8f8288f143ae305dd9add3f732c6dcefaedbcce65d13", "result": "success", "error_code": null, "trace_id": "tr_01KZGVFQW77NQB1HK8BE9BYJ56"}

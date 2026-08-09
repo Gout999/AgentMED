@@ -1,2 +1,4 @@
 # 构建产物（根 .gitignore 已覆盖 node_modules/dist，这里补 tsc -b 的增量缓存）
 *.tsbuildinfo
+.playwright-cli/
+output/playwright/

@@ -129,6 +129,13 @@ class EvalRun(Base):
     eval_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     workorder_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     suite_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    target_versionset_id: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    target_revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=0)
+    dataset_id: Mapped[str] = mapped_column(String(128), nullable=False, default="")
+    dataset_version: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    dataset_digest: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    evidence_digest: Mapped[str] = mapped_column(String(80), nullable=False, default="")
+    candidate_digest: Mapped[str] = mapped_column(String(80), nullable=False, default="")
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="queued")
     report: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
     report_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
@@ -143,7 +150,8 @@ class WorkOrderDraft(Base):
     workorder_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     case_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     channel: Mapped[str] = mapped_column(String(32), nullable=False)
-    status: Mapped[str] = mapped_column(String(32), nullable=False, default="DRAFT")  # DRAFT | FROZEN
+    # DRAFT -> FREEZE_PENDING (durable immutable intent) -> FROZEN.
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="DRAFT")
     draft_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     frozen_payload: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
     hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)

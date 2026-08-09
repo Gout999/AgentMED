@@ -1,0 +1,50 @@
+{
+  "command": "make demo-b1-live",
+  "external_services_and_credentials": [
+    "reachable live Control Plane configured with the Feishu live adapter",
+    "reachable Quality API plus immutable good/bad B1 VersionSets",
+    "StepFun athlete credentials and a distinct live judge model",
+    "independently credentialed human ApprovalGrant command",
+    "post-injection Feishu complaint acquisition command",
+    "AgentTeams v1.2.1 fixed warm pool, Matrix room, skill execution command, and externally anchored Ed25519 exporter key"
+  ],
+  "missing_or_external_prerequisites": [
+    "STEPFUN_API_KEY",
+    "JUDGE_MODEL",
+    "CASELOOP_B1_BAD_VERSIONSET_ID",
+    "CASELOOP_B1_GOOD_VERSIONSET_ID",
+    "CASELOOP_QUALITY_API_BASE_URL",
+    "CASELOOP_READ_TOKEN",
+    "CONTROL_PLANE_BASE_URL",
+    "CONTROL_PLANE_TOKEN",
+    "GATE_AUTHORITY_TOKEN",
+    "CASELOOP_B1_APPROVAL_COMMAND",
+    "CASELOOP_B1_AGENT_TRACE_COMMAND",
+    "CASELOOP_B1_AGENT_TRACE_PUBLIC_KEY",
+    "CASELOOP_B1_FEISHU_MESSAGE_COMMAND",
+    "reachable live Control Plane configured with the Feishu live adapter",
+    "reachable Quality API plus immutable good/bad B1 VersionSets",
+    "StepFun athlete credentials and a distinct live judge model",
+    "independently credentialed human ApprovalGrant command",
+    "post-injection Feishu complaint acquisition command",
+    "AgentTeams v1.2.1 fixed warm pool, Matrix room, skill execution command, and externally anchored Ed25519 exporter key"
+  ],
+  "mode": "isolated-replay",
+  "reason": "this command intentionally does not call live providers",
+  "required_runner_environment": [
+    "STEPFUN_API_KEY",
+    "JUDGE_MODEL",
+    "CASELOOP_B1_BAD_VERSIONSET_ID",
+    "CASELOOP_B1_GOOD_VERSIONSET_ID",
+    "CASELOOP_QUALITY_API_BASE_URL",
+    "CASELOOP_READ_TOKEN",
+    "CONTROL_PLANE_BASE_URL",
+    "CONTROL_PLANE_TOKEN",
+    "GATE_AUTHORITY_TOKEN",
+    "CASELOOP_B1_APPROVAL_COMMAND",
+    "CASELOOP_B1_AGENT_TRACE_COMMAND",
+    "CASELOOP_B1_AGENT_TRACE_PUBLIC_KEY",
+    "CASELOOP_B1_FEISHU_MESSAGE_COMMAND"
+  ],
+  "status": "blocked"
+}

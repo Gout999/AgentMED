@@ -11,12 +11,13 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import json
 import secrets
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app import jcs, kb
@@ -33,7 +34,7 @@ ALLOWED_FROM: dict[str, list[str]] = {
     "stage": ["draft"],
     "canary": ["staged", "canary"],
     "promote": ["staged", "canary"],
-    "rollback": ["active"],
+    "rollback": ["canary", "active"],
 }
 
 
@@ -301,8 +302,36 @@ def validate_transition(vs: VersionSet, action: str) -> None:
         )
 
 
-def lifecycle_fingerprint(action: str, body: dict[str, Any]) -> str:
-    return jcs.content_digest({"action": action, "body": body})
+def lifecycle_fingerprint(versionset_id: str, action: str, body: dict[str, Any]) -> str:
+    """Fingerprint the full lifecycle target and request.
+
+    Idempotency keys are global. Omitting the VersionSet id would let the same
+    key and body return an operation created for another target.
+    """
+
+    return jcs.content_digest(
+        {"versionset_id": versionset_id, "action": action, "body": body}
+    )
+
+
+def lock_idempotency_key(db: Session, idempotency_key: str) -> None:
+    """Serialize one global idempotency key for the current transaction.
+
+    PostgreSQL row locks cannot lock a row that does not exist yet. A stable
+    transaction-scoped advisory lock closes the concurrent first-use race,
+    including attempts against different VersionSets. SQLite unit tests remain
+    single-process and do not need this database primitive.
+    """
+
+    bind = db.get_bind()
+    if bind.dialect.name != "postgresql":
+        return
+    lock_id = int.from_bytes(
+        hashlib.sha256(idempotency_key.encode("utf-8")).digest()[:8],
+        byteorder="big",
+        signed=True,
+    )
+    db.execute(text("SELECT pg_advisory_xact_lock(:lock_id)"), {"lock_id": lock_id})
 
 
 def resolve_idempotent_operation(
@@ -348,7 +377,11 @@ def create_operation(
         status="pending",
         idempotency_key=idempotency_key,
         versionset_id=vs.versionset_id,
-        request=request or {},
+        request={
+            **(request or {}),
+            "_expected_revision": vs.revision,
+            "_expected_status": vs.status,
+        },
         created_at=now_utc(),
         updated_at=now_utc(),
         expires_at=now_utc() + timedelta(hours=get_settings().operation_ttl_hours),
@@ -375,6 +408,12 @@ def _resolve_rollback_target(
 ) -> VersionSet:
     """rollback_to: "previous"（上一个 active）或完整 digest。"""
     if rollback_to == "previous":
+        # A failed canary has not replaced the current active VersionSet yet.
+        # Roll back the candidate while retaining that exact active baseline.
+        if vs.status == "canary":
+            target = get_active_versionset(db)
+            if target is not None and target.versionset_id != vs.versionset_id:
+                return target
         # 上一个 active = 最近一次被 promote 顶掉的 superseded 版本
         target = db.execute(
             select(VersionSet)
@@ -394,9 +433,29 @@ def _resolve_rollback_target(
     return target
 
 
-def apply_transition(db: Session, vs: VersionSet, action: str, op: Operation) -> None:
-    """执行生命周期迁移（execute_operation 的同步核心；假设前置校验已过）。"""
+def apply_transition(db: Session, vs: VersionSet, action: str, op: Operation) -> dict[str, str]:
+    """Execute a lifecycle transition under a locked, revalidated CAS row."""
+    expected_revision = (op.request or {}).get("_expected_revision")
+    expected_status = (op.request or {}).get("_expected_status")
+    if (
+        not isinstance(expected_revision, int)
+        or isinstance(expected_revision, bool)
+        or vs.revision != expected_revision
+        or vs.status != expected_status
+    ):
+        raise CASError(
+            "revision_conflict",
+            "VersionSet changed after lifecycle operation acceptance",
+            {
+                "expected_revision": expected_revision,
+                "current_revision": vs.revision,
+                "expected_status": expected_status,
+                "current_status": vs.status,
+            },
+        )
+    validate_transition(vs, action)
     from_status = vs.status
+    receipt: dict[str, str] = {}
 
     if action == "stage":
         vs.status = "staged"
@@ -410,6 +469,26 @@ def apply_transition(db: Session, vs: VersionSet, action: str, op: Operation) ->
         _record_transition(db, vs, from_status, "canary", op)
     elif action == "promote":
         prev_active = get_active_versionset(db)
+        active_rows = list(
+            db.execute(select(VersionSet).where(VersionSet.status == "active")).scalars()
+        )
+        expected_active_digest = (op.request or {}).get("expected_active_digest")
+        if (
+            not isinstance(expected_active_digest, str)
+            or len(active_rows) != 1
+            or prev_active is None
+            or prev_active.versionset_id == vs.versionset_id
+            or prev_active.digest != expected_active_digest
+        ):
+            raise CASError(
+                "revision_conflict",
+                "active VersionSet changed after promote approval",
+                {
+                    "expected_active_digest": expected_active_digest,
+                    "current_active_digest": prev_active.digest if prev_active is not None else None,
+                    "current_active_count": len(active_rows),
+                },
+            )
         if prev_active is not None and prev_active.versionset_id != vs.versionset_id:
             prev_active.status = "superseded"
             prev_active.revision += 1
@@ -417,6 +496,18 @@ def apply_transition(db: Session, vs: VersionSet, action: str, op: Operation) ->
         vs.status = "active"
         vs.canary_percent = 100
         _record_transition(db, vs, from_status, "active", op)
+        # B1 is a controlled lifecycle injection, not a permanent runtime
+        # overlay.  A real promotion to a different prompt VersionSet resolves
+        # the marker; no hidden admin reset is involved in the repair path.
+        from app.models import FaultState
+
+        b1 = db.get(FaultState, "B1")
+        if (
+            b1 is not None
+            and (b1.snapshot or {}).get("channel") == "versionset_lifecycle"
+            and (b1.snapshot or {}).get("fault_versionset_id") != vs.versionset_id
+        ):
+            db.delete(b1)
     elif action == "rollback":
         rollback_to = (op.request or {}).get("rollback_to", "previous")
         target = _resolve_rollback_target(db, vs, rollback_to)
@@ -424,13 +515,14 @@ def apply_transition(db: Session, vs: VersionSet, action: str, op: Operation) ->
         vs.status = "rolled_back"
         vs.canary_percent = 0
         _record_transition(db, vs, from_status, "rolled_back", op)
-        target.status = "active"
-        target.canary_percent = 100
-        target.revision += 1
-        _record_transition(db, target, target_from, "active", op)
+        if target.status != "active":
+            target.status = "active"
+            target.canary_percent = 100
+            target.revision += 1
+            _record_transition(db, target, target_from, "active", op)
+        receipt["restored_digest"] = target.digest
     else:
         raise IllegalTransitionError(f"unknown action: {action}")
 
     vs.revision += 1
-    db.commit()
-    db.refresh(vs)
+    return receipt

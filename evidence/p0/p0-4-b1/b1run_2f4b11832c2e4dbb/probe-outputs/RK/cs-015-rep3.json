@@ -1,0 +1,18 @@
+{
+  "answer": "新疆、西藏属于偏远地区，需要补偏远运费，具体金额以结算页为准。满额订单可享运费补贴。",
+  "arm": "RK",
+  "case_id": "case_01KZKCD9AFA4ABW8BXCK68PBDW",
+  "experiment_id": "exp_01KZKCD9ANGQZRWHMNCFKV20MP",
+  "kb_manifest_digest": "sha256:ac4d51f9f07f8186f567a509aeb3dd1824b77a7ba386a956b3c3f9e035fa923d",
+  "model_digest": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+  "probe_id": "cs-015",
+  "prompt_digest": "sha256:8dab9d372bbf7e0747f5fe2b21d90bee8da1f70bbafc409f2071ccef5267140a",
+  "reasons": [],
+  "recovered": true,
+  "repetition": 3,
+  "source_state": "b1_fault",
+  "status": "recorded-replay",
+  "versionset_digest": "sha256:61214e0d15b104183268418529df2ce0e1b21ac1b3d77b197e4fc328b57dcdc4",
+  "versionset_id": "vs_2f4b11832c2e4dbbbad",
+  "versionset_revision": 1
+}

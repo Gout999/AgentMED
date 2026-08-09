@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://caseloop.dev/contracts/schemas/approval.schema.json",
   "title": "ApprovalGrant",
-  "description": "审批授权（plan-v3 §2.3.3 / §2.3.9）。审批即批 WorkOrder 的 hash：grant 绑定 workorder_hash + nonce + expiry，nonce 一次性消费，三者共同防重放、防掉包。zeroops common/approval.py 的静态 token 方案显式废弃，不得沿用。",
+  "description": "审批授权（plan-v3 §2.3.3 / §2.3.9）。审批即批 WorkOrder 的 hash：grant 绑定 workorder_hash + nonce + expiry，nonce 一次性消费，三者共同防重放、防掉包。首次授权启动 release；R2 lifecycle 动作用 authorization 逐次绑定 action、release、目标 revision 与参数。zeroops common/approval.py 的静态 token 方案显式废弃，不得沿用。",
   "type": "object",
   "additionalProperties": false,
   "required": [
@@ -38,7 +38,7 @@
     },
     "nonce": {
       "type": "string",
-      "description": "从被批 WorkOrder 原样复制的 nonce。服务端见到即标记已消费（一次性），同一 nonce 的第二次出示必须拒绝——重放攻击防线",
+      "description": "一次性授权随机数。首次 release 授权从 WorkOrder 原样复制；逐次 R2 action grant 使用独立 UUID。服务端首次执行对应动作即消费，同一 nonce 的第二次出示必须拒绝。",
       "format": "uuid"
     },
     "nonce_consumed": {
@@ -77,6 +77,25 @@
     "decided_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "authorization": {
+      "type": "object",
+      "description": "逐次 R2 发布动作授权；缺失表示仅用于首次创建 release 的 WorkOrder grant。",
+      "additionalProperties": false,
+      "required": ["action", "release_id", "target_revision", "params", "params_digest"],
+      "properties": {
+        "action": {
+          "type": "string",
+          "enum": ["canary", "promote", "rollback"]
+        },
+        "release_id": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "target_revision": { "type": "integer", "minimum": 1 },
+        "params": { "type": "object" },
+        "params_digest": {
+          "type": "string",
+          "pattern": "^sha256:[0-9a-f]{64}$"
+        }
+      }
     },
     "proof": {
       "type": "object",

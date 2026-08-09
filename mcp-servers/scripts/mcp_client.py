@@ -9,15 +9,29 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import sys
 
 from mcp import ClientSession
 from mcp.client.streamable_http import streamablehttp_client
 
 
+def _trusted_backend_headers() -> dict[str, str]:
+    token = os.environ.get("MCP_GATEWAY_BACKEND_TOKEN", "")
+    consumer = os.environ.get("MCP_EXPECTED_CONSUMER", "")
+    if not token or not consumer:
+        raise RuntimeError(
+            "MCP_GATEWAY_BACKEND_TOKEN and MCP_EXPECTED_CONSUMER are required for direct-backend smoke"
+        )
+    return {
+        "X-CaseLoop-Gateway-Token": token,
+        "X-Mse-Consumer": consumer,
+    }
+
+
 async def call_tool(port: int, tool_name: str, args: dict):
     url = f"http://127.0.0.1:{port}/mcp"
-    async with streamablehttp_client(url) as (read, write, _):
+    async with streamablehttp_client(url, headers=_trusted_backend_headers()) as (read, write, _):
         async with ClientSession(read, write) as session:
             await session.initialize()
             result = await session.call_tool(tool_name, args)
@@ -35,7 +49,7 @@ async def call_tool(port: int, tool_name: str, args: dict):
 
 async def list_tools(port: int):
     url = f"http://127.0.0.1:{port}/mcp"
-    async with streamablehttp_client(url) as (read, write, _):
+    async with streamablehttp_client(url, headers=_trusted_backend_headers()) as (read, write, _):
         async with ClientSession(read, write) as session:
             await session.initialize()
             tools = await session.list_tools()

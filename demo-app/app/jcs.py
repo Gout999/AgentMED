@@ -53,7 +53,7 @@ def content_digest(obj: Any) -> str:
 # ---------------------------------------------------------------- digest 构造（语义对齐 openapi）
 # prompt.digest 覆盖 {prompt_id, version, content}；
 # model.digest 覆盖 {provider, model, params}；
-# KB 条目 digest 覆盖 {kb_id, entry_id, version, content}；
+# KB 条目 digest 覆盖实际影响检索/回答的完整快照；
 # manifest_digest 覆盖全部条目快照；VersionSet 完整 digest 覆盖 {prompt, kb_manifest, model} 三元组。
 
 
@@ -65,8 +65,34 @@ def model_digest(provider: str, model: str, params: dict) -> str:
     return content_digest({"provider": provider, "model": model, "params": params})
 
 
-def kb_entry_digest(kb_id: str, entry_id: str, version: str, content: str) -> str:
-    return content_digest({"kb_id": kb_id, "entry_id": entry_id, "version": version, "content": content})
+def kb_entry_digest(
+    kb_id: str,
+    entry_id: str,
+    version: str,
+    content: str,
+    *,
+    title: str = "",
+    category: str = "",
+    keywords: list[str] | None = None,
+) -> str:
+    """Bind every persisted field that can change deterministic retrieval.
+
+    The public manifest remains compact and carries this digest.  Exact-candidate
+    reconstruction recomputes it from the registered row, so stale digests cannot
+    hide content or retrieval-metadata drift.
+    """
+
+    return content_digest(
+        {
+            "kb_id": kb_id,
+            "entry_id": entry_id,
+            "version": version,
+            "title": title,
+            "category": category,
+            "keywords": list(keywords or []),
+            "content": content,
+        }
+    )
 
 
 def kb_manifest_digest(entries: list[dict]) -> str:

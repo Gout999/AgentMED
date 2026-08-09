@@ -1,7 +1,7 @@
 # CaseLoop control-plane
 
 确定性控制面（Case/Release Controller）：**LLM 不是状态与权限的权威源**。状态权威源 = PG
-（aggregates/events/inbox/outbox/leases/audit），事件溯源 + 状态机 + CAS 乐观并发 + lease/fencing。
+（aggregates/events/inbox/outbox/leases/audit/trust ledger），事件溯源 + 状态机 + CAS 乐观并发 + lease/fencing。
 
 - 语言/框架：Python 3.11+ · FastAPI · SQLAlchemy 2 · Alembic
 - 依赖：见 `requirements.txt`（钉版本）
@@ -14,10 +14,11 @@ control-plane/
   app/
     api/           REST 路由：cases / experiments / changesets / releases / notifications
     services/      Case Controller / Release Controller / Notification / Experiment / ChangeSet
-    models/        spec §7 十表 ORM
+    models/        权威状态、outbox receipt 与 append-only Trust ORM
+    workers/       Phase 1 固定单 outbox dispatcher（非动态扩缩容）
     quality/       Quality API v2 客户端（写面唯一入口，按 contracts/quality-api/openapi.yaml）
     utils/         JCS(SHA-256) / ULID id / PII 脱敏
-  alembic/         001 initial migration
+  alembic/         001 initial + 002 gate binding + 003 outbox/Trust
   tests/           unit（SQLite 内存） + integration（compose PG 真跑）
 ```
 
@@ -53,6 +54,15 @@ python3.11 -m venv .venv
 ```bash
 .venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8090
 ```
+
+另起固定一个 outbox dispatcher（Phase 1 不声称动态扩缩容）：
+
+```bash
+.venv/bin/python -m app.workers.outbox
+```
+
+`NOTIFICATION_ADAPTER=disabled` 是默认 fail-closed 配置。只有 contract/replay
+测试可显式使用 `NOTIFICATION_ADAPTER=feishu-mock`；这不代表 live Feishu 已通过。
 
 方式 B：compose 容器（e2e 编排 / 统一部署）
 
@@ -109,7 +119,7 @@ docker compose -f deploy/compose.yaml restart control-plane
 | POST | `/v1/experiments/{id}/protocol` | 冻结协议（protocol_frozen） |
 | POST | `/v1/experiments/{id}/start` | 启动（started，runner 领单） |
 | POST | `/v1/experiments/{id}/cells` | cell 完成（cell_completed，自迁移累计） |
-| POST | `/v1/experiments/{id}/verdict` | 出裁决（verdict_computed） |
+| POST | `/v1/experiments/{id}/verdict` | 提交完整 EvidenceBundle/AttributionReport；控制面重算后裁决（需当前 fencing token） |
 | POST | `/v1/experiments/{id}/escalate-full-factorial` | CONFOUNDED → 2³ 全因子 |
 | POST | `/v1/experiments/{id}/cancel` | 取消 |
 | GET | `/v1/experiments` · `/v1/experiments/{id}` | 列表 / 读取 |
@@ -130,11 +140,14 @@ docker compose -f deploy/compose.yaml restart control-plane
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
+| POST | `/v1/release-candidates` | 由 Release Controller 基于精确 active VersionSet 创建单变量 DRAFT 候选 |
 | POST | `/v1/workorders` | 登记不可变 WorkOrder（JCS hash 校验） |
 | POST | `/v1/approvals` | 登记 ApprovalGrant（hash 绑定 + nonce 唯一） |
 | POST | `/v1/releases` | 启动发布（nonce 一次性消费 + expiry 校验） |
+| POST | `/v1/releases/{id}/approval-context` | 返回下一动作不可变授权参数及 digest（审批权威据此签发 grant） |
 | POST | `/v1/releases/{id}/stage` | draft→staged |
 | POST | `/v1/releases/{id}/canary` | staged→canary（灰度百分比） |
+| GET | `/v1/releases/{id}/verification-context` | 返回精确 canary target/revision/digest，供 post-canary Gate 使用 |
 | POST | `/v1/releases/{id}/promote` | canary→active（须经 VERIFYING） |
 | POST | `/v1/releases/{id}/rollback` | 回滚（verification failed 路径） |
 | POST | `/v1/releases/{id}/reconcile` | UNKNOWN→对账（resume/confirm/compensate） |
@@ -145,14 +158,16 @@ docker compose -f deploy/compose.yaml restart control-plane
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/v1/notifications` | 入队（notification.queued + outbox 同事务） |
-| POST | `/v1/notifications/{id}/sent` · `/failed` · `/retry` · `/dead-letter` | 生命周期 |
+| POST | `/v1/notifications` | 以已完成 Release receipt 推进 Case，并原子入队原投诉渠道通知 |
 | GET | `/v1/notifications` · `/v1/notifications/{id}` | 列表 / 读取 |
+
+Notification 的 SENT/RETRY/DEAD 生命周期只由 outbox dispatcher 根据绑定
+`outbox_id + payload_digest` 的 provider receipt 驱动；不存在可伪造 ACK 的 REST 路由。
 
 ### 运维
 
 - `GET /healthz`
-- `POST /v1/outbox/relay`：手动触发 outbox 投递（MVP sink=logging）
+- `POST /v1/outbox/relay`：带内部鉴权的运维触发；生产常驻路径为固定 dispatcher worker
 
 ## 环境变量（.env.example 全量）
 
@@ -161,6 +176,11 @@ docker compose -f deploy/compose.yaml restart control-plane
 | `DATABASE_URL` | `postgresql+psycopg://caseloop:caseloop@127.0.0.1:5432/control_plane` | PG 连接串 |
 | `QUALITY_API_BASE_URL` | `http://127.0.0.1:8080` | 被治理应用 Quality API |
 | `QUALITY_API_TOKEN` | 空 | 写面 Bearer token（不入库） |
+| `CONTROL_PLANE_TOKEN` | 空 | Gate/WorkOrder/ChangeSet/Release 内部写接口；未配置时 fail closed |
+| `APPROVAL_AUTHORITY_TOKEN` | 空 | 独立审批权威凭证；必须与控制面 token 不同，未配置时 fail closed |
+| `ATTRIBUTION_DELTA_MIN` | `0.2` | 控制面重算归因裁决使用的最小实际效应量 |
+| `GATE_POLICY_PROFILE` | `live` | `live` 严格要求 provider 轨；`isolated-replay` 只供显式 replay 命令 |
+| `ALLOW_ISOLATED_REPLAY_GATE` | `false` | 二次保险；仅隔离 SQLite replay controller 可设为 `true`，生产 PostgreSQL 即使误设也拒绝 |
 | `LEASE_TTL_SECONDS` | `60` | Worker 租约时长（D-001 #11） |
 | `COMPLAINT_DEDUP_WINDOW_HOURS` | `24` | 投诉去重窗（D-001 #1） |
 | `APPROVAL_TTL_MINUTES` | `30` | ApprovalGrant TTL（D-001 #10） |
@@ -171,7 +191,11 @@ docker compose -f deploy/compose.yaml restart control-plane
 | `RECONCILE_BACKOFF_INITIAL_SECONDS` | `5` | reconcile 指数退避起点（D-001 #5） |
 | `RECONCILE_BACKOFF_MAX_SECONDS` | `300` | reconcile 退避上限 |
 | `OUTBOX_RELAY_INTERVAL_SECONDS` | `1` | outbox 轮询间隔 |
-| `OUTBOX_SINK` | `logging` | 投递目标（MVP=logging） |
+| `OUTBOX_CLAIM_TTL_SECONDS` | `30` | PROCESSING claim 过期回收 |
+| `OUTBOX_MAX_ATTEMPTS` | `5` | 重试上限，耗尽后 DEAD |
+| `OUTBOX_RETRY_INITIAL_SECONDS` | `2` | 指数退避起点 |
+| `OUTBOX_RETRY_MAX_SECONDS` | `300` | 指数退避上限 |
+| `NOTIFICATION_ADAPTER` | `disabled` | `disabled` fail closed；`feishu-mock` 仅 contract/replay |
 | `AUDIT_JSONL_PATH` | `./var/audit.jsonl` | 审计导出物（权威源=DB） |
 | `AUDIT_FORCE_FAIL` | `false` | 仅测试：审计写失败开关 |
 
@@ -179,18 +203,76 @@ docker compose -f deploy/compose.yaml restart control-plane
 
 - **事件溯源 + CAS**：每个状态迁移 = 一个事务（CAS 校验 revision → 更新 aggregate →
   追加 event → 必要时写 outbox → 写 audit）。`revision` 即事件序号。
+- **事务 outbox**：九类关键领域事件统一绑定 source event、payload digest 与稳定事件名；
+  dispatcher 用 `FOR UPDATE SKIP LOCKED` + claim lease，ACK、领域消费、不可变 receipt 与审计
+  同事务提交。旧 logging-only SENT 在 003 迁移后标为 DEAD，不冒充已投递。
+- **Trust 权威闭环**：真实 `RELEASE_PROMOTED/ROLLED_BACK/UNKNOWN` 由 dispatcher 消费；
+  `(action_type,risk_class,action_ref)` 去重保证一次行动多 probes 只算一个样本。
+  Release 是 R2，永远 MANUAL；3/3 的 Wilson 双侧 95% 下界约 0.438，明确拒绝晋升。
+- **通知与归档**：provider receipt 必须精确绑定 outbox id 与 payload digest；ACK 后同事务写
+  `notification.sent`、`case.closed`、`NOTIFICATION_SENT`、`CASE_ARCHIVED` 与审计。
+  receipt 无效会死信并令 Case ESCALATED。
 - **lease + fencing token**：领单 = `leases` 表 + 全局单调 `fencing_counter`；
   过期回收后新 token，旧 token 写一律拒绝（防脑裂）。
 - **inbox 去重**：`sha256(source|external_id)`；无 external_id 时按 D-001 Q4
   （先 PII 脱敏 → 归一化 → 哈希）。去重窗内重复 → 返回已有 case；窗外 → 换键重立案。
 - **UNKNOWN→reconcile**：Quality API 写操作结果不可考（超时/410/分区）→ Release 进 UNKNOWN；
-  以 `GET /status` 权威对账，按实际生效情况 resume / confirm / compensate，指数退避重试。
+  以原请求及原 Idempotency-Key 精确重放，并要求 `GET /status` history 以真实 Quality
+  operation id 证明生效；pending、无 history 或无法归因时保持 UNKNOWN。
 - **审计失败即拒业务**：audit 写入与业务同事务；写失败 → 事务回滚 → 503。
+- **R2 逐次授权**：canary/promote/rollback 各需一个绑定 release、action、target revision、
+  参数 digest 的独立 ApprovalGrant；grant nonce 只消费一次，reconcile 复用原 operation 绑定，
+  不会重新授权或扩大动作。promote 额外绑定获批 active 基线 digest，Quality API 在全局锁内
+  核对，防止并发候选串行掉包。
+
+## B1 纵向闭环
+
+从仓库根目录运行：
+
+```bash
+make demo-b1-replay
+make demo-b1-live
+```
+
+`demo-b1-replay` 使用明确标注的录制 provider、确定性 judge、Fake Quality lifecycle
+和 Feishu mock adapter，但调用生产 control-plane service、事务 outbox、Release Controller
+与 Trust 路径；它不会声称 live-provider 通过。`demo-b1-live` 绝不回退 replay；缺真实
+VersionSet、模型/裁判凭证、审批或 Feishu/部署权限时会写 machine-readable BLOCKED 报告并
+非零退出。两类报告分别保存于 `evidence/p0/p0-4-b1/` 与
+`evidence/p0/p0-4-b1-live/`。若 control-plane 与 eval-harness 使用不同虚拟环境，显式指定：
+
+```bash
+make PYTHON=/path/to/control-plane/python \
+  SUITE_PYTHON=/path/to/eval-harness/python demo-b1-replay
+```
+
+live runner 至少要求以下外部边界；任何一项缺失都只会生成 BLOCKED 报告：
+
+- `STEPFUN_API_KEY`、`JUDGE_MODEL`（必须不同于运动员模型），默认
+  `STEPFUN_BASE_URL=https://api.stepfun.com/step_plan/v1`；
+- 两个真实、不可变 B1 VersionSet ID、Quality read endpoint/token、Control Plane endpoint，
+  以及互不复用的 controller/gate authority token；
+- `CASELOOP_B1_APPROVAL_COMMAND`：由 runner 外部持权，每个动作返回一个新鲜、已持久化的
+  human ApprovalGrant ID；
+- `CASELOOP_B1_AGENT_TRACE_COMMAND` 与部署钉定的
+  `CASELOOP_B1_AGENT_TRACE_PUBLIC_KEY`：导出真实 AgentTeams v1.2.1/Matrix/skill receipt；
+- `CASELOOP_B1_FEISHU_MESSAGE_COMMAND`：**只在 B1 注入成功后**等待新投诉，并从 stdout
+  返回 `{"schema_version":"0.1.0","provider":"feishu","message_id":"..."}`。
+  Runner 不向该命令传 Control Plane、Quality、StepFun 或 Feishu secret；message ID 只是
+  locator，Control Plane 会自行抓取原消息，并在建立 Case 前验证仓库 B1 fixture digest 与
+  provider `create_time > injected_at`。可用
+  `CASELOOP_B1_FEISHU_MESSAGE_TIMEOUT_SECONDS` 设置 1–3600 秒等待上限。
+
+当前 live 中途失败会安全补偿 Quality fault，但尚未 durable resume/terminalize 已创建的
+Case/Experiment/Release；因此同一投诉跨失败重试仍是明确 P0-4 blocker，不能把 live 命令称为
+完整可恢复。
 - **JCS 限制**：WorkOrder hash 用 JCS 的 ASCII 可打印子集（与 contracts/conformance 一致）；
   含换行/非 ASCII 的 diff 请用 `content_ref` 而非内联 `content`。
 
 ## 已知遗留
 
-- `eval` / `trust` 状态机已在 `state_machines.py` 定义，但对应服务（eval-harness / trust-ledger）
-  属 T3/T4 范围，本组件未实现。
-- outbox 投递 MVP 为 logging sink（无真实飞书通道；T4 的 notification server 会接管）。
+- live Feishu adapter、post-injection message acquisition command 与凭证尚未提供；
+  `feishu-mock` 只属于明确标注的 contract/replay 路径。
+- live AgentTeams exporter 私钥/Matrix taskflow 及部署钉定公钥 registry 尚未提供；本仓库只负责
+  receipt contract 与 Ed25519 验证，不能自签 live 成功。
+- eval-harness live provider 仍取决于外部模型凭证；不得把 skipped 当 PASS。

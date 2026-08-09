@@ -7,7 +7,12 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_app_settings, get_db_session
+from app.api.deps import (
+    get_app_settings,
+    get_db_session,
+    require_approval_authority,
+    require_internal_write,
+)
 from app.config import Settings
 from app.services.audit import AuditWriteError
 from app.services.changeset_service import ChangeSetService, ChangeSetServiceError
@@ -25,8 +30,8 @@ class ChangeSetCreateIn(BaseModel):
 
 
 class GateAttachIn(BaseModel):
-    gate_report_ref: str
-    gate_status: str = "passed"
+    eval_id: str
+    report_hash: str
 
 
 class ApprovalRequestIn(BaseModel):
@@ -65,6 +70,11 @@ def _raise(exc: ChangeSetServiceError) -> None:
     status = {
         "not_found": 404,
         "validation_failed": 422,
+        "hash_mismatch": 422,
+        "gate_missing": 422,
+        "gate_failed": 422,
+        "target_mismatch": 422,
+        "approval_expired": 422,
         "illegal_transition": 422,
         "revision_conflict": 409,
     }.get(exc.code, 400)
@@ -78,6 +88,7 @@ def _svc(session: Session, settings: Settings) -> ChangeSetService:
 @router.post("/v1/changesets")
 def create_changeset(
     body: ChangeSetCreateIn,
+    _actor: str = Depends(require_internal_write),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
 ) -> dict[str, Any]:
@@ -125,11 +136,14 @@ def get_changeset(
 def attach_gate(
     changeset_id: str,
     body: GateAttachIn,
+    _actor: str = Depends(require_internal_write),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
 ) -> dict[str, Any]:
     try:
-        return _svc(session, settings).attach_gate(changeset_id, gate_report_ref=body.gate_report_ref, gate_status=body.gate_status)
+        return _svc(session, settings).attach_gate(
+            changeset_id, eval_id=body.eval_id, report_hash=body.report_hash
+        )
     except AuditWriteError as exc:
         raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
     except ChangeSetServiceError as exc:
@@ -141,6 +155,7 @@ def attach_gate(
 def request_approval(
     changeset_id: str,
     body: ApprovalRequestIn,
+    _actor: str = Depends(require_internal_write),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
 ) -> dict[str, Any]:
@@ -163,6 +178,7 @@ def request_approval(
 def approve_changeset(
     changeset_id: str,
     body: ApproveIn,
+    _actor: str = Depends(require_approval_authority),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
 ) -> dict[str, Any]:
@@ -181,6 +197,7 @@ def approve_changeset(
 def reject_changeset(
     changeset_id: str,
     body: RejectIn,
+    _actor: str = Depends(require_approval_authority),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
 ) -> dict[str, Any]:
@@ -199,6 +216,7 @@ def reject_changeset(
 def expire_changeset(
     changeset_id: str,
     body: ExpireIn,
+    _actor: str = Depends(require_internal_write),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
 ) -> dict[str, Any]:
@@ -215,6 +233,7 @@ def expire_changeset(
 def commit_changeset(
     changeset_id: str,
     body: CommitIn,
+    _actor: str = Depends(require_internal_write),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
 ) -> dict[str, Any]:
@@ -231,6 +250,7 @@ def commit_changeset(
 def supersede_changeset(
     changeset_id: str,
     body: SupersedeIn,
+    _actor: str = Depends(require_internal_write),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
 ) -> dict[str, Any]:

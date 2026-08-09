@@ -1,0 +1,196 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/schemas/b1-run-manifest.schema.json",
+  "title": "B1RunManifest",
+  "description": "Machine-verifiable index for one CaseLoop B1 vertical-loop run. Replay and live-provider evidence are explicitly separated.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "fixture_id",
+    "run_id",
+    "mode",
+    "status",
+    "started_at",
+    "completed_at",
+    "transaction_id",
+    "case_id",
+    "experiment_id",
+    "workorder_id",
+    "workorder_hash",
+    "release_id",
+    "notification_id",
+    "versions",
+    "outcomes",
+    "artifacts",
+    "test_reports",
+    "external_blockers"
+  ],
+  "properties": {
+    "schema_version": { "const": "0.1.0" },
+    "fixture_id": { "const": "B1" },
+    "run_id": { "type": "string", "pattern": "^b1run_[0-9A-Za-z]{8,64}$" },
+    "mode": { "type": "string", "enum": ["isolated-replay", "live-provider"] },
+    "status": { "type": "string", "enum": ["passed", "failed", "blocked"] },
+    "started_at": { "type": "string", "format": "date-time" },
+    "completed_at": { "type": "string", "format": "date-time" },
+    "transaction_id": {
+      "type": "string",
+      "minLength": 8,
+      "description": "Original complaint/source transaction id used by inbox deduplication"
+    },
+    "case_id": { "type": "string", "pattern": "^case_[0-9A-Za-z]{8,64}$" },
+    "experiment_id": { "type": "string", "pattern": "^exp_[0-9A-Za-z]{8,64}$" },
+    "workorder_id": { "type": "string", "pattern": "^wo_[0-9A-Za-z]{8,64}$" },
+    "workorder_hash": { "$ref": "#/$defs/hexDigest" },
+    "release_id": { "type": "string", "pattern": "^rel_[0-9A-Za-z]{8,64}$" },
+    "notification_id": { "type": "string", "pattern": "^notif_[0-9A-Za-z]{8,64}$" },
+    "versions": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["repository_start_commit", "repository_end_commit", "base_versionset", "target_versionset"],
+      "properties": {
+        "repository_start_commit": { "$ref": "#/$defs/gitCommit" },
+        "repository_end_commit": { "$ref": "#/$defs/gitCommit" },
+        "base_versionset": { "$ref": "#/$defs/versionSetRef" },
+        "target_versionset": { "$ref": "#/$defs/versionSetRef" }
+      }
+    },
+    "outcomes": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["deduplicated", "attribution", "release", "notification", "case", "trust", "live_provider"],
+      "properties": {
+        "deduplicated": { "type": "boolean" },
+        "attribution": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["decision", "fault_layer"],
+          "properties": {
+            "decision": { "const": "ATTRIBUTED" },
+            "fault_layer": { "const": "prompt" }
+          }
+        },
+        "release": { "type": "string", "enum": ["promoted", "rolled_back"] },
+        "notification": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["status", "provider"],
+          "properties": {
+            "status": { "const": "sent" },
+            "provider": { "type": "string", "enum": ["feishu", "feishu-mock"] }
+          }
+        },
+        "case": { "const": "CLOSED" },
+        "trust": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["samples_added", "autonomy_state", "promotion_decision", "wilson_lower"],
+          "properties": {
+            "samples_added": { "const": 1 },
+            "autonomy_state": { "const": "MANUAL" },
+            "promotion_decision": { "const": "denied" },
+            "wilson_lower": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "live_provider": { "type": "string", "enum": ["passed", "failed", "blocked"] }
+      }
+    },
+    "artifacts": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "agent_runs",
+        "frozen_versionset",
+        "experiment_plan",
+        "probes",
+        "probe_outputs",
+        "evidence_bundle",
+        "attribution_report",
+        "workorder",
+        "gate_report",
+        "approval_grants",
+        "release_receipts",
+        "canary_metrics",
+        "release_terminal_receipt",
+        "notification_receipt",
+        "audit_events",
+        "domain_events",
+        "outbox_receipts",
+        "trust_decision",
+        "trace",
+        "commits",
+        "contract_replay_report",
+        "live_provider_report"
+      ],
+      "properties": {
+        "agent_runs": { "$ref": "#/$defs/artifactRef" },
+        "frozen_versionset": { "$ref": "#/$defs/artifactRef" },
+        "experiment_plan": { "$ref": "#/$defs/artifactRef" },
+        "probes": { "$ref": "#/$defs/artifactRef" },
+        "probe_outputs": { "$ref": "#/$defs/artifactRef" },
+        "evidence_bundle": { "$ref": "#/$defs/artifactRef" },
+        "attribution_report": { "$ref": "#/$defs/artifactRef" },
+        "workorder": { "$ref": "#/$defs/artifactRef" },
+        "gate_report": { "$ref": "#/$defs/artifactRef" },
+        "approval_grants": { "$ref": "#/$defs/artifactRef" },
+        "release_receipts": { "$ref": "#/$defs/artifactRef" },
+        "canary_metrics": { "$ref": "#/$defs/artifactRef" },
+        "release_terminal_receipt": { "$ref": "#/$defs/artifactRef" },
+        "notification_receipt": { "$ref": "#/$defs/artifactRef" },
+        "audit_events": { "$ref": "#/$defs/artifactRef" },
+        "domain_events": { "$ref": "#/$defs/artifactRef" },
+        "outbox_receipts": { "$ref": "#/$defs/artifactRef" },
+        "trust_decision": { "$ref": "#/$defs/artifactRef" },
+        "trace": { "$ref": "#/$defs/artifactRef" },
+        "commits": { "$ref": "#/$defs/artifactRef" },
+        "contract_replay_report": { "$ref": "#/$defs/artifactRef" },
+        "live_provider_report": { "$ref": "#/$defs/artifactRef" }
+      }
+    },
+    "test_reports": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["kind", "status", "passed", "failed", "report_ref"],
+        "properties": {
+          "kind": { "type": "string", "enum": ["contract", "replay", "live-provider"] },
+          "status": { "type": "string", "enum": ["passed", "failed", "blocked"] },
+          "passed": { "type": "integer", "minimum": 0 },
+          "failed": { "type": "integer", "minimum": 0 },
+          "report_ref": { "$ref": "#/$defs/artifactRef" }
+        }
+      }
+    },
+    "external_blockers": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    }
+  },
+  "$defs": {
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "hexDigest": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+    "gitCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "artifactRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["uri", "digest"],
+      "properties": {
+        "uri": { "type": "string", "format": "uri" },
+        "digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "versionSetRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["versionset_id", "digest", "revision"],
+      "properties": {
+        "versionset_id": { "type": "string", "pattern": "^vs_[0-9A-Za-z]{8,64}$" },
+        "digest": { "$ref": "#/$defs/digest" },
+        "revision": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

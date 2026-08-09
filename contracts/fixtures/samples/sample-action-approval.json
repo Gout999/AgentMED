@@ -1,0 +1,29 @@
+{
+  "schema_version": "0.1.0",
+  "approval_id": "appr_01JB1DEMO0001CANARY01",
+  "workorder_hash": "1e79b1bdcf3d5a931980fa28a7a4c0313d7aecf0f4d1de08df4d721927da8936",
+  "workorder_id": "wo_01JB1FIX0001DEMO0000001",
+  "nonce": "4f6b2c5e-9a1d-4e7f-b2c8-5d6a7e8f9a0c",
+  "nonce_consumed": false,
+  "expiry": "2026-08-12T00:00:00Z",
+  "approver": {
+    "type": "human",
+    "identity": "feishu:ou_demo_oncall_lead_001",
+    "display_name": "值班主管（演示）"
+  },
+  "decision": "approved",
+  "decided_at": "2026-08-08T08:20:00Z",
+  "authorization": {
+    "action": "canary",
+    "release_id": "rel_01JB1DEMO0001RELEASE01",
+    "target_revision": 2,
+    "params": {
+      "percent": 5
+    },
+    "params_digest": "sha256:a588d9949cbf70ef7d56ffbf9ba5356aac21d793f173873d222cd82bf657b3ad"
+  },
+  "proof": {
+    "method": "server_recorded",
+    "ref": "audit://control-plane/approval/appr_01JB1DEMO0001CANARY01"
+  }
+}

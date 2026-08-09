@@ -12,7 +12,7 @@
 | Q2 /logs·/feedback 分页过滤 | **cursor 分页 + 时间窗 + versionset_id/rating 过滤**，照建议 | 通用性够，不加更多维度 |
 | Q3 灰度验证判据 | **探针集回放通过率 ≥ 灰度前基线（同集同比）；最短观察窗 MVP 2min**（结构字段 min_observation_minutes 保留，生产建议 10min） | 演示可压缩、判据确定性 |
 | Q4 去重键归一化 | **先 PII 脱敏、再归一化（小写化+连续空白折叠为单空格+trim）、后 sha256**；顺序定死不可调换 | 与"PII 入口脱敏"铁律一致；脱敏后哈希保证同一投诉脱敏前后同键 |
-| Q5 thread_ref 格式 | 不透明字符串，格式 `feishu:<chat_id>:<root_id>`（无 thread 时 root_id 为空段）；mock 通道 `feishu-mock:<room>:<msg_ref>` | 一处定义两处（真/mock）兼容 |
+| Q5 thread_ref 格式 | 真飞书冻结为 `channel=feishu:<chat_id>`、`thread_ref=feishu:<chat_id>:<message_id>`；`message_id` 是原投诉消息/reply API 目标，chat_id 必须一致且两段不可为空。mock 通道为 `feishu-mock:<room>:<msg_ref>` | 回复接口以原 message_id 为目标；同时保留 chat_id 可验证回复没有跨会话掉包 |
 | Q6 Δ 95%CI 方法 | **newcombe_wilson_diff**（Newcombe hybrid score，Wilson 差值区间，无连续性校正），method 字段如实记录 | 与 spec §4 公式一致，小样本稳健 |
 | Q7 ApprovalGrant 证明 | **server_recorded + audit URI**（MVP）；HMAC 签名列为 Phase 3 硬化项 | MVP 不引入密钥管理复杂度 |
 | Q8 epoch 滚动 | **SUSPENDED 冷却 24h；冷却结束计数清零开新 epoch，且必须人工确认才 reinstate（不自动恢复）** | 冷却+人工双闸，与"信任是挣来的"叙事一致 |

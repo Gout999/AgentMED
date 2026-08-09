@@ -1,0 +1,28 @@
+{
+  "blockers": [
+    "STEPFUN_API_KEY",
+    "JUDGE_MODEL",
+    "CASELOOP_B1_BAD_VERSIONSET_ID",
+    "CASELOOP_B1_GOOD_VERSIONSET_ID",
+    "CASELOOP_QUALITY_API_BASE_URL",
+    "CASELOOP_READ_TOKEN",
+    "CONTROL_PLANE_BASE_URL",
+    "CONTROL_PLANE_TOKEN",
+    "GATE_AUTHORITY_TOKEN",
+    "CASELOOP_B1_APPROVAL_COMMAND",
+    "CASELOOP_B1_AGENT_TRACE_COMMAND",
+    "CASELOOP_B1_AGENT_TRACE_PUBLIC_KEY",
+    "CASELOOP_B1_FEISHU_MESSAGE_COMMAND",
+    "CASELOOP_B1_FEISHU_MESSAGE_COMMAND is required to acquire a post-injection complaint",
+    "three fresh human ApprovalGrants require an independently authorized approval command",
+    "live completion requires an independently credentialed AgentTeams v1.2.1 taskflow/Matrix/skill trace command"
+  ],
+  "completed_at": "2026-08-09T07:39:02.117872+00:00",
+  "mode": "live-provider",
+  "provider_calls_attempted": false,
+  "replay_fallback_used": false,
+  "run_id": "b1run_livef66526ac52dd4e0f",
+  "schema_version": "0.1.0",
+  "started_at": "2026-08-09T07:39:02.115827+00:00",
+  "status": "blocked"
+}

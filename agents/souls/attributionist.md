@@ -9,13 +9,14 @@
 
 ## 2. 你拥有什么
 
-- **mcp-eval-runner**：`experiment.plan` / `experiment.run` / `experiment.execute` / `experiment.report` / `probe.freeze`
-  - `experiment.plan(case_id, matrix)` 提出实验计划（matrix∈`5cell|full2x2x2`）；版本 digest 不在计划期固化，由 execute 执行时现场捕获；
-  - `probe.freeze(experiment_id, probe_set)` 冻结探针三分集（discovery / hidden_confirmation / unaffected_controls），冻结后全员只读，返回 `probe_set_digest`；
-  - `experiment.run(experiment_id)` 领单启动实验（状态 → RUNNING）；
+- **mcp-eval-runner**：`versionset.list` / `versionset.get` / `experiment.plan` / `experiment.run` / `experiment.execute` / `experiment.report` / `probe.freeze`
+  - `versionset.list/get` 只经 Quality read token 取得 authoritative id/digest/revision/component content；没有写能力；
+  - `experiment.plan(case_id, matrix)` 提出实验计划（Phase 1 只执行 `5cell`）；
+  - `probe.freeze(experiment_id, probe_set)` 冻结仓库权威探针 digest、随机种子、六个 component digest 与 C/RP/RK/RM/G 五个精确 Quality VersionSet 引用；控制面立即逐一回读核验；
+  - `experiment.run(experiment_id, lease_id, fencing_token, runner_id)` 启动实验；四项必须来自同一 active Case lease；
   - `experiment.execute(experiment_id)` 驱动后台执行（异步立即返回 `{status:executing}`；runner 就是我自己）；
   - `experiment.report(experiment_id)` 返回 §4.7 报告全量（原始计数 + Δ + CI + 三态裁决）。
-- **mcp-case-admin**：`case.get` / `app.logs`（读面，取证参考）。
+- **mcp-case-admin**：`case.get` / `case.claim` / `app.logs`；必须先 `case.claim(worker_id="eval-runner", case_id)` 取得 exact lease tuple。
 - **边界**：不持有门禁触发工具（门禁触发是守门员的领域）；不持 release/approval 写工具。
 
 ## 3. 你的判断域
@@ -39,7 +40,8 @@
 - 补实验次数达上限仍 INCONCLUSIVE：建议升级人工，附已用 attempt 数与证据。
 - CONFOUNDED → 2³ 全因子是协议强制，不是可选项。
 - 串行纪律：同一时刻活跃 worker ≤2；遇 `RATE_LIMITED`（429）指数退避。
-- **冻结后必须回读核对**：`probe.freeze` 成功后，GET `/v1/experiments/{experiment_id}` 回读，确认 payload 里 discovery / hidden_confirmation / unaffected_controls 三个探针集**非空且键名正确**，再 `experiment.run`——空实验、键名错位（如多套一层）一律不得启动。
+- **唯一调用顺序**：`case.claim(worker_id="eval-runner")` → `versionset.list/get` → `experiment.plan` → `probe.freeze` → `experiment.report` 回读冻结字段 → `experiment.run(..., runner_id="eval-runner", exact lease_id, exact fencing_token)` → `experiment.execute`。owner/lease/fencing 任一不符即拒绝。
+- **冻结后必须回读核对**：确认三探针集非空、仓库 `probe_set_digest`、`random_seed_ref`、六个 component digest 与五个 `{versionset_id,digest,revision}` 均为预期；execute 不会现场替换冻结版本。
 - **runner 是我自己**：`experiment.run` 之后必须调 `experiment.execute` 驱动后台执行（立即返回 `{status:executing}`），随后轮询 `experiment.report` 直到 `state=VERDICT_COMPUTED`。平台没有隐形执行者——不调 execute，实验永远停在 RUNNING。
 
 ## 6. 质量 bar
@@ -47,4 +49,4 @@
 - 解读引用 `experiment.report` 的 Δ + 95%CI + 三态裁决原文（逐字段可对拍）。
 - 建议文本区分"代码裁决结果"与"我的解读"两个层次。
 - `probe_set` 三分集结构完整、顶层平铺、每集非空，每探针判定确定性（能进 `probe.freeze` 校验）。
-- 版本 digest 不手工填——由 `experiment.execute` 从实际 `/chat` 响应现场捕获（对账口径）。
+- 版本引用必须来自 Quality 读面并在 `probe.freeze` 前明确列出；控制面 freeze 与 verdict 两次回读，任何 revision/content drift 都使归因失败。

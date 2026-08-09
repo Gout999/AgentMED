@@ -13,7 +13,22 @@ from sqlalchemy.orm import Session
 
 from app.models.tables import Aggregate, Event, Outbox
 from app.services.state_machines import IllegalTransition, initial_state, next_state
+from app.utils.jcs import canonical_json_digest
 from app.utils.ids import new_event_id, new_outbox_id
+
+
+DOMAIN_EVENT_CHANNEL = "domain.events"
+DOMAIN_EVENT_TYPES = {
+    "case.opened": "CASE_CREATED",
+    "case.attribution_completed": "ATTRIBUTION_DECIDED",
+    "eval.bound": "GATE_COMPLETED",
+    "release.requested": "RELEASE_STARTED",
+    "release.promoted": "RELEASE_PROMOTED",
+    "release.rolled_back": "RELEASE_ROLLED_BACK",
+    "release.unknown_detected": "RELEASE_UNKNOWN",
+    "notification.sent": "NOTIFICATION_SENT",
+    "case.closed": "CASE_ARCHIVED",
+}
 
 
 class CASConflict(Exception):
@@ -33,6 +48,27 @@ class EventStore:
 
     def get_aggregate(self, aggregate_type: str, aggregate_id: str) -> Optional[Aggregate]:
         return self.session.get(Aggregate, {"aggregate_type": aggregate_type, "aggregate_id": aggregate_id})
+
+    def get_aggregate_for_update(
+        self, aggregate_type: str, aggregate_id: str
+    ) -> Optional[Aggregate]:
+        """Lock and refresh an aggregate before an authoritative mutation.
+
+        ``Session.get`` may return a stale identity-map object after this
+        transaction waited on a lease or another controller transaction.  A
+        database row lock plus ``populate_existing`` makes the following CAS
+        compare use the committed revision, never the cached one.
+        """
+
+        return self.session.scalar(
+            select(Aggregate)
+            .where(
+                Aggregate.aggregate_type == aggregate_type,
+                Aggregate.aggregate_id == aggregate_id,
+            )
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
 
     def create_aggregate(
         self,
@@ -81,7 +117,7 @@ class EventStore:
         - 聚合存在 → CAS 校验 expected_revision == agg.revision；随后状态迁移、
           revision+1、seq=last+1。
         """
-        agg = self.get_aggregate(aggregate_type, aggregate_id)
+        agg = self.get_aggregate_for_update(aggregate_type, aggregate_id)
         now = datetime.now(timezone.utc)
 
         if agg is None:
@@ -132,20 +168,72 @@ class EventStore:
         )
         self.session.add(event)
 
-        if outbox:
-            ob = Outbox(
-                outbox_id=outbox.get("outbox_id") or new_outbox_id(),
-                aggregate_id=aggregate_id,
-                channel=outbox["channel"],
-                payload=outbox.get("payload") or {},
-                status="PENDING",
-                attempts=0,
-                created_at=now,
+        domain_event_type = DOMAIN_EVENT_TYPES.get(event_type)
+        if domain_event_type:
+            envelope = {
+                "schema_version": "0.1.0",
+                "domain_event_type": domain_event_type,
+                "source_event_id": event.event_id,
+                "source_event_type": event.event_type,
+                "aggregate_type": aggregate_type,
+                "aggregate_id": aggregate_id,
+                "aggregate_seq": event.seq,
+                "causation_id": causation_id,
+                "correlation_id": correlation_id or aggregate_id,
+                "actor": actor,
+                "trace_id": trace_id,
+                "occurred_at": now.isoformat(),
+                "payload": payload,
+            }
+            self._enqueue_outbox(
+                event=event,
+                channel=DOMAIN_EVENT_CHANNEL,
+                event_type=domain_event_type,
+                payload=envelope,
+                outbox_id=None,
+                now=now,
             )
-            self.session.add(ob)
+
+        if outbox:
+            self._enqueue_outbox(
+                event=event,
+                channel=outbox["channel"],
+                event_type=outbox.get("event_type") or event.event_type,
+                payload=outbox.get("payload") or {},
+                outbox_id=outbox.get("outbox_id"),
+                now=now,
+            )
 
         self.session.flush()
         return event
+
+    def _enqueue_outbox(
+        self,
+        *,
+        event: Event,
+        channel: str,
+        event_type: str,
+        payload: dict[str, Any],
+        outbox_id: Optional[str],
+        now: datetime,
+    ) -> Outbox:
+        """Bind one delivery to the exact source event and canonical payload digest."""
+
+        row = Outbox(
+            outbox_id=outbox_id or new_outbox_id(),
+            aggregate_id=event.aggregate_id,
+            source_event_id=event.event_id,
+            source_event_seq=event.seq,
+            channel=channel,
+            event_type=event_type,
+            payload=payload,
+            payload_digest=canonical_json_digest(payload),
+            status="PENDING",
+            attempts=0,
+            created_at=now,
+        )
+        self.session.add(row)
+        return row
 
     def _next_seq(self, aggregate_id: str) -> int:
         rows = self.session.scalars(

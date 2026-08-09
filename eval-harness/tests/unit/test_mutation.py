@@ -48,7 +48,13 @@ class FakeLLM:
 
     def _resp(self, content: str, model: str):
         from eval_harness.llm import LLMResponse
-        return LLMResponse(content=content, model=model, model_digest="sha256:" + "f" * 64, usage={})
+        return LLMResponse(
+            content=content,
+            model=model,
+            model_digest="sha256:" + "f" * 64,
+            request_id="req_mutation_fixture",
+            usage={},
+        )
 
 
 def _patrol(settings, probe_set, samples) -> MutationPatrol:

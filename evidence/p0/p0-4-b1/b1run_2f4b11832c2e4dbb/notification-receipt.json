@@ -1,0 +1,75 @@
+{
+  "adapter": "feishu-mock:contract-replay-only",
+  "closure_context": {
+    "body_digest": "sha256:37ebcb88d8a98e6f8c2e489c2aaa3e896be15e0d7cda4e460a4c057d59ada15e",
+    "body_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/reply-body.txt",
+    "case_id": "case_01KZKCD9AFA4ABW8BXCK68PBDW",
+    "channel": "feishu-mock:b1-replay:2f4b11832c2e4dbb",
+    "duplicate": false,
+    "release_id": "rel_2f4b11832c2e4dbb",
+    "status": "configured",
+    "thread_ref": "thread:2f4b11832c2e4dbb"
+  },
+  "closure_retry": {
+    "case": {
+      "case_id": "case_01KZKCD9AFA4ABW8BXCK68PBDW",
+      "duplicate": true,
+      "event_id": "evt_01KZKCDBNGSKMCAFXD7TMSWHJN",
+      "state": "CLOSED"
+    },
+    "notification": {
+      "duplicate": true,
+      "notification_id": "notif_188b53c5f01536afb7de6527",
+      "outbox_id": "obx_01KZKCDBNHM2S9BB79B68902MB",
+      "payload": {
+        "body_digest": "sha256:37ebcb88d8a98e6f8c2e489c2aaa3e896be15e0d7cda4e460a4c057d59ada15e",
+        "body_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/reply-body.txt",
+        "case_id": "case_01KZKCD9AFA4ABW8BXCK68PBDW",
+        "channel": "feishu-mock:b1-replay:2f4b11832c2e4dbb",
+        "outbox_id": "obx_01KZKCDBNHM2S9BB79B68902MB",
+        "provider": "feishu-mock",
+        "provider_message_id": "mock-msg-obx_01KZKCDBNHM2S9BB79B68902MB",
+        "receipt": {
+          "body_digest": "sha256:37ebcb88d8a98e6f8c2e489c2aaa3e896be15e0d7cda4e460a4c057d59ada15e",
+          "outbox_id": "obx_01KZKCDBNHM2S9BB79B68902MB",
+          "payload_digest": "sha256:559790e42ba5559de9b10727087dcb1ec0212ba4a71afb20ab7a8c6cfce395a3",
+          "provider": "feishu-mock",
+          "provider_message_id": "mock-msg-obx_01KZKCDBNHM2S9BB79B68902MB",
+          "sent_at": "2026-08-09T13:46:48.372868+00:00",
+          "status": "sent",
+          "thread_ref": "thread:2f4b11832c2e4dbb"
+        },
+        "receipt_digest": "sha256:84bc819d4ab1f079e730e6e555b3165c927f01e56bf7a14ee1bab9e7d4abdebd",
+        "release_id": "rel_2f4b11832c2e4dbb",
+        "thread_ref": "thread:2f4b11832c2e4dbb"
+      },
+      "revision": 2,
+      "state": "SENT"
+    },
+    "release_id": "rel_2f4b11832c2e4dbb"
+  },
+  "notification_id": "notif_188b53c5f01536afb7de6527",
+  "payload": {
+    "body_digest": "sha256:37ebcb88d8a98e6f8c2e489c2aaa3e896be15e0d7cda4e460a4c057d59ada15e",
+    "body_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/reply-body.txt",
+    "case_id": "case_01KZKCD9AFA4ABW8BXCK68PBDW",
+    "channel": "feishu-mock:b1-replay:2f4b11832c2e4dbb",
+    "outbox_id": "obx_01KZKCDBNHM2S9BB79B68902MB",
+    "provider": "feishu-mock",
+    "provider_message_id": "mock-msg-obx_01KZKCDBNHM2S9BB79B68902MB",
+    "receipt": {
+      "body_digest": "sha256:37ebcb88d8a98e6f8c2e489c2aaa3e896be15e0d7cda4e460a4c057d59ada15e",
+      "outbox_id": "obx_01KZKCDBNHM2S9BB79B68902MB",
+      "payload_digest": "sha256:559790e42ba5559de9b10727087dcb1ec0212ba4a71afb20ab7a8c6cfce395a3",
+      "provider": "feishu-mock",
+      "provider_message_id": "mock-msg-obx_01KZKCDBNHM2S9BB79B68902MB",
+      "sent_at": "2026-08-09T13:46:48.372868+00:00",
+      "status": "sent",
+      "thread_ref": "thread:2f4b11832c2e4dbb"
+    },
+    "receipt_digest": "sha256:84bc819d4ab1f079e730e6e555b3165c927f01e56bf7a14ee1bab9e7d4abdebd",
+    "release_id": "rel_2f4b11832c2e4dbb",
+    "thread_ref": "thread:2f4b11832c2e4dbb"
+  },
+  "state": "SENT"
+}

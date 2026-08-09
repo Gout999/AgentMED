@@ -55,7 +55,12 @@ def run_lifecycle(db: Session, vs_id: str, action: str, body=None):
     validate_cas(vs, None, (body or {}).get("expected_revision"))
     validate_transition(vs, action)
     op = create_operation(db, vs, action, f"smoke-{uuid.uuid4()}", request=body or {})
-    record_operation_idempotency(db, f"smoke-{uuid.uuid4()}", lifecycle_fingerprint(action, body or {}), op)
+    record_operation_idempotency(
+        db,
+        f"smoke-{uuid.uuid4()}",
+        lifecycle_fingerprint(vs.versionset_id, action, body or {}),
+        op,
+    )
     db.commit()
     execute_operation(db, op.operation_id)
     return op
@@ -107,7 +112,13 @@ def main():
         op = run_lifecycle(db, vs.versionset_id, "canary", {"expected_revision": 2, "percent": 10})
         st = build_status(db, get_versionset(db, vs.versionset_id))
         check("canary 10%", st["status"] == "canary" and st["canary"]["percent"] == 10)
-        op = run_lifecycle(db, vs.versionset_id, "promote", {"expected_revision": 3})
+        active_digest = get_versionset(db, cfg.versionset_id).digest
+        op = run_lifecycle(
+            db,
+            vs.versionset_id,
+            "promote",
+            {"expected_revision": 3, "expected_active_digest": active_digest},
+        )
         st = build_status(db, get_versionset(db, vs.versionset_id))
         check("promote -> active", st["status"] == "active" and st["is_active"])
         check("历史 >= 3", len(st["history"]) >= 3)

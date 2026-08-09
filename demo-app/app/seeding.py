@@ -15,6 +15,8 @@ from app.prompts_registry import PROMPTS_DIR, seed_prompt_versions
 
 BASELINE_ID = "vs_baseline0000000001"
 BASELINE_PROMPT_VERSION = "v1.4.2"
+B1_FAULT_ID = "vs_b1fault000000000001"
+B1_FAULT_PROMPT_VERSION = "v1.4.3"
 
 
 def ensure_baseline_versionset(db: Session) -> VersionSet:
@@ -72,6 +74,46 @@ def ensure_baseline_versionset(db: Session) -> VersionSet:
     return vs
 
 
+def ensure_b1_fault_versionset(db: Session, baseline: VersionSet) -> VersionSet:
+    """Seed the immutable P1 artifact used by the controlled B1 injection."""
+
+    existing = db.get(VersionSet, B1_FAULT_ID)
+    if existing is not None:
+        return existing
+    from app.prompts_registry import resolve_prompt
+
+    _content, prompt_digest = resolve_prompt(
+        db, "prompts/system.md", B1_FAULT_PROMPT_VERSION
+    )
+    baseline_content = baseline.content or {}
+    prompt_obj = {
+        "prompt_id": "prompts/system.md",
+        "version": B1_FAULT_PROMPT_VERSION,
+        "digest": prompt_digest,
+    }
+    kb_manifest = dict(baseline_content["kb_manifest"])
+    model_obj = dict(baseline_content["model"])
+    content = {
+        "prompt": prompt_obj,
+        "kb_manifest": kb_manifest,
+        "model": model_obj,
+    }
+    content["digest"] = jcs.versionset_digest(prompt_obj, kb_manifest, model_obj)
+    fault = VersionSet(
+        versionset_id=B1_FAULT_ID,
+        revision=1,
+        status="draft",
+        content=content,
+        digest=content["digest"],
+        canary_percent=0,
+        labels={"fixture": "B1", "fault_layer": "prompt"},
+    )
+    db.add(fault)
+    db.commit()
+    db.refresh(fault)
+    return fault
+
+
 def init_app() -> None:
     """启动一次性初始化（FastAPI lifespan 调用）。"""
     init_schema()
@@ -79,6 +121,7 @@ def init_app() -> None:
     try:
         seed_prompt_versions(db)
         kb.seed_kb_entries(db)
-        ensure_baseline_versionset(db)
+        baseline = ensure_baseline_versionset(db)
+        ensure_b1_fault_versionset(db, baseline)
     finally:
         db.close()

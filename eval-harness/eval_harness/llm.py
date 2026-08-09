@@ -28,6 +28,7 @@ class LLMResponse:
     model: str
     model_digest: str
     usage: dict
+    request_id: str
 
 
 class LLMClient:
@@ -42,6 +43,8 @@ class LLMClient:
         self._client = OpenAI(
             api_key=settings.stepfun_api_key,
             base_url=settings.stepfun_base_url,
+            timeout=settings.provider_timeout_seconds,
+            max_retries=0,
         )
 
     def model_digest_for(self, model: str | None = None, params: dict | None = None) -> str:
@@ -49,7 +52,15 @@ class LLMClient:
         p = dict(params or {"temperature": 0.0, "max_tokens": 1024})
         return sha256_digest({"provider": "stepfun", "model": m, "params": p})
 
-    def chat(self, system: str, user: str, *, model: str | None = None, params: dict | None = None) -> LLMResponse:
+    def chat(
+        self,
+        system: str,
+        user: str,
+        *,
+        model: str | None = None,
+        params: dict | None = None,
+        deadline_monotonic: float | None = None,
+    ) -> LLMResponse:
         """单次 chat 调用（temperature=0，集中限速 + 429 指数退避）。"""
         m = model or self.settings.stepfun_model
         p = dict(params or {"temperature": 0.0, "max_tokens": 1024})
@@ -71,10 +82,17 @@ class LLMClient:
 
         last_exc: BaseException | None = None
         for attempt in range(MAX_RETRIES + 1):
-            self.limiter.acquire()
+            remaining = self._remaining(deadline_monotonic)
+            self.limiter.acquire(timeout=min(60.0, remaining))
             try:
-                resp = self._client.chat.completions.create(**kwargs)
+                client = self._client.with_options(
+                    timeout=min(float(self.settings.provider_timeout_seconds), self._remaining(deadline_monotonic))
+                )
+                resp = client.chat.completions.create(**kwargs)
                 content = resp.choices[0].message.content or ""
+                request_id = str(getattr(resp, "id", "") or "")
+                if not request_id:
+                    raise RuntimeError("judge provider response omitted its request id")
                 usage = getattr(resp, "usage", None)
                 return LLMResponse(
                     content=content,
@@ -84,13 +102,24 @@ class LLMClient:
                         "prompt_tokens": getattr(usage, "prompt_tokens", 0) or 0,
                         "completion_tokens": getattr(usage, "completion_tokens", 0) or 0,
                     },
+                    request_id=request_id,
                 )
             except Exception as exc:  # noqa: BLE001 —— 分类可重试/不可重试
                 last_exc = exc
                 if not self._retryable(exc):
                     raise
-                time.sleep(min(BACKOFF_BASE_S * (2**attempt), BACKOFF_MAX_S))
+                backoff = min(BACKOFF_BASE_S * (2**attempt), BACKOFF_MAX_S)
+                time.sleep(min(backoff, self._remaining(deadline_monotonic)))
         raise RuntimeError(f"LLM 重试 {MAX_RETRIES} 次仍失败: {last_exc}")
+
+    @staticmethod
+    def _remaining(deadline_monotonic: float | None) -> float:
+        if deadline_monotonic is None:
+            return 60.0
+        remaining = deadline_monotonic - time.monotonic()
+        if remaining <= 0:
+            raise TimeoutError("gate evaluator deadline exceeded during judge-provider call")
+        return remaining
 
     @staticmethod
     def _retryable(exc: BaseException) -> bool:

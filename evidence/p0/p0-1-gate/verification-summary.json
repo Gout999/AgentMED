@@ -1,0 +1,27 @@
+{
+  "schema_version": "0.1.0",
+  "verified_at": "2026-08-08T22:40:51+10:00",
+  "takeover_base": "89ea66750dfed3df6feeed493d9e2499ef77cdbe",
+  "branch": "codex/p0-close-b1-loop",
+  "offline": {
+    "control_plane": {"passed": 161, "failed": 0},
+    "demo_unit": {"passed": 36, "failed": 0},
+    "demo_postgres_concurrency": {"passed": 2, "failed": 0},
+    "eval_harness": {"passed": 69, "failed": 0, "skipped_live": 4},
+    "mcp_servers": {"passed": 54, "failed": 0, "skipped_live": 1},
+    "contract_schema_wilson": {"passed": 26, "failed": 0},
+    "console_build": "passed",
+    "python_compileall": "passed",
+    "alembic_round_trip": "passed on dedicated control_plane_migration_test database",
+    "compose_config": "passed",
+    "git_diff_check": "passed",
+    "independent_verifier": "passed_no_material_blocker"
+  },
+  "live_provider": {
+    "status": "blocked_external_prerequisites",
+    "contract_conformance": {"passed": 26, "failed_connection_refused": 15},
+    "demo_e2e": {"failed_connection_refused": 6, "skipped": 2},
+    "missing": ["Docker daemon", "STEPFUN_API_KEY", "JUDGE_MODEL", "native pgvector"]
+  },
+  "claims_live_pass": false
+}

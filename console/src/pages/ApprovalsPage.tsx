@@ -1,86 +1,74 @@
+import type { ReactNode } from "react";
 import { AsyncBoundary } from "../components/AsyncState";
 import { Card } from "../components/Card";
-import { DataPending } from "../components/DataPending";
 import { Digest } from "../components/Digest";
 import { StatusChip } from "../components/StatusChip";
+import { usePageData } from "../hooks/usePageData";
 import { api } from "../lib/api";
 import { formatTime, stateLabel, stateTone } from "../lib/format";
-import { usePageData } from "../hooks/usePageData";
-import type { ChangeSet } from "../lib/types";
-
-/** 历史审批记录对应的终态集合 */
-const HISTORY_STATES = new Set(["APPROVED", "REJECTED", "EXPIRED", "COMMITTED", "SUPERSEDED"]);
-
-interface ApprovalsData {
-  pending: ChangeSet[];
-  history: ChangeSet[];
-}
-
-const fetchApprovals = async (): Promise<ApprovalsData> => {
-  const [pending, all] = await Promise.all([
-    api.listChangesets("AWAITING_APPROVAL"),
-    api.listChangesets(),
-  ]);
-  return {
-    pending: pending.items,
-    history: all.items.filter((c) => HISTORY_STATES.has(c.state)),
-  };
-};
+import type { WorkOrderView } from "../lib/types";
 
 export function ApprovalsPage() {
-  const { data, loading, error } = usePageData(fetchApprovals);
+  const view = usePageData((signal) => api.listWorkOrders(signal));
+  const items = view.data?.items ?? [];
+  const pending = items.filter((item) => item.state === "AWAITING_APPROVAL");
+  // Keep every authoritative WorkOrder visible. Pre-approval, terminal, and
+  // UNKNOWN lifecycle values must not disappear merely because the UI does
+  // not recognize a newer backend state.
+  const history = items.filter((item) => item.state !== "AWAITING_APPROVAL");
 
   return (
     <div className="space-y-6">
-      <Card
-        title={`待审批 WorkOrder（${data?.pending.length ?? "—"}）`}
-        extra={<DataPending issue="workorder hash / 提请人无 REST 读端点（OPEN-ISSUES #6）" />}
-        bodyClassName="p-4"
-      >
+      <Card title={`待审批 WorkOrder（${view.loading ? "—" : pending.length}）`} bodyClassName="p-4">
         <AsyncBoundary
-          loading={loading}
-          error={error}
-          dataEmpty={(data?.pending.length ?? 0) === 0}
-          emptyHint="当前无待审批工单"
+          loading={view.loading}
+          error={view.error}
+          dataEmpty={pending.length === 0}
+          emptyHint="当前无待审批 WorkOrder"
+          onRetry={view.reload}
+          staleError={view.refreshError}
         >
           <div className="space-y-3">
-            {data?.pending.map((cs) => (
-              <WorkOrderCard key={cs.changeset_id} cs={cs} />
+            {pending.map((workorder) => (
+              <WorkOrderCard key={workorder.workorder_id} workorder={workorder} />
             ))}
           </div>
         </AsyncBoundary>
       </Card>
 
-      <Card title="历史审批记录">
+      <Card title="其他及历史 WorkOrder">
         <AsyncBoundary
-          loading={loading}
-          error={error}
-          dataEmpty={(data?.history.length ?? 0) === 0}
-          emptyHint="尚无已处理工单（审批写面在 release-admin MCP 侧）"
+          loading={view.loading}
+          error={view.error}
+          dataEmpty={history.length === 0}
+          emptyHint="尚无已处理 WorkOrder"
+          onRetry={view.reload}
+          staleError={view.refreshError}
         >
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[560px] text-left text-sm">
+            <table className="w-full min-w-[680px] text-left text-sm">
               <thead>
                 <tr className="border-b border-gray-100 text-xs uppercase tracking-wide text-gray-400">
                   <th className="pb-2 pr-4 font-medium">workorder_id</th>
                   <th className="pb-2 pr-4 font-medium">状态</th>
+                  <th className="pb-2 pr-4 font-medium">hash</th>
                   <th className="pb-2 pr-4 font-medium">nonce</th>
-                  <th className="pb-2 pr-4 font-medium">revision</th>
+                  <th className="pb-2 pr-4 font-medium">冻结至</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
-                {data?.history.map((cs) => (
-                  <tr key={cs.changeset_id}>
-                    <td className="py-2.5 pr-4 font-mono text-xs text-gray-700">
-                      {workorderId(cs.changeset_id)}
-                    </td>
+                {history.map((workorder) => (
+                  <tr key={workorder.workorder_id}>
+                    <td className="py-2.5 pr-4 font-mono text-xs text-gray-700">{workorder.workorder_id}</td>
                     <td className="py-2.5 pr-4">
-                      <StatusChip label={stateLabel(cs.state)} tone={stateTone(cs.state)} />
+                      <StatusChip
+                        label={stateLabel("changeset", workorder.state)}
+                        tone={stateTone("changeset", workorder.state)}
+                      />
                     </td>
-                    <td className="py-2.5 pr-4 font-mono text-xs text-gray-500">
-                      {String(cs.payload.nonce ?? "—")}
-                    </td>
-                    <td className="py-2.5 pr-4 text-xs tabular-nums text-gray-500">{cs.revision}</td>
+                    <td className="py-2.5 pr-4"><Digest value={workorder.hash} /></td>
+                    <td className="py-2.5 pr-4 font-mono text-xs text-gray-500">{workorder.nonce ?? "UNKNOWN"}</td>
+                    <td className="py-2.5 pr-4 text-xs text-gray-500">{formatTime(workorder.freeze_at)}</td>
                   </tr>
                 ))}
               </tbody>
@@ -92,88 +80,82 @@ export function ApprovalsPage() {
   );
 }
 
-function WorkOrderCard({ cs }: { cs: ChangeSet }) {
-  const woId = workorderId(cs.changeset_id);
-  const freezeAt = (cs.payload.expiry as string | undefined) ?? null;
-  const gateRef = (cs.payload.gate_report_ref as string | undefined) ?? null;
-  const nonce = (cs.payload.nonce as string | undefined) ?? null;
-
+function WorkOrderCard({ workorder }: { workorder: WorkOrderView }) {
+  const gateUri = workorder.gate_report_ref?.uri ?? null;
+  const gateDigest = workorder.gate_report_ref?.digest ?? null;
   return (
-    <div className="rounded-xl border border-gray-200 bg-gray-50/50 p-4">
+    <article className="rounded-xl border border-gray-200 bg-gray-50/50 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
+        <div>
           <div className="flex flex-wrap items-center gap-2">
-            <h4 className="font-mono text-sm font-semibold text-gray-900">{woId}</h4>
-            <StatusChip label={stateLabel(cs.state)} tone={stateTone(cs.state)} />
+            <h4 className="font-mono text-sm font-semibold text-gray-900">{workorder.workorder_id}</h4>
+            <StatusChip
+              label={stateLabel("changeset", workorder.state)}
+              tone={stateTone("changeset", workorder.state)}
+            />
+            {workorder.projection_warning ? <StatusChip label="projection UNKNOWN" tone="red" /> : null}
+            <StatusChip
+              label={workorder.workorder_integrity_status === "verified" ? "WorkOrder verified" : "WorkOrder UNKNOWN"}
+              tone={workorder.workorder_integrity_status === "verified" ? "green" : "red"}
+            />
+            <StatusChip
+              label={workorder.gate_integrity_status === "verified" ? "Gate binding verified" : "Gate binding UNKNOWN"}
+              tone={workorder.gate_integrity_status === "verified" ? "green" : "red"}
+            />
           </div>
           <p className="mt-1 text-xs text-gray-400">
-            变更集 {cs.changeset_id} · revision {cs.revision}
+            {workorder.changeset_id} · case {workorder.case_id ?? "UNKNOWN"} · {workorder.channel}
           </p>
         </div>
       </div>
 
-      <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 sm:grid-cols-2 lg:grid-cols-3">
-        <div>
-          <dt className="text-xs font-medium text-gray-400">workorder hash</dt>
-          <dd className="mt-0.5">
-            <span className="inline-flex items-center gap-1.5">
-              <Digest value={null} />
-              <DataPending issue="workorders 表有 hash 但无 GET 端点（OPEN-ISSUES #6）" />
-            </span>
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs font-medium text-gray-400">freeze / 过期时间</dt>
-          <dd className="mt-0.5 text-sm tabular-nums text-gray-700">{formatTime(freezeAt)}</dd>
-        </div>
-        <div>
-          <dt className="text-xs font-medium text-gray-400">提请人</dt>
-          <dd className="mt-0.5 flex items-center gap-1.5">
-            <span className="text-sm text-gray-500">—</span>
-            <DataPending issue="author_agent 未并入 changeset aggregate（OPEN-ISSUES #6）" />
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs font-medium text-gray-400">证据摘要 · 门禁报告</dt>
-          <dd className="mt-0.5 font-mono text-xs text-gray-700">{gateRef ?? "—"}</dd>
-        </div>
-        <div>
-          <dt className="text-xs font-medium text-gray-400">nonce（防重放）</dt>
-          <dd className="mt-0.5 font-mono text-xs text-gray-700">{nonce ?? "—"}</dd>
-        </div>
+      {workorder.projection_warning ? (
+        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          ChangeSet 投影与不可变 WorkOrder 不一致：{workorder.projection_warning}。页面仍显示 WorkOrder 权威值。
+        </p>
+      ) : null}
+
+      {workorder.workorder_integrity_status !== "verified" ? (
+        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          WorkOrder 内容 hash 无法通过完整性验证：
+          {workorder.workorder_integrity_error ?? "UNKNOWN"}。可变投影字段与完整 payload 已从读面隐藏。
+        </p>
+      ) : null}
+
+      {workorder.gate_integrity_status !== "verified" ? (
+        <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          GateReport 与 WorkOrder 绑定无法通过完整性验证：
+          {workorder.gate_integrity_error ?? "UNKNOWN"}。不得据此审批或发布。
+        </p>
+      ) : null}
+
+      <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-3 sm:grid-cols-2 lg:grid-cols-3">
+        <Field label="workorder hash"><Digest value={workorder.hash} copyable /></Field>
+        <Field label="target VersionSet"><Digest value={workorder.target_versionset_digest} /></Field>
+        <Field label="target VersionSet id"><code className="break-all font-mono text-xs">{workorder.gate_target_versionset_id ?? "UNKNOWN"}</code></Field>
+        <Field label="target revision"><span>{workorder.gate_target_revision ?? "UNKNOWN"}</span></Field>
+        <Field label="freeze / expiry"><span>{formatTime(workorder.freeze_at)}</span></Field>
+        <Field label="提请人"><span>{workorder.requester ?? "UNKNOWN"}</span></Field>
+        <Field label="nonce"><code className="break-all font-mono text-xs">{workorder.nonce ?? "UNKNOWN"}</code></Field>
+        <Field label="创建时间"><span>{formatTime(workorder.created_at)}</span></Field>
+        <Field label="GateReport URI"><code className="break-all font-mono text-xs">{gateUri ?? "UNKNOWN"}</code></Field>
+        <Field label="GateReport digest"><Digest value={gateDigest} /></Field>
+        <Field label="Gate binding digest"><Digest value={workorder.gate_binding_digest} /></Field>
       </dl>
 
-      {/* 批准 / 拒绝 —— 写面在 release-admin MCP，禁用并标注 */}
-      <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-3">
-        <button
-          type="button"
-          disabled
-          className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-medium text-white opacity-40"
-          title="审批写面由 release-admin MCP 完成（approval.request，hash 绑定 + nonce + expiry 校验）"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-            <path d="m5 13 4 4L19 7" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-          批准
-        </button>
-        <button
-          type="button"
-          disabled
-          className="inline-flex cursor-not-allowed items-center gap-1.5 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white opacity-40"
-          title="审批写面由 release-admin MCP 完成（approval.request，hash 绑定 + nonce + expiry 校验）"
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-            <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
-          </svg>
-          拒绝
-        </button>
-        <span className="text-xs text-gray-400">经 release-admin MCP 审批</span>
-      </div>
-    </div>
+      <p className="mt-4 border-t border-gray-100 pt-3 text-xs text-gray-400">
+        本页只读。审批写面必须由授权主体对这个 exact hash、nonce、expiry 与上方已验证的
+        target revision 操作；任何 UNKNOWN 都必须 fail closed。
+      </p>
+    </article>
   );
 }
 
-/** changeset_id 形如 cs_wo_xxx，去掉 cs_ 前缀即 workorder_id。 */
-function workorderId(changesetId: string): string {
-  return changesetId.startsWith("cs_") ? changesetId.slice(3) : changesetId;
+function Field({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-medium text-gray-400">{label}</dt>
+      <dd className="mt-0.5 text-sm text-gray-700">{children}</dd>
+    </div>
+  );
 }

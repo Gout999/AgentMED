@@ -1,0 +1,1088 @@
+{
+  "bundle_id": "eb_2f4b11832c2e4dbb",
+  "case_id": "case_01KZKCD9AFA4ABW8BXCK68PBDW",
+  "cells": {
+    "C": {
+      "control_pass_rate": 1.0,
+      "recovery_rate": 0.0,
+      "results": [
+        {
+          "output_digest": "sha256:1f08c2f10bdfc91dde7229225af1fba0da481b558851d8284bec4cf68f5c6281",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-001-rep1.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:bdc57a470f31915e091b4cf0d4738c301f5c13b2de31b4d3b611c945c85196be",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-001-rep2.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:1a724d8b5fdf1b4bc4d00968a7fe79bd9add9fa12bae6c8495819a36309b82ae",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-001-rep3.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:084ff81db4db868151b8f5dbf9c295d7a5e8d9a35ce390f4f3150e9591aaa12b",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-002-rep1.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:1a6cb0b455213cae12020d6fdbdadacc0c9bff4115d2bc61c5e02beb6fe8169e",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-002-rep2.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:b42f1983b44047e691008cbffa781fcaa476699c58642b8eb4c4a40f20e65e46",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-002-rep3.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:e713887680e71ca34fc0f4d4175a4360c42d064b8d1e248039b220a012aeb1a4",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-003-rep1.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:e8501306440f5f6835726e9e2d5244f1fc369fd43b9ad5a64aa2d0bf40a168aa",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-003-rep2.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:470fd0b0425cea1b6fea9489ec82f213b4122b75f2edf3db2c5f4dc32c89ac1d",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-003-rep3.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:7f2e784794b44ea2ba758b36f7aa5525e204ca38c5a79e5338d49b6b552b0f5e",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-004-rep1.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:583c8315aeec837b944abf9d3b2605462a644d877d7dcb701b653943a519305e",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-004-rep2.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:f21e6d08f996441a4f5d9c182f0754806b1aa3f1d7de4baf261af9f093f44c5c",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-004-rep3.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:dc2cd98428c96d6c8f3a732dff9050d898981a5c00c1dc0707566553e83bc4d7",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-005-rep1.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:2ce253d09152571d9a405f92c48a6bb0dd4c7fb08cac97ca0ac3d35a8a7c4644",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-005-rep2.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:f5888ffbb348e4f0a57f3bb5d9929eef4cf54e0993be270465d407fb98207a98",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-005-rep3.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:25309a4e12a2cc417618ba1de03573c8f1ca1b115f7e0544ba169e5fbf3e8047",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-013-rep1.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:ac41926078a77721557c5c1d12b3b85021f96881baaca061afd123af39146bb2",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-013-rep2.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:efefa77167b918662bde571b701d4e1eaa9b31b211700dc81ecd4f832e446093",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-013-rep3.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:cff7924e4031380f4fbf49efd0df49695c170eb81acd3a7922845e147b27d185",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-014-rep1.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:3510d2db599d9d4fd6ade60d8b715f770f74ff67325bfd419f36f7b7e5cc0999",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-014-rep2.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:2762a7d73973a90d6a5bd795d2cff672aff6e15eeb328e58dfd69d50440cb415",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-014-rep3.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:373922d60024b5ce963f4c43daa8b3fe413794c9e3693fa039f2d583fd8ab851",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-015-rep1.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:e2c182a022bf65dc4922f91f754610a0335d49db460c4ba923717e1571b93e2c",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-015-rep2.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:2880498f7746248e10b11e0e19ba16a4603ea5a4ada95203c600385dd555afec",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-015-rep3.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:1493d3a1c199ca1803e3cb0a884732d880905ad1427bc506f7d154526730a8c4",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-016-rep1.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:98dce95326c01663ee85f7108dcaa44e70265f091df51718fb210b9f1f34599f",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-016-rep2.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:7c91b75c4905d9b58797766987442f96f417088e56d9f4651a2a7d2d0b0efd23",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/C/cs-016-rep3.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 3
+        }
+      ],
+      "versions": {
+        "kb_manifest_digest": "sha256:ac4d51f9f07f8186f567a509aeb3dd1824b77a7ba386a956b3c3f9e035fa923d",
+        "model_digest": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+        "prompt_digest": "sha256:8dab9d372bbf7e0747f5fe2b21d90bee8da1f70bbafc409f2071ccef5267140a"
+      }
+    },
+    "G": {
+      "control_pass_rate": 1.0,
+      "recovery_rate": 1.0,
+      "results": [
+        {
+          "output_digest": "sha256:6c9f1ee52de0080723713418ae7110e80deed3d1d5330e31db21b170d5d3e5ac",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-001-rep1.json",
+          "probe_id": "cs-001",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:a8c326c560d7b99ab992f2e1f79c7761bf5c23698e1f0c37fba757d23b95c9c7",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-001-rep2.json",
+          "probe_id": "cs-001",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:427dffba430251c7759a332e753212a5130e2536ceb6223135589fbd556433c0",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-001-rep3.json",
+          "probe_id": "cs-001",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:ec618670111fc0022a669d3be70f465fe80c812037cd8941de85bbd6fa2d0ef4",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-002-rep1.json",
+          "probe_id": "cs-002",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:9827316b5410298cc9768c94df96ff53b0691435c38792a0ac5674291727e84a",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-002-rep2.json",
+          "probe_id": "cs-002",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:11860d8bcfe4273723ae5074fe66b899a884430140fbd998bf766491ebc5a9d8",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-002-rep3.json",
+          "probe_id": "cs-002",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:3a98beb9d57239b8d7213d6b5f4cc5dae6232dbe402a6fbe35fe973fd51e0092",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-003-rep1.json",
+          "probe_id": "cs-003",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:2ac83921ded4ebe93f666ba1e7ec201e66acca78dae32ce4853993b8a9f6e531",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-003-rep2.json",
+          "probe_id": "cs-003",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:b119f030ad480ef51cb716e7171d722e00220fe26dbace44573838717479e277",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-003-rep3.json",
+          "probe_id": "cs-003",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:a6f6a101e5bdaa77d78c73a3911715479758e89189ac2cde5541bfbc3e89e521",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-004-rep1.json",
+          "probe_id": "cs-004",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:4c920e99809ba5e81f6b2f6aba53fd694bf5c03491edbdbfea4f74de350b8d97",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-004-rep2.json",
+          "probe_id": "cs-004",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:a8b4e54ddb446680ae18f7d926cf15656093ebe23ed3f87f3d35fa4d390a2369",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-004-rep3.json",
+          "probe_id": "cs-004",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:020b87553d04e03908f20adf959703c4bc2929064c796d903537b25ade4cdbac",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-005-rep1.json",
+          "probe_id": "cs-005",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:6b22841851d0e8e2cfe2faea3335f25c2f8e080efdce2e5755dbe62fa3b6f7b9",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-005-rep2.json",
+          "probe_id": "cs-005",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:0db54b26d238e22c9af8329e88016c1b1232e4f493fb1da00ae35926e1955753",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-005-rep3.json",
+          "probe_id": "cs-005",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:88e0ac6a5bab95fb165ee587854ec7f72ac5ab856b1913c5df26f9e44422558d",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-013-rep1.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:8ba31c0c20d16a2272cec11d87fb2f3af0cb23715aec14e144de06126442a68b",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-013-rep2.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:eda2eed87ca531310d62475ba222d51a3ac1b3d24599b4ba6ddace8ece870d3c",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-013-rep3.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:09fbce2626b81da56eacf1183a7849afbd839ed007c47b027200d3f6483520e8",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-014-rep1.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:ca02367a9efb52cacecd68464ec968090df55f0f755f5192c5bb7d96e585d067",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-014-rep2.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:53fab5ffe80e2b68e59390aa5268e9f358200040ec9e5d7d8ce58866a47398a6",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-014-rep3.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:b3970cdd6eb7e4f3e39e19379f331562878991599fd1a092a71bed10954a98fd",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-015-rep1.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:d067b9c249b2663a4f8317ba6662798e6feff5b157bddda2ff437bef561f06e9",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-015-rep2.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:81663baac21160665bdea2d8ac951c51b3a04008ed17e9dc98375430564afefa",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-015-rep3.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:7435cd644d52849b47096ca1cf7fa81365682e14a9fb766f5cc9720189005015",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-016-rep1.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:550ce7d4a09b0141c8c4f7dcf04a497294d237c0ff88d3824908326b0ad8d35c",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-016-rep2.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:6a7141b3859662618e4dc11f2a0fc29c87f49b5027d7997fc48dbffaf6dda38d",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/G/cs-016-rep3.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 3
+        }
+      ],
+      "versions": {
+        "kb_manifest_digest": "sha256:ac4d51f9f07f8186f567a509aeb3dd1824b77a7ba386a956b3c3f9e035fa923d",
+        "model_digest": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+        "prompt_digest": "sha256:c63b8a750e1731ac62f079cd192dc935e5f1fa40fabee8e18091e74045a40399"
+      }
+    },
+    "RK": {
+      "control_pass_rate": 1.0,
+      "recovery_rate": 0.0,
+      "results": [
+        {
+          "output_digest": "sha256:268e8ff0c34e22388948560a58b8489cc91d9bf222400b57e98e393ed5f48c81",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-001-rep1.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:7edc2103cd6752268249bbecdca0d9346f06d3ee7bbb6b5c1dd39fbd9a1abb4c",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-001-rep2.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:038810cc5c0ea04decab8f38a94355de40302d41402d6bbb71c1beb068c72aad",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-001-rep3.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:045ec43386cc828e87bf1d7083c09847102cd930c22486d80ff250259042bfd1",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-002-rep1.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:3c36ad92b86be84acfe2b0fd2dd3cce2a6e7bcf5ca2c0b3b919234ee433d0543",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-002-rep2.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:e466092c476d28bd0bbc1c5a58888c82740b34d6bf70c9603a366bc92fd43059",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-002-rep3.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:6041354a1d32e7f9e750bc992f7b83c54ca21e8ada097fa968bb2885c75d15aa",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-003-rep1.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:d62e6ba93f54c20ad07004c3e88785580e3690df9f292ae510ac2d4e3cc2849f",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-003-rep2.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:cf09745a2e0fe92ac0df389c7ff79911206f39293ba053660de246d3360e0836",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-003-rep3.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:ec6c69e3a75a1ddfd5cfc53a37a80090a41205b176ec5dc47c31ce1b347931d6",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-004-rep1.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:d65592f857aee9d67bf735ba128405780ffd048af78fafa4cda8c80725db99ac",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-004-rep2.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:94d855829ecec49c87829a0e985dd2a1815ffdd93aaa207434d49ba0170a792a",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-004-rep3.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:0b9b502ca330877284e3f121cf1799f1d1e1067564876bd3900ee3076487f792",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-005-rep1.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:d598a5cbcd3c62261e05d219977ddff949758beea0ae627f804343715743657d",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-005-rep2.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:f0a7d0bd60e87b46b65a65709e404577f829b858921f654b3f1ae21a1a80fff9",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-005-rep3.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:91ab57ba2e7aa4ae3752f8c9bc65249f31343cf1ccc4212703047ed02c11982a",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-013-rep1.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:e7e45facc021fdbeee4e2bc2c6f98de2d91c12dbccd447bb23a989ac9130f3c5",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-013-rep2.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:eccb5d47f1e2ede8662f33b3d1480bb58e88785cd8748c1423adbee4772fdac5",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-013-rep3.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:72cd6078c599d4028280732b20ba468fa0bc85dd7c92ff43b06fba5f6114877f",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-014-rep1.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:d0bcb271b27f4cf404e91a5bd4bcd6296657acebfb3954da583c509a5e3cfe3b",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-014-rep2.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:dcb14fe7c7ad16ffbffbfcb1086105282fda27fcefc26de454ea61075803dc77",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-014-rep3.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:dda5f54f2211e9858579699229748cc3034e9c075e5221f4a7f9e3aef50c5efe",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-015-rep1.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:bda26a42c544dddb016e8b65234b7ade859ffa6618cb7e761fc55a77e6ff3920",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-015-rep2.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:1f2b9588aeb287160e15b85ea495434510411d3aa0b5cdba4328dbf2eac06be2",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-015-rep3.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:088785c8364ef107b8949cd49626697394edeab450e6e5145c9c67d640f59892",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-016-rep1.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:3ccd55547df203f32f14485a1b3ec6d359cf7c685425fa475d80326b8105121a",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-016-rep2.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:b622948a1721b8043b037177c19174e033ea3b6f7aa35e02f9dd29c5496ba26a",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RK/cs-016-rep3.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 3
+        }
+      ],
+      "versions": {
+        "kb_manifest_digest": "sha256:ac4d51f9f07f8186f567a509aeb3dd1824b77a7ba386a956b3c3f9e035fa923d",
+        "model_digest": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+        "prompt_digest": "sha256:8dab9d372bbf7e0747f5fe2b21d90bee8da1f70bbafc409f2071ccef5267140a"
+      }
+    },
+    "RM": {
+      "control_pass_rate": 1.0,
+      "recovery_rate": 0.0,
+      "results": [
+        {
+          "output_digest": "sha256:1d57364db27020ccf2e8e611c79dc2b055597440b7c17c4c7067579f428f7962",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-001-rep1.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:1941956ec47c8bc14a5c3c8c3009787d635b62ffc1ba66278cfc3558bb9b7973",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-001-rep2.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:798a011d5b42bfc3c2f7b40dd67fdd25f9dfda75492cc92a0303eabfd49c15ad",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-001-rep3.json",
+          "probe_id": "cs-001",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:356d75badeff9ee33fd1ce1d3b2e5e5c6f6989942d6466a7ef7a5b93a4bae0c4",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-002-rep1.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:2a839666c644d3c998c52d38ed7774ccc38b1956ca91cf5d5892789ff4359b06",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-002-rep2.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:14c40db208f2051dd5607ad0d504e107b0af02584ce242b76bc08dbbb4d1ddfe",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-002-rep3.json",
+          "probe_id": "cs-002",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:63807d3fe91ace4ba8ab47b7f2089a0df9b34c8b4f26f90a055fc9a08aaee949",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-003-rep1.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:e1099fbb509f304c2337b165d069e662575dcf0be32cd84b3e8c04b52195d203",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-003-rep2.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:cac5440b150e302b9e500f0ff1b03c686d7ac041a70538ec339ec111799217b1",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-003-rep3.json",
+          "probe_id": "cs-003",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:daf666e91a101b17f849391119de131a88863c5374f35b5cd4f15cf50b898a5e",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-004-rep1.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:505b7c9f8f694699b4ad2fabd73267891c067d34ac714a1f7af3c2eb0c5c48e3",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-004-rep2.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:8ed227cb4eba2cd3aaa2ac12a9a6554c59998c18a382c754f0b39902901ee765",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-004-rep3.json",
+          "probe_id": "cs-004",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:48e532db9d450d2e85e23c47715694cabbe9de33118d843b27addc0850a10d76",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-005-rep1.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:c41a6d21077b5b6853df7f96768bb5bb93073f993bb86c86dd2535525b660415",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-005-rep2.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:9f42cc97fc1d7a50831f7b88c5733292228e68df513da63b176b8b9ddf0605a1",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-005-rep3.json",
+          "probe_id": "cs-005",
+          "recovered": false,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:dcb050f8627adf4e4bc899859d8c317b6a030dbcee5007fd0d14f6b1774c8e06",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-013-rep1.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:f8409c7f76941028d133f6b3b52e7a10d0a7d09339b9cd529d5763394a7b1fb1",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-013-rep2.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:390c42734b2a286aca65f25099c924638ba93beb3c6235520c10b54f4a3d0c89",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-013-rep3.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:d82580ee95a0f06281b3f1ca1ffea71dfb7892bcdea915634a111dcccb03bc78",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-014-rep1.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:76b955cc17104ebf3123416c4d1c7960f56b9d9384d6a987c4bd8816cba822ee",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-014-rep2.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:bcf767396c0a39f5e6e3898e3608d5b737b8fadce0124d187e9e1e9083b42143",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-014-rep3.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:768c3e5c119be6e9069ac3b8a206d239d82b7e9c56fb6b7f9eb840a8bf6c2cf8",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-015-rep1.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:70e6781bfa29033baeccabb8e893c77b31e7ae5efce3458596923ed41e286977",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-015-rep2.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:9ea84df2844a6029c189c8f21a8b52176f2284225731cca7c5f7c39216399399",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-015-rep3.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:9ea3158a797fd988256308285b8cd7fa6ce3ba50e49c95f21cf736b3561235f5",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-016-rep1.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:9d91d0f7b9096f4b686a71b6103cc827447e85715ed74b3e68e97bf71dd74968",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-016-rep2.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:5d6a15c02db959bd11f8748028788588d5d9829b464761b72d8f6ee880615290",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RM/cs-016-rep3.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 3
+        }
+      ],
+      "versions": {
+        "kb_manifest_digest": "sha256:ac4d51f9f07f8186f567a509aeb3dd1824b77a7ba386a956b3c3f9e035fa923d",
+        "model_digest": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+        "prompt_digest": "sha256:8dab9d372bbf7e0747f5fe2b21d90bee8da1f70bbafc409f2071ccef5267140a"
+      }
+    },
+    "RP": {
+      "control_pass_rate": 1.0,
+      "recovery_rate": 1.0,
+      "results": [
+        {
+          "output_digest": "sha256:e934ee707dbf266d6559a42fe81a5c8c8814a11b15c1106e38f3c1893f7e1df9",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-001-rep1.json",
+          "probe_id": "cs-001",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:32ae1a95d8dd62b10c68908b36e684ce3c5ebfc272460286d005e94cfc22f2d1",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-001-rep2.json",
+          "probe_id": "cs-001",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:c89621df7d8ab06d0fe959b5fc0f3146cffe34e9f353feda812f8da805d91f0b",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-001-rep3.json",
+          "probe_id": "cs-001",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:ba591bf69bc8e8e94b6e18947f7f7f04ffe1a6c11b04d4e9de3deb8ae418a7fa",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-002-rep1.json",
+          "probe_id": "cs-002",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:6b84b9296b66be2a83614b58bf6c5b8a016d280b4b6e2aff0411703f4ab435e2",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-002-rep2.json",
+          "probe_id": "cs-002",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:679972f426f3e3a7cbaadc82e32ba4481d3af6e2ff70adc00c6deb7d5035d840",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-002-rep3.json",
+          "probe_id": "cs-002",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:f29f72d74dd9bd4cd3b264c150d1679fc3bf7863e793a94329c6aeb5a2bb76a4",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-003-rep1.json",
+          "probe_id": "cs-003",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:302287f3527c508406715cf84dfb943cb28805919f675c006b85b983759ed3c8",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-003-rep2.json",
+          "probe_id": "cs-003",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:4dee454d78ca5672ca03cd3d428a993e9e487b64623248206f0fef4807babf4e",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-003-rep3.json",
+          "probe_id": "cs-003",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:45b6cac1676ff77a27b16d46499506ceebf7311002e824ed03161e9d4f131a53",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-004-rep1.json",
+          "probe_id": "cs-004",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:8afd1ebc87ed2cd098898264ba699708061d3728cc19391a5c59cefcc139b652",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-004-rep2.json",
+          "probe_id": "cs-004",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:ba0777b5146c8b5bff16a56a1d2e2b4141774c874570cf86a16f70dfde1cbb46",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-004-rep3.json",
+          "probe_id": "cs-004",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:11855478078f4f48d4bdcdc1e4bb32993c60405137ffa0fd6a20da045b9ca53e",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-005-rep1.json",
+          "probe_id": "cs-005",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:982d25c712bfac1f22a8b3272c0f580ec82467f4d6f0cb744c8408f48d80bb0d",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-005-rep2.json",
+          "probe_id": "cs-005",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:ee3ce875f9f8f0e530f6ac45d003e811bc05d6b613790dd999be1c130ee35180",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-005-rep3.json",
+          "probe_id": "cs-005",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:5d5c5c5530bb4c559c5ed9d1ec646c2b60561beb919b952ce29c352856558046",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-013-rep1.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:f3dae5bbd9da6a28cdffd06f3d8df76d0fcc7d8d7ea6f28ef0ab5e3f4105556a",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-013-rep2.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:f1e52d0e52f5ac06d0f2f5a64712ae407f2710b04c1278c2d8c03f70219d2f70",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-013-rep3.json",
+          "probe_id": "cs-013",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:c60683a598d92cbe91da8efaa1ba25e4fbc4db56a0f45fda506cd521b0850d4a",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-014-rep1.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:cf1c9c633d6b8857f2547f145d7894c26dc7e96f448d71492f31a4124a721f0a",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-014-rep2.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:470ee5119aa7dcbf99668cb70db8586626ea20ef8a3eccd2df093f54e7881f5a",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-014-rep3.json",
+          "probe_id": "cs-014",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:21d851e72dedc790717e0ea128c09a87afe7c8ca03cfd148610ab35962d09446",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-015-rep1.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:90100cedb31a463cae0f54367bf3a4ffcf5ae90b4d81b718dd85282139adc7c2",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-015-rep2.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:87017a86cb637fc01ea167bf432fc57283ca6a1f3f43f0073384d0dc0bdc50e7",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-015-rep3.json",
+          "probe_id": "cs-015",
+          "recovered": true,
+          "repetition": 3
+        },
+        {
+          "output_digest": "sha256:b7c1b1bc373622e42b2a86263d218a4823032bc41a927cd1987006405767e9d8",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-016-rep1.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 1
+        },
+        {
+          "output_digest": "sha256:7e672b3dfdbbce60424c3ce1d0c637ade76eafd08f884d836b585a67a1b479c9",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-016-rep2.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 2
+        },
+        {
+          "output_digest": "sha256:d9bc8478ba5dc8015be600b269ef3d58b1e808d1efaefda1121379cbd5d27079",
+          "output_ref": "repo:///evidence/p0/p0-4-b1/b1run_2f4b11832c2e4dbb/probe-outputs/RP/cs-016-rep3.json",
+          "probe_id": "cs-016",
+          "recovered": true,
+          "repetition": 3
+        }
+      ],
+      "versions": {
+        "kb_manifest_digest": "sha256:ac4d51f9f07f8186f567a509aeb3dd1824b77a7ba386a956b3c3f9e035fa923d",
+        "model_digest": "sha256:d9ce16b797b712c2270e57239d44e92d54adad65a508564b5e21f098aaa46bad",
+        "prompt_digest": "sha256:c63b8a750e1731ac62f079cd192dc935e5f1fa40fabee8e18091e74045a40399"
+      }
+    }
+  },
+  "created_at": "2026-08-09T13:46:45.938744+00:00",
+  "effects": {
+    "kb": {
+      "ci95_lower": -0.2039,
+      "ci95_upper": 0.2039,
+      "delta": 0.0,
+      "significant": false
+    },
+    "method": "newcombe_wilson_diff",
+    "model_params": {
+      "ci95_lower": -0.2039,
+      "ci95_upper": 0.2039,
+      "delta": 0.0,
+      "significant": false
+    },
+    "prompt": {
+      "ci95_lower": 0.7117,
+      "ci95_upper": 1.0,
+      "delta": 1.0,
+      "significant": true
+    }
+  },
+  "experiment_id": "exp_01KZKCD9ANGQZRWHMNCFKV20MP",
+  "probe_set": {
+    "discovery": [
+      "cs-001",
+      "cs-002",
+      "cs-003"
+    ],
+    "hidden_confirmation": [
+      "cs-004",
+      "cs-005"
+    ],
+    "probe_set_digest": "sha256:f51fbbee2810467c96658f93e4fc2b64b5b843b80e55bf5029f30fa26bb9dbf0",
+    "unaffected_controls": [
+      "cs-013",
+      "cs-014",
+      "cs-015",
+      "cs-016"
+    ]
+  },
+  "protocol": {
+    "confidence": 0.95,
+    "frozen_at": "2026-08-09T13:46:45.938744+00:00",
+    "matrix": "five_cell",
+    "random_arm_order": [
+      "G@cs-001",
+      "G@cs-002",
+      "G@cs-003",
+      "G@cs-004",
+      "G@cs-005",
+      "RM@cs-001",
+      "RM@cs-002",
+      "RM@cs-003",
+      "RM@cs-004",
+      "RM@cs-005",
+      "RP@cs-001",
+      "RP@cs-002",
+      "RP@cs-003",
+      "RP@cs-004",
+      "RP@cs-005",
+      "RK@cs-001",
+      "RK@cs-002",
+      "RK@cs-003",
+      "RK@cs-004",
+      "RK@cs-005",
+      "C@cs-001",
+      "C@cs-002",
+      "C@cs-003",
+      "C@cs-004",
+      "C@cs-005"
+    ],
+    "random_seed_ref": "seed://exp_01KZKCD9ANGQZRWHMNCFKV20MP/20260807",
+    "repetitions": 3
+  },
+  "schema_version": "0.1.0",
+  "verdict": {
+    "attributed_layer": "prompt",
+    "decision": "ATTRIBUTED",
+    "hidden_confirmation_reproduced": true,
+    "rationale": "recorded outputs satisfy R1-R4: only prompt replacement recovers and hidden probes reproduce"
+  }
+}

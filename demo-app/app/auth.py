@@ -1,10 +1,12 @@
 """Quality API scope 校验（quality:read / quality:write）。
 
-演示令牌经环境变量配置（CASELOOP_READ_TOKEN / CASELOOP_WRITE_TOKEN），
-缺省值 = conformance 缺省（conformance-read-token / conformance-write-token）。
+令牌经环境变量配置（CASELOOP_READ_TOKEN / CASELOOP_WRITE_TOKEN）；
+任一未配置时整个 Quality API 授权面 fail closed。
 写面仅 Release Controller 持有；持 write 的调用方同时视为有读权限（openapi 契约）。
 """
 from __future__ import annotations
+
+import secrets
 
 from fastapi import Header, HTTPException, Request
 
@@ -29,12 +31,20 @@ def _err(status: int, code: str, message: str, details: dict | None = None) -> H
 
 def require_scopes(request: Request, authorization: str | None = Header(default=None)) -> set[str]:
     settings = get_settings()
+    if not settings.caseloop_read_token or not settings.caseloop_write_token:
+        raise _err(503, "auth_not_configured", "Quality API bearer tokens are not configured")
+    if secrets.compare_digest(settings.caseloop_read_token, settings.caseloop_write_token):
+        raise _err(
+            503,
+            "auth_misconfigured",
+            "Quality API read and write credentials must be distinct",
+        )
     if not authorization or not authorization.startswith("Bearer "):
         raise _err(401, "unauthorized", "missing or invalid token")
     token = authorization[len("Bearer "):].strip()
-    if token == settings.caseloop_write_token:
+    if token and secrets.compare_digest(token, settings.caseloop_write_token):
         return set(SCOPES_WRITE)
-    if token == settings.caseloop_read_token:
+    if token and secrets.compare_digest(token, settings.caseloop_read_token):
         return set(SCOPES_READ)
     raise _err(401, "unauthorized", "missing or invalid token")
 

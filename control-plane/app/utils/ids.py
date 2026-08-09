@@ -23,6 +23,10 @@ def new_outbox_id() -> str:
     return f"obx_{_ulid()}"
 
 
+def new_outbox_receipt_id() -> str:
+    return f"odr_{_ulid()}"
+
+
 def new_audit_id() -> str:
     return f"aud_{_ulid()}"
 
@@ -53,6 +57,10 @@ def new_operation_id() -> str:
 
 def new_trace_id() -> str:
     return f"tr_{_ulid()}"
+
+
+def new_trust_entry_id() -> str:
+    return f"tle_{_ulid()}"
 
 
 def short_token(n: int = 16) -> str:

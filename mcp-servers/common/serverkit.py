@@ -10,12 +10,36 @@ from __future__ import annotations
 
 import json
 import logging
+import secrets
 from typing import Any, Callable, Optional
 
 from mcp.server.fastmcp import FastMCP
 from starlette.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
+
+
+class ToolDefinitionRegistry:
+    """Decorator-only registry that deliberately cannot serve an MCP app.
+
+    Implementation modules use decorators for readable tool metadata, but only
+    ``build_tool_projection`` creates a serviceable FastMCP object.  This
+    prevents an import/CLI shortcut from exposing the union of every role.
+    """
+
+    def __init__(self, name: str):
+        self.name = name
+        self.names: set[str] = set()
+
+    def tool(self, *, name: str):
+        if name in self.names:
+            raise RuntimeError(f"duplicate MCP tool definition: {name}")
+        self.names.add(name)
+
+        def decorator(func):
+            return func
+
+        return decorator
 
 
 class PathRewrite:
@@ -32,9 +56,59 @@ class PathRewrite:
         await self.app(scope, receive, send)
 
 
+class TrustedGatewayOnly:
+    """Reject direct MCP backend access and cross-consumer projection reuse."""
+
+    def __init__(self, app, *, expected_consumer: str, backend_token: str):
+        if not expected_consumer or not backend_token:
+            raise RuntimeError(
+                "MCP_EXPECTED_CONSUMER and MCP_GATEWAY_BACKEND_TOKEN are required"
+            )
+        self.app = app
+        self.expected_consumer = expected_consumer
+        self.backend_token = backend_token
+
+    @staticmethod
+    def _header_values(scope: dict[str, Any], name: bytes) -> list[str]:
+        return [
+            value.decode("utf-8", errors="replace")
+            for key, value in scope.get("headers", [])
+            if key.lower() == name
+        ]
+
+    async def __call__(self, scope, receive, send):
+        path = scope.get("path", "") if scope.get("type") == "http" else ""
+        # Health contains no domain data and remains usable by a supervisor.
+        # Every other HTTP route, including notification mock inspection, is a
+        # backend surface and requires the exact trusted gateway hop.
+        if scope.get("type") == "http" and path != "/healthz":
+            tokens = self._header_values(scope, b"x-caseloop-gateway-token")
+            consumers = self._header_values(scope, b"x-mse-consumer")
+            authorized = (
+                len(tokens) == 1
+                and len(consumers) == 1
+                and secrets.compare_digest(tokens[0], self.backend_token)
+                and secrets.compare_digest(consumers[0], self.expected_consumer)
+            )
+            if not authorized:
+                response = JSONResponse(
+                    {
+                        "error_code": "FORBIDDEN",
+                        "message": "MCP backend accepts only its authenticated gateway projection",
+                        "retryable": False,
+                    },
+                    status_code=403,
+                )
+                await response(scope, receive, send)
+                return
+        await self.app(scope, receive, send)
+
+
 def build_server_app(
     mcp: FastMCP,
     *,
+    expected_consumer: str,
+    gateway_backend_token: str,
     extra_routes: Optional[list] = None,
     extra_middleware: Optional[list] = None,
 ):
@@ -48,7 +122,79 @@ def build_server_app(
     if extra_middleware:
         for mw in extra_middleware:
             app.add_middleware(mw)
-    return PathRewrite(app)
+    return TrustedGatewayOnly(
+        PathRewrite(app),
+        expected_consumer=expected_consumer,
+        backend_token=gateway_backend_token,
+    )
+
+
+def build_tool_projection(
+    server_name: str,
+    profile: str,
+    profiles: dict[str, dict[str, Callable[..., Any]]],
+) -> FastMCP:
+    """Build a physically separate MCP tool surface for one gateway consumer role.
+
+    Higress authenticates consumers at MCP-server granularity.  Each projected
+    server therefore exposes only one role's allowlisted callables; prompts and
+    caller-supplied role strings are never used as authorization.
+    """
+
+    tools = profiles.get(profile)
+    if tools is None:
+        allowed = ", ".join(sorted(profiles))
+        raise RuntimeError(
+            f"MCP_TOOL_PROFILE={profile!r} is invalid for {server_name}; expected one of: {allowed}"
+        )
+    projected = FastMCP(f"{server_name}-{profile}")
+    for tool_name, func in tools.items():
+        projected.tool(name=tool_name)(func)
+    return projected
+
+
+def validate_projection_runtime(
+    settings: Any,
+    *,
+    profile_workers: dict[str, str],
+    role_token_profiles: frozenset[str] = frozenset(),
+    gate_authority_profiles: frozenset[str] = frozenset(),
+) -> None:
+    """Fail startup when a projection is misbound or receives excess authority."""
+
+    profile = settings.mcp_tool_profile
+    if profile not in profile_workers:
+        raise RuntimeError(
+            f"MCP_TOOL_PROFILE={profile!r} has no fixed runtime identity"
+        )
+    expected_consumer = f"worker-{profile}"
+    if settings.mcp_expected_consumer != expected_consumer:
+        raise RuntimeError(
+            f"MCP_EXPECTED_CONSUMER must be {expected_consumer!r} for profile {profile}"
+        )
+    expected_worker = profile_workers[profile]
+    if settings.mcp_worker_id != expected_worker:
+        raise RuntimeError(
+            f"MCP_WORKER_ID must be {expected_worker!r} for profile {profile}"
+        )
+    if not settings.mcp_gateway_backend_token:
+        raise RuntimeError("MCP_GATEWAY_BACKEND_TOKEN is required")
+
+    has_role_token = bool(settings.control_plane_role_token)
+    needs_role_token = profile in role_token_profiles
+    if has_role_token != needs_role_token:
+        requirement = "required" if needs_role_token else "forbidden"
+        raise RuntimeError(
+            f"CONTROL_PLANE_ROLE_TOKEN is {requirement} for profile {profile}"
+        )
+
+    has_gate_token = bool(settings.gate_authority_token)
+    needs_gate_token = profile in gate_authority_profiles
+    if has_gate_token != needs_gate_token:
+        requirement = "required" if needs_gate_token else "forbidden"
+        raise RuntimeError(
+            f"GATE_AUTHORITY_TOKEN is {requirement} for profile {profile}"
+        )
 
 
 def json_response(status: int, payload: Any) -> JSONResponse:

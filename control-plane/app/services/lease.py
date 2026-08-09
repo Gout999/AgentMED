@@ -27,7 +27,9 @@ class LeaseService:
 
     def _next_fencing_token(self) -> int:
         """全局单调递增 fencing token。"""
-        row = self.session.get(FencingCounter, 1)
+        row = self.session.scalar(
+            select(FencingCounter).where(FencingCounter.id == 1).with_for_update()
+        )
         if row is None:
             row = FencingCounter(id=1, next_token=1)
             self.session.add(row)
@@ -40,7 +42,9 @@ class LeaseService:
     def claim(self, resource_id: str, owner_id: str) -> Lease:
         now = datetime.now(timezone.utc)
         expires = now + timedelta(seconds=self.settings.lease_ttl_seconds)
-        existing = self.session.get(Lease, resource_id)
+        existing = self.session.scalar(
+            select(Lease).where(Lease.resource_id == resource_id).with_for_update()
+        )
 
         if existing is not None:
             exp = existing.expires_at
@@ -85,7 +89,9 @@ class LeaseService:
 
     def check_fencing(self, resource_id: str, fencing_token: int) -> Lease:
         """校验 fencing token 仍为最新且未过期；否则 LEASE_LOST。"""
-        lease = self.session.get(Lease, resource_id)
+        lease = self.session.scalar(
+            select(Lease).where(Lease.resource_id == resource_id).with_for_update()
+        )
         if lease is None:
             raise LeaseLost(f"no lease for {resource_id}")
         now = datetime.now(timezone.utc)
@@ -100,6 +106,11 @@ class LeaseService:
             )
         return lease
 
+    def check_active(self, resource_id: str, owner_id: str, fencing_token: int) -> Lease:
+        """Authorize a worker write without extending the lease expiry."""
+
+        return self._require_active(resource_id, owner_id, fencing_token)
+
     def is_expired(self, resource_id: str) -> bool:
         lease = self.session.get(Lease, resource_id)
         if lease is None:
@@ -109,6 +120,30 @@ class LeaseService:
         if exp.tzinfo is None:
             exp = exp.replace(tzinfo=timezone.utc)
         return exp <= now
+
+    def lock_if_expired(
+        self, resource_id: str, *, now: datetime | None = None
+    ) -> Optional[Lease]:
+        """Lock and refresh a lease, returning it only if it is still expired.
+
+        The ``populate_existing`` refresh is essential after waiting behind a
+        concurrent heartbeat: an earlier MVCC/identity-map view must not cause
+        a renewed worker to be requeued.
+        """
+
+        lease = self.session.scalar(
+            select(Lease)
+            .where(Lease.resource_id == resource_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
+        if lease is None:
+            return None
+        checked_at = now or datetime.now(timezone.utc)
+        expiry = lease.expires_at
+        if expiry.tzinfo is None:
+            expiry = expiry.replace(tzinfo=timezone.utc)
+        return lease if expiry <= checked_at else None
 
     def reclaim_expired(self, resource_id: str) -> Optional[Lease]:
         """返回过期 lease（若存在），不删除——claim 时会覆盖。"""

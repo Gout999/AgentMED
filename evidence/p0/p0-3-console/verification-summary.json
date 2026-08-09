@@ -1,0 +1,46 @@
+{
+  "schema_version": "0.1.0",
+  "verified_at": "2026-08-09T01:10:39+10:00",
+  "base_commit": "02b97ddee82e53b5d2e62fababc841ac3d1acc35",
+  "origin_main_commit": "a6de5cc1a06d6967634676b2661da7d2e46d287b",
+  "completion_commit": "a08c0056691b3acdafb43fd0a8b1417d10985fe6",
+  "branch": "codex/p0-close-b1-loop",
+  "status": "passed_independent_read_only_verifier",
+  "offline_and_local_stack": {
+    "control_plane": {"passed": 190, "failed": 0},
+    "demo_unit": {"passed": 36, "failed": 0},
+    "demo_postgres_concurrency": {"passed": 2, "failed": 0},
+    "eval_harness": {"passed": 69, "failed": 0, "skipped_live": 4},
+    "mcp_servers": {"passed": 54, "failed": 0, "skipped_live": 1},
+    "contract_schema_wilson": {"passed": 26, "failed": 0},
+    "console_api_client_and_request_race": {"passed": 7, "failed": 0},
+    "console_real_stack_browser": {"passed": 1, "failed": 0},
+    "total_non_overlapping": {"passed": 385, "failed": 0, "skipped_live": 5},
+    "console_build": "passed",
+    "python_compileall": "passed",
+    "agent_soul_sync": "passed_with_repository_venv",
+    "git_diff_check": "passed",
+    "scratch_cleanup": "passed_ports_free_no_p0_3_databases"
+  },
+  "real_stack": {
+    "route_interception": false,
+    "database": "unique_scratch_postgresql_alembic_head",
+    "backend": "fastapi_uvicorn_127.0.0.1_18090",
+    "frontend": "vite_proxy_127.0.0.1_5173",
+    "browser": "chromium_headless",
+    "case_id": "case_01KZGYT32G1NKH6KJ05548TYXK",
+    "route_switch_case_id": "case_01KZGYT3378AH57SV8045DW69N",
+    "trace_sha256": "46f3876766b0974f14b1d8263a68e5265b5212c38e898bc977292db0849dbcfa"
+  },
+  "dependency_audit": {
+    "command_exit": 1,
+    "moderate": 4,
+    "high": 1,
+    "reason_not_force_fixed": "requires breaking react-router-dom and vite major upgrades"
+  },
+  "live_provider": {
+    "quality_stepfun": "blocked_missing_service_and_credentials",
+    "feishu": "blocked_missing_live_adapter_and_credentials",
+    "claims_live_pass": false
+  }
+}
