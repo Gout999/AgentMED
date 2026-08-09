@@ -54,6 +54,7 @@ from validate_b1_run import (  # noqa: E402
 from run_b1_replay import (  # noqa: E402
     _publish_verified_manifest as _publish_verified_replay_manifest,
     _require_portable_output_dir,
+    _repo_uri,
 )
 from agentteams_attestation import canonical_receipt_bytes  # noqa: E402
 
@@ -94,6 +95,9 @@ def test_final_replay_evidence_requires_repository_portability(tmp_path):
 
     _require_portable_output_dir(REPO_ROOT / "evidence" / "run", allow_dirty=False)
     _require_portable_output_dir(tmp_path / "test-run", allow_dirty=True)
+    assert _repo_uri(REPO_ROOT / "evidence" / "run" / "artifact.json") == (
+        "repo:///evidence/run/artifact.json"
+    )
     with pytest.raises(B1ValidationError, match="non-portable file URI"):
         _require_portable_replay_uris(
             {"artifact": {"uri": "file:///Users/someone/evidence.json"}},

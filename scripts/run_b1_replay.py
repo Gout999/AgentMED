@@ -405,7 +405,7 @@ def _build_attribution_artifacts(
                         "probe_id": probe_id,
                         "repetition": repetition,
                         "recovered": passed,
-                        "output_ref": raw_path.resolve().as_uri(),
+                        "output_ref": _repo_uri(raw_path),
                         "output_digest": canonical_json_digest(raw_output),
                     }
                 )
@@ -576,7 +576,7 @@ def _rebind_probe_output_artifacts(
                 / f"{probe_id}-rep{trial['repetition']}.json",
                 raw_output,
             )
-            trial["output_ref"] = raw_path.resolve().as_uri()
+            trial["output_ref"] = _repo_uri(raw_path)
             trial["output_digest"] = canonical_json_digest(raw_output)
 
 
