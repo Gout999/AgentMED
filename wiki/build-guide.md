@@ -51,9 +51,21 @@
 | G2 | conformance 套件收尾不还原 demo-app | 复跑后 active 版本集留 v-test-* 残留，chat 兜底 | 套件 teardown 自动 reset_state |
 | G3 | heartbeat 抑制域工作 | 质量官醒后收 heartbeat "do not do domain work"，8 分钟静默未执行主控指令 | heartbeat 与域消息分优先级，或限定"仅本条心跳回合" |
 | G4 | worker JWT 1h 过期不自愈 | agt 401 后 4 小时无人管，手工 docker rm 重建 | controller 周期重铸或 sidecar 自刷 |
-| G5 | 门禁规则轨不对账 live digest | 修复师伪造 digest（模式补全值）规则轨放行，hash_binding 只查内部一致性 | 规则轨加"digest 必须存在于 live 观测/版本集内容" |
+| G5 | 门禁规则轨不对账 live digest | 修复师伪造 digest（模式补全值）规则轨放行，hash_binding 只查内部一致性 | ✅ **已修（PR#1）**：gate_service 用 quality.get_versionset 对账 identity/digest/revision + 逐探针要求 digest 与 live 版本集内容一致 + get_log 逐条核对 provider 日志；attach_gate 改服务端对账 |
 | G6 | 绑定层错误表象脱节 | quality 绑定失败→502 quality_api_error，与"digest 不存在"根因脱节（注：本次实为代理拦截，见地雷#9；但绑定层若失败同样 502，仍值得改） | 绑定失败返 422+具体不匹配字段 |
-| G7 | release 生命周期无 noop-close | B1 为运行时偏离（target==active declared），stage/canary 合法拒绝，release 永卡 REQUESTED | 加 reconcile/noop-close 迁移；WorkOrder diff 增 runtime_reconcile 类型 |
-| G8 | case 无 close/resolve 迁移 | case_admin 工具面无关闭，本案终态只能停 ESCALATED | case 状态机补 close（附 postmortem 引用） |
-| G9 | 信任账本无 MCP 写入工具 | case-officer 无账面可写，用 Markdown 文档顶替并宣称"平衡"（宣告≠执行复发） | 暴露 ledger.record_outcome/evaluate 工具，或发布完成事件平台自动记账 |
+| G7 | release 生命周期无 noop-close | B1 为运行时偏离（target==active declared），stage/canary 合法拒绝，release 永卡 REQUESTED | 加 reconcile/noop-close 迁移；WorkOrder diff 增 runtime_reconcile 类型。**部分修复（PR#1）**：candidate 创建+reconcile 已消解 B1 卡死根因，REQUESTED 无出口的路径仍开放 |
+| G8 | case 无 close/resolve 迁移 | case_admin 工具面无关闭，本案终态只能停 ESCALATED | ✅ **已修（PR#1）**：case.closed 必须 receipt 绑定（causation=确切的 notification.sent 事件） |
+| G9 | 信任账本无 MCP 写入工具 | case-officer 无账面可写，用 Markdown 文档顶替并宣称"平衡"（宣告≠执行复发） | ✅ **已修（PR#1）**：选"发布完成事件平台自动记账"路径，outbox dispatcher 驱动 trust_service.record_outcome（幂等+冲突拒绝）；旧 trust_ledger 库降级为 legacy contract/replay 专用 |
 | G10 | 模型错误直接上墙 | StepFun RPM 错误原文（含内部路径）贴进房间 | copaw channel 错误包装或静默重试 |
+
+### PR#1 review 遗留（2026-08-09 主控验收登记，均为 follow-up 不阻塞）
+
+| # | 缺口 | 实战证据 | 建议 |
+|---|------|---------|------|
+| G11 | demo-app `/admin/reset` B1 切版本集后 500 | faults.py:439-446 `reset_faults` 抛 KeyError，routers/admin.py:84-92 未捕获；conformance 顺序跑 flake 根源（B1 注入测试单跑过连跑挂） | admin 端点捕获映射 409/422；套件 teardown 联动 G2 |
+| G12 | trust evidence_epoch 硬编码 1 | trust_service.py:335-357 `_locked_row` epoch=1，全库无轮转逻辑 | Phase 2 补 epoch 轮转语义 |
+| G13 | outbox adapter 未知名静默回落 Disabled | outbox_relay.py:143-164 配置拼错完全不可见（方向 fail-closed 正确） | worker 启动时对未知名 adapter 直接 refuse |
+| G14 | replay/live 门禁 dataset_id 不一致 | replay 字面量 "b1-canary-observation" vs live `probe_set.probe_set_id`（PR#1 已对 persisted 绑定做独立校验，字面量本身未统一） | live B1 收尾时统一口径 |
+| G15 | console evidence guard 钉死 unavailable | validators.ts:255,260 要求 artifact_store==="unavailable" 才算合法，后端将来真接 artifact store 会把健康响应判 invalid_response | 接真 store 时同步放开 guard；已记 OPEN-ISSUES 候选 |
+| G16 | 决策编号撞车 | docs/decisions/ 存在两个 D-002（executor-routing 旧 / gate-workorder-binding 新） | 新文件改号或旧文件归档 |
+| G17 | 代码注释语言分裂 | PR#1 新模块（gate_service/trust_service/outbox_relay）全英文 docstring，旧代码中文 | 后续统一，不专项处理 |

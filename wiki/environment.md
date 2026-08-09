@@ -5,7 +5,7 @@ macOS (Apple Silicon)，Docker Desktop 内存 7.65 GiB（建议保持 ≥8，工
 kubectl 已装但无任何集群上下文——AgentTeams 本地嵌入式多容器架构，**不需要 K8s**。
 
 ## LLM：StepFun（运动员 + 暂定裁判）
-- 端点：`https://api.stepfun.com/v1`（OpenAI 兼容）
+- 端点：`https://api.stepfun.com/step_plan/v1`（OpenAI 兼容；PR#1 起全仓统一为此，PRO 套餐路径）
 - 模型：`step-3.7-flash`（指定；另有 step-3.5-flash 等，不用）
 - PRO 会员额度充足；演示确定性：temperature=0 + 冻结探针集
 - Key 存放纪律：只存于 `~/Documents/kimi/workspace/ACL-team/.env`（仓库外）、
