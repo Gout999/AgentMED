@@ -10,17 +10,22 @@
 from __future__ import annotations
 
 import json
+import hashlib
 import math
 import re
 from dataclasses import dataclass, field
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .config import Settings
 from .digests import sha256_digest
-from .llm import LLMClient
 from .models import ProbeSet
 from .probe_judge import judge_probe
 from .report import _now_iso, new_id, assert_schema_valid
+
+if TYPE_CHECKING:
+    from .llm import LLMClient
+
+OFFICIAL_STEPFUN_BASE_URL = "https://api.stepfun.com/step_plan/v1"
 
 JUDGE_RUBRIC = """你是 CaseLoop 评测裁判。请对"客服回复是否满足该探针的期望行为"打分（0-1）并给出 pass/fail。
 
@@ -54,6 +59,7 @@ class GateCandidate:
     probe_set_digest: str
     regression_suite_digest: str
     answers: dict[str, str] = field(default_factory=dict)          # probe_id -> answer
+    provider_origins: dict[str, str] = field(default_factory=dict) # probe_id -> authoritative origin
     athlete_model_digest: str = ""
     source: str = "live"                                            # live | replay
 
@@ -68,6 +74,14 @@ class GateCandidate:
             errs.append("regression_suite_digest 必须为 sha256:")
         if self.source not in ("live", "replay"):
             errs.append("source 必须为 live|replay")
+        if self.source == "live":
+            if set(self.provider_origins) != set(self.answers):
+                errs.append("live 候选必须为每条答案绑定 provider origin")
+            elif any(
+                origin != OFFICIAL_STEPFUN_BASE_URL
+                for origin in self.provider_origins.values()
+            ):
+                errs.append("live 候选必须来自官方 StepFun endpoint")
         return errs
 
 
@@ -113,10 +127,15 @@ class LLMJudge:
     """裁判轨 LLM 裁判：按 rubric 打分，输出结构化 JSON。"""
 
     def __init__(self, settings: Settings, model: str, *, deadline_monotonic: float | None = None):
+        # Keep contract/replay tooling importable without the live-provider SDK.
+        # The provider dependency is loaded only when a real LLM judge is used.
+        from .llm import LLMClient
+
         self.settings = settings
         self.model = model
         self.deadline_monotonic = deadline_monotonic
         self.llm = LLMClient(settings)
+        self.evidence: list[dict[str, Any]] = []
 
     @property
     def model_digest(self) -> str:
@@ -141,7 +160,20 @@ class LLMJudge:
         )
         parsed = self._parse(resp.content)
         if parsed is None:
-            return {"score": 0.0, "pass": False, "rationale": "裁判输出无法解析，按 0 分处理"}
+            parsed = {"score": 0.0, "pass": False, "rationale": "裁判输出无法解析，按 0 分处理"}
+        self.evidence.append(
+            {
+                "probe_id": probe.id,
+                "provider_request_id": resp.request_id,
+                "model_digest": resp.model_digest,
+                "answer_digest": "sha256:" + hashlib.sha256(answer.encode("utf-8")).hexdigest(),
+                "raw_response": resp.content,
+                "raw_response_digest": "sha256:"
+                + hashlib.sha256(resp.content.encode("utf-8")).hexdigest(),
+                "parsed": parsed,
+                "usage": resp.usage,
+            }
+        )
         return parsed
 
     @staticmethod
@@ -196,6 +228,7 @@ class GateRunner:
         replay_result: SuiteResult,
         artifact_refs: list[dict[str, str]],
         live_available: bool = True,
+        policy_profile: str = "live",
         eval_id: str | None = None,
         report_id: str | None = None,
     ) -> dict:
@@ -204,8 +237,17 @@ class GateRunner:
         contract/replay 必须由独立执行体产生 SuiteResult，并提供真实 artifact digest。
         live_available=False 表示 live-provider E2E 不可用（额度/网络/裁判模型缺失）。
         """
+        if policy_profile not in ("live", "isolated-replay"):
+            raise ValueError(f"unsupported gate policy profile: {policy_profile!r}")
         candidate_errs = candidate.validate()
-        rule = self._rule_track(candidate, candidate_errs, live_available)
+        if policy_profile == "isolated-replay" and candidate.source != "replay":
+            candidate_errs.append("isolated-replay profile requires candidate.source=replay")
+        rule = self._rule_track(
+            candidate,
+            candidate_errs,
+            live_available,
+            policy_profile=policy_profile,
+        )
         judge_track = self._judge_track(candidate)
         det = self._deterministic_tests(contract_result, replay_result)
 
@@ -228,6 +270,7 @@ class GateRunner:
             candidate,
             live_available,
             report_ref=candidate_refs[0].get("uri") if candidate_refs else None,
+            policy_profile=policy_profile,
         )
         if artifact_errors:
             det = {
@@ -246,9 +289,16 @@ class GateRunner:
                 ],
             }
 
-        overall = self._overall(rule["status"], judge_track["status"], det["status"], live["status"])
+        overall = self._overall(
+            rule["status"],
+            judge_track["status"],
+            det["status"],
+            live["status"],
+            policy_profile=policy_profile,
+        )
         report = {
             "schema_version": "0.1.0",
+            "policy_profile": policy_profile,
             "report_id": report_id or new_id("gate"),
             "eval_id": eval_id or new_id("eval"),
             "subject": {
@@ -268,7 +318,14 @@ class GateRunner:
         return report
 
     # ------------------------------------------------------------------ 规则轨
-    def _rule_track(self, candidate: GateCandidate, candidate_errs: list[str], live_available: bool) -> dict:
+    def _rule_track(
+        self,
+        candidate: GateCandidate,
+        candidate_errs: list[str],
+        live_available: bool,
+        *,
+        policy_profile: str,
+    ) -> dict:
         checks: list[dict] = []
         pmap = self.probe_set.by_id()
 
@@ -312,12 +369,20 @@ class GateRunner:
         })
 
         # 5) live E2E 可用性（D-001：live UNAVAILABLE 不得仅凭确定性轨放行）
-        checks.append({
-            "check_id": "rule-live-e2e-availability",
-            "description": "live-provider E2E 可用（缺 key/裁判模型 时不可自动放行）",
-            "status": "passed" if live_available else "skipped",
-            "detail": "live E2E 可用" if live_available else "LIVE_UNAVAILABLE：MVP 不可仅凭确定性轨放行，转人工",
-        })
+        if policy_profile == "isolated-replay":
+            checks.append({
+                "check_id": "rule-policy-profile",
+                "description": "本报告明确限定为隔离 contract/replay 证据，不冒充 live-provider E2E",
+                "status": "passed",
+                "detail": "policy_profile=isolated-replay; live-provider status is reported separately as skipped",
+            })
+        else:
+            checks.append({
+                "check_id": "rule-live-e2e-availability",
+                "description": "live-provider E2E 可用（缺 key/裁判模型 时不可自动放行）",
+                "status": "passed" if live_available else "skipped",
+                "detail": "live E2E 可用" if live_available else "LIVE_UNAVAILABLE：MVP 不可仅凭确定性轨放行，转人工",
+            })
 
         if any(c["status"] == "failed" for c in checks):
             status = "failed"
@@ -453,7 +518,21 @@ class GateRunner:
         live_available: bool,
         *,
         report_ref: str | None,
+        policy_profile: str,
     ) -> dict:
+        if policy_profile == "isolated-replay":
+            return {
+                "status": "skipped",
+                "provider": "replay-not-live",
+                "suites": [
+                    {
+                        "suite": "live-provider-e2e",
+                        "status": "skipped",
+                        "n_passed": 0,
+                        "n_failed": 0,
+                    }
+                ],
+            }
         if not live_available or not candidate.answers:
             return {
                 "status": "skipped",
@@ -503,8 +582,15 @@ class GateRunner:
 
     # ------------------------------------------------------------------ 总结论
     @staticmethod
-    def _overall(rule: str, judge: str, det: str, live: str) -> str:
-        statuses = (rule, judge, det, live)
+    def _overall(
+        rule: str,
+        judge: str,
+        det: str,
+        live: str,
+        *,
+        policy_profile: str = "live",
+    ) -> str:
+        statuses = (rule, judge, det) if policy_profile == "isolated-replay" else (rule, judge, det, live)
         if any(status not in ("passed", "failed", "error", "skipped") for status in statuses):
             return "error"
         if "error" in statuses or "skipped" in statuses:
@@ -549,6 +635,7 @@ def build_error_gate_report(
 
     report = {
         "schema_version": "0.1.0",
+        "policy_profile": "live",
         "report_id": report_id or new_id("gate"),
         "eval_id": eval_id,
         "subject": {

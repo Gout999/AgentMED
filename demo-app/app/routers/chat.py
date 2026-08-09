@@ -23,4 +23,10 @@ def chat(
     payload: ChatRequest,
     db: Session = Depends(get_db),
 ):
-    return execute_chat(payload, db, resolve_live_config(db), span_name="chat.request")
+    routing_key = payload.session_id or payload.user_ref or f"message:{payload.message}"
+    return execute_chat(
+        payload,
+        db,
+        resolve_live_config(db, routing_key=routing_key),
+        span_name="chat.request",
+    )

@@ -26,14 +26,31 @@ class Settings(BaseSettings):
 
     # 上游依赖（case-admin / release-admin 包装的 REST 面）
     control_plane_base_url: str = Field(default="http://127.0.0.1:8090", alias="CONTROL_PLANE_BASE_URL")
-    control_plane_token: str = Field(default="", alias="CONTROL_PLANE_TOKEN")
+    control_plane_role_token: str = Field(default="", alias="CONTROL_PLANE_ROLE_TOKEN")
+    gate_authority_token: str = Field(default="", alias="GATE_AUTHORITY_TOKEN")
     quality_api_base_url: str = Field(default="http://127.0.0.1:8080", alias="QUALITY_API_BASE_URL")
     quality_read_token: str = Field(default="conformance-read-token", alias="QUALITY_READ_TOKEN")
-    quality_write_token: str = Field(default="", alias="QUALITY_WRITE_TOKEN")
+    # Required by every served MCP process. One process exposes exactly one
+    # role projection; an empty value fails startup instead of exposing all tools.
+    mcp_tool_profile: str = Field(default="", alias="MCP_TOOL_PROFILE")
+    # The MCP listener is reachable from the local container network.  It must
+    # accept tool traffic only when Higress supplies both the projection's
+    # private upstream credential and the authenticated consumer identity.
+    mcp_expected_consumer: str = Field(default="", alias="MCP_EXPECTED_CONSUMER")
+    mcp_gateway_backend_token: str = Field(default="", alias="MCP_GATEWAY_BACKEND_TOKEN")
+    # Canonical deterministic identity used on lease-bound controller writes.
+    # Tool callers may not select another worker identity.
+    mcp_worker_id: str = Field(default="", alias="MCP_WORKER_ID")
 
     # Gate executor: repository-owned allowlisted suites + persisted evidence.
     gate_evaluation_timeout_seconds: int = Field(default=300, alias="GATE_EVALUATION_TIMEOUT_SECONDS")
     gate_evidence_dir: str = Field(default="evidence/gate", alias="GATE_EVIDENCE_DIR")
+    experiment_evidence_dir: str = Field(
+        default="evidence/experiments", alias="EXPERIMENT_EVIDENCE_DIR"
+    )
+    experiment_heartbeat_interval_seconds: float = Field(
+        default=15.0, alias="EXPERIMENT_HEARTBEAT_INTERVAL_SECONDS"
+    )
 
     # 审批安全件（spec §5.2 / D-001 #10）
     approval_ttl_minutes: int = Field(default=30, alias="APPROVAL_TTL_MINUTES")

@@ -12,7 +12,8 @@ scenario:
   complaint_example: "你们客服昨天还说 7 天无理由退货，今天就说激活后不能退了？我耳机都拆了！"
 
 # 注入的 prompt 变更内容（ground-truth）。
-# 通过 demo-app 的 POST /admin/inject/B1 注入；注入后线上 prompt = P1（v1.4.3）。
+# 通过 Release Controller 代理 demo-app 的 POST /admin/inject/B1 注入；
+# 注入动作把已注册的 prompt-only P1 VersionSet 切为 active，并返回前后身份。
 injected_change:
   channel: prompt
   prompt_section: "售后政策"
@@ -24,6 +25,9 @@ injected_change:
   after: |
     退货需经人工审核，已激活商品不支持退货。
   injection_endpoint: "POST /admin/inject/B1"
+  injection_authority: "release-controller (demo-only proxy; disabled by default)"
+  baseline_versionset_id: "vs_baseline0000000001"
+  fault_versionset_id: "vs_b1fault000000000001"
   reset_endpoint: "POST /admin/reset"
 
 # 期望归因结论（机器断言口径）

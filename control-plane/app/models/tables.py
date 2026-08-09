@@ -113,6 +113,9 @@ class Outbox(Base):
     claimed_by: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     claim_token: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     claimed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
+    first_attempted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     claim_expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -156,6 +159,21 @@ class Lease(Base):
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
 
+class WorkerSuggestionReceipt(Base):
+    """Idempotency anchor for one lease-authorized worker suggestion."""
+
+    __tablename__ = "worker_suggestion_receipts"
+
+    idempotency_key: Mapped[str] = mapped_column(String(128), primary_key=True)
+    case_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    worker_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    request_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    event_id: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 class FencingCounter(Base):
     """全局 fencing token 发号器（单行表）。"""
 
@@ -190,11 +208,15 @@ class GateReportRecord(Base):
     """
 
     __tablename__ = "gate_reports"
+    __table_args__ = (Index("ix_gate_reports_workorder_hash", "workorder_hash"),)
 
     eval_id: Mapped[str] = mapped_column(String(64), primary_key=True)
     report_id: Mapped[str] = mapped_column(String(128), nullable=False, unique=True)
     workorder_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
-    workorder_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True, unique=True)
+    # Initial and post-canary reports intentionally bind to the same immutable
+    # WorkOrder.  The eval/report identities remain unique; this projection is
+    # a non-unique lookup key for the complete multi-stage gate chain.
+    workorder_hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
     target_versionset_id: Mapped[str] = mapped_column(String(128), nullable=False)
     target_versionset_digest: Mapped[str] = mapped_column(String(80), nullable=False)
     target_revision: Mapped[int] = mapped_column(BigInteger, nullable=False)
@@ -321,3 +343,22 @@ class ControllerOperation(Base):
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+
+
+class ReleaseClosure(Base):
+    """Immutable terminal-release notification continuation configured before action."""
+
+    __tablename__ = "release_closures"
+
+    release_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    case_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
+    channel: Mapped[str] = mapped_column(String(128), nullable=False)
+    thread_ref: Mapped[str] = mapped_column(String(256), nullable=False)
+    body_ref: Mapped[str] = mapped_column(Text, nullable=False)
+    body_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="configured")
+    notification_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True, unique=True)
+    configured_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    queued_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)

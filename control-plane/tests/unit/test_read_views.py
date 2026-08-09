@@ -1,13 +1,26 @@
 """T8 read projection tests over SQLite with no external dependency."""
 from __future__ import annotations
 
+import base64
+from datetime import datetime, timezone
+import hashlib
+import json
+from pathlib import Path
+
 import pytest
 from sqlalchemy import select, text
 
 from app.models.tables import Aggregate, Event, GateReportRecord, WorkOrder
+from app.services.attribution import newcombe_wilson_diff
+from app.services.release_service import ReleaseService
 from app.services.trust_service import TrustService
 from app.utils.jcs import canonical_json_digest, workorder_hash
-from tests.conftest import make_gate_report, make_workorder
+from tests.conftest import (
+    TEST_GATE_TOKEN,
+    make_gate_report,
+    make_workorder,
+    register_workorder_with_lease,
+)
 
 
 def _create_mcp_tables(engine) -> None:
@@ -266,74 +279,365 @@ def test_case_events_404_for_missing_case(app_client):
 # ------------------------------------------------------------------ 5. GET /v1/experiments/{id}?_view=full
 
 
-def _new_running_experiment(client, case_id: str = "case_1234567890abcdef") -> str:
+_READ_VERSIONS = {
+    "P0": "sha256:" + "1" * 64,
+    "P1": "sha256:" + "2" * 64,
+    "K0": "sha256:" + "3" * 64,
+    "K1": "sha256:" + "3" * 64,
+    "M0": "sha256:" + "4" * 64,
+    "M1": "sha256:" + "4" * 64,
+}
+_READ_GOOD = {"versionset_id": "vs_goodread0001", "digest": "sha256:" + "5" * 64, "revision": 1}
+_READ_BAD = {"versionset_id": "vs_badread00001", "digest": "sha256:" + "6" * 64, "revision": 1}
+_READ_CELL_VERSIONSETS = {
+    "C": _READ_BAD,
+    "RP": _READ_GOOD,
+    "RK": _READ_BAD,
+    "RM": _READ_BAD,
+    "G": _READ_GOOD,
+}
+_READ_DISCOVERY = ["cs-001", "cs-002", "cs-003"]
+_READ_HIDDEN = ["cs-004", "cs-005"]
+_READ_CONTROLS = ["cs-013", "cs-014", "cs-015", "cs-016"]
+_READ_PROBE_DIGEST = "sha256:f51fbbee2810467c96658f93e4fc2b64b5b843b80e55bf5029f30fa26bb9dbf0"
+_READ_SEED_REF = "seed://read-view/1"
+_READ_RESPONSES = json.loads(
+    (
+        Path(__file__).resolve().parents[3]
+        / "eval-harness"
+        / "samples"
+        / "b1_probe_responses.json"
+    ).read_text(encoding="utf-8")
+)
+
+
+def _new_running_experiment(client, quality) -> tuple[str, str, int]:
+    quality.seed_versionset(
+        _READ_BAD["versionset_id"],
+        status="active",
+        revision=_READ_BAD["revision"],
+        digest=_READ_BAD["digest"],
+        content={
+            "prompt": {"digest": _READ_VERSIONS["P1"]},
+            "kb_manifest": {"manifest_digest": _READ_VERSIONS["K1"]},
+            "model": {"digest": _READ_VERSIONS["M1"]},
+        },
+    )
+    quality.seed_versionset(
+        _READ_GOOD["versionset_id"],
+        status="superseded",
+        revision=_READ_GOOD["revision"],
+        digest=_READ_GOOD["digest"],
+        content={
+            "prompt": {"digest": _READ_VERSIONS["P0"]},
+            "kb_manifest": {"manifest_digest": _READ_VERSIONS["K0"]},
+            "model": {"digest": _READ_VERSIONS["M0"]},
+        },
+    )
+    complaint = client.post(
+        "/v1/complaints",
+        json={"source": "webhook", "text": "read-view attribution complaint", "external_id": "read-view-exp"},
+    )
+    assert complaint.status_code == 200
+    case_id = complaint.json()["case_id"]
+    claim = client.post(f"/v1/cases/{case_id}/claim", json={"worker_id": "runner-1"})
+    assert claim.status_code == 200
+    lease = claim.json()
     resp = client.post("/v1/experiments", json={"case_id": case_id, "hypothesis_layer": "prompt"})
     assert resp.status_code == 200
     exp_id = resp.json()["experiment_id"]
-    client.post(
+    frozen = client.post(
         f"/v1/experiments/{exp_id}/protocol",
         json={
-            "probe_set_digest": "sha256:" + "a" * 64,
-            "discovery": ["p1"],
-            "hidden_confirmation": ["p2"],
-            "unaffected_controls": ["p3"],
-            "repetitions": 1,
-            "versions": {"prompt": "v1"},
-            "random_seed_ref": "seed-1",
+            "execution_profile": "isolated-replay",
+            "probe_set_digest": _READ_PROBE_DIGEST,
+            "discovery": _READ_DISCOVERY,
+            "hidden_confirmation": _READ_HIDDEN,
+            "unaffected_controls": _READ_CONTROLS,
+            "repetitions": 3,
+            "versions": _READ_VERSIONS,
+            "cell_versionsets": _READ_CELL_VERSIONSETS,
+            "random_seed_ref": _READ_SEED_REF,
+            "confidence": 0.95,
         },
     )
-    client.post(
+    assert frozen.status_code == 200
+    started = client.post(
         f"/v1/experiments/{exp_id}/start",
-        json={"runner_id": "runner-1", "lease_id": "lease-1", "fencing_token": 1},
+        json={
+            "runner_id": "runner-1",
+            "lease_id": lease["lease_id"],
+            "fencing_token": lease["fencing_token"],
+        },
     )
-    return exp_id
+    assert started.status_code == 200
+    return exp_id, case_id, lease["fencing_token"]
 
 
-def test_experiment_full_view_returns_cells_before_verdict(app_client):
-    client, _ = app_client
-    exp_id = _new_running_experiment(client)
-    client.post(f"/v1/experiments/{exp_id}/cells", json={"cell": "C", "arm_order_index": 0, "recovery_rate": 0.0})
-    client.post(f"/v1/experiments/{exp_id}/cells", json={"cell": "RP", "arm_order_index": 1, "recovery_rate": 0.6})
+def _read_view_artifacts(experiment_id: str, case_id: str, output_root: Path) -> tuple[dict, dict]:
+    recovered_cells = {"C": False, "RP": True, "RK": False, "RM": False, "G": True}
+    component_map = {
+        "C": ("P1", "K1", "M1"),
+        "RP": ("P0", "K1", "M1"),
+        "RK": ("P1", "K0", "M1"),
+        "RM": ("P1", "K1", "M0"),
+        "G": ("P0", "K0", "M0"),
+    }
+    cells: dict[str, dict] = {}
+    summaries: dict[str, dict] = {}
+    for arm, recovered in recovered_cells.items():
+        prompt, kb, model = component_map[arm]
+        source_state = "baseline" if recovered else "b1_fault"
+        results: list[dict] = []
+        for probe_id in _READ_DISCOVERY + _READ_HIDDEN + _READ_CONTROLS:
+            for repetition in range(1, 4):
+                trial_recovered = True if probe_id in _READ_CONTROLS else recovered
+                raw_output = {
+                    "experiment_id": experiment_id,
+                    "case_id": case_id,
+                    "arm": arm,
+                    "probe_id": probe_id,
+                    "repetition": repetition,
+                    "recovered": trial_recovered,
+                    "status": "recorded-replay",
+                    "answer": _READ_RESPONSES["states"][source_state][probe_id]["answer"],
+                    "versionset_id": _READ_CELL_VERSIONSETS[arm]["versionset_id"],
+                    "versionset_digest": _READ_CELL_VERSIONSETS[arm]["digest"],
+                    "versionset_revision": _READ_CELL_VERSIONSETS[arm]["revision"],
+                    "prompt_digest": _READ_VERSIONS[prompt],
+                    "kb_manifest_digest": _READ_VERSIONS[kb],
+                    "model_digest": _READ_VERSIONS[model],
+                }
+                output_path = output_root / arm / f"{probe_id}-{repetition}.json"
+                output_path.parent.mkdir(parents=True, exist_ok=True)
+                output_path.write_text(
+                    json.dumps(raw_output, sort_keys=True, separators=(",", ":")),
+                    encoding="utf-8",
+                )
+                results.append(
+                    {
+                        "probe_id": probe_id,
+                        "repetition": repetition,
+                        "recovered": trial_recovered,
+                        "output_ref": output_path.resolve().as_uri(),
+                        "output_digest": canonical_json_digest(raw_output),
+                    }
+                )
+        rate = 1.0 if recovered else 0.0
+        cells[arm] = {
+            "versions": {
+                "prompt_digest": _READ_VERSIONS[prompt],
+                "kb_manifest_digest": _READ_VERSIONS[kb],
+                "model_digest": _READ_VERSIONS[model],
+            },
+            "results": results,
+            "recovery_rate": rate,
+            "control_pass_rate": 1.0,
+        }
+        summaries[arm] = {
+            "recovery_rate": rate,
+            "n_probes": 5,
+            "n_trials": 15,
+            "control_pass_rate": 1.0,
+        }
+    positive = newcombe_wilson_diff(1.0, 15, 0.0, 15)
+    zero = newcombe_wilson_diff(0.0, 15, 0.0, 15)
+    effects = {
+        "prompt": {
+            "delta": 1.0,
+            "ci95_lower": round(positive[0], 4),
+            "ci95_upper": round(positive[1], 4),
+            "significant": True,
+        },
+        "kb": {
+            "delta": 0.0,
+            "ci95_lower": round(zero[0], 4),
+            "ci95_upper": round(zero[1], 4),
+            "significant": False,
+        },
+        "model_params": {
+            "delta": 0.0,
+            "ci95_lower": round(zero[0], 4),
+            "ci95_upper": round(zero[1], 4),
+            "significant": False,
+        },
+        "method": "newcombe_wilson_diff",
+    }
+    now = datetime.now(timezone.utc).isoformat()
+    bundle = {
+        "schema_version": "0.1.0",
+        "bundle_id": "eb_readview000001",
+        "experiment_id": experiment_id,
+        "case_id": case_id,
+        "protocol": {
+            "matrix": "five_cell",
+            "repetitions": 3,
+            "random_arm_order": [f"{arm}@cs-001" for arm in ("RM", "C", "G", "RP", "RK")],
+            "random_seed_ref": _READ_SEED_REF,
+            "frozen_at": now,
+            "confidence": 0.95,
+        },
+        "probe_set": {
+            "probe_set_digest": _READ_PROBE_DIGEST,
+            "discovery": _READ_DISCOVERY,
+            "hidden_confirmation": _READ_HIDDEN,
+            "unaffected_controls": _READ_CONTROLS,
+        },
+        "cells": cells,
+        "effects": effects,
+        "verdict": {
+            "decision": "ATTRIBUTED",
+            "attributed_layer": "prompt",
+            "rationale": "only RP recovered and hidden probes reproduced",
+            "hidden_confirmation_reproduced": True,
+        },
+        "created_at": now,
+    }
+    report = {
+        "schema_version": "0.1.0",
+        "report_id": "attr_readview0001",
+        "experiment_id": experiment_id,
+        "case_id": case_id,
+        "probe_set_digest": _READ_PROBE_DIGEST,
+        "version_digests": _READ_VERSIONS,
+        "cells": summaries,
+        "deltas": {
+            layer: {
+                "estimate": effect["delta"],
+                "ci95_lower": effect["ci95_lower"],
+                "ci95_upper": effect["ci95_upper"],
+            }
+            for layer, effect in effects.items()
+            if layer != "method"
+        },
+        "verdict": {
+            "decision": "ATTRIBUTED",
+            "attributed_layer": "prompt",
+            "interaction_detected": False,
+            "full_factorial_required": False,
+            "rationale": "only RP recovered and hidden probes reproduced",
+        },
+        "evidence_bundle_ref": {
+            "uri": f"file:///tmp/{experiment_id}/evidence-bundle.json",
+            "digest": canonical_json_digest(bundle),
+        },
+        "generated_at": now,
+    }
+    report["deltas"]["method"] = "newcombe_wilson_diff"
+    return bundle, report
+
+
+def _post_trial_receipts(client, experiment_id: str, fencing_token: int, bundle: dict, arms) -> None:
+    for arm in arms:
+        for trial in bundle["cells"][arm]["results"]:
+            receipt = client.post(
+                f"/v1/experiments/{experiment_id}/trials",
+                json={
+                    "cell": arm,
+                    "probe_id": trial["probe_id"],
+                    "repetition": trial["repetition"],
+                    "recovered": trial["recovered"],
+                    "output_ref": trial["output_ref"],
+                    "output_digest": trial["output_digest"],
+                    "fencing_token": fencing_token,
+                },
+            )
+            assert receipt.status_code == 200, receipt.text
+
+
+def _seed_live_gate_evidence(quality, report: dict) -> None:
+    candidate = json.loads(
+        base64.b64decode(report["artifact_refs"][2]["uri"].split(",", 1)[1])
+    )
+    first = candidate["responses"][0]
+    quality.seed_versionset(
+        candidate["target_versionset_id"],
+        status="draft",
+        revision=candidate["target_revision"],
+        digest=report["subject"]["target_versionset_digest"],
+        content={
+            "prompt": {"digest": first["prompt_digest"]},
+            "kb_manifest": {"manifest_digest": first["kb_manifest_digest"]},
+            "model": {"digest": first["model_digest"]},
+        },
+    )
+    for item in candidate["responses"]:
+        quality.seed_log(
+            item["request_id"],
+            status="ok",
+            provider_origin=item["provider_origin"],
+            trace_id=item["trace_id"],
+            versionset_id=item["versionset_id"],
+            prompt_digest=item["prompt_digest"],
+            kb_manifest_digest=item["kb_manifest_digest"],
+            model_digest=item["model_digest"],
+            answer_digest="sha256:"
+            + hashlib.sha256(item["answer"].encode("utf-8")).hexdigest(),
+        )
+
+
+def test_experiment_full_view_returns_cells_before_verdict(app_client, tmp_path):
+    client, quality = app_client
+    exp_id, case_id, fencing_token = _new_running_experiment(client, quality)
+    bundle, _ = _read_view_artifacts(exp_id, case_id, tmp_path / "partial-read-view")
+    _post_trial_receipts(client, exp_id, fencing_token, bundle, ("C", "RP"))
+    first = client.post(
+        f"/v1/experiments/{exp_id}/cells",
+        json={"cell": "C", "arm_order_index": 0, "recovery_rate": 0.0, "fencing_token": fencing_token},
+    )
+    second = client.post(
+        f"/v1/experiments/{exp_id}/cells",
+        json={"cell": "RP", "arm_order_index": 1, "recovery_rate": 1.0, "fencing_token": fencing_token},
+    )
+    assert first.status_code == 200, first.text
+    assert second.status_code == 200, second.text
 
     r = client.get(f"/v1/experiments/{exp_id}", params={"_view": "full"})
     assert r.status_code == 200
     body = r.json()
     assert body["experiment_id"] == exp_id
     assert [c["cell"] for c in body["cells"]] == ["C", "RP"]
-    assert [c["recovery_rate"] for c in body["cells"]] == [0.0, 0.6]
+    assert [c["recovery_rate"] for c in body["cells"]] == [0.0, 1.0]
     assert body["deltas"] is None
     assert body["verdict"] is None
     assert body["attributed_layer"] is None
     assert body["confidence_intervals"] is None
 
 
-def test_experiment_full_view_with_verdict_projection(app_client):
-    client, _ = app_client
-    exp_id = _new_running_experiment(client)
-    for cell, idx, rate in [("C", 0, 0.0), ("RP", 1, 0.6), ("RK", 2, 0.5), ("RM", 3, 0.55), ("G", 4, 0.6)]:
-        client.post(
+def test_experiment_full_view_with_verdict_projection(app_client, tmp_path):
+    client, quality = app_client
+    exp_id, case_id, fencing_token = _new_running_experiment(client, quality)
+    bundle, report = _read_view_artifacts(exp_id, case_id, tmp_path / "read-view")
+    _post_trial_receipts(client, exp_id, fencing_token, bundle, ("C", "RP", "RK", "RM", "G"))
+    for idx, cell in enumerate(("C", "RP", "RK", "RM", "G")):
+        completed = client.post(
             f"/v1/experiments/{exp_id}/cells",
-            json={"cell": cell, "arm_order_index": idx, "recovery_rate": rate},
+            json={
+                "cell": cell,
+                "arm_order_index": idx,
+                "recovery_rate": bundle["cells"][cell]["recovery_rate"],
+                "fencing_token": fencing_token,
+            },
         )
-    client.post(
+        assert completed.status_code == 200, completed.text
+    verdict = client.post(
         f"/v1/experiments/{exp_id}/verdict",
         json={
-            "verdict": "ATTRIBUTED",
-            "deltas": {"RP": 0.6, "RK": 0.5, "RM": 0.55, "G": 0.6},
-            "evidence_bundle_ref": "bundle://e1",
-            "report_ref": "eval://e1",
-            "attributed_layer": "prompt",
+            "fencing_token": fencing_token,
+            "evidence_bundle": bundle,
+            "attribution_report": report,
         },
     )
+    assert verdict.status_code == 200, verdict.text
 
     r = client.get(f"/v1/experiments/{exp_id}", params={"_view": "full"})
     assert r.status_code == 200
     body = r.json()
     assert body["verdict"] == "ATTRIBUTED"
     assert body["attributed_layer"] == "prompt"
-    assert body["deltas"] == {"RP": 0.6, "RK": 0.5, "RM": 0.55, "G": 0.6}
-    assert body["evidence_bundle_ref"] == "bundle://e1"
-    assert body["report_ref"] == "eval://e1"
+    assert body["deltas"] == {"prompt": 1.0, "kb": 0.0, "model_params": 0.0}
+    assert body["evidence_bundle_ref"].startswith("evidence://sha256:")
+    assert body["report_ref"].startswith("attribution://sha256:")
     assert len(body["cells"]) == 5
     assert body["confidence_intervals"] is None  # 无数据字段 → null 不报错
 
@@ -346,8 +650,8 @@ def test_experiment_full_view_404_for_missing(app_client):
 
 def test_experiment_default_view_unchanged(app_client):
     """不带 _view 时仍返回原聚合视图（回归防护）。"""
-    client, _ = app_client
-    exp_id = _new_running_experiment(client)
+    client, quality = app_client
+    exp_id, _, _ = _new_running_experiment(client, quality)
     r = client.get(f"/v1/experiments/{exp_id}")
     assert r.status_code == 200
     body = r.json()
@@ -358,7 +662,7 @@ def test_experiment_default_view_unchanged(app_client):
 # ------------------------------------------------------------------ 6. GET /v1/workorders
 
 
-def _new_awaiting_approval_changeset(client, seed: int = 1) -> tuple[str, dict]:
+def _new_awaiting_approval_changeset(client, quality, seed: int = 1) -> tuple[str, dict]:
     workorder_id = f"wo_{seed:012d}"
     wo = make_workorder(
         workorder_id=workorder_id,
@@ -372,9 +676,11 @@ def _new_awaiting_approval_changeset(client, seed: int = 1) -> tuple[str, dict]:
         "digest": f"sha256:{report_hash}",
     }
     wo["hash"] = workorder_hash(wo)
+    _seed_live_gate_evidence(quality, report)
 
     gate = client.post(
         "/v1/gate-reports",
+        headers={"Authorization": f"Bearer {TEST_GATE_TOKEN}"},
         json={
             "report": report,
             "report_hash": report_hash,
@@ -387,8 +693,15 @@ def _new_awaiting_approval_changeset(client, seed: int = 1) -> tuple[str, dict]:
         },
     )
     assert gate.status_code == 200, gate.text
-    registered = client.post("/v1/workorders", json=wo)
-    assert registered.status_code == 200, registered.text
+    # Seed the read projection through the same mandatory lease path used by
+    # external registration.
+    with client.app.state.session_factory() as session:
+        service = ReleaseService(
+            session, client.app.state.quality_client, client.app.state.settings
+        )
+        registered = register_workorder_with_lease(service, wo)
+        session.commit()
+    assert registered["workorder_id"] == workorder_id
     cs_id = f"cs_{workorder_id}"
     attached = client.post(
         f"/v1/changesets/{cs_id}/gate",
@@ -416,8 +729,8 @@ def test_workorders_empty(app_client):
 
 
 def test_workorders_list_immutable_rows_with_changeset_lifecycle_metadata(app_client):
-    client, _ = app_client
-    cs_id, expected = _new_awaiting_approval_changeset(client)
+    client, quality = app_client
+    cs_id, expected = _new_awaiting_approval_changeset(client, quality)
 
     r = client.get("/v1/workorders")
     assert r.status_code == 200
@@ -442,8 +755,8 @@ def test_workorders_list_immutable_rows_with_changeset_lifecycle_metadata(app_cl
 
 
 def test_workorders_do_not_trust_tampered_changeset_hash(app_client, sqlite_session):
-    client, _ = app_client
-    cs_id, expected = _new_awaiting_approval_changeset(client)
+    client, quality = app_client
+    cs_id, expected = _new_awaiting_approval_changeset(client, quality)
     changeset = sqlite_session.get(
         Aggregate,
         {"aggregate_type": "changeset", "aggregate_id": cs_id},
@@ -458,8 +771,8 @@ def test_workorders_do_not_trust_tampered_changeset_hash(app_client, sqlite_sess
 
 
 def test_workorders_hide_tampered_immutable_payload(app_client, sqlite_session):
-    client, _ = app_client
-    _, expected = _new_awaiting_approval_changeset(client)
+    client, quality = app_client
+    _, expected = _new_awaiting_approval_changeset(client, quality)
     row = sqlite_session.get(WorkOrder, expected["workorder_id"])
     assert row is not None
     row.payload = {**row.payload, "created_by": "attacker"}
@@ -475,8 +788,8 @@ def test_workorders_hide_tampered_immutable_payload(app_client, sqlite_session):
 
 
 def test_workorders_fail_closed_when_projection_columns_are_tampered(app_client, sqlite_session):
-    client, _ = app_client
-    _, expected = _new_awaiting_approval_changeset(client)
+    client, quality = app_client
+    _, expected = _new_awaiting_approval_changeset(client, quality)
     row = sqlite_session.get(WorkOrder, expected["workorder_id"])
     assert row is not None
     row.case_id = "case_attacker"
@@ -493,9 +806,9 @@ def test_workorders_fail_closed_when_projection_columns_are_tampered(app_client,
 
 
 def test_workorders_multi_changeset(app_client):
-    client, _ = app_client
-    _new_awaiting_approval_changeset(client, seed=1)
-    _new_awaiting_approval_changeset(client, seed=2)
+    client, quality = app_client
+    _new_awaiting_approval_changeset(client, quality, seed=1)
+    _new_awaiting_approval_changeset(client, quality, seed=2)
     r = client.get("/v1/workorders")
     assert r.status_code == 200
     assert len(r.json()["items"]) == 2
@@ -523,11 +836,13 @@ def test_gates_empty_state(app_client, sqlite_engine):
 
 def test_gates_projects_dual_track_report(app_client, sqlite_engine):
     del sqlite_engine  # authoritative gates no longer read the MCP projection table
-    client, _ = app_client
+    client, quality = app_client
     report = make_gate_report("wo_000000000001", eval_id="eval_readviewgate1")
+    _seed_live_gate_evidence(quality, report)
     report_hash = canonical_json_digest(report, prefix=False)
     registered = client.post(
         "/v1/gate-reports",
+        headers={"Authorization": f"Bearer {TEST_GATE_TOKEN}"},
         json={
             "report": report,
             "report_hash": report_hash,
@@ -566,8 +881,8 @@ def test_gates_projects_dual_track_report(app_client, sqlite_engine):
 
 
 def test_gates_marks_workorder_bound_report_verified(app_client):
-    client, _ = app_client
-    _, expected = _new_awaiting_approval_changeset(client)
+    client, quality = app_client
+    _, expected = _new_awaiting_approval_changeset(client, quality)
 
     item = client.get("/v1/gates").json()["items"][0]
     assert item["workorder_id"] == expected["workorder_id"]
@@ -578,8 +893,8 @@ def test_gates_marks_workorder_bound_report_verified(app_client):
 
 
 def test_gates_fail_closed_when_binding_digest_is_tampered(app_client, sqlite_session):
-    client, _ = app_client
-    _changeset_id, expected = _new_awaiting_approval_changeset(client)
+    client, quality = app_client
+    _changeset_id, expected = _new_awaiting_approval_changeset(client, quality)
     eval_id = expected["gate_report_ref"]["uri"].removeprefix("eval://")
     row = sqlite_session.get(GateReportRecord, eval_id)
     assert row is not None
@@ -595,11 +910,13 @@ def test_gates_fail_closed_when_binding_digest_is_tampered(app_client, sqlite_se
 
 
 def test_gates_fail_closed_when_persisted_report_is_tampered(app_client, sqlite_session):
-    client, _ = app_client
+    client, quality = app_client
     report = make_gate_report("wo_000000000002", eval_id="eval_readviewtampered1")
+    _seed_live_gate_evidence(quality, report)
     report_hash = canonical_json_digest(report, prefix=False)
     registered = client.post(
         "/v1/gate-reports",
+        headers={"Authorization": f"Bearer {TEST_GATE_TOKEN}"},
         json={
             "report": report,
             "report_hash": report_hash,
@@ -657,8 +974,8 @@ def test_evidence_projects_recorded_refs_without_claiming_artifact_verified(app_
 
 
 def test_evidence_includes_bound_workorder_and_gate_refs(app_client):
-    client, _ = app_client
-    _, expected = _new_awaiting_approval_changeset(client)
+    client, quality = app_client
+    _, expected = _new_awaiting_approval_changeset(client, quality)
     response = client.get("/v1/evidence", params={"case_id": expected["case_id"]})
     assert response.status_code == 200
     items = response.json()["items"]
@@ -707,8 +1024,8 @@ def test_evidence_rejects_malformed_digest_claim(app_client, sqlite_session):
 
 
 def test_evidence_fail_closed_for_tampered_gate_report(app_client, sqlite_session):
-    client, _ = app_client
-    _, expected = _new_awaiting_approval_changeset(client)
+    client, quality = app_client
+    _, expected = _new_awaiting_approval_changeset(client, quality)
     eval_id = expected["gate_report_ref"]["uri"].removeprefix("eval://")
     row = sqlite_session.get(GateReportRecord, eval_id)
     assert row is not None

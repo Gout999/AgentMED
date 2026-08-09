@@ -1,21 +1,25 @@
 """Release Controller：写面唯一入口；WorkOrder/Approval 校验；灰度；UNKNOWN→reconcile。"""
 from __future__ import annotations
 
+import hashlib
 import logging
+import re
 import time
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 from uuid import UUID
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
-from app.models.tables import Aggregate, Approval, ControllerOperation, WorkOrder
+from app.models.tables import Aggregate, Approval, ControllerOperation, Event, ReleaseClosure, WorkOrder
 from app.quality.client import QualityAPIError, QualityClientProtocol
 from app.services.audit import AuditService, AuditWriteError
+from app.services.case_service import CaseService, CaseServiceError
 from app.services.event_store import CASConflict, EventStore
 from app.services.gate_service import GateService, GateServiceError
+from app.services.lease import LeaseLost, LeaseService
 from app.services.state_machines import IllegalTransition
 from app.utils.ids import new_operation_id, new_release_id, new_trace_id
 from app.utils.jcs import canonical_json_digest, workorder_hash
@@ -43,12 +47,1007 @@ class ReleaseService:
         self.settings = settings or get_settings()
         self.store = EventStore(session)
         self.audit = AuditService(session, self.settings)
-        self.gates = GateService(session, self.settings)
+        self.gates = GateService(session, self.settings, quality=quality)
+        self.leases = LeaseService(session, self.settings)
+
+    # ---------- Candidate creation (the only Quality create authority) ----------
+
+    def create_candidate(
+        self,
+        *,
+        case_id: str,
+        worker_id: str,
+        fencing_token: int,
+        channel: str,
+        attribution_report_digest: str,
+        base_versionset_id: str,
+        base_versionset_digest: str,
+        base_revision: int,
+        target_prompt_digest: str,
+        content: dict[str, Any],
+        proposal_digest: str,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        """Create an immutable draft through the Release Controller.
+
+        Repairers submit a proposal only.  This method binds their exact active
+        lease, revalidates attribution/base, durably commits an external-write
+        intent, then performs and verifies the sole Quality write.
+        """
+
+        if (
+            not isinstance(worker_id, str)
+            or not worker_id
+            or not isinstance(fencing_token, int)
+            or isinstance(fencing_token, bool)
+            or fencing_token <= 0
+        ):
+            raise ReleaseServiceError("validation_failed", "repairer lease binding is invalid")
+        try:
+            self.leases.check_active(case_id, worker_id, fencing_token)
+        except LeaseLost as exc:
+            raise ReleaseServiceError("lease_lost", str(exc)) from exc
+        case = self.store.get_aggregate_for_update("case", case_id)
+        if case is None:
+            raise ReleaseServiceError("not_found", f"case {case_id} not found")
+        case_payload = case.payload or {}
+        if case.state != "AWAITING_FIX":
+            raise ReleaseServiceError(
+                "illegal_transition",
+                f"candidate creation requires Case AWAITING_FIX; got {case.state}",
+            )
+        if (
+            channel != "prompt"
+            or case_payload.get("fault_layer") != "prompt"
+            or case_payload.get("attribution_verdict") != "ATTRIBUTED"
+        ):
+            raise ReleaseServiceError(
+                "validation_failed",
+                "candidate channel must match the authoritative ATTRIBUTED fault layer",
+            )
+        if case_payload.get("attribution_report_digest") != attribution_report_digest:
+            raise ReleaseServiceError(
+                "hash_mismatch",
+                "candidate proposal is not bound to the authoritative AttributionReport",
+            )
+        if (
+            not isinstance(base_revision, int)
+            or isinstance(base_revision, bool)
+            or base_revision <= 0
+            or not isinstance(idempotency_key, str)
+            or not 8 <= len(idempotency_key) <= 128
+            or not isinstance(content, dict)
+        ):
+            raise ReleaseServiceError("validation_failed", "candidate revision/idempotency key is invalid")
+        proposal_fields = {
+            "case_id": case_id,
+            "channel": channel,
+            "attribution_report_digest": attribution_report_digest,
+            "base_versionset_id": base_versionset_id,
+            "base_versionset_digest": base_versionset_digest,
+            "base_revision": base_revision,
+            "target_prompt_digest": target_prompt_digest,
+            "content": content,
+        }
+        if proposal_digest != canonical_json_digest(proposal_fields):
+            raise ReleaseServiceError("hash_mismatch", "repair proposal digest mismatch")
+        binding = {
+            **proposal_fields,
+            "proposal_digest": proposal_digest,
+            "idempotency_key": idempotency_key,
+        }
+        binding_digest = canonical_json_digest(binding)
+        creation = self.store.get_aggregate_for_update(
+            "candidate_creation", idempotency_key
+        )
+        if creation is not None:
+            stored = creation.payload or {}
+            if stored.get("binding_digest") != binding_digest:
+                raise ReleaseServiceError(
+                    "idempotency_conflict",
+                    "candidate idempotency key is bound to another repair proposal/lease",
+                )
+            if creation.state == "FAILED":
+                raise ReleaseServiceError(
+                    "quality_api_error",
+                    "candidate creation previously failed deterministically",
+                    previous_error=stored.get("error"),
+                )
+            if creation.state == "COMPLETED":
+                receipt = stored.get("receipt")
+                if not isinstance(receipt, dict):
+                    raise ReleaseServiceError(
+                        "quality_api_error", "persisted candidate receipt is invalid"
+                    )
+                self.session.commit()
+                try:
+                    remote = self.quality.get_versionset(str(receipt.get("versionset_id") or ""))
+                except QualityAPIError as exc:
+                    raise ReleaseServiceError(
+                        "quality_api_error", str(exc), quality_code=exc.code
+                    ) from exc
+                if (
+                    remote.get("versionset_id") != receipt.get("versionset_id")
+                    or remote.get("digest") != receipt.get("digest")
+                    or remote.get("content") != receipt.get("content")
+                ):
+                    raise ReleaseServiceError(
+                        "quality_api_error", "persisted candidate differs from Quality"
+                    )
+                return {**receipt, "duplicate": True}
+        try:
+            base = self.quality.get_versionset(base_versionset_id)
+        except QualityAPIError as exc:
+            raise ReleaseServiceError("quality_api_error", str(exc), quality_code=exc.code) from exc
+        if (
+            base.get("versionset_id") != base_versionset_id
+            or base.get("digest") != base_versionset_digest
+            or base.get("revision") != base_revision
+            or base.get("status") != "active"
+        ):
+            raise ReleaseServiceError(
+                "revision_conflict",
+                "active base VersionSet changed before candidate creation",
+                current=base,
+            )
+        base_content = base.get("content") or {}
+        if not all(isinstance(base_content.get(key), dict) for key in ("prompt", "kb_manifest", "model")):
+            raise ReleaseServiceError("quality_api_error", "Quality base VersionSet omitted immutable content")
+        if content.get("kb_manifest") != base_content.get("kb_manifest") or content.get("model") != base_content.get("model"):
+            raise ReleaseServiceError("validation_failed", "prompt repair must not modify KB or model content")
+        prompt = content.get("prompt") or {}
+        if prompt.get("digest") != target_prompt_digest:
+            raise ReleaseServiceError("target_mismatch", "repair prompt does not match the attributed target digest")
+        if prompt.get("digest") == (base_content.get("prompt") or {}).get("digest"):
+            raise ReleaseServiceError("validation_failed", "candidate does not change the attributed prompt layer")
+
+        if creation is None:
+            self.store.append_event(
+                aggregate_type="candidate_creation",
+                aggregate_id=idempotency_key,
+                event_type="candidate.creation_intent_recorded",
+                payload={"binding_digest": binding_digest},
+                causation_id="case.attribution_completed",
+                correlation_id=case_id,
+                actor=worker_id,
+                new_state="PENDING",
+                merge_payload={
+                    "binding_digest": binding_digest,
+                    "binding": binding,
+                    "origin_lease": {
+                        "worker_id": worker_id,
+                        "fencing_token": fencing_token,
+                    },
+                },
+            )
+        self.audit.record(
+            actor="controller:release",
+            action="candidate.create.intent",
+            target=case_id,
+            params={
+                "idempotency_key": idempotency_key,
+                "proposal_digest": proposal_digest,
+                "base_versionset_id": base_versionset_id,
+                "base_revision": base_revision,
+                "worker_id": worker_id,
+                "fencing_token": fencing_token,
+                "binding_digest": binding_digest,
+            },
+            result="pending",
+        )
+        # The intent and audit must survive a process crash after Quality commits.
+        self.session.commit()
+
+        def record_creation_state(
+            state: str,
+            *,
+            error: dict[str, Any] | None = None,
+            external_receipt: dict[str, Any] | None = None,
+        ) -> None:
+            aggregate = self.store.get_aggregate_for_update(
+                "candidate_creation", idempotency_key
+            )
+            if aggregate is None:
+                raise ReleaseServiceError(
+                    "quality_api_error", "candidate creation intent disappeared"
+                )
+            if aggregate.state == "COMPLETED":
+                return
+            self.store.append_event(
+                aggregate_type="candidate_creation",
+                aggregate_id=idempotency_key,
+                event_type=f"candidate.creation_{state.lower()}",
+                payload={
+                    **({"error": error} if error else {}),
+                    **({"external_receipt": external_receipt} if external_receipt else {}),
+                },
+                causation_id=idempotency_key,
+                correlation_id=case_id,
+                actor="controller:release",
+                expected_revision=aggregate.revision,
+                new_state=state,
+                merge_payload={
+                    **({"error": error} if error else {}),
+                    **({"external_receipt": external_receipt} if external_receipt else {}),
+                },
+            )
+            self.audit.record(
+                actor="controller:release",
+                action=f"candidate.create.{state.lower()}",
+                target=case_id,
+                params={"idempotency_key": idempotency_key, "binding_digest": binding_digest},
+                result=state.lower(),
+                error_code=(error or {}).get("code"),
+            )
+            self.session.commit()
+
+        try:
+            candidate = self.quality.create_versionset(content, idempotency_key=idempotency_key)
+        except QualityAPIError as exc:
+            state = "UNKNOWN" if exc.status_code == 0 or exc.code in {"network_error", "timeout"} else "FAILED"
+            record_creation_state(
+                state,
+                error={"code": exc.code, "message": exc.message, "status_code": exc.status_code},
+            )
+            raise ReleaseServiceError("quality_api_error", str(exc), quality_code=exc.code) from exc
+        candidate_content = candidate.get("content") or {}
+        if (
+            not isinstance(candidate.get("versionset_id"), str)
+            or not candidate["versionset_id"].startswith("vs_")
+            or candidate.get("status") != "draft"
+            or candidate.get("revision") != 1
+            or not isinstance(candidate.get("digest"), str)
+            or not candidate["digest"].startswith("sha256:")
+            or (candidate_content.get("prompt") or {}).get("digest") != target_prompt_digest
+            or (candidate_content.get("kb_manifest") or {}).get("manifest_digest")
+            != (base_content.get("kb_manifest") or {}).get("manifest_digest")
+            or (candidate_content.get("model") or {}).get("digest")
+            != (base_content.get("model") or {}).get("digest")
+        ):
+            record_creation_state(
+                "UNKNOWN",
+                error={"code": "invalid_quality_receipt", "message": "candidate receipt binding failed"},
+                external_receipt=candidate,
+            )
+            raise ReleaseServiceError(
+                "quality_api_error",
+                "Quality candidate receipt violated draft identity or single-variable binding",
+            )
+        receipt = {
+            "case_id": case_id,
+            "channel": channel,
+            "attribution_report_digest": attribution_report_digest,
+            "base_versionset_id": base_versionset_id,
+            "base_versionset_digest": base_versionset_digest,
+            "base_revision": base_revision,
+            "proposal_digest": proposal_digest,
+            "idempotency_key": idempotency_key,
+            "versionset_id": candidate["versionset_id"],
+            "digest": candidate["digest"],
+            "revision": candidate["revision"],
+            "status": candidate["status"],
+            "content": candidate_content,
+            "input_versions": {
+                "prompt_digest": (base_content.get("prompt") or {}).get("digest"),
+                "kb_manifest_digest": (base_content.get("kb_manifest") or {}).get("manifest_digest"),
+                "model_digest": (base_content.get("model") or {}).get("digest"),
+            },
+        }
+        try:
+            self.leases.check_active(case_id, worker_id, fencing_token)
+            current_case = self.store.get_aggregate_for_update("case", case_id)
+            if (
+                current_case is None
+                or current_case.state != "AWAITING_FIX"
+                or (current_case.payload or {}).get("attribution_report_digest")
+                != attribution_report_digest
+            ):
+                raise ReleaseServiceError(
+                    "illegal_transition",
+                    "Case/attribution changed while Quality created the candidate",
+                )
+        except LeaseLost as exc:
+            self.session.rollback()
+            record_creation_state(
+                "UNKNOWN",
+                error={"code": "lease_lost", "message": str(exc)},
+                external_receipt=receipt,
+            )
+            raise ReleaseServiceError("lease_lost", str(exc)) from exc
+        except ReleaseServiceError:
+            self.session.rollback()
+            record_creation_state(
+                "UNKNOWN",
+                error={"code": "case_binding_changed", "message": "Case binding changed"},
+                external_receipt=receipt,
+            )
+            raise
+        # Serialize completion on the durable intent *before* materializing the
+        # candidate aggregate.  Multiple requests may legitimately receive the
+        # same idempotent Quality receipt after the intent commit; only the
+        # winner may append the completion event and success audit.
+        creation = self.store.get_aggregate_for_update(
+            "candidate_creation", idempotency_key
+        )
+        if creation is None or (creation.payload or {}).get("binding_digest") != binding_digest:
+            raise ReleaseServiceError(
+                "quality_api_error", "candidate creation intent changed after Quality mutation"
+            )
+        stored_creation = creation.payload or {}
+        if creation.state == "COMPLETED":
+            persisted_receipt = stored_creation.get("receipt")
+            if not isinstance(persisted_receipt, dict) or persisted_receipt != receipt:
+                raise ReleaseServiceError(
+                    "idempotency_conflict",
+                    "concurrent candidate completion returned a different Quality receipt",
+                )
+            persisted_candidate = self.store.get_aggregate_for_update(
+                "candidate", candidate["versionset_id"]
+            )
+            if persisted_candidate is None or (persisted_candidate.payload or {}) != receipt:
+                raise ReleaseServiceError(
+                    "quality_api_error",
+                    "completed candidate intent is missing its exact candidate aggregate",
+                )
+            self.session.commit()
+            return {**receipt, "duplicate": True}
+        if creation.state == "FAILED":
+            raise ReleaseServiceError(
+                "quality_api_error",
+                "candidate creation failed concurrently with an inconsistent Quality success",
+                previous_error=stored_creation.get("error"),
+            )
+        if creation.state not in {"PENDING", "UNKNOWN"}:
+            raise ReleaseServiceError(
+                "quality_api_error", f"unsupported candidate creation state {creation.state}"
+            )
+        prior_external = stored_creation.get("external_receipt")
+        if isinstance(prior_external, dict) and any(
+            prior_external.get(field) != receipt.get(field)
+            for field in ("versionset_id", "digest", "revision", "status", "content")
+        ):
+            raise ReleaseServiceError(
+                "idempotency_conflict",
+                "candidate UNKNOWN receipt differs from the idempotent Quality result",
+            )
+
+        existing = self.store.get_aggregate_for_update(
+            "candidate", candidate["versionset_id"]
+        )
+        if existing is None:
+            self.store.append_event(
+                aggregate_type="candidate",
+                aggregate_id=candidate["versionset_id"],
+                event_type="candidate.created",
+                payload=receipt,
+                causation_id="case.attribution_completed",
+                correlation_id=case_id,
+                actor="controller:release",
+                new_state="DRAFT",
+                merge_payload=receipt,
+            )
+        elif (existing.payload or {}) != receipt:
+            raise ReleaseServiceError("idempotency_conflict", "candidate receipt changed on replay")
+        self.store.append_event(
+            aggregate_type="candidate_creation",
+            aggregate_id=idempotency_key,
+            event_type="candidate.creation_completed",
+            payload={"receipt": receipt},
+            causation_id=idempotency_key,
+            correlation_id=case_id,
+            actor="controller:release",
+            expected_revision=creation.revision,
+            new_state="COMPLETED",
+            merge_payload={
+                "receipt": receipt,
+                "completion_lease": {
+                    "worker_id": worker_id,
+                    "fencing_token": fencing_token,
+                },
+            },
+        )
+        self.audit.record(
+            actor="controller:release",
+            action="candidate.create",
+            target=candidate["versionset_id"],
+            params={"proposal_digest": proposal_digest, "candidate_digest": candidate["digest"]},
+            result="success",
+        )
+        self.session.commit()
+        return {**receipt, "duplicate": existing is not None}
 
     # ---------- WorkOrder ----------
 
-    def register_workorder(self, payload: dict[str, Any]) -> dict[str, Any]:
-        """登记不可变 WorkOrder：六要素 hash 校验（JCS+SHA-256）。"""
+    def _lock_operation_key(self, namespace: str, idempotency_key: str) -> None:
+        """Serialize first intent creation on PostgreSQL before an aggregate row exists."""
+
+        if self.session.get_bind().dialect.name != "postgresql":
+            return
+        digest = hashlib.sha256(f"{namespace}:{idempotency_key}".encode("utf-8")).digest()
+        lock_key = int.from_bytes(digest[:8], byteorder="big", signed=True)
+        self.session.execute(
+            text("SELECT pg_advisory_xact_lock(:lock_key)"),
+            {"lock_key": lock_key},
+        )
+
+    @staticmethod
+    def _same_provider_receipt(
+        persisted: dict[str, Any], current: dict[str, Any], fields: tuple[str, ...]
+    ) -> bool:
+        """Compare semantic provider identity; retry-only duplicate flags may differ."""
+
+        return all(persisted.get(field) == current.get(field) for field in fields)
+
+    @staticmethod
+    def _aware_timestamp(value: Any) -> bool:
+        if not isinstance(value, str) or not value:
+            return False
+        try:
+            parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError:
+            return False
+        return parsed.tzinfo is not None
+
+    @staticmethod
+    def _demo_operation_receipt(
+        receipt: dict[str, Any], *, controller_duplicate: bool
+    ) -> dict[str, Any]:
+        """Keep provider and control-plane idempotency semantics distinct."""
+
+        provider_duplicate = receipt.get(
+            "provider_duplicate", receipt.get("duplicate")
+        )
+        if not isinstance(provider_duplicate, bool):
+            raise ReleaseServiceError(
+                "quality_api_error", "demo provider receipt has no duplicate status"
+            )
+        return {
+            **receipt,
+            "provider_duplicate": provider_duplicate,
+            "duplicate": controller_duplicate,
+        }
+
+    def _record_demo_unknown(
+        self,
+        *,
+        aggregate_type: str,
+        aggregate_id: str,
+        event_type: str,
+        correlation_id: str,
+        audit_action: str,
+        audit_target: str,
+        error: dict[str, Any],
+        external_receipt: dict[str, Any] | None = None,
+    ) -> dict[str, Any] | None:
+        """Persist an indeterminate external outcome, or reconcile a peer completion."""
+
+        aggregate = self.store.get_aggregate_for_update(aggregate_type, aggregate_id)
+        if aggregate is None:
+            raise ReleaseServiceError(
+                "quality_api_error", "demo operation intent disappeared during reconciliation"
+            )
+        stored = aggregate.payload or {}
+        if aggregate.state == "COMPLETED":
+            receipt = stored.get("receipt")
+            if not isinstance(receipt, dict):
+                raise ReleaseServiceError(
+                    "quality_api_error", "completed demo operation has no valid receipt"
+                )
+            self.session.commit()
+            return self._demo_operation_receipt(
+                receipt, controller_duplicate=True
+            )
+        if aggregate.state not in {"PENDING", "UNKNOWN"}:
+            raise ReleaseServiceError(
+                "quality_api_error", f"demo operation cannot reconcile state {aggregate.state}"
+            )
+        if aggregate.state == "PENDING":
+            self.store.append_event(
+                aggregate_type=aggregate_type,
+                aggregate_id=aggregate_id,
+                event_type=event_type,
+                payload={"error": error, "external_receipt": external_receipt},
+                causation_id=aggregate_id,
+                correlation_id=correlation_id,
+                actor="controller:release",
+                expected_revision=aggregate.revision,
+                new_state="UNKNOWN",
+                merge_payload={"error": error, "external_receipt": external_receipt},
+            )
+        elif (
+            isinstance(stored.get("external_receipt"), dict)
+            and isinstance(external_receipt, dict)
+            and stored["external_receipt"] != external_receipt
+        ):
+            raise ReleaseServiceError(
+                "idempotency_conflict", "demo UNKNOWN external receipt changed on retry"
+            )
+        self.audit.record(
+            actor="controller:release",
+            action=audit_action,
+            target=audit_target,
+            params={"idempotency_key": aggregate_id},
+            result="error",
+            error_code=str(error.get("code") or "UNKNOWN"),
+            evidence_refs={"external_receipt": external_receipt} if external_receipt else None,
+        )
+        self.session.commit()
+        return None
+
+    def inject_demo_fault(
+        self,
+        *,
+        fault_id: str,
+        expected_active_versionset_id: str,
+        fault_versionset_id: str,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        """Proxy a disabled-by-default demo fault through controller authority."""
+
+        if not self.settings.allow_demo_fault_injection:
+            raise ReleaseServiceError(
+                "validation_failed", "demo fault injection is disabled"
+            )
+        if fault_id != "B1":
+            raise ReleaseServiceError(
+                "validation_failed", "Phase 1 controlled injection supports B1 only"
+            )
+        if not all(
+            isinstance(value, str) and value
+            for value in (expected_active_versionset_id, fault_versionset_id)
+        ) or expected_active_versionset_id == fault_versionset_id:
+            raise ReleaseServiceError(
+                "validation_failed", "B1 injection requires distinct VersionSet identities"
+            )
+        if not isinstance(idempotency_key, str) or not 8 <= len(idempotency_key) <= 128:
+            raise ReleaseServiceError(
+                "validation_failed", "idempotency_key must contain 8..128 characters"
+            )
+
+        binding = {
+            "fault_id": fault_id,
+            "expected_active_versionset_id": expected_active_versionset_id,
+            "fault_versionset_id": fault_versionset_id,
+            "idempotency_key": idempotency_key,
+        }
+        self._lock_operation_key("demo_fault_injection", idempotency_key)
+        aggregate = self.store.get_aggregate_for_update(
+            "demo_fault_injection", idempotency_key
+        )
+        created_intent = aggregate is None
+        if aggregate is not None:
+            stored = aggregate.payload or {}
+            if any(stored.get(key) != value for key, value in binding.items()):
+                raise ReleaseServiceError(
+                    "idempotency_conflict",
+                    "demo fault idempotency key is bound to another VersionSet pair",
+                )
+            if aggregate.state == "COMPLETED":
+                receipt = stored.get("receipt")
+                if not isinstance(receipt, dict):
+                    raise ReleaseServiceError(
+                        "quality_api_error", "persisted demo injection receipt is invalid"
+                    )
+                self.session.commit()
+                return self._demo_operation_receipt(
+                    receipt, controller_duplicate=True
+                )
+            if aggregate.state not in {"PENDING", "UNKNOWN"}:
+                raise ReleaseServiceError(
+                    "quality_api_error",
+                    f"demo injection cannot reconcile state {aggregate.state}",
+                )
+        else:
+            self.store.append_event(
+                aggregate_type="demo_fault_injection",
+                aggregate_id=idempotency_key,
+                event_type="demo_fault.inject_started",
+                payload=binding,
+                causation_id=idempotency_key,
+                correlation_id=fault_versionset_id,
+                actor="controller:release",
+                new_state="PENDING",
+                merge_payload=binding,
+            )
+
+        # Commit an audit anchor before the external mutation.  B1's provider
+        # operation is idempotent on its exact VersionSet pair, so an unknown
+        # outcome can be retried without inventing success.
+        if created_intent:
+            self.audit.record(
+                actor="controller:release",
+                action="demo_fault.B1.inject.intent",
+                target=idempotency_key,
+                params=binding,
+                result="pending",
+            )
+        self.session.flush()
+        self.session.commit()
+        try:
+            receipt = self.quality.inject_fault(
+                fault_id,
+                expected_active_versionset_id=expected_active_versionset_id,
+                fault_versionset_id=fault_versionset_id,
+            )
+        except QualityAPIError as exc:
+            reconciled = self._record_demo_unknown(
+                aggregate_type="demo_fault_injection",
+                aggregate_id=idempotency_key,
+                event_type="demo_fault.inject_unknown",
+                correlation_id=fault_versionset_id,
+                audit_action="demo_fault.B1.inject.unknown",
+                audit_target=idempotency_key,
+                error={"code": exc.code, "message": str(exc)},
+            )
+            if reconciled is not None:
+                return reconciled
+            raise ReleaseServiceError(
+                "quality_api_error", str(exc), quality_code=exc.code
+            ) from exc
+        if (
+            receipt.get("fault_id") != "B1"
+            or receipt.get("previous_versionset_id") != expected_active_versionset_id
+            or receipt.get("fault_versionset_id") != fault_versionset_id
+            or not isinstance(receipt.get("previous_revision"), int)
+            or not isinstance(receipt.get("fault_revision"), int)
+            or re.fullmatch(
+                r"sha256:[0-9a-f]{64}", str(receipt.get("previous_versionset_digest") or "")
+            )
+            is None
+            or re.fullmatch(
+                r"sha256:[0-9a-f]{64}", str(receipt.get("fault_versionset_digest") or "")
+            )
+            is None
+            or not self._aware_timestamp(receipt.get("injected_at"))
+            or not isinstance(receipt.get("duplicate"), bool)
+        ):
+            self._record_demo_unknown(
+                aggregate_type="demo_fault_injection",
+                aggregate_id=idempotency_key,
+                event_type="demo_fault.inject_unknown",
+                correlation_id=fault_versionset_id,
+                audit_action="demo_fault.B1.inject.unknown",
+                audit_target=idempotency_key,
+                error={
+                    "code": "INVALID_RECEIPT",
+                    "message": "Quality B1 injection receipt violated its identity contract",
+                },
+                external_receipt=receipt,
+            )
+            raise ReleaseServiceError(
+                "quality_api_error", "Quality B1 injection receipt violated its identity contract"
+            )
+        aggregate = self.store.get_aggregate_for_update(
+            "demo_fault_injection", idempotency_key
+        )
+        if aggregate is None:
+            raise ReleaseServiceError(
+                "quality_api_error", "demo injection intent disappeared during reconciliation"
+            )
+        stored = aggregate.payload or {}
+        semantic_fields = (
+            "fault_id",
+            "previous_versionset_id",
+            "previous_versionset_digest",
+            "previous_revision",
+            "fault_versionset_id",
+            "fault_versionset_digest",
+            "fault_revision",
+            "injected_at",
+        )
+        if aggregate.state == "COMPLETED":
+            persisted = stored.get("receipt")
+            if not isinstance(persisted, dict) or not self._same_provider_receipt(
+                persisted, receipt, semantic_fields
+            ):
+                raise ReleaseServiceError(
+                    "idempotency_conflict",
+                    "concurrent demo injection returned a different Quality receipt",
+                )
+            self.session.commit()
+            return self._demo_operation_receipt(
+                persisted, controller_duplicate=True
+            )
+        if aggregate.state not in {"PENDING", "UNKNOWN"}:
+            raise ReleaseServiceError(
+                "quality_api_error", f"demo injection cannot complete state {aggregate.state}"
+            )
+        prior_external = stored.get("external_receipt")
+        if isinstance(prior_external, dict) and not self._same_provider_receipt(
+            prior_external, receipt, semantic_fields
+        ):
+            raise ReleaseServiceError(
+                "idempotency_conflict", "demo injection receipt changed after UNKNOWN"
+            )
+        self.store.append_event(
+            aggregate_type="demo_fault_injection",
+            aggregate_id=idempotency_key,
+            event_type="demo_fault.inject_completed",
+            payload={"receipt": receipt},
+            causation_id=idempotency_key,
+            correlation_id=fault_versionset_id,
+            actor="controller:release",
+            expected_revision=aggregate.revision,
+            new_state="COMPLETED",
+            merge_payload={**binding, "receipt": receipt},
+        )
+        self.audit.record(
+            actor="controller:release",
+            action="demo_fault.B1.injected",
+            target=idempotency_key,
+            params={
+                "idempotency_key": idempotency_key,
+                "previous_versionset_id": expected_active_versionset_id,
+                "fault_versionset_id": fault_versionset_id,
+            },
+            result="success",
+            evidence_refs={
+                "previous_versionset_digest": receipt["previous_versionset_digest"],
+                "fault_versionset_digest": receipt["fault_versionset_digest"],
+            },
+        )
+        self.session.commit()
+        return self._demo_operation_receipt(
+            receipt, controller_duplicate=False
+        )
+
+    def recover_demo_fault(
+        self,
+        *,
+        fault_id: str,
+        expected_active_fault_versionset_id: str,
+        restore_versionset_id: str,
+        quarantine_versionset_id: str | None = None,
+        idempotency_key: str,
+    ) -> dict[str, Any]:
+        """Compensate an incomplete B1 demo run through controller authority."""
+
+        if not self.settings.allow_demo_fault_injection:
+            raise ReleaseServiceError(
+                "validation_failed", "demo fault recovery is disabled"
+            )
+        if fault_id != "B1":
+            raise ReleaseServiceError(
+                "validation_failed", "Phase 1 controlled recovery supports B1 only"
+            )
+        if not all(
+            isinstance(value, str) and value
+            for value in (
+                expected_active_fault_versionset_id,
+                restore_versionset_id,
+            )
+        ) or expected_active_fault_versionset_id == restore_versionset_id:
+            raise ReleaseServiceError(
+                "validation_failed", "B1 recovery requires distinct VersionSet identities"
+            )
+        if quarantine_versionset_id is not None and (
+            not isinstance(quarantine_versionset_id, str)
+            or not quarantine_versionset_id
+            or quarantine_versionset_id
+            in {expected_active_fault_versionset_id, restore_versionset_id}
+        ):
+            raise ReleaseServiceError(
+                "validation_failed", "B1 recovery quarantine target must be distinct"
+            )
+        if not isinstance(idempotency_key, str) or not 8 <= len(idempotency_key) <= 128:
+            raise ReleaseServiceError(
+                "validation_failed", "idempotency_key must contain 8..128 characters"
+            )
+        binding = {
+            "fault_id": fault_id,
+            "expected_active_fault_versionset_id": expected_active_fault_versionset_id,
+            "restore_versionset_id": restore_versionset_id,
+            "quarantine_versionset_id": quarantine_versionset_id,
+            "idempotency_key": idempotency_key,
+        }
+        self._lock_operation_key("demo_fault_recovery", idempotency_key)
+        aggregate = self.store.get_aggregate_for_update(
+            "demo_fault_recovery", idempotency_key
+        )
+        created_intent = aggregate is None
+        if aggregate is not None:
+            stored = aggregate.payload or {}
+            if any(stored.get(key) != value for key, value in binding.items()):
+                raise ReleaseServiceError(
+                    "idempotency_conflict",
+                    "demo recovery idempotency key is bound to another VersionSet pair",
+                )
+            if aggregate.state == "COMPLETED":
+                receipt = stored.get("receipt")
+                if not isinstance(receipt, dict):
+                    raise ReleaseServiceError(
+                        "quality_api_error", "persisted demo recovery receipt is invalid"
+                    )
+                self.session.commit()
+                return self._demo_operation_receipt(
+                    receipt, controller_duplicate=True
+                )
+            if aggregate.state not in {"PENDING", "UNKNOWN"}:
+                raise ReleaseServiceError(
+                    "quality_api_error",
+                    f"demo recovery cannot reconcile state {aggregate.state}",
+                )
+        else:
+            self.store.append_event(
+                aggregate_type="demo_fault_recovery",
+                aggregate_id=idempotency_key,
+                event_type="demo_fault.recovery_started",
+                payload=binding,
+                causation_id=idempotency_key,
+                correlation_id=restore_versionset_id,
+                actor="controller:release",
+                new_state="PENDING",
+                merge_payload=binding,
+            )
+        if created_intent:
+            self.audit.record(
+                actor="controller:release",
+                action="demo_fault.B1.recover.intent",
+                target=idempotency_key,
+                params=binding,
+                result="pending",
+            )
+        self.session.flush()
+        self.session.commit()
+        try:
+            receipt = self.quality.recover_fault(
+                fault_id,
+                expected_active_fault_versionset_id=expected_active_fault_versionset_id,
+                restore_versionset_id=restore_versionset_id,
+                quarantine_versionset_id=quarantine_versionset_id,
+            )
+            restored = self.quality.get_versionset(restore_versionset_id)
+            fault = self.quality.get_versionset(expected_active_fault_versionset_id)
+            quarantined = (
+                self.quality.get_versionset(quarantine_versionset_id)
+                if quarantine_versionset_id
+                else None
+            )
+        except QualityAPIError as exc:
+            reconciled = self._record_demo_unknown(
+                aggregate_type="demo_fault_recovery",
+                aggregate_id=idempotency_key,
+                event_type="demo_fault.recovery_unknown",
+                correlation_id=restore_versionset_id,
+                audit_action="demo_fault.B1.recover.unknown",
+                audit_target=idempotency_key,
+                error={"code": exc.code, "message": str(exc)},
+            )
+            if reconciled is not None:
+                return reconciled
+            raise ReleaseServiceError(
+                "quality_api_error", str(exc), quality_code=exc.code
+            ) from exc
+        if (
+            receipt.get("fault_id") != "B1"
+            or receipt.get("restored_versionset_id") != restore_versionset_id
+            or receipt.get("fault_versionset_id")
+            != expected_active_fault_versionset_id
+            or receipt.get("restored_versionset_digest") != restored.get("digest")
+            or receipt.get("fault_versionset_digest") != fault.get("digest")
+            or receipt.get("restored_revision") != restored.get("revision")
+            or receipt.get("fault_revision") != fault.get("revision")
+            or restored.get("status") != "active"
+            or fault.get("status") == "active"
+            or not isinstance(receipt.get("duplicate"), bool)
+            or (
+                quarantined is not None
+                and (
+                    receipt.get("quarantined_versionset_id") != quarantine_versionset_id
+                    or receipt.get("quarantined_versionset_digest") != quarantined.get("digest")
+                    or receipt.get("quarantined_revision") != quarantined.get("revision")
+                    or receipt.get("quarantined_status") != quarantined.get("status")
+                    or quarantined.get("status") not in {"draft", "rolled_back"}
+                )
+            )
+        ):
+            self._record_demo_unknown(
+                aggregate_type="demo_fault_recovery",
+                aggregate_id=idempotency_key,
+                event_type="demo_fault.recovery_unknown",
+                correlation_id=restore_versionset_id,
+                audit_action="demo_fault.B1.recover.unknown",
+                audit_target=idempotency_key,
+                error={
+                    "code": "INVALID_RECEIPT",
+                    "message": "Quality B1 recovery receipt violated its identity contract",
+                },
+                external_receipt=receipt,
+            )
+            raise ReleaseServiceError(
+                "quality_api_error", "Quality B1 recovery receipt violated its identity contract"
+            )
+        aggregate = self.store.get_aggregate_for_update(
+            "demo_fault_recovery", idempotency_key
+        )
+        if aggregate is None:
+            raise ReleaseServiceError(
+                "quality_api_error", "demo recovery intent disappeared after Quality mutation"
+            )
+        stored = aggregate.payload or {}
+        semantic_fields = (
+            "fault_id",
+            "restored_versionset_id",
+            "restored_versionset_digest",
+            "restored_revision",
+            "fault_versionset_id",
+            "fault_versionset_digest",
+            "fault_revision",
+            "quarantined_versionset_id",
+            "quarantined_versionset_digest",
+            "quarantined_revision",
+            "quarantined_status",
+        )
+        if aggregate.state == "COMPLETED":
+            persisted = stored.get("receipt")
+            if not isinstance(persisted, dict) or not self._same_provider_receipt(
+                persisted, receipt, semantic_fields
+            ):
+                raise ReleaseServiceError(
+                    "idempotency_conflict",
+                    "concurrent demo recovery returned a different Quality receipt",
+                )
+            self.session.commit()
+            return self._demo_operation_receipt(
+                persisted, controller_duplicate=True
+            )
+        if aggregate.state not in {"PENDING", "UNKNOWN"}:
+            raise ReleaseServiceError(
+                "quality_api_error", f"demo recovery cannot complete state {aggregate.state}"
+            )
+        prior_external = stored.get("external_receipt")
+        if isinstance(prior_external, dict) and not self._same_provider_receipt(
+            prior_external, receipt, semantic_fields
+        ):
+            raise ReleaseServiceError(
+                "idempotency_conflict", "demo recovery receipt changed after UNKNOWN"
+            )
+        self.store.append_event(
+            aggregate_type="demo_fault_recovery",
+            aggregate_id=idempotency_key,
+            event_type="demo_fault.recovered",
+            payload={"receipt": receipt},
+            causation_id=idempotency_key,
+            correlation_id=restore_versionset_id,
+            actor="controller:release",
+            expected_revision=aggregate.revision,
+            new_state="COMPLETED",
+            merge_payload={"receipt": receipt},
+        )
+        self.audit.record(
+            actor="controller:release",
+            action="demo_fault.B1.recovered",
+            target=idempotency_key,
+            params={
+                "idempotency_key": idempotency_key,
+                "fault_versionset_id": expected_active_fault_versionset_id,
+                "quarantine_versionset_id": quarantine_versionset_id,
+            },
+            result="success",
+            evidence_refs={
+                "restored_versionset_digest": receipt["restored_versionset_digest"],
+                "fault_versionset_digest": receipt["fault_versionset_digest"],
+            },
+        )
+        self.session.commit()
+        return self._demo_operation_receipt(
+            receipt, controller_duplicate=False
+        )
+
+    def register_workorder(
+        self,
+        payload: dict[str, Any],
+        *,
+        worker_id: str | None = None,
+        fencing_token: int | None = None,
+    ) -> dict[str, Any]:
+        """登记不可变 WorkOrder：六要素 hash 校验（JCS+SHA-256）。
+
+        Every caller supplies the exact worker and fencing token.  The lease
+        row is locked and validated in the same transaction as the immutable
+        WorkOrder insert, eliminating a check-then-write race.  There is no
+        controller-owned or direct-service bypass.
+        """
         required = [
             "schema_version",
             "workorder_id",
@@ -86,23 +1085,61 @@ class ReleaseService:
                 f"workorder hash mismatch: declared={declared} recomputed={recomputed}",
             )
 
-        if _parse_dt(payload["expiry"]) <= datetime.now(timezone.utc):
-            raise ReleaseServiceError("approval_expired", "WorkOrder already expired at registration time")
-
+        # Reconcile an exact already-committed registration before consulting a
+        # lease that may legitimately have expired after the caller lost the
+        # first HTTP response.  This path is read-only and cannot authorize a
+        # new mutation or a different payload.
         existing = self.session.get(WorkOrder, payload["workorder_id"])
         if existing is not None:
-            if existing.hash != declared:
-                raise ReleaseServiceError("validation_failed", "workorder_id exists with different hash")
-            self._gate_call(self.gates.validate_for_workorder, existing)
+            if existing.hash != declared or existing.payload != payload:
+                raise ReleaseServiceError(
+                    "validation_failed", "workorder_id exists with different immutable content"
+                )
+            self._gate_call(self.gates.validate_bound_workorder, existing)
             return {"workorder_id": existing.workorder_id, "hash": existing.hash, "duplicate": True}
 
         by_hash = self.session.scalar(select(WorkOrder).where(WorkOrder.hash == declared))
         if by_hash is not None:
             raise ReleaseServiceError("validation_failed", "hash already registered under another id")
 
+        if _parse_dt(payload["expiry"]) <= datetime.now(timezone.utc):
+            raise ReleaseServiceError("approval_expired", "WorkOrder already expired at registration time")
+
+        if worker_id is None or fencing_token is None:
+            raise ReleaseServiceError(
+                "lease_lost",
+                "WorkOrder registration requires an active worker_id/fencing_token lease",
+            )
+        if payload.get("created_by") != worker_id:
+            raise ReleaseServiceError(
+                "lease_lost",
+                "WorkOrder creator does not match the active lease owner",
+            )
+        try:
+            self.leases.check_active(payload["case_id"], worker_id, int(fencing_token))
+        except (LeaseLost, TypeError, ValueError) as exc:
+            raise ReleaseServiceError("lease_lost", str(exc)) from exc
+        locked_case = self.store.get_aggregate_for_update("case", payload["case_id"])
+
+        # The Case lease is also the serialization point for concurrent first
+        # registration.  Re-read after acquiring its row lock: a peer may have
+        # committed this exact WorkOrder while this transaction was waiting.
+        existing = self.session.get(WorkOrder, payload["workorder_id"])
+        if existing is not None:
+            if existing.hash != declared or existing.payload != payload:
+                raise ReleaseServiceError(
+                    "validation_failed", "workorder_id exists with different immutable content"
+                )
+            self._gate_call(self.gates.validate_bound_workorder, existing)
+            return {"workorder_id": existing.workorder_id, "hash": existing.hash, "duplicate": True}
+        by_hash = self.session.scalar(select(WorkOrder).where(WorkOrder.hash == declared))
+        if by_hash is not None:
+            raise ReleaseServiceError("validation_failed", "hash already registered under another id")
+
         # GateReport is registered before WorkOrder freeze. Seal the final WorkOrder hash and
         # report hash together in this same authoritative transaction.
-        self._gate_call(self.gates.bind_workorder, payload)
+        gate = self._gate_call(self.gates.bind_workorder, payload)
+        self._validate_attributed_workorder_candidate(payload, gate, case=locked_case)
 
         wo = WorkOrder(
             workorder_id=payload["workorder_id"],
@@ -150,7 +1187,104 @@ class ReleaseService:
         self.session.flush()
         return {"workorder_id": wo.workorder_id, "hash": wo.hash, "duplicate": False}
 
+    def _validate_attributed_workorder_candidate(
+        self,
+        payload: dict[str, Any],
+        gate: Any,
+        *,
+        case: Aggregate | None = None,
+    ) -> None:
+        """Bind a real attributed Case to the exact controller-created candidate.
+
+        Legacy contract/unit fixtures may intentionally omit a Case aggregate.
+        Once a Case has an authoritative attribution, however, no out-of-band
+        WorkOrder may bypass the candidate receipt or single-variable proposal.
+        """
+
+        if case is None:
+            case = self.store.get_aggregate_for_update("case", payload["case_id"])
+        case_payload = (case.payload or {}) if case is not None else {}
+        if case_payload.get("attribution_verdict") != "ATTRIBUTED":
+            return
+        if case is None or case.state != "AWAITING_FIX":
+            raise ReleaseServiceError(
+                "illegal_transition",
+                f"attributed WorkOrder requires Case AWAITING_FIX; got {case.state if case else 'missing'}",
+            )
+        candidate = self.store.get_aggregate_for_update(
+            "candidate", gate.target_versionset_id
+        )
+        if candidate is None or candidate.state != "DRAFT":
+            raise ReleaseServiceError(
+                "validation_failed",
+                "attributed WorkOrder target was not created by the Release Controller",
+            )
+        candidate_payload = candidate.payload or {}
+        expected = {
+            "case_id": payload["case_id"],
+            "channel": payload["channel"],
+            "base_versionset_digest": payload["base_versionset_digest"],
+            "digest": payload["target_versionset_digest"],
+        }
+        if any(candidate_payload.get(key) != value for key, value in expected.items()):
+            raise ReleaseServiceError(
+                "hash_mismatch",
+                "WorkOrder case/channel/base/target differs from the immutable candidate receipt",
+            )
+        if candidate_payload.get("attribution_report_digest") != case_payload.get(
+            "attribution_report_digest"
+        ):
+            raise ReleaseServiceError(
+                "hash_mismatch",
+                "WorkOrder candidate is not bound to the Case AttributionReport",
+            )
+        if payload.get("input_versions") != candidate_payload.get("input_versions"):
+            raise ReleaseServiceError(
+                "hash_mismatch",
+                "WorkOrder input versions differ from the controller-verified active base",
+            )
+        diff = payload.get("diff") or {}
+        content = diff.get("content")
+        if not isinstance(content, str):
+            raise ReleaseServiceError(
+                "validation_failed",
+                "B1 replay WorkOrder requires an inline immutable prompt diff",
+            )
+        actual_diff_digest = "sha256:" + hashlib.sha256(content.encode("utf-8")).hexdigest()
+        if diff.get("format") != "unified_diff" or diff.get("digest") != actual_diff_digest:
+            raise ReleaseServiceError(
+                "hash_mismatch",
+                "WorkOrder diff digest does not cover its exact inline payload",
+            )
+
     # ---------- Approval ----------
+
+    def get_approval(self, approval_id: str) -> dict[str, Any]:
+        """Return the controller-persisted ApprovalGrant projection."""
+
+        approval = self.session.get(Approval, approval_id)
+        if approval is None:
+            raise ReleaseServiceError("not_found", f"approval {approval_id} not found")
+        payload = dict(approval.payload or {})
+        return {
+            **payload,
+            "approval_id": approval.approval_id,
+            "workorder_id": approval.workorder_id,
+            "workorder_hash": approval.workorder_hash,
+            "nonce": approval.nonce,
+            "decision": approval.decision,
+            "approver": approval.approver,
+            "expiry": approval.expiry.isoformat(),
+            "decided_at": approval.decided_at.isoformat(),
+            "nonce_consumed": approval.status == "consumed",
+            "persistence": {
+                "status": approval.status,
+                "created_at": approval.created_at.isoformat(),
+                "consumed_at": (
+                    approval.consumed_at.isoformat() if approval.consumed_at else None
+                ),
+            },
+        }
 
     def grant_approval(self, payload: dict[str, Any]) -> dict[str, Any]:
         """登记 ApprovalGrant；绑定 workorder_hash + nonce；Q7 server_recorded。"""
@@ -338,7 +1472,7 @@ class ReleaseService:
             self._validate_persisted_release_verification(
                 aggregate,
                 workorder,
-                expected_result="passed" if action == "promote" else "failed",
+                expected_result="passed" if action == "promote" else ("failed", "error"),
             )
 
         params = authorization.get("params")
@@ -366,12 +1500,23 @@ class ReleaseService:
         cs = self.store.get_aggregate("changeset", cs_id)
         if cs is None or cs.state == "APPROVED":
             return
+        workorder = self.session.get(WorkOrder, payload["workorder_id"])
+        bound_case = (
+            self.store.get_aggregate("case", workorder.case_id)
+            if workorder is not None
+            else None
+        )
+        project_case = bool(
+            bound_case is not None
+            and (bound_case.payload or {}).get("attribution_verdict") == "ATTRIBUTED"
+            and (bound_case.payload or {}).get("attribution_report_digest")
+        )
 
-        def _append(event_type: str, body: dict[str, Any]) -> None:
+        def _append(event_type: str, body: dict[str, Any]):
             nonlocal cs
             cs = self.store.get_aggregate("changeset", cs_id)
             assert cs is not None
-            self.store.append_event(
+            return self.store.append_event(
                 aggregate_type="changeset",
                 aggregate_id=cs_id,
                 event_type=event_type,
@@ -394,7 +1539,7 @@ class ReleaseService:
                 },
             )
         if cs.state == "GATE_ATTACHED":
-            _append(
+            requested = _append(
                 "changeset.approval_requested",
                 {
                     "workorder_hash": payload["workorder_hash"],
@@ -403,8 +1548,19 @@ class ReleaseService:
                     "channel": "api",
                 },
             )
+            if project_case:
+                try:
+                    CaseService(self.session, self.settings).project_changeset_event(
+                        case_id=workorder.case_id,
+                        changeset_id=cs_id,
+                        source_event_id=requested.event_id,
+                        event_type="changeset.approval_requested",
+                        payload={"workorder_hash": payload["workorder_hash"]},
+                    )
+                except CaseServiceError as exc:
+                    raise ReleaseServiceError(exc.code, exc.message, **exc.extra) from exc
         if cs.state == "AWAITING_APPROVAL":
-            _append(
+            approved = _append(
                 "changeset.approved",
                 {
                     "approval_id": payload["approval_id"],
@@ -412,8 +1568,101 @@ class ReleaseService:
                     "workorder_hash": payload["workorder_hash"],
                 },
             )
+            if project_case:
+                try:
+                    CaseService(self.session, self.settings).project_changeset_event(
+                        case_id=workorder.case_id,
+                        changeset_id=cs_id,
+                        source_event_id=approved.event_id,
+                        event_type="changeset.approved",
+                        payload={
+                            "approval_id": payload["approval_id"],
+                            "workorder_hash": payload["workorder_hash"],
+                        },
+                    )
+                except CaseServiceError as exc:
+                    raise ReleaseServiceError(exc.code, exc.message, **exc.extra) from exc
 
     # ---------- Release 流程 ----------
+
+    def configure_closure(
+        self,
+        release_id: str,
+        *,
+        channel: str,
+        thread_ref: str,
+        body_ref: str,
+        body_digest: str,
+    ) -> dict[str, Any]:
+        """Freeze the exact original-thread reply before promote can run."""
+
+        if not all(isinstance(value, str) and value for value in (channel, thread_ref, body_ref)):
+            raise ReleaseServiceError("validation_failed", "closure channel/thread/body_ref are required")
+        if not isinstance(body_digest, str) or re.fullmatch(r"sha256:[0-9a-f]{64}", body_digest) is None:
+            raise ReleaseServiceError("validation_failed", "closure body_digest must be sha256:<64 hex>")
+        release = self.session.scalar(
+            select(Aggregate)
+            .where(Aggregate.aggregate_type == "release", Aggregate.aggregate_id == release_id)
+            .with_for_update()
+        )
+        if release is None:
+            raise ReleaseServiceError("not_found", f"release {release_id} not found")
+        workorder_id = (release.payload or {}).get("workorder_id")
+        workorder = self.session.get(WorkOrder, workorder_id) if workorder_id else None
+        if workorder is None or (release.payload or {}).get("case_id") != workorder.case_id:
+            raise ReleaseServiceError("hash_mismatch", "release closure has no exact WorkOrder/Case binding")
+        complaint = self.session.scalar(
+            select(Event)
+            .where(
+                Event.aggregate_type == "case",
+                Event.aggregate_id == workorder.case_id,
+                Event.event_type == "complaint.received",
+            )
+            .order_by(Event.seq.asc())
+            .limit(1)
+        )
+        if complaint is None:
+            raise ReleaseServiceError("hash_mismatch", "release Case has no original complaint event")
+        if channel != (complaint.payload or {}).get("channel") or thread_ref != (complaint.payload or {}).get("thread_ref"):
+            raise ReleaseServiceError(
+                "hash_mismatch",
+                "closure channel/thread_ref must equal the immutable complaint origin",
+            )
+        existing = self.session.get(ReleaseClosure, release_id)
+        binding = {
+            "case_id": workorder.case_id,
+            "channel": channel,
+            "thread_ref": thread_ref,
+            "body_ref": body_ref,
+            "body_digest": body_digest,
+        }
+        if existing is not None:
+            if any(getattr(existing, key) != value for key, value in binding.items()):
+                raise ReleaseServiceError("idempotency_conflict", "release closure is already bound differently")
+            return {
+                "release_id": release_id,
+                "status": existing.status,
+                "notification_id": existing.notification_id,
+                "duplicate": True,
+                **binding,
+            }
+        if release.state in {"COMPLETED", "ROLLED_BACK", "FAILED_ESCALATED"}:
+            raise ReleaseServiceError(
+                "illegal_transition",
+                "closure context must be configured before a terminal release outcome",
+            )
+        row = ReleaseClosure(release_id=release_id, status="configured", **binding)
+        self.session.add(row)
+        self.audit.record(
+            actor="controller:release",
+            action="release.closure.configured",
+            target=release_id,
+            params={**binding, "body_ref": body_ref},
+            result="success",
+            evidence_refs={"body_digest": body_digest},
+        )
+        self.session.flush()
+        return {"release_id": release_id, "status": "configured", "duplicate": False, **binding}
 
     def start_release(
         self,
@@ -520,6 +1769,7 @@ class ReleaseService:
             aggregate_id=rid,
             event_type="release.requested",
             payload={
+                "case_id": wo.case_id,
                 "changeset_id": f"cs_{workorder_id}",
                 "workorder_hash": wo.hash,
                 "target_versionset_digest": target_digest,
@@ -532,6 +1782,7 @@ class ReleaseService:
             actor="controller:release",
             machine="release",
             merge_payload={
+                "case_id": wo.case_id,
                 "workorder_id": workorder_id,
                 "changeset_id": f"cs_{workorder_id}",
                 "workorder_hash": wo.hash,
@@ -664,7 +1915,7 @@ class ReleaseService:
         workorder: WorkOrder,
         *,
         remote_versionset: dict[str, Any] | None = None,
-        expected_result: str | None = None,
+        expected_result: str | tuple[str, ...] | None = None,
     ) -> Any:
         """Revalidate the immutable post-canary report before high-impact writes.
 
@@ -711,10 +1962,14 @@ class ReleaseService:
                 "hash_mismatch",
                 "release verification projection no longer matches the authoritative GateReport",
             )
-        if expected_result is not None and gate.overall_status != expected_result:
+        allowed_results = (
+            (expected_result,) if isinstance(expected_result, str) else expected_result
+        )
+        if allowed_results is not None and gate.overall_status not in allowed_results:
+            expected_label = "|".join(allowed_results)
             raise ReleaseServiceError(
                 "gate_failed",
-                f"{expected_result} post-canary verification required; got {gate.overall_status}",
+                f"{expected_label} post-canary verification required; got {gate.overall_status}",
             )
         return gate
 
@@ -739,9 +1994,9 @@ class ReleaseService:
             action_params = {"percent": steps[min(idx, len(steps) - 1)]}
             target_revision = payload.get("remote_revision")
         elif action in ("promote", "rollback"):
-            required_verification = "passed" if action == "promote" else "failed"
+            required_verifications = ("passed",) if action == "promote" else ("failed", "error")
             allowed_states = ("VERIFYING",) if action == "promote" else ("VERIFYING", "ROLLING_BACK")
-            if aggregate.state not in allowed_states or payload.get("verification") != required_verification:
+            if aggregate.state not in allowed_states or payload.get("verification") not in required_verifications:
                 raise ReleaseServiceError(
                     "illegal_transition",
                     f"cannot approve {action} from {aggregate.state} with verification={payload.get('verification')}",
@@ -782,6 +2037,107 @@ class ReleaseService:
                 f"release is missing authoritative parameters for {action}",
             )
         return {"target_revision": target_revision, "params": action_params}
+
+    def action_authorization_context(
+        self,
+        release_id: str,
+        action: str,
+        *,
+        reason: str = "",
+    ) -> dict[str, Any]:
+        """Return the exact controller-owned parameters a human may approve."""
+
+        aggregate = self.store.get_aggregate("release", release_id)
+        if aggregate is None:
+            raise ReleaseServiceError("not_found", f"release {release_id} not found")
+        workorder_id = (aggregate.payload or {}).get("workorder_id")
+        workorder = self.session.get(WorkOrder, workorder_id) if workorder_id else None
+        if workorder is None:
+            raise ReleaseServiceError("validation_failed", "release has no immutable WorkOrder")
+        self._validate_original_release_authorization(aggregate, workorder)
+        if action in ("promote", "rollback"):
+            self._validate_persisted_release_verification(
+                aggregate,
+                workorder,
+                expected_result="passed" if action == "promote" else ("failed", "error"),
+            )
+        context = self._expected_action_context(
+            aggregate,
+            action,
+            params={"reason": reason} if action == "rollback" else None,
+        )
+        authorization = {
+            "action": action,
+            "release_id": release_id,
+            "target_revision": context["target_revision"],
+            "params": context["params"],
+            "params_digest": canonical_json_digest(context["params"]),
+        }
+        self.audit.record(
+            actor="approval-authority",
+            action="release.approval_context.read",
+            target=release_id,
+            params={"action": action, "params_digest": authorization["params_digest"]},
+            result="success",
+        )
+        return {
+            "workorder_id": workorder.workorder_id,
+            "workorder_hash": workorder.hash,
+            "workorder_expiry": workorder.payload["expiry"],
+            "authorization": authorization,
+        }
+
+    def verification_context(self, release_id: str) -> dict[str, Any]:
+        """Freeze the exact post-canary target that Gate must evaluate."""
+
+        aggregate = self.store.get_aggregate("release", release_id)
+        if aggregate is None:
+            raise ReleaseServiceError("not_found", f"release {release_id} not found")
+        payload = aggregate.payload or {}
+        if aggregate.state != "CANARYING" or payload.get("unknown_op"):
+            raise ReleaseServiceError(
+                "illegal_transition",
+                f"verification requires a known CANARYING release; got {aggregate.state}",
+            )
+        workorder = self.session.get(WorkOrder, payload.get("workorder_id"))
+        if workorder is None:
+            raise ReleaseServiceError("validation_failed", "release has no immutable WorkOrder")
+        gate, _ = self._validate_original_release_authorization(aggregate, workorder)
+        try:
+            remote = self.quality.get_versionset(payload.get("versionset_id"))
+        except QualityAPIError as exc:
+            raise ReleaseServiceError("quality_api_error", str(exc), quality_code=exc.code) from exc
+        if (
+            remote.get("versionset_id") != payload.get("versionset_id")
+            or remote.get("digest") != workorder.payload.get("target_versionset_digest")
+            or remote.get("revision") != payload.get("remote_revision")
+            or remote.get("status") != "canary"
+        ):
+            raise ReleaseServiceError(
+                "revision_conflict",
+                "post-canary Quality target differs from the authoritative Release projection",
+            )
+        observation = self._canary_observation(payload)
+        context = {
+            "release_id": release_id,
+            "case_id": workorder.case_id,
+            "workorder_id": workorder.workorder_id,
+            "workorder_hash": workorder.hash,
+            "initial_gate_binding_digest": gate.binding_digest,
+            "target_versionset_id": remote["versionset_id"],
+            "target_versionset_digest": remote["digest"],
+            "target_revision": remote["revision"],
+            "canary_percent": payload.get("canary_percent"),
+            "canary_observation": observation,
+        }
+        self.audit.record(
+            actor="controller:release",
+            action="release.verification_context.read",
+            target=release_id,
+            params={"target_revision": remote["revision"], "workorder_hash": workorder.hash},
+            result="success",
+        )
+        return context
 
     def _consume_action_grant(
         self,
@@ -921,7 +2277,7 @@ class ReleaseService:
                 aggregate,
                 workorder,
                 remote_versionset=verification_target,
-                expected_result="passed" if kind == "promote" else "failed",
+                expected_result="passed" if kind == "promote" else ("failed", "error"),
             )
 
         grant = self.session.get(Approval, operation.approval_id) if operation.approval_id else None
@@ -1025,6 +2381,13 @@ class ReleaseService:
                 f"cannot record verification from state {agg.state}",
                 current_state=agg.state,
             )
+        observation = self._canary_observation(payload)
+        if observation["remaining_seconds"] > 0:
+            raise ReleaseServiceError(
+                "illegal_transition",
+                "canary observation window has not completed",
+                canary_observation=observation,
+            )
 
         workorder_id = payload.get("workorder_id")
         versionset_id = payload.get("versionset_id")
@@ -1052,6 +2415,7 @@ class ReleaseService:
             "report_hash": gate.report_hash,
             "evidence_digest": gate.evidence_digest,
             "target_revision": gate.target_revision,
+            "canary_observation": observation,
         }
         self.store.append_event(
             aggregate_type="release",
@@ -1068,6 +2432,7 @@ class ReleaseService:
                 "verification_report_hash": gate.report_hash,
                 "verification_evidence_digest": gate.evidence_digest,
                 "verification_target_revision": gate.target_revision,
+                "canary_observation": observation,
             },
         )
         self.audit.record(
@@ -1146,6 +2511,7 @@ class ReleaseService:
             raise ReleaseServiceError("not_found", f"release {release_id} not found")
 
         vs_id = (agg.payload or {}).get("versionset_id")
+        case_id = (agg.payload or {}).get("case_id") or release_id
         if not vs_id:
             raise ReleaseServiceError("validation_failed", "release missing versionset_id")
 
@@ -1186,6 +2552,18 @@ class ReleaseService:
                     "idempotency_conflict",
                     "Idempotency-Key was reused with different operation parameters",
                 )
+            if existing_op.status == "pending":
+                # A committed pending intent means the prior worker may have
+                # died anywhere around the remote call.  Never infer success
+                # and never leave the operation stranded: enter UNKNOWN, then
+                # reconcile by replaying this exact key and request.
+                result = self._enter_unknown(
+                    release_id,
+                    existing_op.operation_id,
+                    kind,
+                    last_known=agg.state,
+                )
+                return {**result, "duplicate": True}
             return {
                 "release_id": release_id,
                 "operation_id": existing_op.operation_id,
@@ -1193,6 +2571,14 @@ class ReleaseService:
                 "state": agg.state,
                 "duplicate": True,
             }
+
+        if kind == "promote":
+            closure = self.session.get(ReleaseClosure, release_id)
+            if closure is None or closure.status != "configured":
+                raise ReleaseServiceError(
+                    "validation_failed",
+                    "promote requires an immutable original-channel closure context",
+                )
 
         workorder_id = (agg.payload or {}).get("workorder_id")
         workorder = self.session.get(WorkOrder, workorder_id) if workorder_id else None
@@ -1260,7 +2646,7 @@ class ReleaseService:
                 agg,
                 workorder,
                 remote_versionset=vs,
-                expected_result="passed" if kind == "promote" else "failed",
+                expected_result="passed" if kind == "promote" else ("failed", "error"),
             )
 
         requested_canary_percent: int | None = None
@@ -1303,11 +2689,12 @@ class ReleaseService:
                     "reason": reason,
                     "approval_id": approval_id,
                 },
-                correlation_id=release_id,
+                causation_id=approval_id or "rollback-approval",
+                correlation_id=case_id,
                 actor="controller:release",
                 expected_revision=agg.revision,
                 machine="release",
-                guard="verification=failed",
+                guard=f"verification={(agg.payload or {}).get('verification')}",
                 merge_payload={"rollback_reason": reason, "rollback_approval_id": approval_id},
             )
             agg = self.store.get_aggregate("release", release_id)
@@ -1315,8 +2702,9 @@ class ReleaseService:
             self._validate_step_state(agg, kind)
 
         # Fail before the external side effect when the authoritative audit sink
-        # cannot accept an operation intent.  P0-2 turns this intent into a
-        # transactional command outbox for crash-safe delivery/receipt handling.
+        # cannot accept an operation intent.  Commit the operation anchor before
+        # crossing the network boundary, so a crash can always reconcile by the
+        # exact stable Idempotency-Key.
         self.audit.record(
             actor="controller:release",
             action=f"release.{kind}.intent",
@@ -1343,6 +2731,7 @@ class ReleaseService:
         )
         self.session.add(cop)
         self.session.flush()
+        self.session.commit()
 
         remote_op: Optional[dict[str, Any]] = None
         unknown = False
@@ -1386,7 +2775,15 @@ class ReleaseService:
             else:
                 cop.status = "failed"
                 cop.result = {"error": exc.code, "message": exc.message}
-                self.session.flush()
+                self.audit.record(
+                    actor="controller:release",
+                    action=f"release.{kind}",
+                    target=release_id,
+                    params={"idempotency_key": idempotency_key},
+                    result="failed",
+                    error_code=exc.code,
+                )
+                self.session.commit()
                 if kind == "rollback":
                     return self._escalate_rollback_failure(
                         release_id,
@@ -1401,6 +2798,9 @@ class ReleaseService:
         assert remote_op is not None
         remote_id = remote_op.get("operation_id")
         cop.remote_operation_id = remote_id
+        # Persist the remote identity immediately.  If polling or receipt
+        # validation crashes, reconciliation still has an exact remote anchor.
+        self.session.commit()
         remote_status = remote_op.get("status", "unknown")
 
         if remote_status in ("pending", "running"):
@@ -1412,7 +2812,15 @@ class ReleaseService:
         if remote_status != "succeeded":
             cop.status = "failed"
             cop.result = remote_op
-            self.session.flush()
+            self.audit.record(
+                actor="controller:release",
+                action=f"release.{kind}",
+                target=release_id,
+                params={"idempotency_key": idempotency_key, "remote_operation_id": remote_id},
+                result="failed",
+                error_code=str(remote_status),
+            )
+            self.session.commit()
             if kind == "rollback":
                 return self._escalate_rollback_failure(
                     release_id,
@@ -1445,18 +2853,18 @@ class ReleaseService:
             params={"idempotency_key": idempotency_key, "remote_operation_id": remote_id},
             result="success",
         )
-        self.session.flush()
+        self.session.commit()
         return result
 
     @staticmethod
     def _validate_step_state(agg: Aggregate, kind: str) -> None:
-        expected: dict[str, tuple[str, str | None]] = {
+        expected: dict[str, tuple[str, tuple[str, ...] | None]] = {
             "stage": ("REQUESTED", None),
             "canary": ("STAGING", None),
-            "promote": ("VERIFYING", "passed"),
-            "rollback": ("ROLLING_BACK", "failed"),
+            "promote": ("VERIFYING", ("passed",)),
+            "rollback": ("ROLLING_BACK", ("failed", "error")),
         }
-        required_state, verification = expected[kind]
+        required_state, allowed_verifications = expected[kind]
         payload = agg.payload or {}
         actual_verification = payload.get("verification")
         if payload.get("unknown_op"):
@@ -1465,7 +2873,9 @@ class ReleaseService:
                 f"cannot {kind} while a prior operation is UNKNOWN; reconcile is required",
                 current_state=agg.state,
             )
-        if agg.state != required_state or (verification is not None and actual_verification != verification):
+        if agg.state != required_state or (
+            allowed_verifications is not None and actual_verification not in allowed_verifications
+        ):
             raise ReleaseServiceError(
                 "illegal_transition",
                 f"cannot {kind} from state {agg.state} with verification={actual_verification}",
@@ -1564,7 +2974,7 @@ class ReleaseService:
             aggregate_id=release_id,
             event_type="release.unknown_detected",
             payload={"operation_id": op_id, "last_known": last_known, "kind": kind},
-            correlation_id=release_id,
+            correlation_id=(agg.payload or {}).get("case_id") or release_id,
             actor="controller:release",
             expected_revision=agg.revision,
             machine="release",
@@ -1579,13 +2989,15 @@ class ReleaseService:
             result="success",
         )
         agg = self.store.get_aggregate("release", release_id)
-        return {
+        result = {
             "release_id": release_id,
             "state": agg.state if agg else "UNKNOWN",
             "status": "unknown",
             "operation_id": op_id,
             "reconcile_required": True,
         }
+        self.session.commit()
+        return result
 
     def _escalate_rollback_failure(
         self,
@@ -1628,13 +3040,15 @@ class ReleaseService:
         )
         self.session.flush()
         updated = self.store.get_aggregate("release", release_id)
-        return {
+        result = {
             "release_id": release_id,
             "state": updated.state if updated else "FAILED_ESCALATED",
             "status": "failed",
             "operation_id": operation_id,
             "manual_intervention_required": True,
         }
+        self.session.commit()
+        return result
 
     # ---------- reconcile（UNKNOWN→对账，指数退避由调用方循环） ----------
 
@@ -2049,6 +3463,8 @@ class ReleaseService:
         result = remote_op.get("result") or remote_op
         rev = int(result["revision"])
         vs_id = (agg.payload or {}).get("versionset_id")
+        case_id = (agg.payload or {}).get("case_id") or release_id
+        remote_causation = str(remote_op.get("operation_id") or "quality-operation")
 
         if kind == "stage":
             self.store.append_event(
@@ -2056,7 +3472,8 @@ class ReleaseService:
                 aggregate_id=release_id,
                 event_type="release.staged",
                 payload={"versionset_id": vs_id, "revision": rev, "operation_id": remote_op.get("operation_id", "")},
-                correlation_id=release_id,
+                causation_id=remote_causation,
+                correlation_id=case_id,
                 actor="controller:release",
                 expected_revision=agg.revision,
                 machine="release",
@@ -2066,6 +3483,7 @@ class ReleaseService:
             steps = self.settings.canary_step_list
             idx = int((agg.payload or {}).get("canary_step_index", 0))
             pct = percent if percent is not None else int(result.get("canary_percent") or steps[min(idx, len(steps) - 1)])
+            canary_started_at = datetime.now(timezone.utc).isoformat()
             self.store.append_event(
                 aggregate_type="release",
                 aggregate_id=release_id,
@@ -2075,12 +3493,23 @@ class ReleaseService:
                     "revision": rev,
                     "percent": pct,
                     "operation_id": remote_op.get("operation_id", ""),
+                    "observation_started_at": canary_started_at,
+                    "observation_required_seconds": max(
+                        0,
+                        self.settings.canary_observation_seconds,
+                    ),
                 },
-                correlation_id=release_id,
+                causation_id=remote_causation,
+                correlation_id=case_id,
                 actor="controller:release",
                 expected_revision=agg.revision,
                 machine="release",
-                merge_payload={"canary_percent": pct, "canary_step_index": idx + 1, "remote_revision": rev},
+                merge_payload={
+                    "canary_percent": pct,
+                    "canary_step_index": idx + 1,
+                    "remote_revision": rev,
+                    "canary_started_at": canary_started_at,
+                },
             )
         elif kind == "promote":
             if agg.state != "VERIFYING" or (agg.payload or {}).get("verification") != "passed":
@@ -2090,7 +3519,8 @@ class ReleaseService:
                 aggregate_id=release_id,
                 event_type="release.promoted",
                 payload={"versionset_id": vs_id, "revision": rev, "operation_id": remote_op.get("operation_id", "")},
-                correlation_id=release_id,
+                causation_id=remote_causation,
+                correlation_id=case_id,
                 actor="controller:release",
                 expected_revision=agg.revision,
                 machine="release",
@@ -2106,11 +3536,15 @@ class ReleaseService:
                     "restored_digest": result["restored_digest"],
                     "operation_id": remote_op.get("operation_id", ""),
                 },
-                correlation_id=release_id,
+                causation_id=remote_causation,
+                correlation_id=case_id,
                 actor="controller:release",
                 expected_revision=agg.revision,
                 machine="release",
-                merge_payload={"rolled_back": True},
+                merge_payload={
+                    "rolled_back": True,
+                    "restored_digest": result["restored_digest"],
+                },
             )
 
         agg = self.store.get_aggregate("release", release_id)
@@ -2122,6 +3556,40 @@ class ReleaseService:
             "kind": kind,
             "operation_id": remote_op.get("operation_id", ""),
             "payload": agg.payload if agg else {},
+        }
+
+    def _canary_observation(self, payload: dict[str, Any]) -> dict[str, Any]:
+        """Return the authoritative elapsed canary observation window.
+
+        The timestamp is written by the controller only after Quality confirms
+        the canary operation. Missing or malformed state is indeterminate and
+        therefore rejected instead of silently treating the window as elapsed.
+        """
+
+        started_raw = payload.get("canary_started_at")
+        if not isinstance(started_raw, str) or not started_raw:
+            raise ReleaseServiceError(
+                "validation_failed",
+                "release is missing the authoritative canary observation start",
+            )
+        try:
+            started_at = _parse_dt(started_raw)
+        except (TypeError, ValueError) as exc:
+            raise ReleaseServiceError(
+                "validation_failed",
+                "release canary observation timestamp is invalid",
+            ) from exc
+        now = datetime.now(timezone.utc)
+        required = max(0, int(self.settings.canary_observation_seconds))
+        elapsed = max(0.0, (now - started_at).total_seconds())
+        remaining = max(0.0, required - elapsed)
+        return {
+            "started_at": started_at.isoformat(),
+            "observed_at": now.isoformat(),
+            "required_seconds": required,
+            "elapsed_seconds": round(elapsed, 3),
+            "remaining_seconds": round(remaining, 3),
+            "complete": remaining <= 0,
         }
 
     def get_release(self, release_id: str) -> dict[str, Any]:

@@ -1,8 +1,9 @@
-"""mcp-notification（feishu-mock）：最小三能力 + 双向留痕（spec §9.6 / T7）。
+"""mcp-notification：控制面通知命令 + 明确隔离的辅助 mock 能力。
 
-- feishu.reply_origin / approval_card / weekly_report：出站写入，全部落 NotificationMessage 事件。
+- feishu.reply_origin 只向控制面排队；dispatcher 才能接收 provider 回执并归档 Case。
+- approval_card / weekly_report 是当前明确标注的 feishu-mock 辅助适配器。
 - matrix.log：对内留痕。
-- thread_ref 格式（D-001 Q5）：feishu-mock:<room>:<msg_ref>；真飞书 feishu:<chat_id>:<root_id>。
+- thread_ref 格式（D-001 Q5）：feishu-mock:<room>:<msg_ref>；真飞书 feishu:<chat_id>:<message_id>，其中 message_id 是原投诉消息/reply 目标。
 - REST 查询端点：GET /api/messages（mock 群消息日志，接口签名与真飞书一致）。
 - 幂等：outbox_id 唯一；同键同参返回首次结果（§9.2）。
 """
@@ -21,20 +22,32 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from common.audit import AuditService  # noqa: E402
 from common.config import Settings, get_settings  # noqa: E402
 from common.db import session_scope  # noqa: E402
-from common.errors import IDEMPOTENCY_CONFLICT, McpError, validation  # noqa: E402
+from common.errors import IDEMPOTENCY_CONFLICT, McpError, dependency_unavailable, forbidden, validation  # noqa: E402
+from common.http import HttpClient  # noqa: E402
 from common.ids import new_message_id, new_msg_ref  # noqa: E402
-from common.serverkit import build_server_app, json_response  # noqa: E402
+from common.serverkit import (  # noqa: E402
+    ToolDefinitionRegistry,
+    build_server_app,
+    build_tool_projection,
+    json_response,
+    validate_projection_runtime,
+)
 from common.tables import NotificationMessage  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-mcp = FastMCP("mcp-notification")
+mcp = ToolDefinitionRegistry("mcp-notification")
 
 _DEFAULT_ROOM = "demo"
 
 
 def _settings() -> Settings:
     return get_settings()
+
+
+def _cp() -> HttpClient:
+    settings = _settings()
+    return HttpClient(settings.control_plane_base_url, token=settings.control_plane_role_token)
 
 
 def _send(
@@ -121,37 +134,41 @@ def _parse_feishu_mock_ref(ref: str) -> Optional[tuple[str, str]]:
 
 @mcp.tool(name="feishu.reply_origin")
 def feishu_reply_origin(
-    case_id: str,
-    text: str,
-    refs: Optional[list[str]] = None,
-    idempotency_key: Optional[str] = None,
+    release_id: str,
+    channel: str,
+    thread_ref: str,
+    body_ref: str,
+    body_digest: str,
 ) -> dict[str, Any]:
-    """回复投诉原群（ACL：控制面/案例官）。refs 为线索引用（如 feishu-mock:<room>:<msg_ref>）；
-    幂等键=outbox_id（默认 <case_id>:reply:<seq>）。返回 {message_id}。"""
-    room = _DEFAULT_ROOM
-    thread_ref: Optional[str] = None
-    parent_ref: Optional[str] = None
-    for ref in (refs or []):
-        parsed = _parse_feishu_mock_ref(ref)
-        if parsed is not None:
-            room, parent_ref = parsed
-            thread_ref = f"feishu-mock:{room}:{parent_ref}" if parent_ref else f"feishu-mock:{room}:"
-            break
-        if ref.startswith("feishu:"):
-            thread_ref = ref  # 真飞书线程引用原样透传
-            parts = ref.split(":")
-            if len(parts) >= 2:
-                room = parts[1]
+    """Freeze the original-thread reply as the durable post-promote continuation.
 
-    outbox_id = idempotency_key or f"{case_id}:reply:{_stable_seq(text)}"
-    return _send(
-        channel="feishu-mock",
-        room=room,
-        text=text,
-        outbox_id=outbox_id,
-        thread_ref=thread_ref or f"feishu-mock:{room}:",
-        actor="case-officer",
-    )
+    The controller validates that channel/thread_ref equal the immutable
+    complaint origin. This must run before promote; success means CONFIGURED,
+    never delivered. RELEASE_PROMOTED outbox consumption queues the reply, and
+    only a provider receipt may close the Case.
+    """
+
+    if not all(
+        isinstance(value, str) and value
+        for value in (release_id, channel, thread_ref, body_ref, body_digest)
+    ):
+        raise validation("release_id, channel, thread_ref, body_ref, and body_digest are required")
+    if not body_digest.startswith("sha256:") or len(body_digest) != 71:
+        raise validation("body_digest must be sha256:<64 hex>")
+    try:
+        return _cp().post(
+            f"/v1/releases/{release_id}/closure-context",
+            json_body={
+                "channel": channel,
+                "thread_ref": thread_ref,
+                "body_ref": body_ref,
+                "body_digest": body_digest,
+            },
+        )
+    except McpError as exc:
+        raise exc
+    except Exception as exc:  # noqa: BLE001
+        raise dependency_unavailable(f"notification controller unreachable: {exc}") from exc
 
 
 @mcp.tool(name="feishu.approval_card")
@@ -198,7 +215,10 @@ def feishu_weekly_report(report: dict[str, Any], room: str = "weekly") -> dict[s
 @mcp.tool(name="matrix.log")
 def matrix_log(room: str, text: str) -> dict[str, Any]:
     """对内留痕消息（ACL：全员）。返回 {event_id}（=message_id）。"""
-    result = _send(channel="matrix", room=room, text=text, outbox_id=None, actor="agent")
+    actor = _settings().mcp_worker_id
+    if not actor:
+        raise forbidden("MCP process has no canonical worker identity")
+    result = _send(channel="matrix", room=room, text=text, outbox_id=None, actor=actor)
     return {"event_id": result["message_id"], "room": room}
 
 
@@ -247,12 +267,34 @@ def _api_health(request) -> Any:
     return json_response(200, {"status": "ok", "service": "mcp-notification"})
 
 
+def _profiled_mcp(profile: str) -> FastMCP:
+    profiles = {
+        "quality-officer": {"matrix.log": matrix_log},
+        "case-officer": {
+            "feishu.reply_origin": feishu_reply_origin,
+            "feishu.weekly_report": feishu_weekly_report,
+            "matrix.log": matrix_log,
+        },
+    }
+    return build_tool_projection("mcp-notification", profile, profiles)
+
+
 def main() -> None:
     import uvicorn
 
     s = _settings()
+    validate_projection_runtime(
+        s,
+        profile_workers={
+            "quality-officer": "quality-officer",
+            "case-officer": "case-officer",
+        },
+        role_token_profiles=frozenset({"case-officer"}),
+    )
     app = build_server_app(
-        mcp,
+        _profiled_mcp(s.mcp_tool_profile),
+        expected_consumer=s.mcp_expected_consumer,
+        gateway_backend_token=s.mcp_gateway_backend_token,
         extra_routes=[
             Route("/api/messages", _api_messages, methods=["GET"]),
             Route("/healthz", _api_health, methods=["GET"]),

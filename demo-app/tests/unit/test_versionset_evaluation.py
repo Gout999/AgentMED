@@ -1,6 +1,7 @@
 """Exact-candidate VersionSet reconstruction fails closed on asset drift."""
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from types import SimpleNamespace
 
 import pytest
@@ -8,6 +9,7 @@ import pytest
 from app import jcs, kb, prompts_registry
 from app.live_config import VersionSetConfigError, resolve_versionset_config
 from app.models import VersionSet
+from app.read_queries import log_entry_dict
 
 
 def _fixture():
@@ -106,3 +108,27 @@ def test_resolve_exact_candidate_rejects_retrieval_metadata_drift(monkeypatch, f
         resolve_versionset_config(db, "vs_candidate")
 
     assert exc.value.code == "asset_digest_mismatch"
+
+
+def test_log_projection_exposes_and_removes_internal_provider_origin():
+    log = SimpleNamespace(
+        ts=datetime.now(timezone.utc),
+        request_id="req_provider_origin",
+        versionset_id="vs_candidate",
+        prompt_digest="sha256:" + "1" * 64,
+        kb_manifest_digest="sha256:" + "2" * 64,
+        model_digest="sha256:" + "3" * 64,
+        status="ok",
+        latency_ms=1,
+        usage={
+            "_answer_digest": "sha256:" + "4" * 64,
+            "_provider_origin": "https://api.stepfun.com/step_plan/v1",
+            "total_tokens": 3,
+        },
+        trace_id="trace-provider-origin",
+    )
+
+    projected = log_entry_dict(log)
+
+    assert projected["provider_origin"] == "https://api.stepfun.com/step_plan/v1"
+    assert projected["usage"] == {"total_tokens": 3}

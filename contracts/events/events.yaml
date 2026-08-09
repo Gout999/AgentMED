@@ -84,12 +84,13 @@ aggregates:
         aggregate_id: "inbox 阶段用 dedup_key 作 provisional id"
         causation_id: none
         payload:
-          required: [source, external_id, dedup_key, channel, complainant_ref, text_ref]
+          required: [source, external_id, dedup_key, channel, thread_ref, complainant_ref, text_ref]
           properties:
             source: { enum: [webhook, poll] }
             external_id: { type: string }
             dedup_key: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
-            channel: { type: string, description: "如 feishu:group:oc_xxx" }
+            channel: { type: string, description: "Feishu live 固定为 feishu:<chat_id>；其他 adapter 须按自身 contract" }
+            thread_ref: { type: string, description: "Feishu live 固定为 feishu:<chat_id>:<message_id>，message_id 是回复目标" }
             complainant_ref: { type: string, description: "假名化投诉人" }
             text_ref: { type: string, description: "脱敏后内容 artifact 引用" }
             attachments: { type: array, items: { type: string } }
@@ -130,6 +131,28 @@ aggregates:
             lease_id: { type: string }
             fencing_token: { type: integer, minimum: 1, description: "单调递增，僵尸 Worker 写拒绝" }
             attempt: { type: integer, minimum: 1 }
+      - event_type: case.worker_handed_off
+        aggregate_id: case_id
+        causation_id: "case.attribution_completed"
+        payload:
+          required: [worker_id, lease_id, fencing_token]
+          properties:
+            worker_id: { type: string, description: "固定 warm pool 中接手的修复师" }
+            lease_id: { type: string }
+            fencing_token: { type: integer, minimum: 1 }
+            from_role: { type: [string, "null"] }
+      - event_type: case.suggestion_recorded
+        aggregate_id: case_id
+        causation_id: "当前 active lease_id"
+        payload:
+          required: [kind, payload, evidence_refs, worker_id, lease_id, fencing_token]
+          properties:
+            kind: { enum: [triage, attribution, fix, gate, verify] }
+            payload: { type: object, description: "非权威建议；控制面事件才是持久化事实" }
+            evidence_refs: { type: array, items: { type: string } }
+            worker_id: { type: string }
+            lease_id: { type: string }
+            fencing_token: { type: integer, minimum: 1 }
       - event_type: case.worker_lost
         aggregate_id: case_id
         causation_id: "lease 看门狗"
@@ -150,6 +173,27 @@ aggregates:
             verdict: { enum: [ATTRIBUTED, INCONCLUSIVE, CONFOUNDED] }
             attributed_layer: { enum: [prompt, kb, model_params, interaction, null] }
             report_ref: { type: string, description: "attribution-report URI" }
+      - event_type: experiment.runner_lost
+        aggregate_id: case_id
+        causation_id: "experiment.runner_lost"
+        payload:
+          required: [experiment_id, runner_id, lease_id, fencing_token, requeued]
+          properties:
+            experiment_id: { type: string }
+            runner_id: { type: string }
+            lease_id: { type: string }
+            fencing_token: { type: integer, minimum: 1 }
+            requeued: { type: boolean, const: true }
+      - event_type: experiment.resumed
+        aggregate_id: case_id
+        causation_id: "experiment.started"
+        payload:
+          required: [experiment_id, runner_id, lease_id, fencing_token]
+          properties:
+            experiment_id: { type: string }
+            runner_id: { type: string }
+            lease_id: { type: string }
+            fencing_token: { type: integer, minimum: 1 }
       - event_type: case.resolved
         aggregate_id: case_id
         causation_id: "release.promoted / release.rolled_back"
@@ -219,6 +263,21 @@ aggregates:
             runner_id: { type: string }
             lease_id: { type: string }
             fencing_token: { type: integer, minimum: 1 }
+      - event_type: experiment.trial_completed
+        aggregate_id: experiment_id
+        causation_id: "experiment.started"
+        idempotency_key: "(experiment_id, cell, probe_id, repetition)"
+        payload:
+          required: [cell, probe_id, repetition, recovered, output_ref, output_digest]
+          properties:
+            cell: { enum: [C, RP, RK, RM, G] }
+            probe_id: { type: string }
+            repetition: { type: integer, minimum: 1 }
+            recovered: { type: boolean }
+            output_ref: { type: string, description: "process-independent data: evidence for live; file: only in explicit isolated replay" }
+            output_digest: { type: string, pattern: '^sha256:[0-9a-f]{64}$' }
+            request_id: { type: [string, 'null'] }
+            trace_id: { type: [string, 'null'] }
       - event_type: experiment.cell_completed
         aggregate_id: experiment_id
         causation_id: "experiment.started"
@@ -232,10 +291,12 @@ aggregates:
         aggregate_id: experiment_id
         causation_id: "lease 看门狗"
         payload:
-          required: [runner_id, lease_id, requeued]
+          required: [runner_id, lease_id, fencing_token, previous_state, requeued]
           properties:
             runner_id: { type: string }
             lease_id: { type: string }
+            fencing_token: { type: integer, minimum: 1 }
+            previous_state: { enum: [REQUESTED, PROTOCOL_FROZEN, RUNNING] }
             requeued: { type: boolean, const: true }
       - event_type: experiment.verdict_computed
         aggregate_id: experiment_id
@@ -263,11 +324,14 @@ aggregates:
             from_verdict: { const: CONFOUNDED }
       - event_type: experiment.cancelled
         aggregate_id: experiment_id
-        causation_id: "case.merged / 人工决策"
+        causation_id: "case.merged / 人工决策 / runner failure"
         payload:
-          required: [reason]
+          required: [reason, runner_id, lease_id, fencing_token]
           properties:
             reason: { type: string }
+            runner_id: { type: string }
+            lease_id: { type: string }
+            fencing_token: { type: integer, minimum: 1 }
 
   changeset:
     description: "修复变更集（WorkOrder 载体 + 审批生命周期；审批拒绝/过期语义在此）"
@@ -286,7 +350,7 @@ aggregates:
             author_agent: { type: string }
       - event_type: changeset.gate_attached
         aggregate_id: changeset_id
-        causation_id: "eval.passed"
+        causation_id: "eval.bound"
         payload:
           required: [gate_report_ref, gate_status]
           properties:
@@ -367,6 +431,37 @@ aggregates:
             runner_id: { type: string }
             lease_id: { type: string }
             fencing_token: { type: integer, minimum: 1 }
+      - event_type: eval.report_received
+        aggregate_id: eval_id
+        causation_id: "eval.requested"
+        description: "Phase 1 同步 gate runner 的原子导入收据；不得合成未实际记录的 started/track lifecycle。"
+        payload:
+          required:
+            - execution_mode
+            - report_hash
+            - candidate_digest
+            - rule_status
+            - judge_status
+            - n_rule_passed
+            - n_rule_failed
+            - judge_model_digest
+            - athlete_model_digest
+            - target_versionset_digest
+            - regression_suite_digest
+            - probe_set_digest
+          properties:
+            execution_mode: { const: completed_report_import }
+            report_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
+            candidate_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            rule_status: { enum: [passed, failed, error] }
+            judge_status: { enum: [passed, failed, error] }
+            n_rule_passed: { type: integer, minimum: 0 }
+            n_rule_failed: { type: integer, minimum: 0 }
+            judge_model_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            athlete_model_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            target_versionset_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            regression_suite_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            probe_set_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
       - event_type: eval.rule_track_completed
         aggregate_id: eval_id
         causation_id: "eval.started"
@@ -409,6 +504,47 @@ aggregates:
           properties:
             error: { type: string }
             retryable: { type: boolean }
+      - event_type: eval.bound
+        aggregate_id: eval_id
+        causation_id: "eval.passed / eval.failed / eval.error"
+        description: "终态后的不可变绑定事件；不改变 eval 状态。只有此事件可投递 GATE_COMPLETED。"
+        payload:
+          required:
+            - workorder_id
+            - workorder_hash
+            - eval_id
+            - report_hash
+            - report_ref
+            - report_digest
+            - candidate_digest
+            - binding_digest
+            - overall_status
+            - evidence_digest
+            - target_versionset_id
+            - target_versionset_digest
+            - target_revision
+            - dataset_id
+            - dataset_version
+            - dataset_digest
+            - bound_at
+          properties:
+            workorder_id: { type: string }
+            workorder_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
+            eval_id: { type: string }
+            report_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
+            report_ref: { type: string }
+            report_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            candidate_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            binding_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            overall_status: { enum: [passed, failed, error] }
+            evidence_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            target_versionset_id: { type: string }
+            target_versionset_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            target_revision: { type: integer, minimum: 1 }
+            dataset_id: { type: string }
+            dataset_version: { type: string }
+            dataset_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
+            bound_at: { type: string, format: date-time }
 
   release:
     description: "发布（唯一经 Release Controller 调 Quality API 写面；UNKNOWN→reconcile；回滚失败→人工）"
@@ -451,7 +587,7 @@ aggregates:
         payload:
           required: [result, probe_set_digest, eval_id, report_hash, evidence_digest, target_revision]
           properties:
-            result: { enum: [passed, failed] }
+            result: { enum: [passed, failed, error], description: "error 可记录但绝不授权 promote；只可经新的高风险审批回滚" }
             probe_set_digest: { type: string, pattern: "^sha256:[0-9a-f]{64}$" }
             eval_id: { type: string, pattern: "^eval_[0-9A-Za-z]{8,64}$" }
             report_hash: { type: string, pattern: "^[0-9a-f]{64}$" }
@@ -520,7 +656,7 @@ aggregates:
           properties:
             case_id: { type: string }
             channel: { type: string, description: "如 feishu" }
-            thread_ref: { type: string, description: "【待定】原群/原帖定位字段（飞书 chat_id+thread/root_id）" }
+            thread_ref: { type: string, description: "真飞书固定为 feishu:<chat_id>:<message_id>，message_id 为原投诉消息/reply 目标且 chat_id 必须与 channel 匹配；mock 为 feishu-mock:<room>:<msg_ref>" }
             body_ref: { type: string, description: "回复内容 artifact（已脱敏复核）" }
             outbox_id: { type: string, description: "PG outbox 行 id（失败即拒业务的审计要求）" }
       - event_type: notification.sent

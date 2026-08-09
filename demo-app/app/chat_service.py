@@ -1,6 +1,7 @@
 """Shared real RAG/StepFun execution for live chat and exact-candidate evaluation."""
 from __future__ import annotations
 
+import hashlib
 import time
 
 from sqlalchemy.orm import Session
@@ -69,6 +70,13 @@ def execute_chat(payload: ChatRequest, db: Session, config: LiveConfig, *, span_
             span.set_attribute("app.error", str(exc))
 
         latency_ms = int((time.monotonic() - latency_start) * 1000)
+        answer_digest = "sha256:" + hashlib.sha256(answer.encode("utf-8")).hexdigest()
+        provider_origin = settings.stepfun_base_url.rstrip("/")
+        persisted_usage = dict(usage or {})
+        # ChatLog intentionally keeps its existing schema.  The internal key is
+        # exposed as a first-class immutable provenance field by log_entry_dict.
+        persisted_usage["_answer_digest"] = answer_digest
+        persisted_usage["_provider_origin"] = provider_origin
         db.add(
             ChatLog(
                 request_id=request_id,
@@ -78,7 +86,7 @@ def execute_chat(payload: ChatRequest, db: Session, config: LiveConfig, *, span_
                 model_digest=config.model.digest,
                 status=status,
                 latency_ms=latency_ms,
-                usage=usage or None,
+                usage=persisted_usage,
                 trace_id=trace_id,
             )
         )
@@ -87,6 +95,8 @@ def execute_chat(payload: ChatRequest, db: Session, config: LiveConfig, *, span_
         return {
             "request_id": request_id,
             "answer": answer,
+            "answer_digest": answer_digest,
+            "provider_origin": provider_origin,
             "status": status,
             "versionset_id": config.versionset_id,
             "prompt_digest": config.prompt.digest,

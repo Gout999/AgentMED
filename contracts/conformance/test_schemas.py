@@ -20,6 +20,7 @@ from conftest import (
 
 # 样例文件 → schema 文件的冻结映射（缺一即红）
 SAMPLE_TO_SCHEMA = {
+    "sample-b1-run-manifest.json": "b1-run-manifest.schema.json",
     "sample-action-approval.json": "approval.schema.json",
     "sample-workorder.json": "workorder.schema.json",
     "sample-approval.json": "approval.schema.json",
@@ -81,6 +82,9 @@ NEGATIVE_CASES = [
     ("sample-gate-report.json", "gate-report.schema.json",
      lambda d: d.pop("live_provider_e2e"),
      "门禁报告缺 live_provider_e2e（必须与确定性测试分开报告）"),
+    ("sample-b1-run-manifest.json", "b1-run-manifest.schema.json",
+     lambda d: d["artifacts"].pop("trust_decision"),
+     "B1 manifest 缺 Trust decision 证据"),
 ]
 
 

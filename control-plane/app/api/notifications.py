@@ -10,25 +10,29 @@ from sqlalchemy.orm import Session
 from app.api.deps import get_app_settings, get_db_session, require_internal_write
 from app.config import Settings
 from app.services.audit import AuditWriteError
+from app.services.case_closure_service import CaseClosureService, CaseClosureServiceError
 from app.services.notification_service import NotificationService, NotificationServiceError
 
 router = APIRouter(tags=["notifications"])
 
 
 class NotificationQueueIn(BaseModel):
-    case_id: str
+    release_id: str
     channel: str
     thread_ref: str
     body_ref: str
-    notification_id: Optional[str] = None
+    body_digest: str
 
 
 def _raise(exc: NotificationServiceError) -> None:
     status = {
         "not_found": 404,
         "validation_failed": 422,
+        "hash_mismatch": 422,
         "illegal_transition": 422,
         "revision_conflict": 409,
+        "idempotency_conflict": 409,
+        "closure_missing": 422,
     }.get(exc.code, 400)
     raise HTTPException(status_code=status, detail={"code": exc.code, "message": exc.message, **exc.extra})
 
@@ -45,16 +49,16 @@ def queue_notification(
     _authority: str = Depends(require_internal_write),
 ) -> dict[str, Any]:
     try:
-        return _svc(session, settings).queue(
-            case_id=body.case_id,
+        return CaseClosureService(session, settings).resolve_and_queue(
+            release_id=body.release_id,
             channel=body.channel,
             thread_ref=body.thread_ref,
             body_ref=body.body_ref,
-            notification_id=body.notification_id,
+            body_digest=body.body_digest,
         )
     except AuditWriteError as exc:
         raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
-    except NotificationServiceError as exc:
+    except CaseClosureServiceError as exc:
         _raise(exc)
     return {}
 

@@ -150,7 +150,8 @@ class WorkOrderDraft(Base):
     workorder_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     case_id: Mapped[str] = mapped_column(String(128), nullable=False, index=True)
     channel: Mapped[str] = mapped_column(String(32), nullable=False)
-    status: Mapped[str] = mapped_column(String(32), nullable=False, default="DRAFT")  # DRAFT | FROZEN
+    # DRAFT -> FREEZE_PENDING (durable immutable intent) -> FROZEN.
+    status: Mapped[str] = mapped_column(String(32), nullable=False, default="DRAFT")
     draft_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
     frozen_payload: Mapped[Optional[dict[str, Any]]] = mapped_column(JSON, nullable=True)
     hash: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)

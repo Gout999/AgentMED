@@ -51,7 +51,10 @@ CASE_TRANSITIONS: list[Transition] = [
     Transition("OPEN", "case.dispatched", "DISPATCHED"),
     Transition("DISPATCHED", "case.worker_lost", "OPEN"),
     Transition("DISPATCHED", "experiment.requested", "ATTRIBUTING"),
+    Transition("DISPATCHED", "experiment.resumed", "ATTRIBUTING"),
+    Transition("ATTRIBUTING", "experiment.runner_lost", "DISPATCHED"),
     Transition("ATTRIBUTING", "case.attribution_completed", "AWAITING_FIX", guard="verdict=ATTRIBUTED"),
+    Transition("AWAITING_FIX", "case.worker_handed_off", "AWAITING_FIX"),
     Transition("ATTRIBUTING", "case.escalated", "ESCALATED"),
     Transition("AWAITING_FIX", "changeset.approval_requested", "AWAITING_APPROVAL"),
     Transition("AWAITING_APPROVAL", "changeset.approved", "RELEASING"),
@@ -79,8 +82,11 @@ EXPERIMENT_TERMINAL = {"VERDICT_COMPUTED", "CANCELLED"}
 
 EXPERIMENT_TRANSITIONS: list[Transition] = [
     Transition("REQUESTED", "experiment.protocol_frozen", "PROTOCOL_FROZEN"),
+    Transition("REQUESTED", "experiment.runner_lost", "REQUESTED"),
     Transition("PROTOCOL_FROZEN", "experiment.started", "RUNNING"),
+    Transition("PROTOCOL_FROZEN", "experiment.runner_lost", "PROTOCOL_FROZEN"),
     Transition("RUNNING", "experiment.runner_lost", "PROTOCOL_FROZEN"),
+    Transition("RUNNING", "experiment.trial_completed", "RUNNING"),
     Transition("RUNNING", "experiment.cell_completed", "RUNNING"),
     Transition("RUNNING", "experiment.verdict_computed", "VERDICT_COMPUTED"),
     Transition("VERDICT_COMPUTED", "experiment.escalated_full_factorial", "PROTOCOL_FROZEN", guard="verdict=CONFOUNDED"),
@@ -119,6 +125,7 @@ EVAL_TERMINAL = {"PASSED", "FAILED"}
 
 EVAL_TRANSITIONS: list[Transition] = [
     Transition("REQUESTED", "eval.started", "RUNNING"),
+    Transition("REQUESTED", "eval.report_received", "RUNNING"),
     Transition("RUNNING", "eval.rule_track_completed", "RUNNING"),
     Transition("RUNNING", "eval.judge_track_completed", "RUNNING"),
     Transition("RUNNING", "eval.passed", "PASSED"),
@@ -149,6 +156,7 @@ RELEASE_TRANSITIONS: list[Transition] = [
     Transition("CANARYING", "release.verification_completed", "VERIFYING"),
     Transition("VERIFYING", "release.promoted", "COMPLETED", guard="verification=passed"),
     Transition("VERIFYING", "release.rollback_started", "ROLLING_BACK", guard="verification=failed"),
+    Transition("VERIFYING", "release.rollback_started", "ROLLING_BACK", guard="verification=error"),
     Transition("PROMOTING", "release.promoted", "COMPLETED"),
     Transition("ROLLING_BACK", "release.rolled_back", "ROLLED_BACK"),
     Transition("ROLLING_BACK", "release.rollback_failed", "FAILED_ESCALATED"),

@@ -9,8 +9,18 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from app import __version__
-from app.api import cases, changesets, experiments, gates, notifications, read_views, releases
+from app.api import (
+    cases,
+    changesets,
+    evidence_export,
+    experiments,
+    gates,
+    notifications,
+    read_views,
+    releases,
+)
 from app.config import Settings, get_settings
+from app.api.deps import validate_authority_config
 from app.db import get_engine, get_session_factory
 from app.models.tables import Base
 from app.quality.client import FakeQualityClient, QualityAPIClient
@@ -33,6 +43,13 @@ def create_app(
     @asynccontextmanager
     async def lifespan(app: FastAPI):
         logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
+        if settings.require_mcp_role_tokens:
+            try:
+                validate_authority_config(settings, require_all_role_tokens=True)
+            except Exception as exc:
+                raise RuntimeError(
+                    "control-plane role authority preflight failed"
+                ) from exc
         eng = engine or get_engine(settings.database_url)
         app.state.engine = eng
         app.state.session_factory = get_session_factory(eng)
@@ -70,6 +87,7 @@ def create_app(
     app.include_router(releases.router)
     app.include_router(notifications.router)
     app.include_router(read_views.router)
+    app.include_router(evidence_export.router)
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:

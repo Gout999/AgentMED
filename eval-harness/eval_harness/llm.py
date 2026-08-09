@@ -28,6 +28,7 @@ class LLMResponse:
     model: str
     model_digest: str
     usage: dict
+    request_id: str
 
 
 class LLMClient:
@@ -89,6 +90,9 @@ class LLMClient:
                 )
                 resp = client.chat.completions.create(**kwargs)
                 content = resp.choices[0].message.content or ""
+                request_id = str(getattr(resp, "id", "") or "")
+                if not request_id:
+                    raise RuntimeError("judge provider response omitted its request id")
                 usage = getattr(resp, "usage", None)
                 return LLMResponse(
                     content=content,
@@ -98,6 +102,7 @@ class LLMClient:
                         "prompt_tokens": getattr(usage, "prompt_tokens", 0) or 0,
                         "completion_tokens": getattr(usage, "completion_tokens", 0) or 0,
                     },
+                    request_id=request_id,
                 )
             except Exception as exc:  # noqa: BLE001 —— 分类可重试/不可重试
                 last_exc = exc

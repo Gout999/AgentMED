@@ -30,34 +30,57 @@ def upgrade() -> None:
     # Pre-003 rows were logging-only and have no causal identity. Preserve them
     # as explicit legacy records rather than inventing a successful receipt.
     op.execute(
-        """
+        sa.text(
+            """
         UPDATE outbox
            SET source_event_id = outbox_id,
                source_event_seq = 0,
                event_type = 'LEGACY_UNATTRIBUTED',
-               payload_digest = 'sha256:' || repeat('0', 64),
+               payload_digest = :zero_digest,
                status = CASE WHEN status IN ('SENT', 'SENDING') THEN 'DEAD' ELSE status END,
                last_error = CASE
                  WHEN status IN ('SENT', 'SENDING') THEN 'pre-003 logging delivery has no verifiable receipt'
                  ELSE last_error
                END
         """
+        ).bindparams(zero_digest="sha256:" + "0" * 64)
     )
-    op.alter_column("outbox", "source_event_id", nullable=False)
-    op.alter_column("outbox", "source_event_seq", nullable=False)
-    op.alter_column("outbox", "event_type", nullable=False)
-    op.alter_column("outbox", "payload_digest", nullable=False)
+    if op.get_bind().dialect.name == "sqlite":
+        # Replay/dev uses SQLite.  Batch mode is required for constraint and
+        # nullability changes because SQLite has no ALTER COLUMN operation.
+        with op.batch_alter_table("outbox") as batch:
+            batch.alter_column(
+                "source_event_id", existing_type=sa.String(64), nullable=False
+            )
+            batch.alter_column(
+                "source_event_seq", existing_type=sa.BigInteger(), nullable=False
+            )
+            batch.alter_column(
+                "event_type", existing_type=sa.String(64), nullable=False
+            )
+            batch.alter_column(
+                "payload_digest", existing_type=sa.String(80), nullable=False
+            )
+            batch.create_unique_constraint(
+                "uq_outbox_source_channel_event",
+                ["source_event_id", "channel", "event_type"],
+            )
+    else:
+        op.alter_column("outbox", "source_event_id", nullable=False)
+        op.alter_column("outbox", "source_event_seq", nullable=False)
+        op.alter_column("outbox", "event_type", nullable=False)
+        op.alter_column("outbox", "payload_digest", nullable=False)
+        op.create_unique_constraint(
+            "uq_outbox_source_channel_event",
+            "outbox",
+            ["source_event_id", "channel", "event_type"],
+        )
     op.create_index("ix_outbox_source_event_id", "outbox", ["source_event_id"])
     op.create_index("ix_outbox_claim_expiry", "outbox", ["status", "claim_expires_at"])
     op.create_index(
         "ix_outbox_aggregate_sequence_status",
         "outbox",
         ["aggregate_id", "source_event_seq", "status"],
-    )
-    op.create_unique_constraint(
-        "uq_outbox_source_channel_event",
-        "outbox",
-        ["source_event_id", "channel", "event_type"],
     )
 
     op.create_table(
@@ -140,16 +163,35 @@ def downgrade() -> None:
         table_name="outbox_delivery_receipts",
     )
     op.drop_table("outbox_delivery_receipts")
-    op.drop_constraint("uq_outbox_source_channel_event", "outbox", type_="unique")
     op.drop_index("ix_outbox_aggregate_sequence_status", table_name="outbox")
     op.drop_index("ix_outbox_claim_expiry", table_name="outbox")
     op.drop_index("ix_outbox_source_event_id", table_name="outbox")
-    op.drop_column("outbox", "receipt")
-    op.drop_column("outbox", "claim_expires_at")
-    op.drop_column("outbox", "claimed_at")
-    op.drop_column("outbox", "claim_token")
-    op.drop_column("outbox", "claimed_by")
-    op.drop_column("outbox", "payload_digest")
-    op.drop_column("outbox", "event_type")
-    op.drop_column("outbox", "source_event_id")
-    op.drop_column("outbox", "source_event_seq")
+    if op.get_bind().dialect.name == "sqlite":
+        with op.batch_alter_table("outbox") as batch:
+            batch.drop_constraint("uq_outbox_source_channel_event", type_="unique")
+            for column in (
+                "receipt",
+                "claim_expires_at",
+                "claimed_at",
+                "claim_token",
+                "claimed_by",
+                "payload_digest",
+                "event_type",
+                "source_event_id",
+                "source_event_seq",
+            ):
+                batch.drop_column(column)
+    else:
+        op.drop_constraint("uq_outbox_source_channel_event", "outbox", type_="unique")
+        for column in (
+            "receipt",
+            "claim_expires_at",
+            "claimed_at",
+            "claim_token",
+            "claimed_by",
+            "payload_digest",
+            "event_type",
+            "source_event_id",
+            "source_event_seq",
+        ):
+            op.drop_column("outbox", column)

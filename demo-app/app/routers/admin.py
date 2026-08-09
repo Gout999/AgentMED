@@ -9,16 +9,29 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app import faults
 from app.auth import require_write
 from app.db import get_db
 from app.ids import new_trace_id
+from app.seeding import B1_FAULT_ID, BASELINE_ID
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
 VALID_FAULTS = {"B1", "B2", "B3", "B4"}
+
+
+class FaultInjectionIn(BaseModel):
+    expected_active_versionset_id: str = BASELINE_ID
+    fault_versionset_id: str = B1_FAULT_ID
+
+
+class FaultRecoveryIn(BaseModel):
+    expected_active_fault_versionset_id: str = B1_FAULT_ID
+    restore_versionset_id: str = BASELINE_ID
+    quarantine_versionset_id: str | None = None
 
 
 def _err(status: int, code: str, message: str) -> HTTPException:
@@ -31,20 +44,41 @@ def _err(status: int, code: str, message: str) -> HTTPException:
 @router.post("/inject/{fault_id}")
 def inject_fault(
     fault_id: str,
+    body: FaultInjectionIn | None = None,
     db: Session = Depends(get_db),
     _=Depends(require_write),
 ):
     if fault_id not in VALID_FAULTS:
         raise _err(422, "validation_failed", f"faultId 必须是 {'/'.join(sorted(VALID_FAULTS))}")
     try:
-        payload = faults.inject_fault(db, fault_id)
+        request = body or FaultInjectionIn()
+        payload = faults.inject_fault(
+            db,
+            fault_id,
+            expected_active_versionset_id=request.expected_active_versionset_id,
+            fault_versionset_id=request.fault_versionset_id,
+        )
     except KeyError as exc:
         raise _err(422, "validation_failed", str(exc))
     return {
         "fault_id": fault_id,
-        "injected_at": datetime.now(timezone.utc).isoformat(),
+        "injected_at": payload.get("injected_at")
+        or datetime.now(timezone.utc).isoformat(),
         "detail": payload.get("detail", ""),
         "ground_truth_ref": payload.get("ground_truth_ref", ""),
+        **(
+            {
+                "previous_versionset_id": payload["previous_versionset_id"],
+                "previous_versionset_digest": payload["previous_versionset_digest"],
+                "previous_revision": payload["previous_revision"],
+                "fault_versionset_id": payload["fault_versionset_id"],
+                "fault_versionset_digest": payload["fault_versionset_digest"],
+                "fault_revision": payload["fault_revision"],
+                "duplicate": bool(payload.get("duplicate", False)),
+            }
+            if fault_id == "B1"
+            else {}
+        ),
     }
 
 
@@ -57,4 +91,28 @@ def reset_faults(
     return {
         "reset_at": datetime.now(timezone.utc).isoformat(),
         "cleared": cleared,
+    }
+
+
+@router.post("/recover/{fault_id}")
+def recover_fault(
+    fault_id: str,
+    body: FaultRecoveryIn,
+    db: Session = Depends(get_db),
+    _=Depends(require_write),
+):
+    if fault_id != "B1":
+        raise _err(422, "validation_failed", "Phase 1 compensation supports B1 only")
+    try:
+        receipt = faults.recover_b1(
+            db,
+            expected_active_fault_versionset_id=body.expected_active_fault_versionset_id,
+            restore_versionset_id=body.restore_versionset_id,
+            quarantine_versionset_id=body.quarantine_versionset_id,
+        )
+    except KeyError as exc:
+        raise _err(409, "revision_conflict", str(exc))
+    return {
+        **receipt,
+        "recovered_at": datetime.now(timezone.utc).isoformat(),
     }

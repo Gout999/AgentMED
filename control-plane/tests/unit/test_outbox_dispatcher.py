@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import hashlib
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -18,8 +19,10 @@ from app.models.tables import (
     Inbox,
     Outbox,
     OutboxDeliveryReceipt,
+    ReleaseClosure,
     TrustLedger,
     TrustLedgerEntry,
+    WorkOrder,
 )
 from app.notifications.adapters import FeishuMockAdapter
 from app.services.audit import AuditWriteError
@@ -27,10 +30,15 @@ from app.services.case_service import CaseService, CaseServiceError
 from app.services.event_store import EventStore
 from app.services.gate_service import GateService
 from app.services.notification_service import NotificationService
-from app.services.outbox_relay import DomainEventConsumer, OutboxDispatcher
+from app.services.outbox_relay import (
+    DomainEventConsumer,
+    OutboxDeliveryError,
+    OutboxDispatcher,
+    OutboxSnapshot,
+)
 from app.services.trust_service import ACTION_TYPE, RISK_CLASS, TrustService
-from app.utils.jcs import canonical_json_digest
-from tests.conftest import make_gate_report
+from app.utils.jcs import canonical_json_digest, workorder_hash
+from tests.conftest import make_gate_report, make_workorder
 
 
 def _factory(engine):
@@ -50,6 +58,22 @@ def _settings(tmp_path: Path, **overrides) -> Settings:
     return Settings(**values)
 
 
+def _reply_artifact(tmp_path: Path, name: str, text: str = "resolved") -> tuple[str, str]:
+    path = tmp_path / f"{name}.txt"
+    path.write_text(text, encoding="utf-8")
+    return path.resolve().as_uri(), "sha256:" + hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+class _TrustOnlyConsumer:
+    """Unit boundary for Trust math; production DomainEventConsumer also closes Cases."""
+
+    def __init__(self, settings: Settings):
+        self.settings = settings
+
+    def consume(self, session, row):
+        return TrustService(session, self.settings).consume_release_event(row.payload or {})
+
+
 def _append_event(factory, *, aggregate_id: str, event_type: str, payload: dict | None = None):
     with factory() as session, session.begin():
         return EventStore(session).append_event(
@@ -61,17 +85,37 @@ def _append_event(factory, *, aggregate_id: str, event_type: str, payload: dict 
         ).event_id
 
 
-def _seed_notifying_case(factory, case_id: str) -> None:
+def _seed_notifying_case(
+    factory, case_id: str, *, thread_ref: str = "thread:1"
+) -> tuple[str, str]:
+    release_id = f"rel_{case_id}"
     with factory() as session, session.begin():
         session.add(
             Aggregate(
                 aggregate_type="case",
                 aggregate_id=case_id,
-                state="NOTIFYING",
-                payload={"resolution": "fixed"},
+                state="RELEASING",
+                payload={
+                    "resolution": "fixed",
+                    "original_channel": "feishu-mock:contract-replay:",
+                    "original_thread_ref": thread_ref,
+                },
                 revision=1,
             )
         )
+        session.flush()
+        event = EventStore(session).append_event(
+            aggregate_type="case",
+            aggregate_id=case_id,
+            event_type="case.resolved",
+            payload={"release_id": release_id, "resolution": "fixed"},
+            causation_id="evt_release_promoted",
+            correlation_id=case_id,
+            expected_revision=1,
+            machine="case",
+            merge_payload={"resolved_release_id": release_id, "resolution": "fixed"},
+        )
+        return release_id, event.event_id
 
 
 def test_required_domain_events_are_transactionally_enveloped(sqlite_engine):
@@ -79,7 +123,7 @@ def test_required_domain_events_are_transactionally_enveloped(sqlite_engine):
     expected = {
         "case.opened": "CASE_CREATED",
         "case.attribution_completed": "ATTRIBUTION_DECIDED",
-        "eval.passed": "GATE_COMPLETED",
+        "eval.bound": "GATE_COMPLETED",
         "release.requested": "RELEASE_STARTED",
         "release.promoted": "RELEASE_PROMOTED",
         "release.rolled_back": "RELEASE_ROLLED_BACK",
@@ -125,7 +169,7 @@ def test_required_domain_events_are_transactionally_enveloped(sqlite_engine):
         ("error", "eval.error"),
     ],
 )
-def test_gate_completed_envelope_matches_terminal_event_contract(
+def test_gate_completed_is_not_published_before_final_workorder_binding(
     sqlite_engine, tmp_path, overall_status, source_event_type
 ):
     factory = _factory(sqlite_engine)
@@ -135,9 +179,18 @@ def test_gate_completed_envelope_matches_terminal_event_contract(
         workorder_id,
         overall_status=overall_status,
         eval_id=eval_id,
+        policy_profile="isolated-replay",
     )
     with factory() as session, session.begin():
-        GateService(session, _settings(tmp_path)).register_report(
+        gates = GateService(
+            session,
+            _settings(
+                tmp_path,
+                gate_policy_profile="isolated-replay",
+                allow_isolated_replay_gate=True,
+            ),
+        )
+        gates.register_report(
             {
                 "report": report,
                 "workorder_id": workorder_id,
@@ -148,8 +201,35 @@ def test_gate_completed_envelope_matches_terminal_event_contract(
                 "evidence_digest": canonical_json_digest(report["artifact_refs"]),
             }
         )
+        assert session.scalar(
+            select(Outbox).where(
+                Outbox.aggregate_id == eval_id,
+                Outbox.event_type == "GATE_COMPLETED",
+            )
+        ) is None
+        workorder = make_workorder(
+            workorder_id=workorder_id,
+            nonce="00000000-0000-0000-0000-000000000905",
+            case_id="case_gate_envelope_bound",
+        )
+        workorder["gate_report_ref"] = {
+            "uri": f"eval://{eval_id}",
+            "digest": f"sha256:{canonical_json_digest(report, prefix=False)}",
+        }
+        workorder["target_versionset_digest"] = report["subject"][
+            "target_versionset_digest"
+        ]
+        workorder["hash"] = workorder_hash(workorder)
+        gates.bind_workorder(workorder)
 
     with factory() as session:
+        terminal_event = session.scalar(
+            select(Event).where(
+                Event.aggregate_id == eval_id,
+                Event.event_type == source_event_type,
+            )
+        )
+        assert terminal_event is not None
         outbox = session.scalar(
             select(Outbox).where(
                 Outbox.aggregate_id == eval_id,
@@ -158,27 +238,16 @@ def test_gate_completed_envelope_matches_terminal_event_contract(
         )
         assert outbox is not None
         envelope = outbox.payload
-        terminal_payload = envelope["payload"]
-        terminal_event = session.get(Event, envelope["source_event_id"])
-        judge_event = session.scalar(
-            select(Event).where(
-                Event.aggregate_id == eval_id,
-                Event.event_type == "eval.judge_track_completed",
-            )
-        )
-        assert terminal_event is not None and judge_event is not None
-        assert envelope["source_event_type"] == source_event_type
-        assert terminal_event.event_type == source_event_type
-        assert terminal_event.causation_id == judge_event.event_id
-        assert envelope["causation_id"] == judge_event.event_id
-        assert terminal_payload == terminal_event.payload
-        assert terminal_payload["report_ref"] == f"eval://{eval_id}"
-        assert terminal_payload["report_digest"] == f"sha256:{outbox.payload['payload']['report_hash']}"
-        if overall_status == "failed":
-            assert terminal_payload["failing_checks"]
-        elif overall_status == "error":
-            assert terminal_payload["error"]
-            assert terminal_payload["retryable"] is False
+        bound_event = session.get(Event, envelope["source_event_id"])
+        assert bound_event is not None and bound_event.event_type == "eval.bound"
+        assert envelope["source_event_type"] == "eval.bound"
+        assert bound_event.causation_id == terminal_event.event_id
+        assert envelope["causation_id"] == terminal_event.event_id
+        assert envelope["payload"] == bound_event.payload
+        assert bound_event.payload["workorder_hash"] == workorder["hash"]
+        assert bound_event.payload["binding_digest"].startswith("sha256:")
+        assert bound_event.payload["report_ref"] == f"eval://{eval_id}"
+        assert bound_event.payload["report_digest"] == f"sha256:{bound_event.payload['report_hash']}"
 
 
 def test_same_aggregate_unknown_cannot_be_overtaken_by_later_promote(
@@ -268,7 +337,13 @@ def test_release_events_feed_trust_once_and_three_of_three_is_denied(
                 },
             )
         )
-    dispatcher = OutboxDispatcher(factory, _settings(tmp_path), worker_id="test:trust")
+    settings = _settings(tmp_path)
+    dispatcher = OutboxDispatcher(
+        factory,
+        settings,
+        domain_consumer=_TrustOnlyConsumer(settings),
+        worker_id="test:trust",
+    )
     stats = dispatcher.dispatch_batch(limit=20)
     assert stats == {"claimed": 3, "sent": 3, "retried": 0, "dead": 0, "blocked": 0}
 
@@ -431,7 +506,7 @@ def test_trust_consumer_retry_rolls_back_first_attempt_and_counts_once(sqlite_en
     class FailAfterTrustMutationOnce:
         def __init__(self):
             self.calls = 0
-            self.real = DomainEventConsumer()
+            self.real = _TrustOnlyConsumer(_settings(tmp_path))
 
         def consume(self, session, row):
             self.calls += 1
@@ -486,13 +561,17 @@ def test_notification_receipt_archives_case_and_emits_both_domain_events(
     sqlite_engine, tmp_path
 ):
     factory = _factory(sqlite_engine)
-    _seed_notifying_case(factory, "case_notify_1")
+    release_id, resolved_event_id = _seed_notifying_case(factory, "case_notify_1")
+    body_ref, body_digest = _reply_artifact(tmp_path, "notify-1")
     with factory() as session, session.begin():
         queued = NotificationService(session, _settings(tmp_path)).queue(
             case_id="case_notify_1",
+            release_id=release_id,
+            causation_id=resolved_event_id,
             channel="feishu-mock:contract-replay:",
             thread_ref="thread:1",
-            body_ref="artifact://reply/1",
+            body_ref=body_ref,
+            body_digest=body_digest,
         )
     adapter = FeishuMockAdapter()
     dispatcher = OutboxDispatcher(
@@ -542,17 +621,211 @@ def test_notification_receipt_archives_case_and_emits_both_domain_events(
         assert case_events[-1].causation_id == sent_event.event_id
 
 
+def test_real_rollback_receipt_closes_case_notifies_origin_and_records_trust_once(
+    sqlite_engine, tmp_path
+):
+    """A configured B1 rollback uses the same durable closure as promote."""
+
+    factory = _factory(sqlite_engine)
+    settings = _settings(tmp_path)
+    case_id = "case_rollback_closure_1"
+    release_id = "rel_rollback_closure_1"
+    channel = "feishu-mock:contract-replay:"
+    thread_ref = "feishu-mock:contract-replay:om_rollback"
+    body_ref, body_digest = _reply_artifact(
+        tmp_path,
+        "rollback-closure",
+        "Canary verification failed; the approved baseline was restored.",
+    )
+    workorder_payload = make_workorder(
+        workorder_id="wo_rollback_closure_1",
+        nonce="00000000-0000-0000-0000-000000009901",
+        case_id=case_id,
+    )
+
+    with factory() as session, session.begin():
+        session.add(
+            Aggregate(
+                aggregate_type="case",
+                aggregate_id=case_id,
+                state="RELEASING",
+                payload={},
+                revision=1,
+            )
+        )
+        session.flush()
+        store = EventStore(session)
+        store.append_event(
+            aggregate_type="case",
+            aggregate_id=case_id,
+            event_type="complaint.received",
+            payload={"channel": channel, "thread_ref": thread_ref},
+            correlation_id=case_id,
+            actor="controller:case",
+            expected_revision=1,
+        )
+        session.add(
+            WorkOrder(
+                workorder_id=workorder_payload["workorder_id"],
+                case_id=case_id,
+                hash=workorder_payload["hash"],
+                channel=workorder_payload["channel"],
+                payload=workorder_payload,
+            )
+        )
+        release_binding = {
+            "case_id": case_id,
+            "workorder_id": workorder_payload["workorder_id"],
+            "workorder_hash": workorder_payload["hash"],
+            "target_versionset_digest": workorder_payload["target_versionset_digest"],
+            "expected_restore_digest": workorder_payload["base_versionset_digest"],
+        }
+        store.append_event(
+            aggregate_type="release",
+            aggregate_id=release_id,
+            event_type="release.requested",
+            payload=release_binding,
+            correlation_id=case_id,
+            actor="controller:release",
+            machine="release",
+            merge_payload=release_binding,
+        )
+        store.append_event(
+            aggregate_type="release",
+            aggregate_id=release_id,
+            event_type="release.staged",
+            payload={"revision": 2},
+            correlation_id=case_id,
+            actor="controller:release",
+            expected_revision=1,
+            machine="release",
+        )
+        store.append_event(
+            aggregate_type="release",
+            aggregate_id=release_id,
+            event_type="release.canary_started",
+            payload={"percent": 5, "revision": 3},
+            correlation_id=case_id,
+            actor="controller:release",
+            expected_revision=2,
+            machine="release",
+        )
+        store.append_event(
+            aggregate_type="release",
+            aggregate_id=release_id,
+            event_type="release.verification_completed",
+            payload={"result": "failed"},
+            correlation_id=case_id,
+            actor="controller:release",
+            expected_revision=3,
+            machine="release",
+            merge_payload={"verification": "failed"},
+        )
+        store.append_event(
+            aggregate_type="release",
+            aggregate_id=release_id,
+            event_type="release.rollback_started",
+            payload={"reason": "post-canary gate failed"},
+            correlation_id=case_id,
+            actor="controller:release",
+            expected_revision=4,
+            machine="release",
+            guard="verification=failed",
+        )
+        terminal = store.append_event(
+            aggregate_type="release",
+            aggregate_id=release_id,
+            event_type="release.rolled_back",
+            payload={
+                "restored_digest": workorder_payload["base_versionset_digest"],
+                "operation_id": "quality-op-rollback-1",
+            },
+            correlation_id=case_id,
+            actor="controller:release",
+            expected_revision=5,
+            machine="release",
+            merge_payload={
+                "rolled_back": True,
+                "restored_digest": workorder_payload["base_versionset_digest"],
+            },
+        )
+        terminal_event_id = terminal.event_id
+        session.add(
+            ReleaseClosure(
+                release_id=release_id,
+                case_id=case_id,
+                channel=channel,
+                thread_ref=thread_ref,
+                body_ref=body_ref,
+                body_digest=body_digest,
+                status="configured",
+            )
+        )
+
+    adapter = FeishuMockAdapter()
+    dispatcher = OutboxDispatcher(
+        factory,
+        settings,
+        notification_adapter=adapter,
+        worker_id="test:rollback-closure",
+    )
+    stats = dispatcher.dispatch_batch(limit=20)
+    with factory() as session:
+        delivery_failures = [
+            (row.event_type, row.status, row.last_error)
+            for row in session.scalars(select(Outbox).order_by(Outbox.created_at)).all()
+            if row.status != "SENT"
+        ]
+    assert stats["dead"] == 0 and stats["retried"] == 0, delivery_failures
+
+    with factory() as session:
+        case = session.get(
+            Aggregate,
+            {"aggregate_type": "case", "aggregate_id": case_id},
+        )
+        closure = session.get(ReleaseClosure, release_id)
+        entry = session.scalar(
+            select(TrustLedgerEntry).where(TrustLedgerEntry.action_ref == release_id)
+        )
+        resolved = session.scalar(
+            select(Event).where(
+                Event.aggregate_type == "case",
+                Event.aggregate_id == case_id,
+                Event.event_type == "case.resolved",
+            )
+        )
+        assert case is not None and case.state == "CLOSED"
+        assert (case.payload or {})["resolution"] == "rolled_back"
+        assert resolved is not None and resolved.causation_id == terminal_event_id
+        assert resolved.payload["resolution_digest"] == workorder_payload["base_versionset_digest"]
+        assert closure is not None and closure.status == "queued"
+        assert entry is not None and entry.outcome == "failure"
+        assert entry.source_event_id == terminal_event_id
+        assert session.scalar(
+            select(func.count()).select_from(TrustLedgerEntry).where(
+                TrustLedgerEntry.action_ref == release_id
+            )
+        ) == 1
+        assert adapter.calls
+
+
 def test_provider_success_before_ack_is_retried_with_same_idempotency_key(
     sqlite_engine, tmp_path
 ):
     factory = _factory(sqlite_engine)
-    _seed_notifying_case(factory, "case_crash_1")
+    release_id, resolved_event_id = _seed_notifying_case(
+        factory, "case_crash_1", thread_ref="thread:crash"
+    )
+    body_ref, body_digest = _reply_artifact(tmp_path, "notify-crash")
     with factory() as session, session.begin():
         queued = NotificationService(session, _settings(tmp_path)).queue(
             case_id="case_crash_1",
+            release_id=release_id,
+            causation_id=resolved_event_id,
             channel="feishu-mock:contract-replay:",
             thread_ref="thread:crash",
-            body_ref="artifact://reply/crash",
+            body_ref=body_ref,
+            body_digest=body_digest,
         )
     # Simulate a local pre-ACK invariant failure after the provider accepted the
     # stable outbox id. The claim stays PROCESSING because failure handling also
@@ -592,15 +865,75 @@ def test_provider_success_before_ack_is_retried_with_same_idempotency_key(
         assert row is not None and row.status == "SENT" and row.attempts == 2
 
 
+def test_notification_retry_after_provider_dedup_window_fails_closed(
+    sqlite_engine, tmp_path
+):
+    factory = _factory(sqlite_engine)
+    release_id, resolved_event_id = _seed_notifying_case(
+        factory, "case_expired_dedup", thread_ref="thread:expired"
+    )
+    body_ref, body_digest = _reply_artifact(tmp_path, "notify-expired")
+    with factory() as session, session.begin():
+        queued = NotificationService(session, _settings(tmp_path)).queue(
+            case_id="case_expired_dedup",
+            release_id=release_id,
+            causation_id=resolved_event_id,
+            channel="feishu-mock:contract-replay:",
+            thread_ref="thread:expired",
+            body_ref=body_ref,
+            body_digest=body_digest,
+        )
+        row = session.get(Outbox, queued["outbox_id"])
+        assert row is not None
+        row.attempts = 1
+        row.first_attempted_at = datetime.now(timezone.utc) - timedelta(seconds=2)
+
+    class ExpiringAdapter(FeishuMockAdapter):
+        idempotency_window_seconds = 1
+
+    adapter = ExpiringAdapter()
+    dispatcher = OutboxDispatcher(
+        factory,
+        _settings(tmp_path),
+        notification_adapter=adapter,
+        worker_id="test:expired-dedup-window",
+    )
+    stats = dispatcher.dispatch_batch(limit=1)
+    assert stats["dead"] == 1
+    assert adapter.calls == []
+    with factory() as session:
+        row = session.get(Outbox, queued["outbox_id"])
+        case = session.get(
+            Aggregate,
+            {"aggregate_type": "case", "aggregate_id": "case_expired_dedup"},
+        )
+        assert row is not None and row.status == "DEAD" and row.attempts == 2
+        assert "ambiguous beyond the provider dedup window" in (row.last_error or "")
+        assert case is not None and case.state == "ESCALATED"
+        audit = session.scalar(
+            select(Audit).where(
+                Audit.action == "outbox.delivery.dead",
+                Audit.target == queued["outbox_id"],
+            )
+        )
+        assert audit is not None and audit.error_code == "provider_idempotency_window_expired"
+
+
 def test_invalid_notification_receipt_dead_letters_and_escalates_case(sqlite_engine, tmp_path):
     factory = _factory(sqlite_engine)
-    _seed_notifying_case(factory, "case_bad_receipt")
+    release_id, resolved_event_id = _seed_notifying_case(
+        factory, "case_bad_receipt", thread_ref="thread:bad"
+    )
+    body_ref, body_digest = _reply_artifact(tmp_path, "notify-bad")
     with factory() as session, session.begin():
         queued = NotificationService(session, _settings(tmp_path)).queue(
             case_id="case_bad_receipt",
+            release_id=release_id,
+            causation_id=resolved_event_id,
             channel="feishu-mock:contract-replay:",
             thread_ref="thread:bad",
-            body_ref="artifact://reply/bad",
+            body_ref=body_ref,
+            body_digest=body_digest,
         )
 
     class BadReceiptAdapter:
@@ -633,6 +966,41 @@ def test_invalid_notification_receipt_dead_letters_and_escalates_case(sqlite_eng
         assert row is not None and row.status == "DEAD" and row.receipt is None
         assert notification is not None and notification.state == "DEAD_LETTERED"
         assert case is not None and case.state == "ESCALATED"
+
+
+def test_live_feishu_receipt_requires_official_provider_origin():
+    payload = {
+        "thread_ref": "feishu:oc_live:om_original",
+        "body_digest": "sha256:" + "1" * 64,
+    }
+    snapshot = OutboxSnapshot(
+        outbox_id="obx_origin_exact",
+        aggregate_id="notif_origin_exact",
+        source_event_id="evt_origin_exact",
+        channel="notification",
+        event_type="NOTIFICATION_SENT",
+        payload=payload,
+        payload_digest="sha256:" + "2" * 64,
+        attempts=1,
+        claim_token="claim-origin",
+        first_attempted_at=datetime.now(timezone.utc),
+    )
+    receipt = {
+        "status": "sent",
+        "provider": "feishu",
+        "provider_origin": "http://127.0.0.1:9999",
+        "provider_message_id": "om_reply",
+        "outbox_id": snapshot.outbox_id,
+        "payload_digest": snapshot.payload_digest,
+        "thread_ref": payload["thread_ref"],
+        "body_digest": payload["body_digest"],
+        "sent_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    with pytest.raises(OutboxDeliveryError) as exc:
+        OutboxDispatcher._validate_provider_receipt(snapshot, receipt)
+
+    assert exc.value.code == "invalid_receipt"
 
 
 def test_case_closed_cannot_be_forged_through_generic_transition(sqlite_session):

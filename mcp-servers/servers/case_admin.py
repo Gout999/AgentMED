@@ -14,19 +14,21 @@ from sqlalchemy import text
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from common.audit import AuditService  # noqa: E402
 from common.config import Settings, get_settings  # noqa: E402
 from common.db import get_engine, session_scope  # noqa: E402
-from common.errors import McpError, dependency_unavailable, not_found, validation  # noqa: E402
+from common.errors import McpError, dependency_unavailable, forbidden, not_found, validation  # noqa: E402
 from common.http import HttpClient  # noqa: E402
-from common.ids import new_suggestion_id  # noqa: E402
 from common.pii import redact_text  # noqa: E402
-from common.serverkit import build_server_app  # noqa: E402
-from common.tables import Suggestion  # noqa: E402
+from common.serverkit import (  # noqa: E402
+    ToolDefinitionRegistry,
+    build_server_app,
+    build_tool_projection,
+    validate_projection_runtime,
+)
 
 logger = logging.getLogger(__name__)
 
-mcp = FastMCP("mcp-case-admin")
+mcp = ToolDefinitionRegistry("mcp-case-admin")
 
 # kind → 建议事件类型（§10.2 事件目录；控制面据此裁决）
 _SUGGESTION_EVENT_TYPE = {
@@ -46,12 +48,21 @@ def _settings() -> Settings:
 
 def _cp() -> HttpClient:
     s = _settings()
-    return HttpClient(s.control_plane_base_url, token=s.control_plane_token)
+    return HttpClient(s.control_plane_base_url, token=s.control_plane_role_token)
 
 
 def _qa() -> HttpClient:
     s = _settings()
     return HttpClient(s.quality_api_base_url, token=s.quality_read_token)
+
+
+def _bound_worker_id(supplied: Optional[str] = None) -> str:
+    canonical = _settings().mcp_worker_id
+    if not canonical:
+        raise forbidden("MCP process has no canonical worker identity")
+    if supplied is not None and supplied != canonical:
+        raise forbidden("caller-supplied worker_id does not match authenticated MCP projection")
+    return canonical
 
 
 def _redact_deep(value: Any) -> Any:
@@ -133,7 +144,10 @@ def case_claim(worker_id: str, case_id: str) -> dict[str, Any]:
     """Worker 领单（ACL：常设/弹性 Worker）。返回 {lease_id, fencing_token, expires_at}；
     冲突/已被领 → STATE_CONFLICT。写操作必须携带 fencing_token。"""
     try:
-        return _cp().post(f"/v1/cases/{case_id}/claim", json_body={"worker_id": worker_id})
+        return _cp().post(
+            f"/v1/cases/{case_id}/claim",
+            json_body={"worker_id": _bound_worker_id(worker_id)},
+        )
     except McpError as exc:
         raise exc
     except Exception as exc:  # noqa: BLE001
@@ -147,10 +161,11 @@ def case_claim(worker_id: str, case_id: str) -> dict[str, Any]:
 def case_submit_suggestion(
     case_id: str,
     fencing_token: int,
+    idempotency_key: str,
     kind: str,
     payload: dict[str, Any],
     evidence_refs: Optional[list[str]] = None,
-    worker_id: str = "agent",
+    worker_id: Optional[str] = None,
 ) -> dict[str, Any]:
     """提交建议（ACL：Worker）。kind ∈ triage|attribution|fix|gate|verify；写操作必须携带
     case.claim 返回的 fencing_token（过期则 LEASE_LOST）。仅产生建议事件，控制面裁决后迁移。"""
@@ -158,35 +173,25 @@ def case_submit_suggestion(
         raise validation(f"kind must be one of {list(_SUGGESTION_EVENT_TYPE)}")
     if not isinstance(fencing_token, int) or fencing_token <= 0:
         raise validation("fencing_token must be positive int")
+    if not isinstance(idempotency_key, str) or not 8 <= len(idempotency_key) <= 128:
+        raise validation("idempotency_key must contain 8..128 characters")
 
-    suggestion_id = new_suggestion_id()
-    with session_scope() as session:
-        audit = AuditService(session)
-        audit.record(
-            actor=worker_id,
-            action="case.suggestion",
-            target=case_id,
-            params={"suggestion_id": suggestion_id, "kind": kind, "fencing_token": fencing_token},
-            result="success",
+    try:
+        return _cp().post(
+            f"/v1/cases/{case_id}/suggestions",
+            json_body={
+                "worker_id": _bound_worker_id(worker_id),
+                "fencing_token": fencing_token,
+                "idempotency_key": idempotency_key,
+                "kind": kind,
+                "payload": payload,
+                "evidence_refs": evidence_refs or [],
+            },
         )
-        session.add(
-            Suggestion(
-                suggestion_id=suggestion_id,
-                case_id=case_id,
-                worker_id=worker_id,
-                fencing_token=fencing_token,
-                kind=kind,
-                payload=payload,
-                evidence_refs=evidence_refs or [],
-            )
-        )
-    return {
-        "accepted": True,
-        "event_id": suggestion_id,
-        "event_type": _SUGGESTION_EVENT_TYPE[kind],
-        "case_id": case_id,
-        "note": "suggestion recorded; 控制面裁决后迁移（不直接改状态）",
-    }
+    except McpError as exc:
+        raise exc
+    except Exception as exc:  # noqa: BLE001
+        raise dependency_unavailable(f"Case suggestion authority unreachable: {exc}") from exc
 
 
 @mcp.tool(name="case.escalate")
@@ -255,11 +260,61 @@ def app_feedback(
     return {"feedback": feedback, "evidence_gap": False, "app": app}
 
 
+def _profiled_mcp(profile: str) -> FastMCP:
+    profiles = {
+        "quality-officer": {
+            "case.list": case_list,
+            "case.get": case_get,
+            "case.timeline": case_timeline,
+            "case.claim": case_claim,
+            "case.submit_suggestion": case_submit_suggestion,
+            "case.escalate": case_escalate,
+        },
+        "collector": {
+            "case.get": case_get,
+            "app.logs": app_logs,
+            "app.feedback": app_feedback,
+        },
+        "case-officer": {"case.get": case_get},
+        "attributionist": {
+            "case.get": case_get,
+            "case.claim": case_claim,
+            "app.logs": app_logs,
+        },
+        "repairer": {
+            "case.get": case_get,
+            "case.timeline": case_timeline,
+            "case.claim": case_claim,
+        },
+    }
+    return build_tool_projection("mcp-case-admin", profile, profiles)
+
+
 def main() -> None:
     import uvicorn
 
     s = _settings()
-    uvicorn.run(build_server_app(mcp), host=s.host, port=s.case_admin_port, log_level=s.log_level.lower())
+    validate_projection_runtime(
+        s,
+        profile_workers={
+            "quality-officer": "quality-officer",
+            "collector": "collector",
+            "case-officer": "case-officer",
+            "attributionist": "eval-runner",
+            "repairer": "repairer",
+        },
+        role_token_profiles=frozenset({"quality-officer", "attributionist", "repairer"}),
+    )
+    uvicorn.run(
+        build_server_app(
+            _profiled_mcp(s.mcp_tool_profile),
+            expected_consumer=s.mcp_expected_consumer,
+            gateway_backend_token=s.mcp_gateway_backend_token,
+        ),
+        host=s.host,
+        port=s.case_admin_port,
+        log_level=s.log_level.lower(),
+    )
 
 
 if __name__ == "__main__":

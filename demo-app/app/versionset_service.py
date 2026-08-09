@@ -496,6 +496,18 @@ def apply_transition(db: Session, vs: VersionSet, action: str, op: Operation) ->
         vs.status = "active"
         vs.canary_percent = 100
         _record_transition(db, vs, from_status, "active", op)
+        # B1 is a controlled lifecycle injection, not a permanent runtime
+        # overlay.  A real promotion to a different prompt VersionSet resolves
+        # the marker; no hidden admin reset is involved in the repair path.
+        from app.models import FaultState
+
+        b1 = db.get(FaultState, "B1")
+        if (
+            b1 is not None
+            and (b1.snapshot or {}).get("channel") == "versionset_lifecycle"
+            and (b1.snapshot or {}).get("fault_versionset_id") != vs.versionset_id
+        ):
+            db.delete(b1)
     elif action == "rollback":
         rollback_to = (op.request or {}).get("rollback_to", "previous")
         target = _resolve_rollback_target(db, vs, rollback_to)

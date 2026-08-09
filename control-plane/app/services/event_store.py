@@ -21,8 +21,7 @@ DOMAIN_EVENT_CHANNEL = "domain.events"
 DOMAIN_EVENT_TYPES = {
     "case.opened": "CASE_CREATED",
     "case.attribution_completed": "ATTRIBUTION_DECIDED",
-    "eval.passed": "GATE_COMPLETED",
-    "eval.failed": "GATE_COMPLETED",
+    "eval.bound": "GATE_COMPLETED",
     "release.requested": "RELEASE_STARTED",
     "release.promoted": "RELEASE_PROMOTED",
     "release.rolled_back": "RELEASE_ROLLED_BACK",
@@ -49,6 +48,27 @@ class EventStore:
 
     def get_aggregate(self, aggregate_type: str, aggregate_id: str) -> Optional[Aggregate]:
         return self.session.get(Aggregate, {"aggregate_type": aggregate_type, "aggregate_id": aggregate_id})
+
+    def get_aggregate_for_update(
+        self, aggregate_type: str, aggregate_id: str
+    ) -> Optional[Aggregate]:
+        """Lock and refresh an aggregate before an authoritative mutation.
+
+        ``Session.get`` may return a stale identity-map object after this
+        transaction waited on a lease or another controller transaction.  A
+        database row lock plus ``populate_existing`` makes the following CAS
+        compare use the committed revision, never the cached one.
+        """
+
+        return self.session.scalar(
+            select(Aggregate)
+            .where(
+                Aggregate.aggregate_type == aggregate_type,
+                Aggregate.aggregate_id == aggregate_id,
+            )
+            .with_for_update()
+            .execution_options(populate_existing=True)
+        )
 
     def create_aggregate(
         self,
@@ -97,7 +117,7 @@ class EventStore:
         - 聚合存在 → CAS 校验 expected_revision == agg.revision；随后状态迁移、
           revision+1、seq=last+1。
         """
-        agg = self.get_aggregate(aggregate_type, aggregate_id)
+        agg = self.get_aggregate_for_update(aggregate_type, aggregate_id)
         now = datetime.now(timezone.utc)
 
         if agg is None:
@@ -149,8 +169,6 @@ class EventStore:
         self.session.add(event)
 
         domain_event_type = DOMAIN_EVENT_TYPES.get(event_type)
-        if event_type == "eval.error" and not bool(payload.get("retryable", True)):
-            domain_event_type = "GATE_COMPLETED"
         if domain_event_type:
             envelope = {
                 "schema_version": "0.1.0",

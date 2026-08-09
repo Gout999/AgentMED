@@ -80,6 +80,7 @@ def test_release_rollback_requires_guard():
     with pytest.raises(IllegalTransition):
         next_state("release", "VERIFYING", "release.rollback_started")
     assert next_state("release", "VERIFYING", "release.rollback_started", guard="verification=failed") == "ROLLING_BACK"
+    assert next_state("release", "VERIFYING", "release.rollback_started", guard="verification=error") == "ROLLING_BACK"
 
 
 def test_release_unknown_reconcile():
@@ -90,6 +91,10 @@ def test_release_unknown_reconcile():
     assert next_state("release", "UNKNOWN", "release.reconciled", guard="action=confirm_promote") == "VERIFYING"
     assert next_state("release", "UNKNOWN", "release.reconciled", guard="action=compensate") == "ROLLING_BACK"
     assert next_state("release", "UNKNOWN", "release.rollback_failed") == "FAILED_ESCALATED"
+
+
+def test_synchronous_gate_report_receipt_enters_running_without_fake_track_events():
+    assert next_state("eval", "REQUESTED", "eval.report_received") == "RUNNING"
 
 
 def test_experiment_machine():

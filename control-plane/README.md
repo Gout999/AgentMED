@@ -119,7 +119,7 @@ docker compose -f deploy/compose.yaml restart control-plane
 | POST | `/v1/experiments/{id}/protocol` | 冻结协议（protocol_frozen） |
 | POST | `/v1/experiments/{id}/start` | 启动（started，runner 领单） |
 | POST | `/v1/experiments/{id}/cells` | cell 完成（cell_completed，自迁移累计） |
-| POST | `/v1/experiments/{id}/verdict` | 出裁决（verdict_computed） |
+| POST | `/v1/experiments/{id}/verdict` | 提交完整 EvidenceBundle/AttributionReport；控制面重算后裁决（需当前 fencing token） |
 | POST | `/v1/experiments/{id}/escalate-full-factorial` | CONFOUNDED → 2³ 全因子 |
 | POST | `/v1/experiments/{id}/cancel` | 取消 |
 | GET | `/v1/experiments` · `/v1/experiments/{id}` | 列表 / 读取 |
@@ -140,11 +140,14 @@ docker compose -f deploy/compose.yaml restart control-plane
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
+| POST | `/v1/release-candidates` | 由 Release Controller 基于精确 active VersionSet 创建单变量 DRAFT 候选 |
 | POST | `/v1/workorders` | 登记不可变 WorkOrder（JCS hash 校验） |
 | POST | `/v1/approvals` | 登记 ApprovalGrant（hash 绑定 + nonce 唯一） |
 | POST | `/v1/releases` | 启动发布（nonce 一次性消费 + expiry 校验） |
+| POST | `/v1/releases/{id}/approval-context` | 返回下一动作不可变授权参数及 digest（审批权威据此签发 grant） |
 | POST | `/v1/releases/{id}/stage` | draft→staged |
 | POST | `/v1/releases/{id}/canary` | staged→canary（灰度百分比） |
+| GET | `/v1/releases/{id}/verification-context` | 返回精确 canary target/revision/digest，供 post-canary Gate 使用 |
 | POST | `/v1/releases/{id}/promote` | canary→active（须经 VERIFYING） |
 | POST | `/v1/releases/{id}/rollback` | 回滚（verification failed 路径） |
 | POST | `/v1/releases/{id}/reconcile` | UNKNOWN→对账（resume/confirm/compensate） |
@@ -155,7 +158,7 @@ docker compose -f deploy/compose.yaml restart control-plane
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/v1/notifications` | 入队（notification.queued + outbox 同事务） |
+| POST | `/v1/notifications` | 以已完成 Release receipt 推进 Case，并原子入队原投诉渠道通知 |
 | GET | `/v1/notifications` · `/v1/notifications/{id}` | 列表 / 读取 |
 
 Notification 的 SENT/RETRY/DEAD 生命周期只由 outbox dispatcher 根据绑定
@@ -175,6 +178,9 @@ Notification 的 SENT/RETRY/DEAD 生命周期只由 outbox dispatcher 根据绑�
 | `QUALITY_API_TOKEN` | 空 | 写面 Bearer token（不入库） |
 | `CONTROL_PLANE_TOKEN` | 空 | Gate/WorkOrder/ChangeSet/Release 内部写接口；未配置时 fail closed |
 | `APPROVAL_AUTHORITY_TOKEN` | 空 | 独立审批权威凭证；必须与控制面 token 不同，未配置时 fail closed |
+| `ATTRIBUTION_DELTA_MIN` | `0.2` | 控制面重算归因裁决使用的最小实际效应量 |
+| `GATE_POLICY_PROFILE` | `live` | `live` 严格要求 provider 轨；`isolated-replay` 只供显式 replay 命令 |
+| `ALLOW_ISOLATED_REPLAY_GATE` | `false` | 二次保险；仅隔离 SQLite replay controller 可设为 `true`，生产 PostgreSQL 即使误设也拒绝 |
 | `LEASE_TTL_SECONDS` | `60` | Worker 租约时长（D-001 #11） |
 | `COMPLAINT_DEDUP_WINDOW_HOURS` | `24` | 投诉去重窗（D-001 #1） |
 | `APPROVAL_TTL_MINUTES` | `30` | ApprovalGrant TTL（D-001 #10） |
@@ -218,10 +224,55 @@ Notification 的 SENT/RETRY/DEAD 生命周期只由 outbox dispatcher 根据绑�
   参数 digest 的独立 ApprovalGrant；grant nonce 只消费一次，reconcile 复用原 operation 绑定，
   不会重新授权或扩大动作。promote 额外绑定获批 active 基线 digest，Quality API 在全局锁内
   核对，防止并发候选串行掉包。
+
+## B1 纵向闭环
+
+从仓库根目录运行：
+
+```bash
+make demo-b1-replay
+make demo-b1-live
+```
+
+`demo-b1-replay` 使用明确标注的录制 provider、确定性 judge、Fake Quality lifecycle
+和 Feishu mock adapter，但调用生产 control-plane service、事务 outbox、Release Controller
+与 Trust 路径；它不会声称 live-provider 通过。`demo-b1-live` 绝不回退 replay；缺真实
+VersionSet、模型/裁判凭证、审批或 Feishu/部署权限时会写 machine-readable BLOCKED 报告并
+非零退出。两类报告分别保存于 `evidence/p0/p0-4-b1/` 与
+`evidence/p0/p0-4-b1-live/`。若 control-plane 与 eval-harness 使用不同虚拟环境，显式指定：
+
+```bash
+make PYTHON=/path/to/control-plane/python \
+  SUITE_PYTHON=/path/to/eval-harness/python demo-b1-replay
+```
+
+live runner 至少要求以下外部边界；任何一项缺失都只会生成 BLOCKED 报告：
+
+- `STEPFUN_API_KEY`、`JUDGE_MODEL`（必须不同于运动员模型），默认
+  `STEPFUN_BASE_URL=https://api.stepfun.com/step_plan/v1`；
+- 两个真实、不可变 B1 VersionSet ID、Quality read endpoint/token、Control Plane endpoint，
+  以及互不复用的 controller/gate authority token；
+- `CASELOOP_B1_APPROVAL_COMMAND`：由 runner 外部持权，每个动作返回一个新鲜、已持久化的
+  human ApprovalGrant ID；
+- `CASELOOP_B1_AGENT_TRACE_COMMAND` 与部署钉定的
+  `CASELOOP_B1_AGENT_TRACE_PUBLIC_KEY`：导出真实 AgentTeams v1.2.1/Matrix/skill receipt；
+- `CASELOOP_B1_FEISHU_MESSAGE_COMMAND`：**只在 B1 注入成功后**等待新投诉，并从 stdout
+  返回 `{"schema_version":"0.1.0","provider":"feishu","message_id":"..."}`。
+  Runner 不向该命令传 Control Plane、Quality、StepFun 或 Feishu secret；message ID 只是
+  locator，Control Plane 会自行抓取原消息，并在建立 Case 前验证仓库 B1 fixture digest 与
+  provider `create_time > injected_at`。可用
+  `CASELOOP_B1_FEISHU_MESSAGE_TIMEOUT_SECONDS` 设置 1–3600 秒等待上限。
+
+当前 live 中途失败会安全补偿 Quality fault，但尚未 durable resume/terminalize 已创建的
+Case/Experiment/Release；因此同一投诉跨失败重试仍是明确 P0-4 blocker，不能把 live 命令称为
+完整可恢复。
 - **JCS 限制**：WorkOrder hash 用 JCS 的 ASCII 可打印子集（与 contracts/conformance 一致）；
   含换行/非 ASCII 的 diff 请用 `content_ref` 而非内联 `content`。
 
 ## 已知遗留
 
-- live Feishu adapter 与凭证尚未提供；`feishu-mock` 只属于明确标注的 contract/replay 路径。
+- live Feishu adapter、post-injection message acquisition command 与凭证尚未提供；
+  `feishu-mock` 只属于明确标注的 contract/replay 路径。
+- live AgentTeams exporter 私钥/Matrix taskflow 及部署钉定公钥 registry 尚未提供；本仓库只负责
+  receipt contract 与 Ed25519 验证，不能自签 live 成功。
 - eval-harness live provider 仍取决于外部模型凭证；不得把 skipped 当 PASS。

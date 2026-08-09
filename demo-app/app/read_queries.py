@@ -53,6 +53,7 @@ def query_logs(
     from_dt: Optional[datetime] = None,
     to_dt: Optional[datetime] = None,
     versionset_id: Optional[str] = None,
+    request_id: Optional[str] = None,
     limit: int = 100,
     cursor: Optional[str] = None,
 ) -> tuple[list[ChatLog], Optional[str]]:
@@ -63,6 +64,8 @@ def query_logs(
         q = q.where(ChatLog.ts <= to_dt)
     if versionset_id:
         q = q.where(ChatLog.versionset_id == versionset_id)
+    if request_id:
+        q = q.where(ChatLog.request_id == request_id)
     q = _apply_keyset(q, ChatLog, ChatLog.ts, cursor)
     return _page(db, q, ChatLog, ChatLog.ts, limit)
 
@@ -91,6 +94,11 @@ def query_feedback(
 
 
 def log_entry_dict(log: ChatLog) -> dict[str, Any]:
+    usage = dict(log.usage or {})
+    answer_digest = usage.pop("_answer_digest", None)
+    provider_origin = usage.pop(
+        "_provider_origin", "urn:caseloop:provider-origin:unknown"
+    )
     return {
         "ts": log.ts.isoformat(),
         "request_id": log.request_id,
@@ -98,9 +106,11 @@ def log_entry_dict(log: ChatLog) -> dict[str, Any]:
         "prompt_digest": log.prompt_digest,
         "kb_manifest_digest": log.kb_manifest_digest,
         "model_digest": log.model_digest,
+        "provider_origin": provider_origin,
         "status": log.status,
         "latency_ms": log.latency_ms,
-        "usage": log.usage or {},
+        "usage": usage,
+        **({"answer_digest": answer_digest} if answer_digest else {}),
         "trace_id": log.trace_id,
     }
 

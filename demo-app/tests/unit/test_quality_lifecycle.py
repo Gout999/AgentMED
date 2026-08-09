@@ -9,8 +9,11 @@ from fastapi import BackgroundTasks, HTTPException
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
-from app.models import IdempotencyRecord, Operation, TransitionRecord, VersionSet
+from app import faults
+from app.live_config import VersionSetConfigError, canary_bucket, select_routed_versionset
+from app.models import FaultState, IdempotencyRecord, Operation, TransitionRecord, VersionSet
 from app.operations import execute_operation
+from app.routers import admin as admin_router
 from app.routers import quality as quality_router
 from app.routers.quality import _handle_lifecycle
 
@@ -27,6 +30,7 @@ def db(monkeypatch):
         Operation.__table__,
         IdempotencyRecord.__table__,
         TransitionRecord.__table__,
+        FaultState.__table__,
     ):
         table.create(engine)
     session = sessionmaker(bind=engine, expire_on_commit=False)()
@@ -46,6 +50,143 @@ def _seed(db, versionset_id: str) -> VersionSet:
     db.add(row)
     db.commit()
     return row
+
+
+def _routing_key_for_bucket(*, below: int | None = None, at_least: int | None = None) -> str:
+    for index in range(10_000):
+        value = f"routing-key-{index}"
+        bucket = canary_bucket(value)
+        if below is not None and bucket < below:
+            return value
+        if at_least is not None and bucket >= at_least:
+            return value
+    raise AssertionError("unable to find deterministic routing bucket")
+
+
+def test_canary_percent_routes_real_requests_deterministically(db):
+    active = VersionSet(
+        versionset_id="vs_active_routing",
+        revision=2,
+        status="active",
+        content={"digest": "sha256:" + "a" * 64},
+        digest="sha256:" + "a" * 64,
+    )
+    candidate = VersionSet(
+        versionset_id="vs_canary_routing",
+        revision=3,
+        status="canary",
+        canary_percent=10,
+        content={"digest": "sha256:" + "b" * 64},
+        digest="sha256:" + "b" * 64,
+    )
+    db.add_all([active, candidate])
+    db.commit()
+
+    canary_key = _routing_key_for_bucket(below=10)
+    baseline_key = _routing_key_for_bucket(at_least=10)
+
+    assert select_routed_versionset(db, canary_key).versionset_id == candidate.versionset_id
+    assert select_routed_versionset(db, canary_key).versionset_id == candidate.versionset_id
+    assert select_routed_versionset(db, baseline_key).versionset_id == active.versionset_id
+    assert select_routed_versionset(db, None).versionset_id == active.versionset_id
+
+
+def test_ambiguous_canary_state_fails_closed(db):
+    db.add_all(
+        [
+            VersionSet(
+                versionset_id="vs_active_ambiguous",
+                revision=2,
+                status="active",
+                content={"digest": "sha256:" + "a" * 64},
+                digest="sha256:" + "a" * 64,
+            ),
+            VersionSet(
+                versionset_id="vs_canary_ambiguous_a",
+                revision=3,
+                status="canary",
+                canary_percent=10,
+                content={"digest": "sha256:" + "b" * 64},
+                digest="sha256:" + "b" * 64,
+            ),
+            VersionSet(
+                versionset_id="vs_canary_ambiguous_b",
+                revision=3,
+                status="canary",
+                canary_percent=10,
+                content={"digest": "sha256:" + "c" * 64},
+                digest="sha256:" + "c" * 64,
+            ),
+        ]
+    )
+    db.commit()
+
+    with pytest.raises(VersionSetConfigError, match="more than one canary"):
+        select_routed_versionset(db, "stable-session")
+
+
+def test_b1_injection_uses_versionset_lifecycle_and_reset(db, monkeypatch):
+    monkeypatch.setattr(db, "add_all", lambda _rows: None)
+    common = {
+        "kb_manifest": {"manifest_digest": "sha256:" + "c" * 64},
+        "model": {"digest": "sha256:" + "d" * 64},
+    }
+    good = VersionSet(
+        versionset_id="vs_baseline0000000001",
+        revision=1,
+        status="active",
+        content={"prompt": {"version": "v1.4.2"}, **common},
+        digest="sha256:" + "a" * 64,
+        canary_percent=100,
+    )
+    bad = VersionSet(
+        versionset_id="vs_b1fault000000000001",
+        revision=1,
+        status="draft",
+        content={"prompt": {"version": "v1.4.3"}, **common},
+        digest="sha256:" + "b" * 64,
+        canary_percent=0,
+    )
+    candidate = VersionSet(
+        versionset_id="vs_b1candidate00000001",
+        revision=3,
+        status="canary",
+        content={"prompt": {"version": "v1.4.2"}, **common},
+        digest="sha256:" + "e" * 64,
+        canary_percent=10,
+    )
+    db.add(good)
+    db.add(bad)
+    db.add(candidate)
+    db.commit()
+
+    receipt = admin_router.inject_fault(
+        "B1", admin_router.FaultInjectionIn(), db=db, _=None
+    )
+    assert receipt["previous_versionset_id"] == good.versionset_id
+    assert receipt["fault_versionset_id"] == bad.versionset_id
+    assert good.status == "superseded" and bad.status == "active"
+    duplicate_injection = admin_router.inject_fault(
+        "B1", admin_router.FaultInjectionIn(), db=db, _=None
+    )
+    assert duplicate_injection["duplicate"] is True
+    assert duplicate_injection["injected_at"] == receipt["injected_at"]
+
+    recovered = faults.recover_b1(
+        db, quarantine_versionset_id=candidate.versionset_id
+    )
+    assert recovered["duplicate"] is False
+    assert recovered["restored_versionset_id"] == good.versionset_id
+    assert good.status == "active" and bad.status == "draft"
+    assert recovered["quarantined_versionset_id"] == candidate.versionset_id
+    assert candidate.status == "rolled_back" and candidate.canary_percent == 0
+    assert faults.recover_b1(
+        db, quarantine_versionset_id=candidate.versionset_id
+    )["duplicate"] is True
+
+    faults.inject_fault(db, "B1")
+    assert faults.reset_faults(db) == ["B1"]
+    assert good.status == "active" and bad.status == "draft"
 
 
 def _accept(db, versionset_id: str, key: str):

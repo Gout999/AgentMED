@@ -37,7 +37,7 @@ demo-app/
 ```bash
 # 1. 导出 StepFun key（不入库；demo-app 容器通过环境变量读取）
 export STEPFUN_API_KEY=sk-xxx
-export STEPFUN_BASE_URL=https://api.stepfun.com/v1
+export STEPFUN_BASE_URL=https://api.stepfun.com/step_plan/v1
 
 # 2. 起 postgres + demo-app（compose 服务名：postgres / demo-app）
 docker compose -f deploy/compose.yaml up -d --build postgres demo-app
@@ -50,7 +50,7 @@ curl -s http://127.0.0.1:8080/v2/versionsets  # 需带 Bearer 令牌
 | 环境变量 | 默认 | 说明 |
 |---|---|---|
 | `STEPFUN_API_KEY` | 空 | StepFun key（**不入库**，仅环境注入） |
-| `STEPFUN_BASE_URL` | `https://api.stepfun.com/v1` | OpenAI 兼容端点 |
+| `STEPFUN_BASE_URL` | `https://api.stepfun.com/step_plan/v1` | StepFun 套餐端点；live B1 只接受此官方地址 |
 | `STEPFUN_MODEL` | `step-3.7-flash` | 运动员模型 |
 | `DATABASE_URL` | `postgresql+psycopg://caseloop:caseloop@postgres:5432/demo_app` | demo_app 库 |
 | `CASELOOP_READ_TOKEN` | 空（必填） | quality:read 令牌；未配置时授权面 fail closed |

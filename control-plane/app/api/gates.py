@@ -6,8 +6,14 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.deps import get_app_settings, get_db_session, require_internal_write
+from app.api.deps import (
+    get_app_settings,
+    get_db_session,
+    get_quality_client,
+    require_gate_authority,
+)
 from app.config import Settings
+from app.quality.client import QualityClientProtocol
 from app.services.audit import AuditWriteError
 from app.services.gate_service import GateService, GateServiceError
 
@@ -31,12 +37,13 @@ def _raise(exc: GateServiceError) -> None:
 @router.post("/v1/gate-reports")
 def register_gate_report(
     body: dict[str, Any],
-    _actor: str = Depends(require_internal_write),
+    _actor: str = Depends(require_gate_authority),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
+    quality: QualityClientProtocol = Depends(get_quality_client),
 ) -> dict[str, Any]:
     try:
-        return GateService(session, settings).register_report(body)
+        return GateService(session, settings, quality=quality).register_report(body)
     except AuditWriteError as exc:
         raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
     except GateServiceError as exc:

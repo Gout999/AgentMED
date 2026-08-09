@@ -7,6 +7,7 @@
   "additionalProperties": false,
   "required": [
     "schema_version",
+    "policy_profile",
     "report_id",
     "eval_id",
     "subject",
@@ -21,6 +22,11 @@
     "schema_version": {
       "type": "string",
       "const": "0.1.0"
+    },
+    "policy_profile": {
+      "type": "string",
+      "description": "Bound evaluation policy. isolated-replay is accepted only by an explicitly isolated controller configuration.",
+      "enum": ["live", "isolated-replay"]
     },
     "report_id": {
       "type": "string",

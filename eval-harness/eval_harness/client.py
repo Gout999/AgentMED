@@ -1,7 +1,7 @@
-"""Quality API 客户端：/chat（客服对话）+ /admin（故障注入/复位）。
+"""Read-only Quality API client for chat and exact-candidate evaluation.
 
-- /chat 无鉴权（demo-app 对治理层读面开放；如需 Bearer 走 quality:read）。
-- /admin/inject、/admin/reset 需 quality:write 令牌。
+- All calls use quality:read authority.
+- Lifecycle and VersionSet writes belong exclusively to the Release Controller.
 - 全部请求走集中限速；429/5xx 指数退避。
 - chat 响应含三个 digest（prompt/kb/model），实验执行器据此对账版本。
 """
@@ -28,6 +28,7 @@ class ChatResult:
     raw: dict
     status: str = "ok"
     trace_id: str | None = None
+    provider_origin: str | None = None
 
 
 class QualityAPIClient:
@@ -41,9 +42,6 @@ class QualityAPIClient:
         self._read_session = requests.Session()
         self._read_session.trust_env = False
         self._read_session.headers.update({"Authorization": f"Bearer {settings.read_token}"})
-        self._write_session = requests.Session()
-        self._write_session.trust_env = False
-        self._write_session.headers.update({"Authorization": f"Bearer {settings.write_token}"})
 
     # ---- 读：/chat ----
     def chat(self, message: str, session_id: str | None = None, user_ref: str | None = None) -> ChatResult:
@@ -108,6 +106,7 @@ class QualityAPIClient:
             raw=data,
             status=data.get("status", "unknown"),
             trace_id=data.get("trace_id"),
+            provider_origin=data.get("provider_origin"),
         )
 
     def get_versionset(self, versionset_id: str, *, timeout_seconds: float | None = None) -> dict:
@@ -140,23 +139,6 @@ class QualityAPIClient:
         )
         if resp.status_code != 200:
             raise RuntimeError(f"GET /v2/versionsets failed HTTP {resp.status_code}: {resp.text[:300]}")
-        return resp.json()
-
-    # ---- 写：/admin（注入/复位，扮演 Release Controller 演示身份）----
-    def inject_fault(self, fault_id: str) -> dict:
-        resp = retry_with_backoff(
-            lambda: self._post(f"/admin/inject/{fault_id}", None, self._write_session),
-        )
-        if resp.status_code != 200:
-            raise RuntimeError(f"注入 {fault_id} 失败 HTTP {resp.status_code}: {resp.text[:300]}")
-        return resp.json()
-
-    def reset_faults(self) -> dict:
-        resp = retry_with_backoff(
-            lambda: self._post("/admin/reset", None, self._write_session),
-        )
-        if resp.status_code != 200:
-            raise RuntimeError(f"复位失败 HTTP {resp.status_code}: {resp.text[:300]}")
         return resp.json()
 
     # ---- 底层 ----

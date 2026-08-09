@@ -19,14 +19,19 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from common.audit import AuditService  # noqa: E402
 from common.config import Settings, get_settings  # noqa: E402
 from common.db import session_scope  # noqa: E402
-from common.errors import McpError, not_found, validation  # noqa: E402
+from common.errors import McpError, forbidden, not_found, validation  # noqa: E402
 from common.ids import new_doc_id  # noqa: E402
-from common.serverkit import build_server_app  # noqa: E402
+from common.serverkit import (  # noqa: E402
+    ToolDefinitionRegistry,
+    build_server_app,
+    build_tool_projection,
+    validate_projection_runtime,
+)
 from common.tables import CasebaseDoc  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-mcp = FastMCP("mcp-casebase-knowledge")
+mcp = ToolDefinitionRegistry("mcp-casebase-knowledge")
 
 
 def _settings() -> Settings:
@@ -143,8 +148,9 @@ def kb_upsert(
     idempotency_key 幂等（同键返回首次结果）。"""
     if doc_type not in ("case", "probe_pack", "postmortem", "skill_candidate"):
         raise validation("doc_type must be case|probe_pack|postmortem|skill_candidate")
-    if actor != "case-officer":
-        raise validation("kb.upsert 仅案例官可写（gateway 层强制 ACL）")
+    canonical_actor = _settings().mcp_worker_id
+    if not canonical_actor or actor != canonical_actor:
+        raise forbidden("kb.upsert identity does not match authenticated case-officer projection")
 
     with session_scope(_casebase_url()) as session:
         if idempotency_key:
@@ -211,11 +217,40 @@ def kb_holdout_get(holdout_name: str) -> dict[str, Any]:
     raise not_found(f"holdout set {holdout_name} not found")
 
 
+def _profiled_mcp(profile: str) -> FastMCP:
+    return build_tool_projection(
+        "mcp-casebase-knowledge",
+        profile,
+        {
+            "case-officer": {
+                "kb.search": kb_search,
+                "kb.get": kb_get,
+                "kb.upsert": kb_upsert,
+                "kb.badcase_search": kb_badcase_search,
+                "kb.holdout_get": kb_holdout_get,
+            }
+        },
+    )
+
+
 def main() -> None:
     import uvicorn
 
     s = _settings()
-    uvicorn.run(build_server_app(mcp), host=s.host, port=s.casebase_port, log_level=s.log_level.lower())
+    validate_projection_runtime(
+        s,
+        profile_workers={"case-officer": "case-officer"},
+    )
+    uvicorn.run(
+        build_server_app(
+            _profiled_mcp(s.mcp_tool_profile),
+            expected_consumer=s.mcp_expected_consumer,
+            gateway_backend_token=s.mcp_gateway_backend_token,
+        ),
+        host=s.host,
+        port=s.casebase_port,
+        log_level=s.log_level.lower(),
+    )
 
 
 if __name__ == "__main__":

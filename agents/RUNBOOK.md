@@ -14,7 +14,7 @@
 | Docker Desktop | 完全启动，M 系列 ≥ 4.39.0；Docker VM 内存 ≥ 8 GB |
 | 端口空闲 | 18080 / 18001 / 18088 / 18888 / 13000 |
 | 网络 | 系统/浏览器代理放行 `127.0.0.1` 与 `*-local.agentteams.io` |
-| 凭证 | StepFun key（`STEPFUN_API_KEY`）、飞书 mock 不需真凭证 |
+| 凭证 | StepFun key（`STEPFUN_API_KEY`）；live B1 另需真实飞书与独立 evidence adapters |
 
 ---
 
@@ -26,7 +26,7 @@
 
 ```bash
 export STEPFUN_API_KEY=<stepfun key>            # 真实 key，勿写入仓库
-export STEPFUN_BASE_URL=https://api.stepfun.com/v1
+export STEPFUN_BASE_URL=https://api.stepfun.com/step_plan/v1
 export ADMIN_PASSWORD='<本地演示管理员密码，自行设定，≥8位>'
 ```
 
@@ -59,7 +59,7 @@ curl -sf http://127.0.0.1:18001/ >/dev/null && echo "Higress console OK"
 
 ## 阶段 B：团队定义
 
-### Step 3 · 启动 5 个 MCP server
+### Step 3 · 启动角色隔离 MCP projections
 
 来自 `mcp-servers/`（FastMCP，每个含 PathRewrite，把网关透传路径重写为 `/mcp`）。按 `mcp-servers/README.md` 起：
 
@@ -69,31 +69,100 @@ python3.11 -m venv .venv && .venv/bin/pip install -r requirements.txt
 .venv/bin/python scripts/run_migrations.py            # 幂等建表（依赖 PG 已起）
 ```
 
-| Server | 端口 | 启动命令 |
-|--------|------|---------|
-| mcp-case-admin | 8001 | `.venv/bin/python -m servers.case_admin` |
-| mcp-release-admin | 8002 | `.venv/bin/python -m servers.release_admin` |
-| mcp-eval-runner | 8003 | `.venv/bin/python -m servers.eval_runner` |
-| mcp-notification | 8004 | `.venv/bin/python -m servers.notification` |
-| mcp-casebase-knowledge | 8005 | `.venv/bin/python -m servers.casebase_knowledge` |
+每个进程必须显式绑定 profile、规范 worker identity、唯一 backend token 与唯一
+Higress consumer。写 projection 只收对应的 `CONTROL_PLANE_ROLE_TOKEN`；只有
+`mcp-eval-runner-gatekeeper` 收独立 `GATE_AUTHORITY_TOKEN`。不要使用共享 `.env`
+向所有进程散发 token，也绝不能把通用 `CONTROL_PLANE_TOKEN` 交给 MCP 进程。
 
-每个 server 本地端点：`http://127.0.0.1:<port>/mcp`（5 个 server 中仅 mcp-notification 另有 `/healthz`；统一用 MCP 端点探活）。验证：
+先从本地 secret manager 导出以下值（全部互异；不写入仓库）：
 
 ```bash
-for p in 8001 8002 8003 8004 8005; do
-  code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:$p/mcp" \
-    -H 'Content-Type: application/json' -H 'Accept: application/json, text/event-stream' -d '{}')
-  [ "$code" != "000" ] && echo ":$p up (HTTP $code)" || echo ":$p DOWN"
-done
+: "${CP_ROLE_QUALITY_OFFICER:?required}"
+: "${CP_ROLE_COLLECTOR:?required only in the control-plane map}"
+: "${CP_ROLE_CASE_OFFICER:?required}"
+: "${CP_ROLE_ATTRIBUTIONIST:?required}"
+: "${CP_ROLE_REPAIRER:?required}"
+: "${CP_ROLE_GATEKEEPER:?required}"
+: "${GATE_AUTHORITY_TOKEN:?required}"
+
+export CONTROL_PLANE_ROLE_TOKENS_JSON="$(python3 - <<'PY'
+import json, os
+print(json.dumps({
+    "quality-officer": os.environ["CP_ROLE_QUALITY_OFFICER"],
+    "collector": os.environ["CP_ROLE_COLLECTOR"],
+    "case-officer": os.environ["CP_ROLE_CASE_OFFICER"],
+    "attributionist": os.environ["CP_ROLE_ATTRIBUTIONIST"],
+    "repairer": os.environ["CP_ROLE_REPAIRER"],
+    "gatekeeper": os.environ["CP_ROLE_GATEKEEPER"],
+}, separators=(",", ":")))
+PY
+)"
+export CONTROL_PLANE_BASE_URL="${CONTROL_PLANE_BASE_URL:-http://127.0.0.1:18090}"
+
+# Compose 会 REQUIRE_MCP_ROLE_TOKENS=true；缺角色、JSON 错误或任一 authority
+# token 重复时 control-plane 拒绝启动。其余 compose secrets 亦须已从安全来源导出。
+docker compose -f ../deploy/compose.yaml up -d control-plane outbox-dispatcher
+
+MCP_SECRET_DIR="${MCP_SECRET_DIR:-/tmp/caseloop-mcp-projections}"
+mkdir -p "$MCP_SECRET_DIR"
+chmod 700 "$MCP_SECRET_DIR"
+
+start_projection() { # name module profile port-var port worker role-token gate-token
+  local name="$1" module="$2" profile="$3" port_var="$4" port="$5"
+  local worker="$6" role_token="$7" gate_token="$8" backend_token
+  backend_token="$(openssl rand -hex 32)"
+  umask 077
+  printf 'MCP_GATEWAY_BACKEND_TOKEN=%s\n' "$backend_token" >"$MCP_SECRET_DIR/$name.env"
+  env \
+    MCP_TOOL_PROFILE="$profile" \
+    MCP_WORKER_ID="$worker" \
+    MCP_EXPECTED_CONSUMER="worker-$profile" \
+    MCP_GATEWAY_BACKEND_TOKEN="$backend_token" \
+    CONTROL_PLANE_BASE_URL="$CONTROL_PLANE_BASE_URL" \
+    CONTROL_PLANE_ROLE_TOKEN="$role_token" \
+    GATE_AUTHORITY_TOKEN="$gate_token" \
+    "$port_var=$port" \
+    .venv/bin/python -m "servers.$module" >"/tmp/$name.log" 2>&1 &
+}
+
+start_projection mcp-case-admin-quality-officer case_admin quality-officer CASE_ADMIN_PORT 8101 quality-officer "$CP_ROLE_QUALITY_OFFICER" ""
+start_projection mcp-case-admin-collector case_admin collector CASE_ADMIN_PORT 8201 collector "" ""
+start_projection mcp-case-admin-case-officer case_admin case-officer CASE_ADMIN_PORT 8301 case-officer "" ""
+start_projection mcp-case-admin-attributionist case_admin attributionist CASE_ADMIN_PORT 8401 eval-runner "$CP_ROLE_ATTRIBUTIONIST" ""
+start_projection mcp-case-admin-repairer case_admin repairer CASE_ADMIN_PORT 8501 repairer "$CP_ROLE_REPAIRER" ""
+start_projection mcp-release-admin-gatekeeper release_admin gatekeeper RELEASE_ADMIN_PORT 8102 gatekeeper "$CP_ROLE_GATEKEEPER" ""
+start_projection mcp-release-admin-repairer release_admin repairer RELEASE_ADMIN_PORT 8202 repairer "$CP_ROLE_REPAIRER" ""
+start_projection mcp-eval-runner-gatekeeper eval_runner gatekeeper EVAL_RUNNER_PORT 8103 gatekeeper "$CP_ROLE_GATEKEEPER" "$GATE_AUTHORITY_TOKEN"
+start_projection mcp-eval-runner-attributionist eval_runner attributionist EVAL_RUNNER_PORT 8203 eval-runner "$CP_ROLE_ATTRIBUTIONIST" ""
+start_projection mcp-notification-quality-officer notification quality-officer NOTIFICATION_PORT 8104 quality-officer "" ""
+start_projection mcp-notification-case-officer notification case-officer NOTIFICATION_PORT 8204 case-officer "$CP_ROLE_CASE_OFFICER" ""
+start_projection mcp-casebase-knowledge casebase_knowledge case-officer CASEBASE_PORT 8005 case-officer "" ""
 ```
 
-> HTTP 000 = 连接拒绝（server 没起来）；4xx = server 已响应（FastMCP 对空 body 的初始化请求按协议回 400/200 均正常）。
+每个 backend 本地 `/mcp` 只接受 Higress 加入的两项凭证。未带 header 的直连必须
+稳定返回 403；HTTP 400/200 不能当作这项安全验收：
+
+```bash
+for p in 8101 8201 8301 8401 8501 8102 8202 8103 8203 8104 8204 8005; do
+  code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "http://127.0.0.1:$p/mcp" -d '{}')
+  [ "$code" = "403" ] && echo ":$p up and direct access denied" || echo ":$p FAIL HTTP $code"
+done
+```
 
 > 若 `mcp-servers/` 已按 T4 打包成镜像，也可 `docker run` 起同一批端口。
 
 ### Step 4 · 应用 team.yaml
 
 `agt apply` **不做拓扑排序**，文件已按「6 Worker → Team → Human」排序。
+
+先把仓库冻结的 B1 Skill 放入 Manager 的权威 Worker Skill 目录；
+`team.yaml` 六个 Worker 的 `spec.skills` 都引用同一个名字：
+
+```bash
+docker exec agentteams-manager mkdir -p /root/worker-skills/caseloop-b1-loop
+docker cp agents/skills/caseloop-b1-loop/SKILL.md \
+  agentteams-manager:/root/worker-skills/caseloop-b1-loop/SKILL.md
+```
 
 ```bash
 docker cp agents/team.yaml agentteams-controller:/tmp/caseloop-team.yaml
@@ -108,6 +177,18 @@ docker exec agentteams-controller agt get workers
 ```
 
 期望：`caseloop-team` phase `Active`；6 个 worker 全部 `Running`（gatekeeper 等被 @mention 时从 Sleeping 唤醒，spike 已验证）。
+
+把已在 CR 中声明的 Skill 推送到六个固定 Worker；失败或缺少任何一个文件都
+不能进入 live B1：
+
+```bash
+for worker in quality-officer collector gatekeeper case-officer attributionist repairer; do
+  docker exec agentteams-manager bash \
+    /opt/agentteams/agent/skills/worker-management/scripts/push-worker-skills.sh \
+    --worker "$worker" --no-notify
+  docker exec "agentteams-worker-$worker" agentteams-sync
+done
+```
 
 **SOUL 同步校验**（防 `team.yaml` 内联 soul 与 `agents/souls/*.md` 漂移）：
 
@@ -144,7 +225,7 @@ curl -s -c "$COOKIE" -X POST http://127.0.0.1:18001/session/login \
 
 > 用户名默认 `admin`（`AGENTTEAMS_ADMIN_USER`）；响应非 HTML 即登录成功。
 
-### Step 8 · 注册 5 个 service-sources
+### Step 8 · 注册角色隔离 service-sources
 
 ```bash
 console_api() { # method path desc body
@@ -152,7 +233,7 @@ console_api() { # method path desc body
     -X "$1" "http://127.0.0.1:18001$2" -H 'Content-Type: application/json' -d "$4")
   echo "  [$1 $2] $3 -> HTTP $code : $(head -c 160 /tmp/higress.out)"
 }
-for p in 8001 8002 8003 8004 8005; do
+for p in 8101 8201 8301 8401 8501 8102 8202 8103 8203 8104 8204 8005; do
   console_api POST /v1/service-sources "service-source :$p" \
     "{\"type\":\"dns\",\"name\":\"mcp-src-$p\",\"domain\":\"host.docker.internal\",\"port\":$p,\"protocol\":\"http\"}"
 done
@@ -160,17 +241,38 @@ done
 
 > service source 是 DNS 型，后端 `host.docker.internal:<port>`（FastMCP 的 `/mcp` 由各 server 的 PathRewrite 承接）。
 
-### Step 9 · 注册 5 个 mcpServer（mcp-proxy）
+### Step 9 · 注册角色隔离 mcpServer（mcp-proxy）
 
-用 mcp-proxy `rawConfigurations` 指向对应 service source（**坑 C 前置**：FastMCP 只认 `/mcp`，网关把 `/mcp-servers/<name>/mcp` 原样透传，靠 server 内 PathRewrite 重写，网关侧不改路径）：
+用 mcp-proxy `rawConfigurations` 指向对应 service source。每个 projection 从 Step 3
+读取自己的 backend token，并用 Higress `defaultUpstreamSecurity` 为所有 backend MCP
+请求加入 `X-CaseLoop-Gateway-Token`。key-auth 鉴权后加入的 `X-Mse-Consumer`
+必须原样到达 backend；不要开启 Authorization passthrough：
 
 ```bash
 register_mcp() { # name port
   local name=$1 port=$2 src="mcp-src-$port"
-  local raw=$(python3 -c "import json,sys;print(json.dumps('server:\n  name: ${name}-mcp-server\n  type: mcp-proxy\n  transport: http\n  mcpServerURL: \"http://host.docker.internal:${port}/mcp\"\n  timeout: 5000\n'))")
-  local body=$(python3 - "$name" "$src" "$port" "$raw" <<'PY'
+  local backend_token
+  backend_token=$(cut -d= -f2 "$MCP_SECRET_DIR/$name.env")
+  [ "${#backend_token}" -eq 64 ] || { echo "invalid backend token for $name"; return 1; }
+  local body=$(python3 - "$name" "$src" "$port" "$backend_token" <<'PY'
 import json,sys
-name,src,port,raw = sys.argv[1:5]
+name,src,port,backend_token = sys.argv[1:5]
+raw = f'''server:
+  name: {name}-mcp-server
+  type: mcp-proxy
+  transport: http
+  mcpServerURL: "http://host.docker.internal:{port}/mcp"
+  timeout: 5000
+  passthroughAuthHeader: false
+  defaultUpstreamSecurity:
+    id: CaseLoopBackend
+  securitySchemes:
+    - id: CaseLoopBackend
+      type: apiKey
+      in: header
+      name: X-CaseLoop-Gateway-Token
+      defaultCredential: "{backend_token}"
+'''
 print(json.dumps({
   "name": name, "description": f"{name} MCP Proxy Server (http)",
   "type": "OPEN_API", "rawConfigurations": raw, "mcpServerName": name,
@@ -182,11 +284,18 @@ PY
 )
   console_api PUT /v1/mcpServer "mcpServer $name" "$body"
 }
-register_mcp mcp-case-admin        8001
-register_mcp mcp-release-admin     8002
-register_mcp mcp-eval-runner       8003
-register_mcp mcp-notification      8004
-register_mcp mcp-casebase-knowledge 8005
+register_mcp mcp-case-admin-quality-officer       8101
+register_mcp mcp-case-admin-collector             8201
+register_mcp mcp-case-admin-case-officer          8301
+register_mcp mcp-case-admin-attributionist        8401
+register_mcp mcp-case-admin-repairer               8501
+register_mcp mcp-release-admin-gatekeeper          8102
+register_mcp mcp-release-admin-repairer            8202
+register_mcp mcp-eval-runner-gatekeeper            8103
+register_mcp mcp-eval-runner-attributionist        8203
+register_mcp mcp-notification-quality-officer      8104
+register_mcp mcp-notification-case-officer         8204
+register_mcp mcp-casebase-knowledge                8005
 ```
 
 ### Step 10 · 配置 consumers（**坑 C：全量替换**）
@@ -201,21 +310,24 @@ set_consumers() { # name consumer...
     "{\"mcpServerName\":\"$name\",\"consumers\":$cl}"
 }
 
-set_consumers mcp-case-admin \
-  worker-quality-officer worker-collector worker-gatekeeper \
-  worker-case-officer worker-attributionist worker-repairer
-set_consumers mcp-release-admin \
-  worker-gatekeeper worker-repairer worker-quality-officer
-set_consumers mcp-eval-runner \
-  worker-gatekeeper worker-attributionist
-set_consumers mcp-notification \
-  worker-quality-officer worker-case-officer
-set_consumers mcp-casebase-knowledge \
-  worker-quality-officer worker-collector worker-gatekeeper \
-  worker-case-officer worker-attributionist worker-repairer
+set_consumers mcp-case-admin-quality-officer       worker-quality-officer
+set_consumers mcp-case-admin-collector             worker-collector
+set_consumers mcp-case-admin-case-officer          worker-case-officer
+set_consumers mcp-case-admin-attributionist        worker-attributionist
+set_consumers mcp-case-admin-repairer               worker-repairer
+set_consumers mcp-release-admin-gatekeeper          worker-gatekeeper
+set_consumers mcp-release-admin-repairer            worker-repairer
+set_consumers mcp-eval-runner-gatekeeper            worker-gatekeeper
+set_consumers mcp-eval-runner-attributionist        worker-attributionist
+set_consumers mcp-notification-quality-officer      worker-quality-officer
+set_consumers mcp-notification-case-officer         worker-case-officer
+set_consumers mcp-casebase-knowledge                worker-case-officer
 ```
 
 > 授权矩阵与 SOUL 工具面一致（`agents/souls/*.md` §2）。`manager` 不在 caseloop MCP 的消费者内（最小权限；运维验证用 Step 13 的 worker key 直连）。
+> `securitySchemes/defaultUpstreamSecurity` 与 `X-Mse-Consumer` 行为来自 Higress 官方
+> MCP Server/key-auth 文档；AgentTeams v1.2.1 内置 plugin 仍必须由 Step 13 真机验证，
+> 未验证前不得写成 live evidence。
 
 ---
 
@@ -245,7 +357,7 @@ docker exec agentteams-worker-quality-officer sh -c \
 KEY=$(docker exec agentteams-controller sh -c \
   'grep WORKER_GATEWAY_KEY /data/worker-creds/quality-officer.env | cut -d= -f2 | tr -d "\"'\'' \r"')
 # initialize
-curl -s -X POST http://aigw-local.agentteams.io:8080/mcp-servers/mcp-case-admin/mcp \
+curl -s -X POST http://aigw-local.agentteams.io:8080/mcp-servers/mcp-case-admin-quality-officer/mcp \
   -H "Authorization: Bearer $KEY" -H 'Content-Type: application/json' \
   -H 'Accept: application/json, text/event-stream' \
   -d '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"runbook-verify","version":"0.1"}}}'
@@ -263,6 +375,55 @@ curl -s -X POST http://aigw-local.agentteams.io:8080/mcp-servers/mcp-case-admin/
 4. 房间只出现「路径 + 摘要」；交叉验证另一 worker 能经 taskflow 读取 `shared/tasks/{task-id}/` 产物（S0-003 语义）。
 
 **串行纪律**：同一时刻活跃 worker ≤2（D-001）；若 worker 报 `429 RATE_LIMITED`，指数退避重试，不并发抢任务。
+
+### Live B1 AgentTeams evidence boundary
+
+`make demo-b1-live` 额外要求 `CASELOOP_B1_AGENT_TRACE_COMMAND` 与
+`CASELOOP_B1_AGENT_TRACE_PUBLIC_KEY`（32-byte raw Ed25519 public key 的 base64）。命令由
+AgentTeams/Matrix 凭证持有方提供，凭证不能传入 B1 runner。Runner 会用无秘密
+环境调用三类阶段：
+
+1. `phase=start`：必须真实派发 `caseloop-team` B1 task，并返回同一 Team Room、
+   dispatch Matrix event、六个固定 Worker 和仓库 Skill digest；
+2. pre-action role phases：六个 Worker 在对应控制面动作前分别导出 dispatch intent、
+   complaint evidence、experiment plan、repair proposal、initial/post-canary gate request、
+   closure intent；`phase=workorder` 由已 ack 的 repairer task 生成完整不可变 WorkOrder，提交到
+   `shared/tasks/{task-id}/`，并把同一 session/task/skill 绑定的 artifact URI + digest
+   导出到 runner 指定的 evidence 目录；runner 只验 binding/hash 后交控制面冻结，
+   不得自行生成替代 WorkOrder；
+3. `phase=complete`：从 AgentTeams taskflow/Matrix/session 导出物回读同一 session，
+   为每个角色返回 task ack/submit receipt、Matrix event、Skill digest 和 Control
+   Plane source IDs，并附逐角色 `task-handoff` artifact。每个 handoff 的
+   `payload.product_refs` 必须精确列出第 2 步该角色的全部产物；repairer handoff
+   还必须引用完全相同的 WorkOrder artifact。六个角色的 task、ack、submit receipt
+   ID 必须分别唯一，不得把一个执行记录复制成六个角色。
+
+每张 receipt 都由独立 exporter 的 Ed25519 私钥签名；runner 只持部署钉定公钥，
+签名覆盖除 `attestation` 外的完整 canonical JSON。stdin/ stdout 的精确机器契约由
+`scripts/run_b1_live.py::_agent_trace_from_command` 校验。任一字段缺失、角色重复、
+task/ack/submit ID 跨角色重用、签名错误、Skill digest 漂移、source ID 不相等、artifact
+越出 evidence 目录、digest 漂移或 adapter 失败时，live run fail closed；直接运行
+Python 脚本的 trace 不能冒充 AgentTeams。Agent 产物是建议；域状态仍由
+deterministic CaseLoop executor 执行。completion source IDs 仅作事后权威对账，
+不宣称 LLM 直接写入状态。
+
+### Live B1 Feishu post-injection boundary
+
+fresh B1 不能预先配置旧 `message_id` 再声称其发生于注入之后。`make demo-b1-live` 因此要求
+`CASELOOP_B1_FEISHU_MESSAGE_COMMAND`：Release Controller 确认 B1 已 active 后，runner 才以
+无控制面/Quality/模型/飞书秘密的环境启动该命令，并在 stdin 传入 fixture ref/digest、
+injection operation ID 与 provider `injected_at`。命令负责在其独立凭证边界等待真人发出新消息，
+stdout 只能返回：
+
+```json
+{"schema_version":"0.1.0","provider":"feishu","message_id":"om_..."}
+```
+
+随后 Control Plane 用自身 Feishu live adapter 抓取原消息；只有 message ID/channel/thread、
+仓库冻结 complaint digest，以及 `create_time > injected_at` 全部成立，才可事务性建立 Inbox/Case。
+旧消息、`hello`、超时、adapter substitution 或时间不可判定一律 fail closed，并在尚未 promote 时
+触发 Quality 补偿。当前对已创建 Case/Experiment/Release 的跨进程 durable resume 尚未完成，
+必须在 P0-4 状态中标为 blocker。
 
 ---
 
@@ -291,7 +452,8 @@ curl -s -X POST http://aigw-local.agentteams.io:8080/mcp-servers/mcp-case-admin/
 ## 附录 B：团队可领单验收清单
 
 - [ ] `agt get teams` → caseloop-team Active；`agt get workers` → 6 worker Running
-- [ ] 5 个 MCP server 健康；5 个 mcpServer 代理已注册
+- [ ] 12 个 MCP projection 健康；12 个 mcpServer 代理已注册
 - [ ] 每个 worker `mcporter list` 在其 cwd 下无 No servers 误报
 - [ ] 用任一 worker key 直连网关 `tools/list` 返回其授权工具
 - [ ] 派单演练走通：manager → leader → worker → taskflow 交接 → 产物落 `shared/tasks/`
+- [ ] `caseloop-b1-loop` 已同步至六个 Worker，live trace adapter 可回读 taskflow + Matrix + Skill digest

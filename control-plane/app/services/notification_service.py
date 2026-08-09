@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+import re
 from typing import Any, Optional
 
 from sqlalchemy import select
@@ -42,19 +43,85 @@ class NotificationService:
         channel: str,
         thread_ref: str,
         body_ref: str,
+        body_digest: str,
         notification_id: Optional[str] = None,
+        release_id: Optional[str] = None,
+        causation_id: Optional[str] = None,
     ) -> dict[str, Any]:
         """通知入 outbox：notification.queued 与 outbox 行同事务（失败即拒业务）。"""
         case = self.store.get_aggregate("case", case_id)
         if case is None:
             raise NotificationServiceError("not_found", f"case {case_id} not found")
+        nid = notification_id or new_notification_id()
+        existing = self.store.get_aggregate("notification", nid)
+        if existing is not None:
+            existing_payload = existing.payload or {}
+            if (
+                existing_payload.get("case_id") == case_id
+                and existing_payload.get("release_id") == release_id
+                and existing_payload.get("channel") == channel
+                and existing_payload.get("thread_ref") == thread_ref
+                and existing_payload.get("body_ref") == body_ref
+                and existing_payload.get("body_digest") == body_digest
+            ):
+                view = self._view(existing)
+                return {**view, "outbox_id": existing_payload.get("outbox_id"), "duplicate": True}
+            raise NotificationServiceError("idempotency_conflict", "notification_id is bound differently")
         if case.state != "NOTIFYING":
             raise NotificationServiceError(
                 "illegal_transition",
                 f"notification may only be queued for a NOTIFYING case, got {case.state}",
                 current_state=case.state,
             )
-        nid = notification_id or new_notification_id()
+        resolution = (case.payload or {}).get("resolution")
+        if resolution not in {"fixed", "rolled_back"}:
+            raise NotificationServiceError(
+                "hash_mismatch",
+                "Case has no receipt-bound terminal release resolution",
+            )
+        if re.fullmatch(r"sha256:[0-9a-f]{64}", body_digest) is None:
+            raise NotificationServiceError(
+                "validation_failed",
+                "notification body_digest must be an immutable sha256 digest",
+            )
+        original_channel = (case.payload or {}).get("original_channel")
+        if not isinstance(original_channel, str) or not original_channel:
+            raise NotificationServiceError(
+                "hash_mismatch",
+                "Case has no immutable original complaint channel",
+            )
+        if channel != original_channel:
+            raise NotificationServiceError(
+                "hash_mismatch",
+                "notification channel must equal the original complaint channel",
+            )
+        original_thread_ref = (case.payload or {}).get("original_thread_ref")
+        if not isinstance(original_thread_ref, str) or not original_thread_ref:
+            raise NotificationServiceError(
+                "hash_mismatch",
+                "Case has no immutable original complaint thread_ref",
+            )
+        if thread_ref != original_thread_ref:
+            raise NotificationServiceError(
+                "hash_mismatch",
+                "notification thread_ref must equal the original complaint thread_ref",
+            )
+        resolved_release_id = (case.payload or {}).get("resolved_release_id")
+        if not release_id or release_id != resolved_release_id:
+            raise NotificationServiceError(
+                "hash_mismatch",
+                "notification must bind the Release that authoritatively resolved the Case",
+            )
+        resolved_events = [
+            event
+            for event in self.store.list_events(case_id)
+            if event.event_type == "case.resolved" and event.payload.get("release_id") == release_id
+        ]
+        if not resolved_events or causation_id != resolved_events[-1].event_id:
+            raise NotificationServiceError(
+                "hash_mismatch",
+                "notification causation must be the exact persisted case.resolved event",
+            )
         outbox_id = new_outbox_id()
         self.store.append_event(
             aggregate_type="notification",
@@ -62,16 +129,26 @@ class NotificationService:
             event_type="notification.queued",
             payload={
                 "case_id": case_id,
+                "release_id": release_id,
                 "channel": channel,
                 "thread_ref": thread_ref,
                 "body_ref": body_ref,
+                "body_digest": body_digest,
                 "outbox_id": outbox_id,
             },
-            causation_id="case.resolved",
+            causation_id=causation_id,
             correlation_id=case_id,
             actor="controller:notification",
             machine="notification",
-            merge_payload={"case_id": case_id, "channel": channel, "thread_ref": thread_ref, "outbox_id": outbox_id},
+            merge_payload={
+                "case_id": case_id,
+                "release_id": release_id,
+                "channel": channel,
+                "thread_ref": thread_ref,
+                "body_ref": body_ref,
+                "body_digest": body_digest,
+                "outbox_id": outbox_id,
+            },
             outbox={
                 "outbox_id": outbox_id,
                 "channel": "notification.delivery",
@@ -79,9 +156,11 @@ class NotificationService:
                 "payload": {
                     "notification_id": nid,
                     "case_id": case_id,
+                    "release_id": release_id,
                     "channel": channel,
                     "thread_ref": thread_ref,
                     "body_ref": body_ref,
+                    "body_digest": body_digest,
                 },
             },
         )
@@ -98,6 +177,7 @@ class NotificationService:
             "outbox_id": outbox_id,
             "state": agg.state if agg else "QUEUED",
             "revision": agg.revision if agg else 1,
+            "duplicate": False,
         }
 
     def acknowledge_delivery(
@@ -137,6 +217,12 @@ class NotificationService:
                 "illegal_transition",
                 f"receipt cannot archive case from {case.state}",
                 current_state=case.state,
+            )
+        resolution = (case.payload or {}).get("resolution")
+        if resolution not in {"fixed", "rolled_back"}:
+            raise NotificationServiceError(
+                "hash_mismatch",
+                "Case has no receipt-bound terminal release resolution",
             )
         provider_message_id = receipt.get("provider_message_id")
         if not isinstance(provider_message_id, str) or not provider_message_id:
@@ -192,7 +278,7 @@ class NotificationService:
             aggregate_id=case_id,
             event_type="case.closed",
             payload={
-                "resolution": "fixed",
+                "resolution": resolution,
                 "notification_id": notification_id,
                 "notification_receipt_digest": receipt_digest,
             },
@@ -204,7 +290,7 @@ class NotificationService:
             expected_revision=case.revision,
             machine="case",
             merge_payload={
-                "resolution": "fixed",
+                "resolution": resolution,
                 "notification_id": notification_id,
                 "notification_receipt_digest": receipt_digest,
                 "archived_at": datetime.now(timezone.utc).isoformat(),

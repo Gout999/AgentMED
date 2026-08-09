@@ -196,6 +196,8 @@ paths:
                 required:
                   - request_id
                   - answer
+                  - answer_digest
+                  - provider_origin
                   - status
                   - versionset_id
                   - prompt_digest
@@ -205,6 +207,11 @@ paths:
                 properties:
                   request_id: { type: string }
                   answer: { type: string }
+                  answer_digest: { $ref: "#/components/schemas/Digest" }
+                  provider_origin:
+                    type: string
+                    format: uri
+                    description: 实际 provider client 使用的非敏感 base URL；live 证据必须锁定官方 origin。
                   status: { type: string, enum: [ok, provider_error] }
                   versionset_id: { type: string }
                   prompt_digest: { $ref: "#/components/schemas/Digest" }
@@ -397,7 +404,7 @@ paths:
       description: |
         每次请求一条：携带实际生效的 prompt/kb/model digest，
         使控制面可以把 badcase 精确绑定到版本。【待定】分页/过滤字段
-        plan-v3 未细化，当前定为 cursor 分页 + 时间窗 + versionset_id 过滤。
+        plan-v3 未细化，当前定为 cursor 分页 + 时间窗 + versionset_id/request_id 过滤。
       operationId: getLogs
       security:
         - quality_oauth: [quality:read]
@@ -411,6 +418,10 @@ paths:
           schema: { type: string, format: date-time }
         - name: versionset_id
           in: query
+          schema: { type: string }
+        - name: request_id
+          in: query
+          description: 精确定位一次 provider 执行，用于权威归因证据回查。
           schema: { type: string }
         - name: limit
           in: query
@@ -470,9 +481,10 @@ paths:
       tags: [admin]
       summary: 注入演示故障（B1–B4）
       description: |
-        演示用故障注入。注入后线上运行版本偏离任何已注册 VersionSet
-        （这就是被归因实验识别的"故障"）；各故障的 ground-truth 冻结于
-        contracts/fixtures/b1..b4-*.yaml。**仅限演示/测试环境启用**，
+        演示用故障注入。B1 以原子方式把指定、已注册且 prompt-only 的 P1
+        VersionSet 切为 active，返回前后不可变身份；B2–B4 使用冻结的 demo
+        故障机制。各故障的 ground-truth 冻结于 contracts/fixtures/b1..b4-*.yaml。
+        **仅限演示/测试环境启用**，
         生产部署必须整体移除 /admin 路由。
       operationId: injectFault
       x-internal: true
@@ -486,6 +498,12 @@ paths:
             type: string
             enum: [B1, B2, B3, B4]
             description: B1=prompt 回归；B2=KB 回归；B3=model_params 漂移；B4=prompt×KB 交互
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FaultInjectionRequest"
       responses:
         "200":
           description: 注入成功
@@ -520,6 +538,45 @@ paths:
         "403":
           $ref: "#/components/responses/Forbidden"
 
+  /admin/recover/{faultId}:
+    post:
+      tags: [admin]
+      summary: 补偿未完成的 B1 演示注入
+      description: |
+        仅当冻结的 B1 fault VersionSet 仍是唯一 active 版本时，恢复注入收据
+        绑定的原 baseline；若已有其他 VersionSet 晋升则拒绝，绝不覆盖后续发布。
+        quality:write 只供 Release Controller，live runner 必须经控制面调用。
+      operationId: recoverFault
+      x-internal: true
+      security:
+        - quality_oauth: [quality:write]
+      parameters:
+        - name: faultId
+          in: path
+          required: true
+          schema:
+            type: string
+            enum: [B1]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FaultRecoveryRequest"
+      responses:
+        "200":
+          description: 已恢复 exact baseline，或 exact retry
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FaultRecoveryResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "403":
+          $ref: "#/components/responses/Forbidden"
+        "409":
+          $ref: "#/components/responses/RevisionConflict"
+
 components:
   securitySchemes:
     quality_oauth:
@@ -527,7 +584,7 @@ components:
       description: |
         OAuth2 client credentials。scope 语义：
         - **quality:read**：读面（GET logs/feedback/versionsets/operations）。
-        - **quality:write**：写面（创建 VersionSet、全部生命周期迁移、admin 注入）。
+        - **quality:write**：写面（创建 VersionSet、全部生命周期迁移、admin 注入/补偿）。
           **写 scope 令牌仅签发给 Release Controller**（plan-v3 §2.3.1 硬约束）；
           持有 quality:write 的调用方同时视为有读权限。
       flows:
@@ -938,7 +995,7 @@ components:
     LogEntry:
       type: object
       additionalProperties: false
-      required: [ts, request_id, versionset_id, prompt_digest, kb_manifest_digest, model_digest, status]
+      required: [ts, request_id, versionset_id, prompt_digest, kb_manifest_digest, model_digest, provider_origin, status]
       properties:
         ts:
           type: string
@@ -953,6 +1010,13 @@ components:
           $ref: "#/components/schemas/Digest"
         model_digest:
           $ref: "#/components/schemas/Digest"
+        provider_origin:
+          type: string
+          format: uri
+          description: 本次真实 provider 执行使用的非敏感 base URL。
+        answer_digest:
+          $ref: "#/components/schemas/Digest"
+          description: UTF-8 编码回答正文的 SHA-256；live 归因证据必须存在并匹配。
         status:
           type: string
           description: ok / provider_error / timeout 等
@@ -1038,6 +1102,62 @@ components:
         ground_truth_ref:
           type: string
           example: "contracts/fixtures/b1-prompt-regression.yaml"
+        previous_versionset_id: { type: string }
+        previous_versionset_digest: { $ref: "#/components/schemas/Digest" }
+        previous_revision: { type: integer, minimum: 1 }
+        fault_versionset_id: { type: string }
+        fault_versionset_digest: { $ref: "#/components/schemas/Digest" }
+        fault_revision: { type: integer, minimum: 1 }
+        duplicate: { type: boolean }
+
+    FaultInjectionRequest:
+      type: object
+      additionalProperties: false
+      properties:
+        expected_active_versionset_id:
+          type: string
+          default: vs_baseline0000000001
+        fault_versionset_id:
+          type: string
+          default: vs_b1fault000000000001
+
+    FaultRecoveryRequest:
+      type: object
+      additionalProperties: false
+      required: [expected_active_fault_versionset_id, restore_versionset_id]
+      properties:
+        expected_active_fault_versionset_id:
+          type: string
+        restore_versionset_id:
+          type: string
+
+    FaultRecoveryResult:
+      type: object
+      additionalProperties: false
+      required:
+        - fault_id
+        - recovered_at
+        - restored_versionset_id
+        - restored_versionset_digest
+        - restored_revision
+        - fault_versionset_id
+        - fault_versionset_digest
+        - fault_revision
+        - duplicate
+      properties:
+        fault_id:
+          type: string
+          enum: [B1]
+        recovered_at:
+          type: string
+          format: date-time
+        restored_versionset_id: { type: string }
+        restored_versionset_digest: { $ref: "#/components/schemas/Digest" }
+        restored_revision: { type: integer, minimum: 1 }
+        fault_versionset_id: { type: string }
+        fault_versionset_digest: { $ref: "#/components/schemas/Digest" }
+        fault_revision: { type: integer, minimum: 1 }
+        duplicate: { type: boolean }
 
     ResetResult:
       type: object

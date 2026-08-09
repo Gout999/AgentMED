@@ -100,6 +100,9 @@ def test_health_and_baseline(read_session):
 # ---------------------------------------------------------------- Quality API 生命周期
 
 def test_lifecycle_full(write_session, read_session):
+    baseline = read_session.get(
+        f"{BASE_URL}/v2/versionsets/vs_baseline0000000001", timeout=TIMEOUT
+    ).json()
     r = write_session.post(f"{BASE_URL}/v2/versionsets", json=_sample_content("lc"), headers={"Idempotency-Key": _key()}, timeout=TIMEOUT)
     assert r.status_code == 201
     vs = r.json()
@@ -117,6 +120,21 @@ def test_lifecycle_full(write_session, read_session):
     _run_lifecycle(write_session, read_session, vs_id, "promote", expected_revision=st["revision"])
     st = read_session.get(f"{BASE_URL}/v2/versionsets/{vs_id}/status", timeout=TIMEOUT).json()
     assert st["status"] == "active" and st["is_active"] is True
+
+    # Restore the seeded baseline so later controlled-fault tests start from
+    # their declared immutable P0 identity rather than this test candidate.
+    _run_lifecycle(
+        write_session,
+        read_session,
+        vs_id,
+        "rollback",
+        expected_revision=st["revision"],
+        body_extra={"rollback_to": baseline["digest"]},
+    )
+    restored = read_session.get(
+        f"{BASE_URL}/v2/versionsets/{baseline['versionset_id']}/status", timeout=TIMEOUT
+    ).json()
+    assert restored["status"] == "active" and restored["is_active"] is True
 
 
 def test_cas_and_scope(read_session, write_session):
@@ -141,10 +159,18 @@ def test_chat_writes_log(read_session, write_session):
     body = r.json()
     assert body["request_id"].startswith("req_")
     assert body["prompt_digest"].startswith("sha256:")
+    assert body["answer_digest"].startswith("sha256:")
+    assert body["provider_origin"] == "https://api.stepfun.com/step_plan/v1"
 
     # 日志落库
-    logs = read_session.get(f"{BASE_URL}/v2/logs", params={"limit": 10}, timeout=TIMEOUT).json()["items"]
-    assert any(l["request_id"] == body["request_id"] for l in logs), "chat 日志必须落库"
+    logs = read_session.get(
+        f"{BASE_URL}/v2/logs",
+        params={"request_id": body["request_id"], "limit": 2},
+        timeout=TIMEOUT,
+    ).json()["items"]
+    assert len(logs) == 1 and logs[0]["request_id"] == body["request_id"], "chat 日志必须精确落库"
+    assert logs[0]["answer_digest"] == body["answer_digest"]
+    assert logs[0]["provider_origin"] == body["provider_origin"]
 
     # 反馈闭环
     fb = write_session.post(f"{BASE_URL}/feedback", json={

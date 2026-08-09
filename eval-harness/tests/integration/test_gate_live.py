@@ -135,6 +135,10 @@ def test_gate_live_baseline_candidate(live_settings, live_probe_set, _client, tm
         probe_set_digest=digest,
         regression_suite_digest=frozen_gate_suite_digest(EVAL_ROOT.parent),
         answers=answers,
+        provider_origins={
+            probe_id: result.provider_origin
+            for probe_id, result in zip(probe_ids, results, strict=True)
+        },
         athlete_model_digest=athlete_digest,
     )
 
@@ -192,6 +196,10 @@ def test_gate_live_faulted_candidate_blocked(live_settings, live_probe_set, _cli
         probe_set_digest=digest,
         regression_suite_digest=frozen_gate_suite_digest(EVAL_ROOT.parent),
         answers=answers,
+        provider_origins={
+            probe_id: result.provider_origin
+            for probe_id, result in zip(probe_ids, results, strict=True)
+        },
         athlete_model_digest=(target.get("content") or {}).get("model", {}).get("digest", ""),
     )
     runner = GateRunner(live_settings, live_probe_set, judge=None, frozen_probe_set_digest=digest)

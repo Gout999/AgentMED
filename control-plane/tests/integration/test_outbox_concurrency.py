@@ -9,6 +9,7 @@ from app.config import Settings
 from app.models.tables import Outbox, OutboxDeliveryReceipt, TrustLedger, TrustLedgerEntry
 from app.services.event_store import EventStore
 from app.services.outbox_relay import OutboxDispatcher
+from app.services.trust_service import TrustService
 from app.services.trust_service import ACTION_TYPE, RISK_CLASS
 
 pytestmark = pytest.mark.integration
@@ -45,8 +46,17 @@ def test_concurrent_dispatchers_claim_once_and_count_each_release_once(pg_engine
                 new_state="COMPLETED",
             )
 
+    class TrustOnlyConsumer:
+        def consume(self, session, row):
+            return TrustService(session, settings).consume_release_event(row.payload or {})
+
     def run(worker_id: str):
-        return OutboxDispatcher(factory, settings, worker_id=worker_id).dispatch_batch(limit=20)
+        return OutboxDispatcher(
+            factory,
+            settings,
+            worker_id=worker_id,
+            domain_consumer=TrustOnlyConsumer(),
+        ).dispatch_batch(limit=20)
 
     with ThreadPoolExecutor(max_workers=2) as pool:
         results = list(pool.map(run, ("worker:a", "worker:b")))

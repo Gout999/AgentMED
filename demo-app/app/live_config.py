@@ -7,6 +7,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import hashlib
 from typing import Optional
 
 from sqlalchemy import select
@@ -21,7 +22,6 @@ DEFAULT_MODEL = "step-3.7-flash"
 DEFAULT_PARAMS = {"temperature": 0.0, "max_tokens": 1024}
 
 # B1/B4 注入的 prompt 版本（与 prompts/versions.json 对齐）
-B1_PROMPT_VERSION = "v1.4.3"
 B4_PROMPT_VERSION = "v1.4.4"
 PROMPT_ID = "prompts/system.md"
 
@@ -65,11 +65,58 @@ class VersionSetConfigError(Exception):
 
 
 def get_active_versionset(db: Session) -> Optional[VersionSet]:
-    return db.execute(
+    rows = list(db.execute(
         select(VersionSet)
         .where(VersionSet.status == "active")
         .order_by(VersionSet.updated_at.desc(), VersionSet.created_at.desc())
-    ).scalars().first()
+    ).scalars())
+    if len(rows) > 1:
+        raise VersionSetConfigError(
+            "ambiguous_active_versionset",
+            "more than one active VersionSet exists; serving is disabled",
+        )
+    return rows[0] if rows else None
+
+
+def canary_bucket(routing_key: str) -> int:
+    """Return a stable 0..99 bucket without process-local hash randomization."""
+
+    return int.from_bytes(hashlib.sha256(routing_key.encode("utf-8")).digest()[:8], "big") % 100
+
+
+def select_routed_versionset(db: Session, routing_key: str | None) -> VersionSet:
+    """Resolve one authoritative serving VersionSet.
+
+    A request without a stable routing key stays on the active baseline.  When
+    one candidate is in ``canary``, an exact SHA-256 bucket receives the
+    configured percentage.  Ambiguous or malformed serving state fails closed.
+    """
+
+    active = get_active_versionset(db)
+    if active is None:
+        raise VersionSetConfigError("active_versionset_missing", "no active VersionSet exists")
+    candidates = list(
+        db.execute(
+            select(VersionSet)
+            .where(VersionSet.status == "canary")
+            .order_by(VersionSet.updated_at.desc(), VersionSet.created_at.desc())
+        ).scalars()
+    )
+    if len(candidates) > 1:
+        raise VersionSetConfigError(
+            "ambiguous_canary_versionset",
+            "more than one canary VersionSet exists; serving is disabled",
+        )
+    if not candidates or routing_key is None:
+        return active
+    candidate = candidates[0]
+    percent = candidate.canary_percent
+    if not isinstance(percent, int) or isinstance(percent, bool) or not 1 <= percent <= 100:
+        raise VersionSetConfigError(
+            "invalid_canary_percent",
+            "canary VersionSet has an invalid traffic percentage",
+        )
+    return candidate if canary_bucket(routing_key) < percent else active
 
 
 def _load_faults(db: Session) -> dict[str, FaultState]:
@@ -77,23 +124,20 @@ def _load_faults(db: Session) -> dict[str, FaultState]:
     return {f.fault_id: f for f in rows}
 
 
-def resolve_live_config(db: Session) -> LiveConfig:
+def resolve_live_config(db: Session, *, routing_key: str | None = None) -> LiveConfig:
     from app import prompts_registry
 
     settings = get_settings()
-    active = get_active_versionset(db)
+    active = select_routed_versionset(db, routing_key)
     faults = _load_faults(db)
-    base_content = active.content if active else None
+    base_content = active.content
     base_prompt = (base_content or {}).get("prompt", {})
     base_model = (base_content or {}).get("model", {})
 
-    versionset_id = active.versionset_id if active else ""
+    versionset_id = active.versionset_id
 
     # ---- prompt ----
-    if "B1" in faults:
-        content, digest = prompts_registry.resolve_prompt(db, PROMPT_ID, B1_PROMPT_VERSION)
-        live_prompt = LivePrompt(prompt_id=PROMPT_ID, version=B1_PROMPT_VERSION, content=content, digest=digest)
-    elif "B4" in faults:
+    if "B4" in faults:
         content, digest = prompts_registry.resolve_prompt(db, PROMPT_ID, B4_PROMPT_VERSION)
         live_prompt = LivePrompt(prompt_id=PROMPT_ID, version=B4_PROMPT_VERSION, content=content, digest=digest)
     else:

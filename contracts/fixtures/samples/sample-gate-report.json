@@ -1,5 +1,6 @@
 {
   "schema_version": "0.1.0",
+  "policy_profile": "live",
   "report_id": "gate_01JB1DEMO0001GATE00001",
   "eval_id": "eval_01JB1DEMO0001EVAL00001",
   "subject": {

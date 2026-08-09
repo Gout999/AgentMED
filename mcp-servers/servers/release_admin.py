@@ -20,19 +20,23 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from common.audit import AuditService  # noqa: E402
 from common.config import Settings, get_settings  # noqa: E402
 from common.db import get_engine, session_scope  # noqa: E402
-from common.errors import GATE_FAILED, McpError, dependency_unavailable, not_found, validation  # noqa: E402
+from common.errors import GATE_FAILED, McpError, dependency_unavailable, forbidden, not_found, validation  # noqa: E402
 from common.http import HttpClient  # noqa: E402
 from common.ids import new_approval_id, new_nonce, new_workorder_id  # noqa: E402
-from common.jcs import jcs_subset, sha256_hex, workorder_hash  # noqa: E402
-from common.serverkit import build_server_app  # noqa: E402
+from common.jcs import jcs_subset, params_digest, sha256_hex, workorder_hash  # noqa: E402
+from common.serverkit import (  # noqa: E402
+    ToolDefinitionRegistry,
+    build_server_app,
+    build_tool_projection,
+    validate_projection_runtime,
+)
 from common.tables import ApprovalRequest, EvalRun, WorkOrderDraft  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-mcp = FastMCP("mcp-release-admin")
+mcp = ToolDefinitionRegistry("mcp-release-admin")
 
 _LAYER_TO_CHANNEL = {"prompt": "prompt", "kb": "kb", "model": "model_params", "model_params": "model_params"}
-
 
 def _settings() -> Settings:
     return get_settings()
@@ -40,10 +44,129 @@ def _settings() -> Settings:
 
 def _cp() -> HttpClient:
     s = _settings()
-    return HttpClient(s.control_plane_base_url, token=s.control_plane_token)
+    return HttpClient(s.control_plane_base_url, token=s.control_plane_role_token)
 
 
-# ---------- WorkOrder 登记 ----------
+def _qa() -> HttpClient:
+    """Quality read surface only; candidate lifecycle writes stay in Release Controller."""
+
+    s = _settings()
+    return HttpClient(s.quality_api_base_url, token=s.quality_read_token)
+
+
+def _bound_worker_id(supplied: Optional[str] = None) -> str:
+    canonical = _settings().mcp_worker_id
+    if not canonical:
+        raise forbidden("MCP process has no canonical worker identity")
+    if supplied is not None and supplied != canonical:
+        raise forbidden("caller-supplied identity does not match authenticated MCP projection")
+    return canonical
+
+
+# ---------- authoritative VersionSet context (read-only) ----------
+
+
+@mcp.tool(name="versionset.list")
+def versionset_list(status: str | None = None, limit: int = 50) -> dict[str, Any]:
+    """List VersionSets so repair proposals can bind the active base exactly."""
+
+    params: dict[str, Any] = {"limit": min(max(int(limit), 1), 200)}
+    if status:
+        params["status"] = status
+    try:
+        return _qa().get("/v2/versionsets", params=params)
+    except McpError as exc:
+        raise exc
+    except Exception as exc:  # noqa: BLE001
+        raise dependency_unavailable(f"Quality VersionSet list unavailable: {exc}") from exc
+
+
+@mcp.tool(name="versionset.get")
+def versionset_get(versionset_id: str) -> dict[str, Any]:
+    """Read the exact base component content/digest/revision without write authority."""
+
+    if not isinstance(versionset_id, str) or not versionset_id.strip():
+        raise validation("versionset_id must be non-empty")
+    try:
+        return _qa().get(f"/v2/versionsets/{versionset_id}")
+    except McpError as exc:
+        raise exc
+    except Exception as exc:  # noqa: BLE001
+        raise dependency_unavailable(f"Quality VersionSet unavailable: {exc}") from exc
+
+
+# ---------- Candidate proposal / WorkOrder 登记 ----------
+
+
+@mcp.tool(name="candidate.create")
+def candidate_create(
+    case_id: str,
+    worker_id: str,
+    fencing_token: int,
+    channel: str,
+    attribution_report_digest: str,
+    base_versionset_id: str,
+    base_versionset_digest: str,
+    base_revision: int,
+    target_prompt_digest: str,
+    content: dict[str, Any],
+    idempotency_key: str,
+) -> dict[str, Any]:
+    """Submit a single-variable repair proposal to Release Controller.
+
+    This MCP has no Quality write credential.  It computes the immutable
+    proposal digest and calls the controller, which alone may create a draft
+    VersionSet after checking the authoritative attribution and active base.
+    """
+
+    if channel != "prompt":
+        raise validation("Phase 1 candidate.create currently supports the attributed prompt channel only")
+    if not isinstance(base_revision, int) or isinstance(base_revision, bool) or base_revision <= 0:
+        raise validation("base_revision must be a positive integer")
+    worker_id = _bound_worker_id(worker_id)
+    if not isinstance(fencing_token, int) or isinstance(fencing_token, bool) or fencing_token <= 0:
+        raise validation("fencing_token must be a positive integer")
+    if not isinstance(idempotency_key, str) or len(idempotency_key) < 8:
+        raise validation("idempotency_key must contain at least 8 characters")
+    proposal = {
+        "case_id": case_id,
+        "channel": channel,
+        "attribution_report_digest": attribution_report_digest,
+        "base_versionset_id": base_versionset_id,
+        "base_versionset_digest": base_versionset_digest,
+        "base_revision": base_revision,
+        "target_prompt_digest": target_prompt_digest,
+        "content": content,
+    }
+    proposal_digest = params_digest(proposal)
+    with session_scope() as session:
+        AuditService(session).record(
+            actor="repairer",
+            action="candidate.proposal.submit",
+            target=case_id,
+            params={
+                "proposal_digest": proposal_digest,
+                "base_versionset_id": base_versionset_id,
+                "base_revision": base_revision,
+                "idempotency_key": idempotency_key,
+            },
+            result="pending",
+        )
+    try:
+        return _cp().post(
+            "/v1/release-candidates",
+            json_body={
+                **proposal,
+                "worker_id": worker_id,
+                "fencing_token": fencing_token,
+                "proposal_digest": proposal_digest,
+                "idempotency_key": idempotency_key,
+            },
+        )
+    except McpError as exc:
+        raise exc
+    except Exception as exc:  # noqa: BLE001
+        raise dependency_unavailable(f"release candidate controller unreachable: {exc}") from exc
 
 
 @mcp.tool(name="workorder.draft")
@@ -61,6 +184,7 @@ def workorder_draft(
 ) -> dict[str, Any]:
     """起草 WorkOrder（ACL：修复师）。target={app,layer}，layer∈prompt|kb|model；
     单变量纪律：一份工单只允许改动一个通道。返回 {workorder_id, status:DRAFT}。"""
+    created_by = _bound_worker_id(created_by)
     layer = (target or {}).get("layer", "")
     channel = _LAYER_TO_CHANNEL.get(layer)
     if channel is None:
@@ -121,6 +245,7 @@ def gate_submit(
 ) -> dict[str, Any]:
     """提交门禁报告（ACL：守门员）。从 eval-runner 读取报告，overall_status 必须 passed，
     否则 GATE_FAILED（WorkOrder 不得进入审批）。"""
+    gatekeeper = _bound_worker_id(gatekeeper)
     if len(report_hash) != 64 or any(c not in "0123456789abcdef" for c in report_hash.lower()):
         raise validation("report_hash must be 64 lowercase hex")
     with session_scope() as session:
@@ -184,11 +309,18 @@ def gate_submit(
 
 
 @mcp.tool(name="workorder.freeze")
-def workorder_freeze(workorder_id: str, fencing_token: Optional[int] = None) -> dict[str, Any]:
+def workorder_freeze(workorder_id: str, fencing_token: int) -> dict[str, Any]:
     """定稿 WorkOrder（ACL：修复师，写操作须带 fencing_token 透传）。前置：gate.submit 已过。
     计算 hash 后登记到控制面（POST /v1/workorders），FROZEN 后任何字段不可改。"""
+    if not isinstance(fencing_token, int) or isinstance(fencing_token, bool) or fencing_token <= 0:
+        raise validation("fencing_token must be a positive integer")
+
     with session_scope() as session:
-        draft = session.get(WorkOrderDraft, workorder_id)
+        draft = session.scalar(
+            select(WorkOrderDraft)
+            .where(WorkOrderDraft.workorder_id == workorder_id)
+            .with_for_update()
+        )
         if draft is None:
             raise not_found(f"workorder {workorder_id} not found")
         if draft.status == "FROZEN":
@@ -198,29 +330,94 @@ def workorder_freeze(workorder_id: str, fencing_token: Optional[int] = None) -> 
                 "status": "FROZEN",
                 "duplicate": True,
             }
-        if draft.status != "DRAFT":
+        if draft.status == "DRAFT":
+            if not draft.gate_report_ref or not draft.gate_report_digest:
+                raise McpError(GATE_FAILED, "gate report must be attached before freeze")
+            payload = _build_workorder_payload(draft, session)
+            # hash 绑定全部字段（含 hash_rule，不含 hash 自身；control-plane 同口径）
+            payload["hash_rule"] = "jcs-rfc8785+sha256"
+            payload["hash"] = workorder_hash(payload)
+            # Commit an immutable local intent before crossing the network.
+            # A lost response must retry this exact nonce/timestamps/hash, never
+            # manufacture another WorkOrder under the same id.
+            draft.status = "FREEZE_PENDING"
+            draft.frozen_payload = payload
+            draft.hash = payload["hash"]
+            AuditService(session).record(
+                actor=draft.created_by,
+                action="workorder.freeze.intent",
+                target=workorder_id,
+                params={
+                    "hash": payload["hash"],
+                    "workorder_hash": payload["hash"],
+                    "fencing_token": fencing_token,
+                },
+                result="pending",
+            )
+        elif draft.status == "FREEZE_PENDING":
+            payload = dict(draft.frozen_payload or {})
+            if (
+                not payload
+                or draft.hash != payload.get("hash")
+                or workorder_hash(payload) != draft.hash
+            ):
+                raise validation("persisted WorkOrder freeze intent failed integrity validation")
+        else:
             raise validation(f"workorder state {draft.status} cannot be frozen")
-        if not draft.gate_report_ref or not draft.gate_report_digest:
-            raise McpError(GATE_FAILED, "gate report must be attached before freeze")
+        case_id = draft.case_id
+        worker_id = draft.created_by
 
-        payload = _build_workorder_payload(draft, session)
-        # hash 绑定全部字段（含 hash_rule，不含 hash 自身；control-plane 同口径）
-        payload["hash_rule"] = "jcs-rfc8785+sha256"
-        payload["hash"] = workorder_hash(payload)
-
-    # 登记到控制面（权威 WorkOrder 留档 + changeset 创建）
+    # 登记到控制面（权威 WorkOrder 留档 + changeset 创建）。控制面会在同一
+    # transaction 内锁定 Case lease、验证 owner/token，再写入 WorkOrder。
     try:
-        reg = _cp().post("/v1/workorders", json_body=payload)
+        reg = _cp().post(
+            "/v1/workorders",
+            json_body={
+                "workorder": payload,
+                "worker_id": worker_id,
+                "fencing_token": fencing_token,
+            },
+        )
     except McpError as exc:
         raise exc
     except Exception as exc:  # noqa: BLE001
         raise dependency_unavailable(f"release controller unreachable: {exc}") from exc
 
+    # HTTP 2xx alone is not authority.  Freeze the local draft only after the
+    # controller echoes the exact immutable identity it persisted.  A missing,
+    # malformed, or lost receipt leaves the immutable FREEZE_PENDING intent for
+    # exact retry/reconciliation.
+    if (
+        not isinstance(reg, dict)
+        or reg.get("workorder_id") != workorder_id
+        or reg.get("hash") != payload["hash"]
+        or not isinstance(reg.get("duplicate"), bool)
+    ):
+        raise dependency_unavailable("release controller returned an invalid WorkOrder receipt")
+
     with session_scope() as session:
-        draft = session.get(WorkOrderDraft, workorder_id)
+        draft = session.scalar(
+            select(WorkOrderDraft)
+            .where(WorkOrderDraft.workorder_id == workorder_id)
+            .with_for_update()
+        )
+        if draft is None:
+            raise not_found(f"workorder {workorder_id} disappeared during freeze")
+        if (
+            draft.hash != payload["hash"]
+            or draft.frozen_payload != payload
+            or draft.status not in ("FREEZE_PENDING", "FROZEN")
+        ):
+            raise validation("WorkOrder freeze intent changed during controller registration")
+        if draft.status == "FROZEN":
+            return {
+                "workorder_id": workorder_id,
+                "hash": draft.hash,
+                "status": "FROZEN",
+                "duplicate": True,
+                "case_id": draft.case_id,
+            }
         draft.status = "FROZEN"
-        draft.frozen_payload = payload
-        draft.hash = payload["hash"]
         AuditService(session).record(
             actor=draft.created_by,
             action="workorder.freeze",
@@ -232,7 +429,7 @@ def workorder_freeze(workorder_id: str, fencing_token: Optional[int] = None) -> 
         "workorder_id": workorder_id,
         "hash": payload["hash"],
         "status": "FROZEN",
-        "registered": reg.get("duplicate", False),
+        "duplicate": reg["duplicate"],
         "case_id": payload["case_id"],
     }
 
@@ -508,11 +705,47 @@ def _gate_report_hash(report: dict[str, Any]) -> str:
     return sha256_hex(data)
 
 
+def _profiled_mcp(profile: str) -> FastMCP:
+    profiles = {
+        "repairer": {
+            "versionset.list": versionset_list,
+            "versionset.get": versionset_get,
+            "candidate.create": candidate_create,
+            "workorder.draft": workorder_draft,
+            "workorder.freeze": workorder_freeze,
+            "workorder.get": workorder_get,
+            "release.get": release_get,
+        },
+        "gatekeeper": {
+            "workorder.get": workorder_get,
+            "gate.submit": gate_submit,
+            "approval.request": approval_request,
+            "approval.status": approval_status,
+            "release.get": release_get,
+        },
+    }
+    return build_tool_projection("mcp-release-admin", profile, profiles)
+
+
 def main() -> None:
     import uvicorn
 
     s = _settings()
-    uvicorn.run(build_server_app(mcp), host=s.host, port=s.release_admin_port, log_level=s.log_level.lower())
+    validate_projection_runtime(
+        s,
+        profile_workers={"repairer": "repairer", "gatekeeper": "gatekeeper"},
+        role_token_profiles=frozenset({"repairer", "gatekeeper"}),
+    )
+    uvicorn.run(
+        build_server_app(
+            _profiled_mcp(s.mcp_tool_profile),
+            expected_consumer=s.mcp_expected_consumer,
+            gateway_backend_token=s.mcp_gateway_backend_token,
+        ),
+        host=s.host,
+        port=s.release_admin_port,
+        log_level=s.log_level.lower(),
+    )
 
 
 if __name__ == "__main__":

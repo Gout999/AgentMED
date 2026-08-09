@@ -10,6 +10,7 @@ from tests.conftest import (
     make_approval,
     make_workorder,
     register_gate_for_workorder,
+    register_workorder_with_lease,
 )
 
 
@@ -29,7 +30,7 @@ def _prepared(session, seed: int):
         case_id="case_x",
     )
     report = register_gate_for_workorder(release, wo)
-    release.register_workorder(wo)
+    register_workorder_with_lease(release, wo)
     session.flush()
     return _svc(session), release, wo, report, f"cs_{wo['workorder_id']}"
 

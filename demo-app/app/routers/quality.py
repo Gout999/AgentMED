@@ -442,6 +442,7 @@ def get_logs_ep(
     from_dt: Optional[str] = Query(default=None, alias="from"),
     to: Optional[str] = Query(default=None),
     versionset_id: Optional[str] = None,
+    request_id: Optional[str] = None,
     limit: int = 100,
     cursor: Optional[str] = None,
 ):
@@ -451,6 +452,7 @@ def get_logs_ep(
         from_dt=_parse_dt(from_dt),
         to_dt=_parse_dt(to),
         versionset_id=versionset_id,
+        request_id=request_id,
         limit=limit,
         cursor=cursor,
     )

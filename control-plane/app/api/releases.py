@@ -13,6 +13,7 @@ from app.api.deps import (
     get_quality_client,
     require_approval_authority,
     require_internal_write,
+    require_principal_worker,
 )
 from app.config import Settings
 from app.quality.client import QualityClientProtocol
@@ -22,9 +23,12 @@ from app.services.release_service import ReleaseService, ReleaseServiceError
 router = APIRouter(tags=["releases"])
 
 
-class WorkOrderIn(BaseModel):
-    # 接受完整 WorkOrder JSON
-    model_config = {"extra": "allow"}
+class WorkOrderRegistrationIn(BaseModel):
+    """Externally submitted WorkOrder plus its authoritative Case lease."""
+
+    workorder: dict[str, Any]
+    worker_id: str = Field(..., min_length=1, max_length=255)
+    fencing_token: int = Field(..., gt=0)
 
 
 class ApprovalIn(BaseModel):
@@ -36,6 +40,39 @@ class StartReleaseIn(BaseModel):
     approval_id: str
     versionset_id: str
     release_id: Optional[str] = None
+
+
+class CandidateIn(BaseModel):
+    case_id: str
+    worker_id: str = Field(..., min_length=1, max_length=255)
+    fencing_token: int = Field(..., gt=0)
+    channel: str
+    attribution_report_digest: str
+    base_versionset_id: str
+    base_versionset_digest: str
+    base_revision: int
+    target_prompt_digest: str
+    content: dict[str, Any]
+    proposal_digest: str
+    idempotency_key: str = Field(..., min_length=8, max_length=128)
+
+
+class DemoFaultInjectionIn(BaseModel):
+    expected_active_versionset_id: str = Field(..., min_length=1, max_length=128)
+    fault_versionset_id: str = Field(..., min_length=1, max_length=128)
+    idempotency_key: str = Field(..., min_length=8, max_length=128)
+
+
+class DemoFaultRecoveryIn(BaseModel):
+    expected_active_fault_versionset_id: str = Field(..., min_length=1, max_length=128)
+    restore_versionset_id: str = Field(..., min_length=1, max_length=128)
+    quarantine_versionset_id: Optional[str] = Field(default=None, min_length=1, max_length=128)
+    idempotency_key: str = Field(..., min_length=8, max_length=128)
+
+
+class ApprovalContextIn(BaseModel):
+    action: str
+    reason: str = ""
 
 
 class StepIn(BaseModel):
@@ -53,6 +90,13 @@ class VerificationIn(BaseModel):
     report_hash: str = Field(..., pattern=r"^[0-9a-f]{64}$")
 
 
+class ClosureContextIn(BaseModel):
+    channel: str
+    thread_ref: str
+    body_ref: str
+    body_digest: str = Field(..., pattern=r"^sha256:[0-9a-f]{64}$")
+
+
 def _raise(exc: ReleaseServiceError) -> None:
     status = {
         "not_found": 404,
@@ -66,12 +110,31 @@ def _raise(exc: ReleaseServiceError) -> None:
         "approval_expired": 422,
         "illegal_transition": 422,
         "revision_conflict": 409,
+        "lease_lost": 409,
         "quality_api_error": 502,
     }.get(exc.code, 400)
     raise HTTPException(
         status_code=status,
         detail={"code": exc.code, "message": exc.message, **exc.extra},
     )
+
+
+@router.post("/v1/release-candidates")
+def create_release_candidate(
+    body: CandidateIn,
+    _actor: str = Depends(require_internal_write),
+    session: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_app_settings),
+    quality: QualityClientProtocol = Depends(get_quality_client),
+) -> dict[str, Any]:
+    require_principal_worker(_actor, body.worker_id)
+    try:
+        return _svc(session, quality, settings).create_candidate(**body.model_dump())
+    except AuditWriteError as exc:
+        raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
+    except ReleaseServiceError as exc:
+        _raise(exc)
+    return {}
 
 
 def _svc(
@@ -82,16 +145,73 @@ def _svc(
     return ReleaseService(session, quality, settings)
 
 
-@router.post("/v1/workorders")
-def register_workorder(
-    body: dict[str, Any],
+@router.post("/v1/demo/faults/{fault_id}/inject")
+def inject_demo_fault(
+    fault_id: str,
+    body: DemoFaultInjectionIn,
     _actor: str = Depends(require_internal_write),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
     quality: QualityClientProtocol = Depends(get_quality_client),
 ) -> dict[str, Any]:
+    """Inject a disabled-by-default demo fault through controller authority."""
+
     try:
-        return _svc(session, quality, settings).register_workorder(body)
+        return _svc(session, quality, settings).inject_demo_fault(
+            fault_id=fault_id,
+            **body.model_dump(),
+        )
+    except AuditWriteError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "audit_unavailable", "message": str(exc)},
+        ) from exc
+    except ReleaseServiceError as exc:
+        _raise(exc)
+    return {}
+
+
+@router.post("/v1/demo/faults/{fault_id}/recover")
+def recover_demo_fault(
+    fault_id: str,
+    body: DemoFaultRecoveryIn,
+    _actor: str = Depends(require_internal_write),
+    session: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_app_settings),
+    quality: QualityClientProtocol = Depends(get_quality_client),
+) -> dict[str, Any]:
+    """Recover an incomplete B1 injection without exposing Quality write authority."""
+
+    try:
+        return _svc(session, quality, settings).recover_demo_fault(
+            fault_id=fault_id,
+            **body.model_dump(),
+        )
+    except AuditWriteError as exc:
+        raise HTTPException(
+            status_code=503,
+            detail={"code": "audit_unavailable", "message": str(exc)},
+        ) from exc
+    except ReleaseServiceError as exc:
+        _raise(exc)
+    return {}
+
+
+@router.post("/v1/workorders")
+def register_workorder(
+    body: WorkOrderRegistrationIn,
+    _actor: str = Depends(require_internal_write),
+    session: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_app_settings),
+    quality: QualityClientProtocol = Depends(get_quality_client),
+) -> dict[str, Any]:
+    require_principal_worker(_actor, body.worker_id)
+    try:
+        return _svc(session, quality, settings).register_workorder(
+            body.workorder,
+            worker_id=body.worker_id,
+            fencing_token=body.fencing_token,
+        )
     except AuditWriteError as exc:
         raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
     except ReleaseServiceError as exc:
@@ -111,6 +231,23 @@ def grant_approval(
         return _svc(session, quality, settings).grant_approval(body)
     except AuditWriteError as exc:
         raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
+    except ReleaseServiceError as exc:
+        _raise(exc)
+    return {}
+
+
+@router.get("/v1/approvals/{approval_id}")
+def get_approval(
+    approval_id: str,
+    _actor: str = Depends(require_internal_write),
+    session: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_app_settings),
+    quality: QualityClientProtocol = Depends(get_quality_client),
+) -> dict[str, Any]:
+    """Read the persisted grant after an independent approval adapter submits it."""
+
+    try:
+        return _svc(session, quality, settings).get_approval(approval_id)
     except ReleaseServiceError as exc:
         _raise(exc)
     return {}
@@ -163,6 +300,66 @@ def get_release(
 ) -> dict[str, Any]:
     try:
         return _svc(session, quality, settings).get_release(release_id)
+    except ReleaseServiceError as exc:
+        _raise(exc)
+    return {}
+
+
+@router.post("/v1/releases/{release_id}/approval-context")
+def get_release_approval_context(
+    release_id: str,
+    body: ApprovalContextIn,
+    _actor: str = Depends(require_internal_write),
+    session: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_app_settings),
+    quality: QualityClientProtocol = Depends(get_quality_client),
+) -> dict[str, Any]:
+    try:
+        return _svc(session, quality, settings).action_authorization_context(
+            release_id,
+            body.action,
+            reason=body.reason,
+        )
+    except AuditWriteError as exc:
+        raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
+    except ReleaseServiceError as exc:
+        _raise(exc)
+    return {}
+
+
+@router.get("/v1/releases/{release_id}/verification-context")
+def get_release_verification_context(
+    release_id: str,
+    _actor: str = Depends(require_internal_write),
+    session: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_app_settings),
+    quality: QualityClientProtocol = Depends(get_quality_client),
+) -> dict[str, Any]:
+    try:
+        return _svc(session, quality, settings).verification_context(release_id)
+    except AuditWriteError as exc:
+        raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
+    except ReleaseServiceError as exc:
+        _raise(exc)
+    return {}
+
+
+@router.post("/v1/releases/{release_id}/closure-context")
+def configure_release_closure(
+    release_id: str,
+    body: ClosureContextIn,
+    _actor: str = Depends(require_internal_write),
+    session: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_app_settings),
+    quality: QualityClientProtocol = Depends(get_quality_client),
+) -> dict[str, Any]:
+    try:
+        return _svc(session, quality, settings).configure_closure(
+            release_id,
+            **body.model_dump(),
+        )
+    except AuditWriteError as exc:
+        raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
     except ReleaseServiceError as exc:
         _raise(exc)
     return {}

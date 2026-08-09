@@ -46,6 +46,10 @@ def _candidate(probe_set, answers: dict | None = None, probe_samples: dict | Non
         probe_set_digest="sha256:" + "c" * 64,
         regression_suite_digest="sha256:" + "d" * 64,
         answers=answers,
+        provider_origins={
+            probe_id: "https://api.stepfun.com/step_plan/v1"
+            for probe_id in answers
+        },
         athlete_model_digest="sha256:" + "e" * 64,
     )
 
@@ -142,6 +146,40 @@ def test_gate_live_unavailable_blocks(settings, probe_set):
     assert avail and avail[0]["status"] == "skipped"
 
 
+@pytest.mark.parametrize(
+    "provider_origins",
+    [
+        {},
+        {"*": "http://127.0.0.1:9999/v1"},
+    ],
+)
+def test_gate_live_nonofficial_or_missing_provider_origin_blocks(
+    settings,
+    probe_set,
+    provider_origins,
+):
+    runner = GateRunner(settings, probe_set, judge=FakeJudge("sha256:" + "f" * 64))
+    candidate = _candidate(probe_set)
+    if provider_origins:
+        candidate.provider_origins = {
+            probe_id: provider_origins["*"] for probe_id in candidate.answers
+        }
+    else:
+        candidate.provider_origins = {}
+
+    report = _run(runner, candidate, live_available=True)
+
+    assert report["rule_track"]["status"] == "failed"
+    assert report["overall_status"] == "failed"
+    schema_check = next(
+        check
+        for check in report["rule_track"]["checks"]
+        if check["check_id"] == "rule-schema-compliance"
+    )
+    assert schema_check["status"] == "failed"
+    assert "provider origin" in schema_check["detail"] or "StepFun" in schema_check["detail"]
+
+
 def test_gate_live_e2e_failure_blocks(settings, probe_set):
     answers = {p.id: "48 小时内发货。" for p in probe_set.probes}  # 不含政策词 → live E2E 失败
     runner = GateRunner(settings, probe_set, judge=FakeJudge("sha256:" + "f" * 64))
@@ -214,6 +252,44 @@ def test_gate_replay_cannot_impersonate_live(settings, probe_set):
     report = _run(runner, candidate, live_available=True)
     assert report["live_provider_e2e"]["status"] == "error"
     assert report["overall_status"] == "error"
+
+
+def test_gate_isolated_replay_is_explicit_and_never_claims_live(settings, probe_set):
+    runner = GateRunner(settings, probe_set, judge=FakeJudge("sha256:" + "f" * 64))
+    candidate = _candidate(probe_set)
+    candidate.source = "replay"
+    report = _run(
+        runner,
+        candidate,
+        live_available=False,
+        policy_profile="isolated-replay",
+    )
+    assert report["overall_status"] == "passed"
+    assert report["rule_track"]["status"] == "passed"
+    assert report["live_provider_e2e"] == {
+        "status": "skipped",
+        "provider": "replay-not-live",
+        "suites": [
+            {
+                "suite": "live-provider-e2e",
+                "status": "skipped",
+                "n_passed": 0,
+                "n_failed": 0,
+            }
+        ],
+    }
+
+
+def test_gate_live_candidate_cannot_use_isolated_replay_profile(settings, probe_set):
+    runner = GateRunner(settings, probe_set, judge=FakeJudge("sha256:" + "f" * 64))
+    report = _run(
+        runner,
+        _candidate(probe_set),
+        live_available=False,
+        policy_profile="isolated-replay",
+    )
+    assert report["rule_track"]["status"] == "failed"
+    assert report["overall_status"] == "failed"
 
 
 def test_gate_judge_timeout_is_persistable_error(settings, probe_set):

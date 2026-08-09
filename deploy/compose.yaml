@@ -62,6 +62,17 @@ services:
       # Gate/WorkOrder/Approval/Release mutation boundary (read views remain Console-readable).
       CONTROL_PLANE_TOKEN: ${CONTROL_PLANE_TOKEN:?CONTROL_PLANE_TOKEN is required}
       APPROVAL_AUTHORITY_TOKEN: ${APPROVAL_AUTHORITY_TOKEN:?APPROVAL_AUTHORITY_TOKEN is required}
+      GATE_AUTHORITY_TOKEN: ${GATE_AUTHORITY_TOKEN:?GATE_AUTHORITY_TOKEN is required}
+      CONTROL_PLANE_ROLE_TOKENS_JSON: ${CONTROL_PLANE_ROLE_TOKENS_JSON:?CONTROL_PLANE_ROLE_TOKENS_JSON is required}
+      REQUIRE_MCP_ROLE_TOKENS: "true"
+      # Controlled B1 demo injection is disabled unless the live-demo operator
+      # opts in explicitly.  The control plane remains the only caller of the
+      # Quality write endpoint.
+      ALLOW_DEMO_FAULT_INJECTION: ${ALLOW_DEMO_FAULT_INJECTION:-false}
+      NOTIFICATION_ADAPTER: ${NOTIFICATION_ADAPTER:-disabled}
+      FEISHU_APP_ID: ${FEISHU_APP_ID:-}
+      FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
+      FEISHU_BASE_URL: ${FEISHU_BASE_URL:-https://open.feishu.cn}
     ports:
       - "18090:8090"   # 宿主 8090 被占用，映射到 18090
     depends_on:
@@ -89,6 +100,9 @@ services:
       OUTBOX_CLAIM_TTL_SECONDS: "30"
       OUTBOX_MAX_ATTEMPTS: "5"
       NOTIFICATION_ADAPTER: ${NOTIFICATION_ADAPTER:-disabled}
+      FEISHU_APP_ID: ${FEISHU_APP_ID:-}
+      FEISHU_APP_SECRET: ${FEISHU_APP_SECRET:-}
+      FEISHU_BASE_URL: ${FEISHU_BASE_URL:-https://open.feishu.cn}
     depends_on:
       control-plane:
         condition: service_healthy

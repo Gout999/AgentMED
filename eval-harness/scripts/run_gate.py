@@ -97,6 +97,10 @@ def main() -> int:
         probe_set_digest=digest,
         regression_suite_digest=frozen_gate_suite_digest(settings.repo_root),
         answers=answers,
+        provider_origins={
+            probe_id: result.provider_origin
+            for probe_id, result in zip(probe_ids, chat_results, strict=True)
+        },
         athlete_model_digest=athlete_digest,
         source="live",
     )
@@ -122,16 +126,14 @@ def main() -> int:
         ],
         artifact_name="replay-report.json",
     )
-    candidate_ref = write_json_artifact(
-        out / "candidate-answers.json",
-        {
-            "target_versionset_id": target["versionset_id"],
-            "target_revision": target["revision"],
-            "target_versionset_digest": target["digest"],
-            "dataset_id": probe_set.probe_set_id,
-            "dataset_version": probe_set.version,
-            "dataset_digest": digest,
-            "responses": [
+    candidate_payload = {
+        "target_versionset_id": target["versionset_id"],
+        "target_revision": target["revision"],
+        "target_versionset_digest": target["digest"],
+        "dataset_id": probe_set.probe_set_id,
+        "dataset_version": probe_set.version,
+        "dataset_digest": digest,
+        "responses": [
                 {
                     "probe_id": probe_id,
                     "request_id": result.request_id,
@@ -139,14 +141,16 @@ def main() -> int:
                     "prompt_digest": result.prompt_digest,
                     "kb_manifest_digest": result.kb_manifest_digest,
                     "model_digest": result.model_digest,
+                    "provider_origin": result.provider_origin,
                     "provider_status": result.status,
                     "trace_id": result.trace_id,
                     "answer": result.answer,
                 }
                 for probe_id, result in zip(probe_ids, chat_results, strict=True)
-            ],
-        },
-    )
+        ],
+        "judge_responses": [],
+    }
+    candidate_ref = write_json_artifact(out / "candidate-answers.json", candidate_payload)
     report = runner.run(
         candidate,
         contract_result=contract.result,
@@ -154,6 +158,15 @@ def main() -> int:
         artifact_refs=[contract.artifact_ref, replay.artifact_ref, candidate_ref],
         live_available=True,
     )
+    if judge is None or len(judge.evidence) != len(probe_set.probes):
+        print("!! 裁判轨没有为每条冻结探针留下 provider receipt", file=sys.stderr)
+        return 2
+    candidate_payload["judge_responses"] = judge.evidence
+    final_candidate_ref = write_json_artifact(out / "candidate-answers.json", candidate_payload)
+    report["artifact_refs"] = [
+        final_candidate_ref if ref.get("uri") == candidate_ref["uri"] else ref
+        for ref in report["artifact_refs"]
+    ]
 
     out.mkdir(parents=True, exist_ok=True)
     (out / "gate-report.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -164,6 +177,8 @@ def main() -> int:
                       "live": report["live_provider_e2e"]["status"]}, indent=2))
     errs = validate_report(report, "gate-report.schema.json")
     print("schema:", "OK" if not errs else errs)
+    if errs:
+        return 1
     return 0 if report["overall_status"] == "passed" else 1
 
 

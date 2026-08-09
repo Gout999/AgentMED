@@ -7,9 +7,10 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 
 import pytest
+from sqlalchemy.orm import sessionmaker
 
 from app.config import Settings
-from app.models.tables import Approval, GateReportRecord, WorkOrder
+from app.models.tables import Approval, GateReportRecord, ReleaseClosure, WorkOrder
 from app.quality.client import FakeQualityClient, QualityAPIError
 from app.services.audit import AuditWriteError
 from app.services.release_service import ReleaseService, ReleaseServiceError
@@ -22,6 +23,7 @@ from tests.conftest import (
     make_workorder,
     register_gate_for_workorder,
     register_release_verification,
+    register_workorder_with_lease,
 )
 
 
@@ -30,6 +32,7 @@ def _settings(**kw) -> Settings:
         operation_poll_timeout_seconds=0.05,
         reconcile_backoff_initial_seconds=0,
         reconcile_backoff_max_seconds=0,
+        canary_observation_seconds=0,
     )
     base.update(kw)
     return Settings(**base)
@@ -51,12 +54,26 @@ def _full_release(session, svc, quality, case_id, seed: int):
     nonce = f"00000000-0000-0000-0000-{seed:012d}"
     wo = make_workorder(workorder_id=f"wo_{seed:012d}", nonce=nonce, case_id=case_id)
     register_gate_for_workorder(svc, wo)
-    svc.register_workorder(wo)
+    register_workorder_with_lease(svc, wo)
     session.flush()
     ap = make_approval(wo, f"ap_{seed}")
     svc.grant_approval(ap)
     session.flush()
     rel = svc.start_release(workorder_id=wo["workorder_id"], approval_id=ap["approval_id"], versionset_id="vs_demo001fixedversionset01")
+    # Release-controller unit tests isolate Quality lifecycle semantics.  The
+    # durable closure row is a prerequisite fixture; end-to-end binding to the
+    # original complaint is covered by B1/outbox integration tests.
+    session.add(
+        ReleaseClosure(
+            release_id=rel["release_id"],
+            case_id=case_id,
+            channel="feishu-mock:test:",
+            thread_ref=f"thread:{seed}",
+            body_ref=f"file:///tmp/caseloop-release-{seed}.txt",
+            body_digest="sha256:" + "d" * 64,
+            status="configured",
+        )
+    )
     session.flush()
     return rel["release_id"], wo, ap["approval_id"]
 
@@ -155,9 +172,9 @@ def test_register_workorder_valid_and_duplicate(sqlite_session):
     svc, _ = _svc(sqlite_session)
     wo = make_workorder(workorder_id="wo_abcdefg1", nonce="00000000-0000-0000-0000-000000000001", case_id="case_x")
     register_gate_for_workorder(svc, wo)
-    r = svc.register_workorder(wo)
+    r = register_workorder_with_lease(svc, wo)
     assert r["duplicate"] is False
-    r2 = svc.register_workorder(wo)
+    r2 = register_workorder_with_lease(svc, wo)
     assert r2["duplicate"] is True
 
 
@@ -174,7 +191,7 @@ def test_grant_approval_nonce_binding(sqlite_session):
     svc, _ = _svc(sqlite_session)
     wo = make_workorder(workorder_id="wo_abcdefg3", nonce="00000000-0000-0000-0000-000000000003", case_id="case_x")
     register_gate_for_workorder(svc, wo)
-    svc.register_workorder(wo)
+    register_workorder_with_lease(svc, wo)
     sqlite_session.flush()
     ap = make_approval(wo, "ap_abcdefg3")
     # 篡改 workorder_hash → 拒绝
@@ -188,7 +205,7 @@ def test_grant_approval_nonce_replay(sqlite_session):
     svc, _ = _svc(sqlite_session)
     wo = make_workorder(workorder_id="wo_abcdefg4", nonce="00000000-0000-0000-0000-000000000004", case_id="case_x")
     register_gate_for_workorder(svc, wo)
-    svc.register_workorder(wo)
+    register_workorder_with_lease(svc, wo)
     sqlite_session.flush()
     ap = make_approval(wo, "ap_abcdefg4a")
     svc.grant_approval(ap)
@@ -209,7 +226,7 @@ def test_approval_expiry_cannot_outlive_workorder(sqlite_session):
     )
     wo["expiry"] = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
     register_gate_for_workorder(svc, wo)
-    svc.register_workorder(wo)
+    register_workorder_with_lease(svc, wo)
     approval = make_approval(wo, "ap_expirybind1")
     approval["expiry"] = (datetime.now(timezone.utc) + timedelta(minutes=20)).isoformat()
 
@@ -229,7 +246,7 @@ def test_start_rejects_expired_workorder_even_if_grant_was_valid(sqlite_session,
     )
     wo["expiry"] = (now + timedelta(minutes=10)).isoformat()
     register_gate_for_workorder(svc, wo)
-    svc.register_workorder(wo)
+    register_workorder_with_lease(svc, wo)
     approval = make_approval(wo, "ap_expiredstart1")
     svc.grant_approval(approval)
 
@@ -254,7 +271,7 @@ def test_start_release_nonce_consumed_and_replay(sqlite_session):
     case_id = "case_x"
     wo = make_workorder(workorder_id="wo_abcdefg5", nonce="00000000-0000-0000-0000-000000000005", case_id=case_id)
     register_gate_for_workorder(svc, wo)
-    svc.register_workorder(wo)
+    register_workorder_with_lease(svc, wo)
     sqlite_session.flush()
     ap = make_approval(wo, "ap_abcdefg5")
     svc.grant_approval(ap)
@@ -300,6 +317,152 @@ def test_promote_full_path(sqlite_session):
     assert vs["status"] == "active"
 
 
+def test_exact_promote_retry_survives_closure_dispatch_after_lost_response(sqlite_session):
+    svc, quality = _svc(sqlite_session)
+    release_id, workorder, _ = _full_release(
+        sqlite_session, svc, quality, "case_promote_retry", 103
+    )
+    svc.stage(release_id, idempotency_key="idem-promote-retry-stage")
+    sqlite_session.flush()
+    _canary(
+        sqlite_session,
+        svc,
+        workorder,
+        release_id,
+        "idem-promote-retry-canary",
+    )
+    sqlite_session.flush()
+    verification = register_release_verification(
+        svc,
+        workorder,
+        quality.get_versionset("vs_demo001fixedversionset01"),
+        overall_status="passed",
+        eval_id="eval_promoteretry103",
+    )
+    svc.record_verification(
+        release_id,
+        eval_id=verification["eval_id"],
+        report_hash=canonical_json_digest(verification, prefix=False),
+    )
+    first = _promote(
+        sqlite_session, svc, workorder, release_id, "idem-promote-retry-final"
+    )
+    closure = sqlite_session.get(ReleaseClosure, release_id)
+    assert closure is not None
+    closure.status = "queued"  # RELEASE_PROMOTED has advanced the continuation.
+    sqlite_session.flush()
+
+    retried = _promote(
+        sqlite_session, svc, workorder, release_id, "idem-promote-retry-final"
+    )
+
+    assert retried["duplicate"] is True
+    assert retried["operation_id"] == first["operation_id"]
+    assert retried["status"] == "succeeded"
+    assert quality.call_log.count("promote") == 1
+
+
+def test_quality_write_sees_committed_intent_and_consumed_grant(
+    sqlite_session, sqlite_engine, monkeypatch
+):
+    """The remote write boundary must be preceded by a durable operation anchor.
+
+    Use an independent ORM session inside the fake Quality call.  Seeing both
+    the pending ControllerOperation and consumed action grant there proves the
+    controller committed its authorization intent before crossing the network
+    boundary, rather than merely flushing it in the caller's transaction.
+    """
+
+    svc, quality = _svc(sqlite_session)
+    release_id, workorder, _ = _full_release(
+        sqlite_session,
+        svc,
+        quality,
+        "case_durable_intent",
+        102,
+    )
+    svc.stage(release_id, idempotency_key="idem-durable-intent-stage")
+    approval_id = _action_approval(
+        sqlite_session,
+        svc,
+        workorder,
+        release_id,
+        "canary",
+        "idem-durable-intent-canary",
+    )
+    original_canary = quality.canary
+    observed: dict[str, object] = {}
+
+    def observe_committed_intent(*args, **kwargs):
+        observer_factory = sessionmaker(
+            bind=sqlite_engine,
+            autoflush=False,
+            autocommit=False,
+        )
+        with observer_factory() as observer:
+            operation = (
+                observer.query(release_service_module.ControllerOperation)
+                .filter_by(idempotency_key="idem-durable-intent-canary")
+                .one()
+            )
+            grant = observer.get(Approval, approval_id)
+            observed.update(
+                operation_status=operation.status,
+                operation_approval_id=operation.approval_id,
+                grant_status=grant.status if grant is not None else None,
+                grant_consumed_operation_id=(grant.payload or {}).get(
+                    "consumed_operation_id"
+                )
+                if grant is not None
+                else None,
+            )
+        return original_canary(*args, **kwargs)
+
+    monkeypatch.setattr(quality, "canary", observe_committed_intent)
+    result = svc.canary(
+        release_id,
+        idempotency_key="idem-durable-intent-canary",
+        approval_id=approval_id,
+    )
+
+    assert result["state"] == "CANARYING"
+    assert observed["operation_status"] == "pending"
+    assert observed["operation_approval_id"] == approval_id
+    assert observed["grant_status"] == "consumed"
+    assert observed["grant_consumed_operation_id"] == result["operation_id"]
+
+
+def test_post_canary_gate_is_rejected_until_observation_window_completes(sqlite_session):
+    svc, q = _svc(
+        sqlite_session,
+        settings=_settings(canary_observation_seconds=60),
+    )
+    rid, wo, _ = _full_release(sqlite_session, svc, q, "case_observation", 101)
+    svc.stage(rid, idempotency_key="idem-observation-stage")
+    _canary(sqlite_session, svc, wo, rid, "idem-observation-canary")
+    context = svc.verification_context(rid)
+    assert context["canary_observation"]["complete"] is False
+    assert context["canary_observation"]["required_seconds"] == 60
+    verification = register_release_verification(
+        svc,
+        wo,
+        q.get_versionset("vs_demo001fixedversionset01"),
+        overall_status="passed",
+        eval_id="eval_observation101",
+    )
+
+    with pytest.raises(ReleaseServiceError) as exc:
+        svc.record_verification(
+            rid,
+            eval_id=verification["eval_id"],
+            report_hash=canonical_json_digest(verification, prefix=False),
+        )
+
+    assert exc.value.code == "illegal_transition"
+    assert "observation window" in exc.value.message
+    assert svc.get_release(rid)["state"] == "CANARYING"
+
+
 def test_rollback_full_path(sqlite_session):
     svc, q = _svc(sqlite_session)
     case_id = "case_x"
@@ -326,6 +489,58 @@ def test_rollback_full_path(sqlite_session):
     sqlite_session.flush()
     vs = q.get_versionset("vs_demo001fixedversionset01")
     assert vs["status"] == "rolled_back"
+
+
+def test_post_canary_error_blocks_promote_and_allows_only_approved_rollback(sqlite_session):
+    svc, quality = _svc(sqlite_session)
+    release_id, workorder, _ = _full_release(
+        sqlite_session, svc, quality, "case_error_compensation", 106
+    )
+    svc.stage(release_id, idempotency_key="idem-error-stage")
+    _canary(
+        sqlite_session,
+        svc,
+        workorder,
+        release_id,
+        "idem-error-canary",
+    )
+    verification = register_release_verification(
+        svc,
+        workorder,
+        quality.get_versionset("vs_demo001fixedversionset01"),
+        overall_status="error",
+        eval_id="eval_errorcompensation106",
+    )
+    recorded = svc.record_verification(
+        release_id,
+        eval_id=verification["eval_id"],
+        report_hash=canonical_json_digest(verification, prefix=False),
+    )
+    assert recorded["state"] == "VERIFYING"
+    assert recorded["verification"] == "error"
+
+    calls_before = list(quality.call_log)
+    with pytest.raises(ReleaseServiceError) as exc:
+        svc.promote(release_id, idempotency_key="idem-error-promote")
+    assert exc.value.code == "illegal_transition"
+    assert quality.call_log == calls_before
+
+    rolled_back = _rollback(
+        sqlite_session,
+        svc,
+        workorder,
+        release_id,
+        "idem-error-rollback",
+        reason="post-canary evaluator error",
+    )
+    assert rolled_back["state"] == "ROLLED_BACK"
+    assert quality.get_versionset("vs_demo001fixedversionset01")["status"] == "rolled_back"
+    rollback_started = next(
+        event
+        for event in svc.store.list_events(release_id)
+        if event.event_type == "release.rollback_started"
+    )
+    assert rollback_started.payload["reason"] == "post-canary evaluator error"
 
 
 def test_promote_without_verification_fails_before_quality_write(sqlite_session):
@@ -840,7 +1055,12 @@ def test_reconcile_loop_converges(sqlite_session):
 def test_audit_failure_blocks_release_write(sqlite_session):
     settings = _settings(audit_force_fail=True)
     q = FakeQualityClient()
-    q.seed_versionset("vs_demo001fixedversionset01", status="draft", revision=1)
+    q.seed_versionset(
+        "vs_demo001fixedversionset01",
+        status="draft",
+        revision=1,
+        digest="sha256:" + "b" * 64,
+    )
     svc = ReleaseService(sqlite_session, q, settings)
     wo = make_workorder(workorder_id="wo_abcdefg6", nonce="00000000-0000-0000-0000-000000000006", case_id="case_x")
     # Seed the gate under a healthy audit service, then exercise WorkOrder audit failure.
@@ -848,7 +1068,7 @@ def test_audit_failure_blocks_release_write(sqlite_session):
     register_gate_for_workorder(healthy, wo)
     sqlite_session.flush()
     with pytest.raises(AuditWriteError):
-        svc.register_workorder(wo)
+        register_workorder_with_lease(svc, wo)
     # 审计失败 → 业务拒绝（同事务回滚后 WorkOrder 不落库）
     sqlite_session.rollback()
     assert sqlite_session.get(WorkOrder, wo["workorder_id"]) is None
@@ -946,7 +1166,7 @@ def test_stage_rechecks_expiry_after_release_start(sqlite_session, monkeypatch):
     )
     wo["expiry"] = (now + timedelta(minutes=10)).isoformat()
     register_gate_for_workorder(svc, wo)
-    svc.register_workorder(wo)
+    register_workorder_with_lease(svc, wo)
     approval = make_approval(wo, "ap_expire_after_start")
     svc.grant_approval(approval)
     release = svc.start_release(

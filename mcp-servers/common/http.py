@@ -35,6 +35,9 @@ _CP_CODE_MAP = {
     "quality_api_error": "DEPENDENCY_UNAVAILABLE",
     "audit_unavailable": "DEPENDENCY_UNAVAILABLE",
     "gate_not_passed": "GATE_FAILED",
+    "forbidden": "FORBIDDEN",
+    "auth_misconfigured": "DEPENDENCY_UNAVAILABLE",
+    "auth_not_configured": "DEPENDENCY_UNAVAILABLE",
 }
 
 
@@ -127,11 +130,19 @@ class HttpClient:
             body = json.loads(body_text)
         except Exception:  # noqa: BLE001
             body = {}
-        code = str((body.get("error") or body).get("code") or body.get("code") or "")
-        message = str((body.get("error") or body).get("message") or body.get("message") or f"HTTP {status}")
+        envelope = next(
+            (
+                value
+                for value in (body.get("error"), body.get("detail"), body.get("body"), body)
+                if isinstance(value, dict)
+            ),
+            {},
+        )
+        code = str(envelope.get("code") or body.get("code") or "")
+        message = str(envelope.get("message") or body.get("message") or f"HTTP {status}")
         mcp_code = _CP_CODE_MAP.get(code, "VALIDATION_FAILED" if 400 <= status < 500 else "DEPENDENCY_UNAVAILABLE")
         retryable = status == 429 or status >= 500
         extra = {}
-        if isinstance(body.get("error"), dict):
-            extra = {k: v for k, v in body["error"].items() if k not in ("code", "message")}
+        if envelope is not body:
+            extra = {k: v for k, v in envelope.items() if k not in ("code", "message")}
         return McpError(mcp_code, message, retryable=retryable, extra=extra)

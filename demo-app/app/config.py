@@ -16,7 +16,7 @@ class Settings(BaseSettings):
 
     # StepFun LLM（真实调用，无 mock）
     stepfun_api_key: str = ""
-    stepfun_base_url: str = "https://api.stepfun.com/v1"
+    stepfun_base_url: str = "https://api.stepfun.com/step_plan/v1"
     stepfun_model: str = "step-3.7-flash"
 
     # 数据库（compose 内主机名 postgres；本机直跑用 127.0.0.1）

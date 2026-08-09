@@ -1,8 +1,10 @@
 """事件溯源存储单元测试（懒创建聚合、revision==seq、CAS、replay）。"""
 import pytest
+import sqlalchemy as sa
 from sqlalchemy import select
+from sqlalchemy.orm import sessionmaker
 
-from app.models.tables import Aggregate, Event
+from app.models.tables import Aggregate, Base, Event
 from app.services.event_store import CASConflict, EventStore
 
 
@@ -65,6 +67,49 @@ def test_cas_conflict(sqlite_session):
             machine="case",
             expected_revision=5,  # 当前实际是 1
         )
+
+
+def test_append_refreshes_stale_identity_map_before_cas(tmp_path):
+    engine = sa.create_engine(f"sqlite:///{tmp_path / 'stale-cas.sqlite'}")
+    Base.metadata.create_all(engine)
+    factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+    with factory() as creator, creator.begin():
+        EventStore(creator).append_event(
+            aggregate_type="case",
+            aggregate_id="case_stale",
+            event_type="complaint.received",
+            payload={},
+            machine="case",
+        )
+
+    stale = factory()
+    try:
+        cached = EventStore(stale).get_aggregate("case", "case_stale")
+        assert cached is not None and cached.revision == 1
+        with factory() as concurrent, concurrent.begin():
+            EventStore(concurrent).append_event(
+                aggregate_type="case",
+                aggregate_id="case_stale",
+                event_type="case.opened",
+                payload={},
+                machine="case",
+                expected_revision=1,
+            )
+
+        with pytest.raises(CASConflict):
+            EventStore(stale).append_event(
+                aggregate_type="case",
+                aggregate_id="case_stale",
+                event_type="case.dispatched",
+                payload={},
+                machine="case",
+                expected_revision=1,
+            )
+        assert cached.revision == 2
+        stale.rollback()
+    finally:
+        stale.close()
+        engine.dispose()
 
 
 def test_first_event_requires_no_expected_revision(sqlite_session):

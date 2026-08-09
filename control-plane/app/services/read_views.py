@@ -209,6 +209,7 @@ def get_trust_denials(session: Session) -> dict[str, Any]:
                 "successes": entry.successes if entry is not None else None,
                 "trials": entry.trials if entry is not None else None,
                 "trust_entry_id": entry_id,
+                "action_ref": entry.action_ref if entry is not None else None,
             }
         )
     return {"items": items}

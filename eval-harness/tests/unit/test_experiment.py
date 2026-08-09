@@ -3,8 +3,10 @@ import json
 
 import pytest
 
+from eval_harness.adjudicate import Verdict
 from eval_harness.client import ChatResult
 from eval_harness.experiment import ArmDriver, ExperimentRunner
+from eval_harness import experiment as experiment_module
 from eval_harness.models import ExperimentPlan
 from eval_harness.probe_loader import frozen_digest
 from eval_harness.report import validate_report
@@ -21,8 +23,10 @@ class FakeClient:
     def __init__(self, probe_set, samples):
         self.ps = probe_set
         self.samples = samples
+        self.calls = 0
 
     def chat(self, message, **kw):
+        self.calls += 1
         for p in self.ps.probes:
             if p.input == message:
                 state = "b1_fault" if _STATE.fault else "baseline"
@@ -125,3 +129,90 @@ def test_repetitions_affect_trials(probe_set, probe_samples):
     plan.repetitions = 2
     res = runner.run(plan, FakeDriver(), seed=1, suppress_digest_capture=True)
     assert res.report["cells"]["C"]["n_trials"] == 5 * 2
+
+
+def test_resume_reuses_exact_trials_and_calls_provider_only_for_missing_work(
+    probe_set, probe_samples
+):
+    digest = frozen_digest(probe_set)
+    first_client = FakeClient(probe_set, probe_samples)
+    first = ExperimentRunner(
+        first_client,
+        probe_set,
+        __import__("eval_harness.config").config.get_settings(),
+    ).run(
+        _plan(probe_set, digest),
+        FakeDriver(),
+        seed=42,
+        suppress_digest_capture=True,
+    )
+    prior = {
+        (arm, run.probe_id, run.repetition): run
+        for arm, cell in first.cells.items()
+        for run in cell.runs
+    }
+    missing_key = sorted(prior)[0]
+    del prior[missing_key]
+    checkpointed: list[tuple[str, str, int]] = []
+    resumed_client = FakeClient(probe_set, probe_samples)
+
+    def checkpoint(arm, run):
+        checkpointed.append((arm, run.probe_id, run.repetition))
+        return run
+
+    resumed = ExperimentRunner(
+        resumed_client,
+        probe_set,
+        __import__("eval_harness.config").config.get_settings(),
+        trial_callback=checkpoint,
+    ).run(
+        _plan(probe_set, digest),
+        FakeDriver(),
+        seed=42,
+        suppress_digest_capture=True,
+        prior_trials=prior,
+    )
+
+    assert resumed_client.calls == 1
+    assert checkpointed == [missing_key]
+    assert sum(len(cell.runs) for cell in resumed.cells.values()) == len(prior) + 1
+    assert resumed.verdict == first.verdict
+
+
+@pytest.mark.parametrize("reason_code", ["BASELINE_NOT_RESTORED", "ENV_UNTRUSTED"])
+def test_inconclusive_never_mutates_frozen_protocol_or_repetitions(
+    probe_set, probe_samples, monkeypatch, reason_code
+):
+    runner = ExperimentRunner(
+        FakeClient(probe_set, probe_samples),
+        probe_set,
+        __import__("eval_harness.config").config.get_settings(),
+    )
+    plan = _plan(probe_set, frozen_digest(probe_set))
+
+    monkeypatch.setattr(
+        experiment_module,
+        "adjudicate",
+        lambda *_args, **_kwargs: Verdict(
+            decision="INCONCLUSIVE",
+            attributed_layer=None,
+            interaction_detected=False,
+            full_factorial_required=False,
+            reason_code=reason_code,
+            rationale="forced inconclusive",
+        ),
+    )
+
+    result = runner.run(plan, FakeDriver(), seed=1, suppress_digest_capture=True)
+
+    assert plan.repetitions == 3
+    assert result.bundle["protocol"]["repetitions"] == 3
+    assert result.report["verdict"]["decision"] == "INCONCLUSIVE"
+    assert "同一 Experiment 的新 epoch" in result.report["verdict"]["rationale"]
+    assert "fail closed" in result.report["verdict"]["rationale"]
+    for arm in ("C", "RP", "RK", "RM", "G"):
+        by_probe = {}
+        for run in result.cells[arm].runs:
+            by_probe.setdefault(run.probe_id, set()).add(run.repetition)
+        assert by_probe
+        assert all(repetitions == {1, 2, 3} for repetitions in by_probe.values())

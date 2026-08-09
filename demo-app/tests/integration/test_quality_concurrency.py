@@ -12,7 +12,7 @@ from sqlalchemy import create_engine, func, select
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.schema import CreateSchema, DropSchema
 
-from app.models import IdempotencyRecord, Operation, TransitionRecord, VersionSet
+from app.models import FaultState, IdempotencyRecord, Operation, TransitionRecord, VersionSet
 from app.operations import execute_operation
 from app.routers import quality as quality_router
 from app.routers.quality import _handle_lifecycle
@@ -37,6 +37,7 @@ def test_postgres_concurrent_same_revision_accepts_only_one_operation(monkeypatc
         Operation.__table__,
         IdempotencyRecord.__table__,
         TransitionRecord.__table__,
+        FaultState.__table__,
     )
     try:
         for table in tables:
@@ -131,6 +132,7 @@ def test_postgres_concurrent_promotes_across_candidates_preserve_single_active(
         Operation.__table__,
         IdempotencyRecord.__table__,
         TransitionRecord.__table__,
+        FaultState.__table__,
     )
     try:
         for table in tables:

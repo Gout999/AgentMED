@@ -11,14 +11,17 @@ from sqlalchemy import and_, or_, select
 from sqlalchemy.orm import Session, aliased, sessionmaker
 
 from app.config import Settings, get_settings
-from app.models.tables import Outbox, OutboxDeliveryReceipt
+from app.models.tables import Outbox, OutboxDeliveryReceipt, ReleaseClosure
 from app.notifications.adapters import (
     DisabledNotificationAdapter,
+    FeishuLiveAdapter,
     FeishuMockAdapter,
     NotificationAdapter,
     NotificationDeliveryError,
+    OFFICIAL_FEISHU_BASE_URL,
 )
 from app.services.audit import AuditService, AuditWriteError
+from app.services.case_closure_service import CaseClosureService, CaseClosureServiceError
 from app.services.notification_service import NotificationService, NotificationServiceError
 from app.services.trust_service import TrustService, TrustServiceError
 from app.utils.ids import new_outbox_receipt_id, short_token
@@ -59,10 +62,14 @@ class OutboxSnapshot:
     payload_digest: str
     attempts: int
     claim_token: str
+    first_attempted_at: datetime
 
 
 class DomainEventConsumer:
     """Deterministic in-process consumer for the frozen domain event catalog."""
+
+    def __init__(self, settings: Settings | None = None) -> None:
+        self.settings = settings or get_settings()
 
     def consume(self, session: Session, row: Outbox) -> dict[str, Any]:
         if row.event_type not in DOMAIN_EVENT_TYPES:
@@ -84,7 +91,47 @@ class DomainEventConsumer:
                 retryable=False,
             )
         if row.event_type in TRUST_EVENT_TYPES:
-            return TrustService(session).consume_release_event(envelope)
+            trust = TrustService(session, self.settings).consume_release_event(envelope)
+            if row.event_type == "RELEASE_UNKNOWN":
+                return trust
+            closure = session.scalar(
+                select(ReleaseClosure)
+                .where(ReleaseClosure.release_id == row.aggregate_id)
+                .with_for_update()
+            )
+            if closure is None:
+                if row.event_type == "RELEASE_ROLLED_BACK":
+                    return {
+                        "status": "consumed",
+                        "consumer": "trust-ledger",
+                        "trust": trust,
+                        "case_closure": "not_configured",
+                    }
+                raise OutboxDeliveryError(
+                    "closure_context_missing",
+                    "promoted Release has no durable notification continuation",
+                    retryable=False,
+                )
+            try:
+                queued = CaseClosureService(session, self.settings).resolve_and_queue(
+                    release_id=row.aggregate_id,
+                    channel=closure.channel,
+                    thread_ref=closure.thread_ref,
+                    body_ref=closure.body_ref,
+                    body_digest=closure.body_digest,
+                )
+            except CaseClosureServiceError as exc:
+                raise OutboxDeliveryError(exc.code, exc.message, retryable=False) from exc
+            closure.status = "queued"
+            closure.notification_id = queued["notification"]["notification_id"]
+            closure.queued_at = datetime.now(timezone.utc)
+            return {
+                "status": "consumed",
+                "consumer": "trust-ledger+case-closure",
+                "trust": trust,
+                "notification_id": closure.notification_id,
+                "case_id": closure.case_id,
+            }
         return {
             "status": "consumed",
             "consumer": "domain-event-journal",
@@ -96,6 +143,24 @@ class DomainEventConsumer:
 def notification_adapter_from_settings(settings: Settings) -> NotificationAdapter:
     if settings.notification_adapter == "feishu-mock":
         return FeishuMockAdapter()
+    if (
+        settings.notification_adapter == "feishu-live"
+        and settings.feishu_base_url.rstrip("/") != OFFICIAL_FEISHU_BASE_URL
+    ):
+        raise ValueError(
+            "feishu-live requires the official https://open.feishu.cn provider origin"
+        )
+    if (
+        settings.notification_adapter == "feishu-live"
+        and settings.feishu_app_id
+        and settings.feishu_app_secret
+    ):
+        return FeishuLiveAdapter(
+            app_id=settings.feishu_app_id,
+            app_secret=settings.feishu_app_secret,
+            base_url=settings.feishu_base_url,
+            timeout_seconds=settings.feishu_timeout_seconds,
+        )
     return DisabledNotificationAdapter()
 
 
@@ -122,7 +187,7 @@ class OutboxDispatcher:
         self.notification_adapter = notification_adapter or notification_adapter_from_settings(
             self.settings
         )
-        self.domain_consumer = domain_consumer or DomainEventConsumer()
+        self.domain_consumer = domain_consumer or DomainEventConsumer(self.settings)
         self.worker_id = worker_id or f"outbox-worker-{short_token(12)}"
 
     def dispatch_batch(self, limit: int = 50) -> dict[str, int]:
@@ -206,6 +271,8 @@ class OutboxDispatcher:
             )
             row.status = "PROCESSING"
             row.attempts = int(row.attempts) + 1
+            if row.first_attempted_at is None:
+                row.first_attempted_at = now
             row.claimed_by = self.worker_id
             row.claim_token = claim_token
             row.claimed_at = now
@@ -222,6 +289,7 @@ class OutboxDispatcher:
                 payload_digest=row.payload_digest,
                 attempts=int(row.attempts),
                 claim_token=claim_token,
+                first_attempted_at=row.first_attempted_at,
             )
 
     def _dispatch(self, snapshot: OutboxSnapshot) -> None:
@@ -235,6 +303,26 @@ class OutboxDispatcher:
             self._complete_internal(snapshot)
             return
         if snapshot.channel == "notification.delivery":
+            window = getattr(
+                self.notification_adapter, "idempotency_window_seconds", None
+            )
+            first_attempted_at = snapshot.first_attempted_at
+            if first_attempted_at.tzinfo is None:
+                # SQLite discards timezone offsets for DateTime values. Treat
+                # the persisted value as UTC so the provider dedup window is
+                # still enforced instead of crashing or retrying ambiguously.
+                first_attempted_at = first_attempted_at.replace(tzinfo=timezone.utc)
+            age = (datetime.now(timezone.utc) - first_attempted_at).total_seconds()
+            if (
+                snapshot.attempts > 1
+                and isinstance(window, (int, float))
+                and age >= float(window)
+            ):
+                raise OutboxDeliveryError(
+                    "provider_idempotency_window_expired",
+                    "notification delivery outcome is ambiguous beyond the provider dedup window",
+                    retryable=False,
+                )
             receipt = self.notification_adapter.deliver(
                 outbox_id=snapshot.outbox_id,
                 payload=snapshot.payload,
@@ -344,7 +432,8 @@ class OutboxDispatcher:
             self.settings.outbox_retry_max_seconds,
         )
         next_retry = now + timedelta(seconds=delay)
-        error = f"{type(exc).__name__}: {exc}"[:500]
+        error_code = getattr(exc, "code", type(exc).__name__)
+        error = f"{error_code}: {exc}"[:500]
         with self.session_factory() as session, session.begin():
             row = self._claimed_row(session, snapshot)
             if row is None:
@@ -361,7 +450,7 @@ class OutboxDispatcher:
                     "next_retry_at": None if terminal else next_retry.isoformat(),
                 },
                 result="denied" if terminal else "retry",
-                error_code=getattr(exc, "code", type(exc).__name__)[:64],
+                error_code=error_code[:64],
             )
             if row.channel == "notification.delivery":
                 NotificationService(session, self.settings).record_delivery_failure(
@@ -424,7 +513,12 @@ class OutboxDispatcher:
             or not receipt.get("provider")
             or not isinstance(receipt.get("provider_message_id"), str)
             or not receipt.get("provider_message_id")
+            or (
+                receipt.get("provider") == "feishu"
+                and receipt.get("provider_origin") != OFFICIAL_FEISHU_BASE_URL
+            )
             or receipt.get("thread_ref") != snapshot.payload.get("thread_ref")
+            or receipt.get("body_digest") != snapshot.payload.get("body_digest")
         ):
             raise OutboxDeliveryError(
                 "invalid_receipt",

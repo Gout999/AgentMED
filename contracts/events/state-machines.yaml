@@ -31,7 +31,10 @@ machines:
       - { from: OPEN,               on: case.dispatched,             to: DISPATCHED }
       - { from: DISPATCHED,         on: case.worker_lost,            to: OPEN,               note: "lease 回收重派，fencing token 防僵尸写" }
       - { from: DISPATCHED,         on: experiment.requested,        to: ATTRIBUTING }
+      - { from: DISPATCHED,         on: experiment.resumed,          to: ATTRIBUTING,         note: "runner_lost 后新 evaluator 以新 lease 继续冻结实验" }
+      - { from: ATTRIBUTING,        on: experiment.runner_lost,      to: DISPATCHED,         note: "归因 runner lease 过期：实验退回可重派状态，Case 重新派单" }
       - { from: ATTRIBUTING,        on: case.attribution_completed,  to: AWAITING_FIX,       guard: "verdict=ATTRIBUTED" }
+      - { from: AWAITING_FIX,       on: case.worker_handed_off,      to: AWAITING_FIX,       note: "归因 runner lease 已释放；修复师以新 fencing token 原子接手" }
       - { from: ATTRIBUTING,        on: case.escalated,              to: ESCALATED,          guard: "verdict=INCONCLUSIVE（补实验无果）或 CONFOUNDED 全因子仍不可判 → 升级人工" }
       - { from: AWAITING_FIX,       on: changeset.approval_requested, to: AWAITING_APPROVAL }
       - { from: AWAITING_APPROVAL,  on: changeset.approved,          to: RELEASING }
@@ -60,8 +63,11 @@ machines:
       CANCELLED:       "终态：取消（case 被合并/人工终止）"
     transitions:
       - { from: REQUESTED,        on: experiment.protocol_frozen,          to: PROTOCOL_FROZEN }
+      - { from: REQUESTED,        on: experiment.runner_lost,              to: REQUESTED,       note: "协议冻结前 runner 丢失：保留请求并重新派单" }
       - { from: PROTOCOL_FROZEN,  on: experiment.started,                  to: RUNNING }
+      - { from: PROTOCOL_FROZEN,  on: experiment.runner_lost,              to: PROTOCOL_FROZEN, note: "启动前 runner 丢失：冻结协议保持不变并重新派单" }
       - { from: RUNNING,          on: experiment.runner_lost,              to: PROTOCOL_FROZEN, note: "Worker 丢失：已完成 cell 结果幂等保留，重领后续跑（arm 结果按 (cell,probe,repetition) 幂等键去重）" }
+      - { from: RUNNING,          on: experiment.trial_completed,          to: RUNNING,          note: "自迁移：按 (cell,probe_id,repetition) 保存已验证 trial 收据" }
       - { from: RUNNING,          on: experiment.cell_completed,           to: RUNNING,          note: "自迁移：累计 cell 进度" }
       - { from: RUNNING,          on: experiment.verdict_computed,         to: VERDICT_COMPUTED, guard: "全部 5 cell × 探针 × repetitions 完成" }
       - { from: VERDICT_COMPUTED, on: experiment.escalated_full_factorial, to: PROTOCOL_FROZEN,  note: "CONFOUNDED：冻结 2³ 全因子新协议重跑" }
@@ -109,6 +115,7 @@ machines:
       FAILED:    "终态：任一轨 failed（报告附 failing_checks）"
     transitions:
       - { from: REQUESTED, on: eval.started,                to: RUNNING }
+      - { from: REQUESTED, on: eval.report_received,        to: RUNNING, note: "Phase 1 fixed warm-pool 同步 runner：控制面接收并校验已完成的不可变报告，不伪造逐步 lifecycle receipts" }
       - { from: RUNNING,   on: eval.rule_track_completed,   to: RUNNING, note: "自迁移：轨进度" }
       - { from: RUNNING,   on: eval.judge_track_completed,  to: RUNNING, note: "自迁移：轨进度" }
       - { from: RUNNING,   on: eval.passed,                 to: PASSED }
@@ -141,6 +148,7 @@ machines:
       - { from: CANARYING,    on: release.verification_completed, to: VERIFYING }
       - { from: VERIFYING,    on: release.promoted,               to: COMPLETED,   guard: "verification=passed" }
       - { from: VERIFYING,    on: release.rollback_started,       to: ROLLING_BACK, guard: "verification=failed" }
+      - { from: VERIFYING,    on: release.rollback_started,       to: ROLLING_BACK, guard: "verification=error", note: "基础设施错误仍 fail closed；仅凭新的高风险审批执行补偿回滚" }
       - { from: PROMOTING,    on: release.promoted,               to: COMPLETED }
       - { from: ROLLING_BACK, on: release.rolled_back,            to: ROLLED_BACK }
       - { from: ROLLING_BACK, on: release.rollback_failed,        to: FAILED_ESCALATED }

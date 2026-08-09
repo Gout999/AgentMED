@@ -1,0 +1,92 @@
+{
+  "schema_version": "0.1.0",
+  "fixture_id": "B1",
+  "run_id": "b1run_01JB1DEMO0001",
+  "mode": "isolated-replay",
+  "status": "passed",
+  "started_at": "2026-08-08T00:00:00Z",
+  "completed_at": "2026-08-08T00:01:00Z",
+  "transaction_id": "tx_01JB1DEMO0001",
+  "case_id": "case_01JB1DEMO0001",
+  "experiment_id": "exp_01JB1DEMO0001",
+  "workorder_id": "wo_01JB1DEMO0001",
+  "workorder_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+  "release_id": "rel_01JB1DEMO0001",
+  "notification_id": "notif_01JB1DEMO0001",
+  "versions": {
+    "repository_start_commit": "89ea66750dfed3df6feeed493d9e2499ef77cdbe",
+    "repository_end_commit": "89ea66750dfed3df6feeed493d9e2499ef77cdbe",
+    "base_versionset": {
+      "versionset_id": "vs_01JB1DEMOBASE",
+      "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "revision": 1
+    },
+    "target_versionset": {
+      "versionset_id": "vs_01JB1DEMOTARGET",
+      "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "revision": 4
+    }
+  },
+  "outcomes": {
+    "deduplicated": true,
+    "attribution": { "decision": "ATTRIBUTED", "fault_layer": "prompt" },
+    "release": "promoted",
+    "notification": { "status": "sent", "provider": "feishu-mock" },
+    "case": "CLOSED",
+    "trust": {
+      "samples_added": 1,
+      "autonomy_state": "MANUAL",
+      "promotion_decision": "denied",
+      "wilson_lower": 0.2065
+    },
+    "live_provider": "blocked"
+  },
+  "artifacts": {
+    "agent_runs": { "uri": "file:///tmp/b1/agent-runs.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "frozen_versionset": { "uri": "file:///tmp/b1/frozen-versionset.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "experiment_plan": { "uri": "file:///tmp/b1/experiment-plan.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "probes": { "uri": "file:///tmp/b1/probes.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "probe_outputs": { "uri": "file:///tmp/b1/probe-outputs.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "evidence_bundle": { "uri": "file:///tmp/b1/evidence-bundle.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "attribution_report": { "uri": "file:///tmp/b1/attribution-report.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "workorder": { "uri": "file:///tmp/b1/workorder.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "gate_report": { "uri": "file:///tmp/b1/gate-report.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "approval_grants": { "uri": "file:///tmp/b1/approval-grants.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "release_receipts": { "uri": "file:///tmp/b1/release-receipts.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "canary_metrics": { "uri": "file:///tmp/b1/canary-metrics.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "release_terminal_receipt": { "uri": "file:///tmp/b1/promote-receipt.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "notification_receipt": { "uri": "file:///tmp/b1/notification-receipt.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "audit_events": { "uri": "file:///tmp/b1/audit-events.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "domain_events": { "uri": "file:///tmp/b1/domain-events.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "outbox_receipts": { "uri": "file:///tmp/b1/outbox-receipts.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "trust_decision": { "uri": "file:///tmp/b1/trust-decision.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "trace": { "uri": "file:///tmp/b1/trace.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "commits": { "uri": "file:///tmp/b1/commits.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "contract_replay_report": { "uri": "file:///tmp/b1/contract-replay-report.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" },
+    "live_provider_report": { "uri": "file:///tmp/b1/live-provider-report.json", "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" }
+  },
+  "test_reports": [
+    {
+      "kind": "contract",
+      "status": "passed",
+      "passed": 26,
+      "failed": 0,
+      "report_ref": { "uri": "file:///tmp/b1/contract.json", "digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee" }
+    },
+    {
+      "kind": "replay",
+      "status": "passed",
+      "passed": 1,
+      "failed": 0,
+      "report_ref": { "uri": "file:///tmp/b1/replay.json", "digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff" }
+    },
+    {
+      "kind": "live-provider",
+      "status": "blocked",
+      "passed": 0,
+      "failed": 0,
+      "report_ref": { "uri": "file:///tmp/b1/live.json", "digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999" }
+    }
+  ],
+  "external_blockers": ["STEPFUN_API_KEY is not configured", "live Feishu credentials are not configured"]
+}
