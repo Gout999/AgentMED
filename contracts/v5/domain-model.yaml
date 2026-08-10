@@ -1,0 +1,1050 @@
+version: "0.2-draft"
+status: draft_target_contract
+runtime_status: NOT_IMPLEMENTED
+public_api_major: 2
+
+rules:
+  immutable_history_is_never_reinterpreted: true
+  aggregate_revisions_are_immutable: true
+  declared_does_not_imply_observed: true
+  observed_does_not_imply_external_effect: true
+  approval_does_not_imply_execution: true
+  operation_success_does_not_imply_case_resolution: true
+  evaluation_assets_are_independent_from_runtime_versions: true
+  projections_accept_commands: false
+  closed_v4_schemas_are_not_extended_in_place: true
+  v5_system_records_use_schema_major_2: true
+
+record_envelope:
+  applies_to: every_authoritative_non_projection_v5_record_or_aggregate_revision
+  required_fields:
+    - schema_version
+    - workspace_id
+    - revision
+    - recorded_by_principal
+    - recorded_at
+    - immutable
+    - hash_rule
+    - record_digest
+    - authority_receipt_id
+  constants:
+    immutable: true
+    hash_rule: jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)
+  digest_scope: full_canonical_record_including_record_envelope_and_payload
+  exact_binding_rule: exact_binding_digest_equals_record_envelope_record_digest
+  business_digest_rule: subartifact_checksum_only_never_authority_binding
+  revision_rule: integer_min_1_for_every_persisted_snapshot
+  authority_rule:
+    preallocate_authority_receipt_id: true
+    subject_and_receipt_share_postgresql_transaction: true
+    receipt_subject_uses_v5_exact_record_binding: true
+    audit_failure_fails_business_transaction: true
+  excluded_kinds:
+    - projection
+    - authority_receipt
+
+hierarchy:
+  - workspace
+  - project
+  - ai_application
+  - environment
+
+component_kinds:
+  - APPLICATION_CODE
+  - AGENT
+  - MODEL_BINDING
+  - PROMPT
+  - DATASET
+  - INDEX
+  - EMBEDDING
+  - RETRIEVER
+  - SKILL
+  - MCP_SERVER
+  - TOOL_SCHEMA
+  - POLICY
+  - MEMORY_POLICY
+  - RUNTIME_PROFILE
+  - CONNECTOR
+
+dataset_roles:
+  values: [RUNTIME_DATA, EVALUATION_DATA, SEALED_HOLDOUT]
+  runtime_and_governing_evaluation_assets_must_be_disjoint: true
+  same_digest_across_roles_requires_explicit_non_leakage_review: true
+
+identity_assurance:
+  values:
+    - IMMUTABLE_DIGEST
+    - PROVIDER_VERSION
+    - MUTABLE_ALIAS
+    - OBSERVED_ONLY
+    - UNKNOWN
+  exact_release_disallowed_when_required_component_is:
+    - MUTABLE_ALIAS
+    - OBSERVED_ONLY
+    - UNKNOWN
+  summary_rule:
+    derived_deterministically_from_exact_component_revision_bindings: true
+    caller_supplied_summary_is_not_authority: true
+    release_controller_rechecks_each_raw_binding: true
+  discriminator_union:
+    discriminator: identity_assurance
+    variants:
+      IMMUTABLE_DIGEST:
+        requires: [content_digest, exact_provenance_receipt_bindings]
+      PROVIDER_VERSION:
+        requires: [provider_origin, declared_version, immutable_provider_version_attestation, resolved_at]
+      MUTABLE_ALIAS:
+        requires: [provider_origin, identity_locator, resolved_at]
+      OBSERVED_ONLY:
+        requires: [exact_observation_receipt_binding, resolved_at]
+      UNKNOWN:
+        requires: [unknown_reason]
+  revalidation_points:
+    - system_gate_before_pass
+    - system_workorder_before_creation
+    - system_external_operation_before_request
+    - version_controller_before_assignment_update
+
+evidence:
+  canonical_facets:
+    - contract
+    - replay
+    - domain-provider-live
+    - agentteams-native
+    - claude-runtime-live
+    - agent-causal
+    - repo-sandbox
+    - human-authorized-external
+    - production-canary
+  fact_classes:
+    - DECLARED_CONFIGURATION
+    - OBSERVED_RUNTIME
+    - EXECUTION_ATTEMPT
+    - EXTERNAL_EFFECT
+    - EVALUATION_RESULT
+    - AUTHORITY_DECISION
+  facet_and_fact_class_are_orthogonal: true
+
+independent_observer_identity_contract:
+  required_fields: [exact_v4_controller_registration_binding, principal_id, independence_basis_digest]
+  controller_binding_profile: contracts/v5/schema-profiles.yaml#common/exact_record_binding_v4_bridge
+  controller_binding_kind: CONTROLLER_REGISTRATION
+  guards:
+    - controller_registration_active_unexpired_and_workspace_matched_at_observed_at
+    - principal_matches_controller_registration
+    - observer_is_not_assignment_writer_or_operation_executor
+
+evaluation_semantics:
+  run_state_is_projection_vocabulary: true
+  run_state_derived_from:
+    - v4.worker_task
+    - v4.attempt
+  run_states: [SUBMITTED, WORKING, INPUT_REQUIRED, AUTH_REQUIRED, CANCEL_REQUESTED, CANCELED, REJECTED, FAILED, COMPLETED]
+  run_state_has_independent_owner_or_state_machine: false
+  gate_verdict_owner: system_gate_report
+  gate_verdicts: [PASS, FAILED, INCONCLUSIVE, ERROR]
+  gate_execution_uncertainty_owner: system_gate_execution
+  gate_execution_uncertainty_state: UNKNOWN
+  normalized_gate_outcome_projection_values: [PASS, FAILED, INCONCLUSIVE, ERROR, UNKNOWN]
+  unknown_is_not_a_terminal_gate_report: true
+  evidence_completeness: [COMPLETE, PARTIAL, UNKNOWN]
+  attribution_verdicts:
+    - ATTRIBUTED
+    - INCONCLUSIVE
+    - CONFOUNDED
+    - NO_MEANINGFUL_EFFECT
+    - INSUFFICIENT_EVIDENCE
+    - ROLLBACK_UNAVAILABLE
+  evaluation_dimensions_are_not_evidence_facets: true
+  aggregate_total_score_is_release_authority: false
+  competition_required_evaluation_dimensions:
+    - BADCASE_RESOLUTION
+    - REGRESSION
+    - DETERMINISTIC_REPO_SANDBOX_INTEGRITY
+    - EVIDENCE_COMPLETENESS
+
+acceptance_provenance:
+  case_readiness_is_projection_not_case_lifecycle: true
+  case_readiness_values: [NEEDS_ACCEPTANCE_CRITERIA, READY]
+  needs_acceptance_criteria_blocks_gate_pass: true
+  needs_acceptance_criteria_allows_case_investigation: true
+  needs_acceptance_criteria_does_not_rewrite_quality_case_payload_or_digest: true
+  does_not_create_new_case_lifecycle: true
+  acceptance_criteria_revision:
+    kind: immutable_record
+    owner: case-controller
+    subordinate_to: resolution_contract
+    confirmation_status_values: [PROPOSED, CONFIRMED]
+    proposed_revision_is_untrusted: true
+    confirmed_revision_is_authoritative: true
+    agent_can_propose: true
+    agent_can_confirm: false
+    service_can_confirm: false
+    connector_can_confirm: false
+    confirmer_must_be_human_maintainer_or_domain_reviewer: true
+    confirmed_revision_references_prior_proposed_revision: true
+    confirmed_revision_is_immutable_and_additive: true
+    confirmed_revision_cannot_be_rewritten_in_place: true
+    invariants:
+      - proposal_does_not_confirm_itself
+      - only_human_maintainer_or_domain_reviewer_can_confirm
+      - agent_or_service_or_connector_principal_cannot_confirm
+      - confirmed_revision_is_new_immutable_record_not_in_place_rewrite
+      - confirmed_revision_is_subordinate_to_resolution_contract
+      - confirmed_revision_does_not_create_new_case_lifecycle
+      - confirmed_revision_does_not_rewrite_quality_case_payload_or_digest
+  badcase_spec:
+    kind: immutable_record
+    owner: case-controller
+    subordinate_to: resolution_contract
+    requires_confirmed_acceptance_criteria: true
+    executable_reproducer: true
+    invariants:
+      - badcase_requires_confirmed_acceptance_criteria_revision
+      - badcase_is_subordinate_to_resolution_contract
+      - badcase_does_not_create_new_case_lifecycle
+
+gate_purposes:
+  values: [CANDIDATE_VERIFICATION, RELEASE_AUTHORIZATION]
+  evaluation_phase_values: [PRE_RELEASE, POST_RELEASE]
+  candidate_verification:
+    pass_produces: [verified_candidate, regression_asset]
+    cannot_create_workorder: true
+    cannot_claim_deployment: true
+    does_not_bind_release_plan: true
+  release_authorization:
+    exact_binds_pre_gate_sealed_release_plan: true
+    pass_is_only_path_to_workorder: true
+    cannot_be_reused_from_prior_verification_pass: true
+  post_release_gate:
+    purpose: CANDIDATE_VERIFICATION
+    phase: POST_RELEASE
+    required_for_external_operation_success: true
+    cannot_create_workorder: true
+  invariants:
+    - verification_only_pass_cannot_create_workorder
+    - only_release_authorization_pass_creates_workorder
+    - release_authorization_requires_pre_gate_sealed_release_plan
+    - verified_candidate_cannot_be_renamed_to_release_authorization
+    - post_release_gate_does_not_create_workorder
+
+workload_profiles:
+  values: [CODE_CHANGE, AI_BEHAVIOR_CHANGE]
+  code_change:
+    deterministic_fail_to_pass: true
+    repo_tests_and_regression: true
+    sealed_holdout_and_anti_overfit: true
+    judge_applicability_when_deterministic_sufficient: N_A
+    judge_n_a_is_not_error: true
+  ai_behavior_change:
+    paired_base_candidate_repetitions: true
+    failure_distribution: true
+    effect_and_interval: true
+    unaffected_controls: true
+    repetitions_and_thresholds_from_workload_baseline: true
+    no_global_uniform_repetitions_or_thresholds: true
+    judge_applicability_without_calibration: advisory
+    judge_applicability_with_calibration_binding: required
+  invariants:
+    - workload_profile_determines_applicable_evaluation_dimensions
+    - workload_profile_determines_judge_depth
+    - global_uniform_repetitions_or_thresholds_are_forbidden
+    - demo_constants_are_not_frozen_as_universal_quality_guarantee
+
+deployment_profiles:
+  values: [LIBRARY_OR_OFFLINE, DEPLOYED_SERVICE]
+  library_or_offline:
+    endpoint: verified_candidate
+    not_deployed: true
+    release_is_n_a: true
+    does_not_enter_release_observed_rollback: true
+    does_not_fabricate_shadow_runtime: true
+  deployed_service:
+    enters_release_observed_rollback: true
+    release_requires_full_authority_chain: true
+    candidate_verification_pass_is_not_release_authority: true
+  invariants:
+    - library_or_offline_does_not_fabricate_shadow_runtime
+    - deployed_service_requires_release_authorization_not_candidate_verification
+    - profile_only_decides_applicable_evidence_and_depth_not_authority
+
+judge_policy:
+  applicability_values: [N_A, advisory, required]
+  n_a: deterministic_judgment_sufficient_for_code_change
+  advisory: llm_judge_without_maintainer_sample_calibration
+  required: llm_judge_after_calibration_binding
+  required_requires_calibration_binding: true
+  uncalibrated_judge_cannot_be_required: true
+  calibration_binding_binds_evaluator_rubric_and_model_version: true
+  judge_independent_from_candidate_producer: true
+  invariants:
+    - required_judge_requires_calibration_binding
+    - uncalibrated_judge_is_advisory_only
+    - judge_model_independence_is_verified_against_generator
+
+fact_class_non_inference:
+  desired_observed_effect_are_mutually_non_inferring: true
+  moving_desired_pointer_does_not_imply_observed: true
+  approval_does_not_imply_effect: true
+  rollback_does_not_undo_irreversible_effect: true
+  remote_dependency_cannot_be_fixed_uses_lower_identity_assurance_or_unknown: true
+  unknown_precedes_retry: true
+  unknown_requires_reconcile_before_retry: true
+  non_pass_cannot_be_rewritten_to_pass_in_place: true
+  executor_cannot_add_release_parameters_after_approval: true
+  adapter_receipt_alone_does_not_constitute_release_success: true
+  direct_restore_or_resume_is_not_a_second_rollback_authority: true
+  invariants:
+    - non_pass_cannot_be_rewritten_to_pass_in_place
+    - executor_cannot_add_or_replace_release_parameters_after_gate_or_approval
+    - adapter_receipt_alone_does_not_constitute_release_success
+    - direct_assignment_restore_or_resume_is_not_a_second_rollback_authority
+
+resources:
+  ai_application:
+    kind: aggregate
+    identity: application_id
+    uses_record_envelope: true
+    required_fields:
+      - project_id
+      - slug
+      - display_name
+      - owner_principal_ids
+      - criticality
+      - data_classification
+      - governance_mode
+      - lifecycle_state
+    forbidden_fields:
+      - current_system_version_set_id
+      - observed_runtime_state
+      - release_status
+
+  environment:
+    kind: aggregate
+    identity: environment_id
+    uses_record_envelope: true
+    required_fields:
+      - application_id
+      - logical_name
+      - risk_classification
+      - lifecycle_state
+
+  system_component:
+    kind: aggregate
+    identity: component_id
+    uses_record_envelope: true
+    required_fields:
+      - application_id
+      - component_kind
+      - logical_name
+      - owner_principal_ids
+      - criticality
+      - data_classification
+      - permission_classification
+      - effect_classification
+      - lifecycle_state
+    optional_fields:
+      - dataset_role
+    forbidden_fields:
+      - current_revision_id
+      - observed_identity
+
+  dependency_edge:
+    kind: immutable_record
+    identity: dependency_edge_revision_id
+    uses_record_envelope: true
+    required_fields:
+      - application_id
+      - from_component_id
+      - to_component_id
+      - relation
+      - required
+      - edge_digest
+    note: Catalog relationships are current records; historical graphs are fixed by topology_revision.
+
+  component_revision:
+    kind: immutable_record
+    identity: component_revision_id
+    uses_record_envelope: true
+    required_fields:
+      - component_id
+      - component_kind
+      - identity_locator
+      - identity_assurance
+      - configuration_digest
+      - exact_provenance_receipt_bindings
+    optional_fields:
+      - declared_version
+      - content_digest
+      - provider_origin
+      - resolved_at
+      - immutable_provider_version_attestation
+      - exact_observation_receipt_binding
+      - unknown_reason
+      - interface_schema_digest
+      - permission_manifest_digest
+      - dependency_lock_digest
+      - dataset_role
+      - artifact_refs
+    identity_assurance_contract_ref: contracts/v5/domain-model.yaml#identity_assurance/discriminator_union
+    identity_assurance_field_refs:
+      immutable_provider_version_attestation: PROVIDER_VERSION_ATTESTATION
+      exact_observation_receipt_binding: contracts/v5/schema-profiles.yaml#common/exact_evidence_binding_union
+      exact_provenance_receipt_bindings: contracts/v5/schema-profiles.yaml#common/exact_evidence_binding_union
+    forbidden_fields:
+      - deployed
+      - healthy
+
+  provider_version_attestation:
+    kind: immutable_record
+    identity: provider_version_attestation_id
+    uses_record_envelope: true
+    fact_class: OBSERVED_RUNTIME
+    required_fields:
+      - provider_origin
+      - immutable_provider_version
+      - exact_provider_response_evidence_binding
+      - resolver_controller_registration_binding
+      - resolved_at
+      - validity_scope
+      - attestation_digest
+    invariants:
+      - provider_version_is_not_a_mutable_alias
+      - resolver_controller_is_active_unexpired_workspace_matched_and_allowed
+      - caller_payload_cannot_self_attest_provider_version
+    field_refs:
+      exact_provider_response_evidence_binding: contracts/v5/schema-profiles.yaml#common/exact_evidence_binding_union
+      resolver_controller_registration_binding: contracts/v5/schema-profiles.yaml#common/exact_record_binding_v4_bridge:CONTROLLER_REGISTRATION
+
+  topology_revision:
+    kind: immutable_record
+    identity: topology_revision_id
+    uses_record_envelope: true
+    required_fields:
+      - application_id
+      - component_ids
+      - exact_edge_revision_bindings
+      - topology_digest
+      - provenance_receipt_ids
+
+  system_version_set:
+    kind: immutable_record
+    identity: system_version_set_id
+    uses_record_envelope: true
+    required_fields:
+      - application_id
+      - declared_environment_id
+      - exact_component_revision_bindings
+      - exact_topology_revision_binding
+      - identity_assurance_summary
+      - provenance_receipt_ids
+      - version_set_digest
+    allowed_runtime_content:
+      - application_code_component
+      - agent_component
+      - model_binding_component
+      - prompt_component
+      - runtime_data_and_retrieval_components
+      - tool_and_connector_components
+      - runtime_policy_and_profile_components
+    invariants:
+      - identity_assurance_summary_is_deterministically_derived
+      - governing_evaluation_or_holdout_assets_are_not_runtime_components
+    forbidden_fields:
+      - evaluation_bundle_id
+      - application_catalog_revision
+      - duplicate_top_level_policy_bundle
+      - observed_runtime_state
+      - gate_verdict
+      - release_status
+
+  bootstrap_attestation:
+    kind: immutable_record
+    identity: bootstrap_attestation_id
+    uses_record_envelope: true
+    fact_class: AUTHORITY_DECISION
+    required_fields:
+      - application_id
+      - environment_id
+      - exact_initial_system_version_set_binding
+      - attester_principal_id
+      - attester_trust_role
+      - attestation_scope
+    allowed_attester_trust_roles: [integrator, trusted_builder, trusted_attestor]
+    proves: authority_to_create_initial_desired_assignment_only
+    does_not_prove:
+      - observed_runtime
+      - external_effect
+      - gate_pass
+
+  system_assignment:
+    kind: aggregate
+    identity: assignment_id
+    uses_record_envelope: true
+    fact_class: DECLARED_CONFIGURATION
+    required_fields:
+      - application_id
+      - environment_id
+      - generation
+      - lifecycle_state
+      - transition_kind
+      - exact_previous_assignment_binding_or_null
+      - exact_slot_version_set_bindings
+      - exposure
+      - expected_previous_generation
+      - exact_assignment_authority_binding
+    optional_fields:
+      - requested_by_external_operation_id
+    aggregate_identity_key: [workspace_id, application_id, environment_id]
+    database_uniqueness_rule: one_non_retired_assignment_aggregate_per_identity_key
+    assignment_authority_binding_union:
+      discriminator: transition_kind
+      variants:
+        BOOTSTRAP: {binding_kind: BOOTSTRAP_ATTESTATION}
+        SET_DESIRED: {binding_kind: SYSTEM_EXTERNAL_OPERATION}
+        FREEZE_EXPOSURE: {binding_kinds: [SYSTEM_APPROVAL_GRANT, SYSTEM_EXTERNAL_OPERATION]}
+        RESUME_AFTER_ROLLBACK: {binding_kind: SYSTEM_EXTERNAL_OPERATION}
+        RETIRE: {binding_kind: SYSTEM_APPROVAL_GRANT}
+    bootstrap:
+      generation: 1
+      expected_previous_generation: null
+      exact_authority_kind: BOOTSTRAP_ATTESTATION
+      trusted_principal_required: true
+      proves_desired_only: true
+      equality_guards:
+        - slot_version_set_equals_bootstrap_attestation_initial_version_set
+        - application_environment_and_scope_equal_bootstrap_attestation
+        - transition_kind_is_BOOTSTRAP
+    update:
+      generation_rule: previous_plus_one
+      expected_previous_generation_rule: exact_previous_generation
+      exact_authority_kinds:
+        - SYSTEM_EXTERNAL_OPERATION
+      external_operation_root_required: true
+      equality_guards:
+        - slots_exposure_and_target_equal_exact_external_operation_and_frozen_release_plan
+        - authority_operation_is_RUNNING_and_exactly_binds_previous_assignment_generation
+        - transition_kind_is_SET_DESIRED
+    freeze:
+      exact_authority_kinds: [SYSTEM_APPROVAL_GRANT, SYSTEM_EXTERNAL_OPERATION]
+      authority_union:
+        ROLLBACK_PREPARATION:
+          required_authority_kind: HUMAN_EMERGENCY_APPROVAL
+        FAIL_SAFE_AFTER_OPERATION:
+          required_operation_states: [FAILED, UNKNOWN]
+      preserves: [generation, exact_slot_version_set_bindings]
+      required_exposure: STOPPED
+      equality_guards:
+        - authority_binds_exact_current_assignment_and_generation
+        - transition_kind_is_FREEZE_EXPOSURE
+    resume:
+      exact_authority_kind: SYSTEM_EXTERNAL_OPERATION
+      required_operation_kind: SYSTEM_ROLLBACK
+      required_operation_terminal: SUCCEEDED
+      requires_independent_observed_match_for_exact_current_assignment: true
+      equality_guards:
+        - transition_kind_is_RESUME_AFTER_ROLLBACK
+    version_controller_revalidation:
+      - application_is_active
+      - environment_is_active
+      - version_set_matches_application_and_environment
+      - required_components_are_not_retired
+      - raw_identity_assurance_satisfies_release_policy
+      - expected_generation_matches
+      - external_operation_workorder_approval_release_plan_chain_matches
+    invariants:
+      - desired_only_never_observed
+      - compare_and_swap_generation_required_after_bootstrap
+      - no_direct_restore_authority
+      - no_direct_resume_authority
+      - alternate_assignment_id_cannot_create_parallel_desired_authority
+      - every_non_bootstrap_revision_exactly_binds_previous_assignment_same_id_revision_plus_one
+      - authority_binding_kind_and_transition_kind_union_is_closed
+
+  application_case_binding:
+    kind: immutable_record
+    identity: application_case_binding_id
+    uses_record_envelope: true
+    required_fields:
+      - exact_case_binding
+      - application_id
+      - environment_id
+      - declared_system_version_set_binding_or_unknown
+      - binding_digest
+    exact_case_binding_fields: [case_id, case_revision, case_digest]
+    uniqueness_key: [workspace_id, case_id, case_revision, case_digest]
+    invariants:
+      - original_signal_payload_is_unchanged
+      - original_case_payload_is_unchanged
+      - original_digest_is_not_recomputed
+      - same_exact_case_binding_and_same_target_is_idempotent
+      - same_exact_case_binding_and_different_target_is_conflict
+      - rebinding_requires_a_new_quality_case_revision
+
+  case_episode_binding:
+    kind: immutable_record
+    identity: case_episode_binding_id
+    uses_record_envelope: true
+    required_fields:
+      - exact_case_binding
+      - exact_system_episode_snapshot_binding
+      - relation
+      - binding_digest
+    exact_case_binding_fields: [case_id, case_revision, case_digest]
+    relation_values: [PRIMARY, SUPPORTING, CONTRADICTING]
+
+  observed_state_snapshot:
+    kind: immutable_record
+    identity: observed_state_snapshot_id
+    uses_record_envelope: true
+    fact_class: OBSERVED_RUNTIME
+    required_fields:
+      - application_id
+      - environment_id
+      - observed_at
+      - exact_compared_assignment_binding
+      - observation_origin_kind
+      - exact_observation_origin_binding
+      - independent_observer_identity
+      - observation_method
+      - component_observations
+      - comparison
+      - completeness
+      - exact_observation_evidence_bindings
+      - snapshot_digest
+    observer_identity_contract_ref: contracts/v5/domain-model.yaml#independent_observer_identity_contract
+    observation_evidence_contract_ref: contracts/v5/schema-profiles.yaml#common/exact_evidence_binding_union
+    origin_union:
+      discriminator: observation_origin_kind
+      variants:
+        BOOTSTRAP_ATTESTATION:
+          binding_kind: BOOTSTRAP_ATTESTATION
+        SYSTEM_EXTERNAL_OPERATION:
+          binding_kind: SYSTEM_EXTERNAL_OPERATION
+          guards: [origin_equals_assignment_authority_and_current_root_operation]
+        ROLLBACK_EXPOSURE_FREEZE:
+          binding_kind: SYSTEM_APPROVAL_GRANT
+          additionally_requires: [exact_frozen_assignment_binding]
+          guards: [origin_is_exact_emergency_approval_that_authorized_freeze]
+    comparison_values: [MATCH, DRIFT, PARTIAL, UNKNOWN]
+    completeness_values: [COMPLETE, PARTIAL, UNKNOWN]
+    invariants:
+      - observation_is_independent_from_assignment_readback
+      - missing_target_observation_is_unknown
+      - desired_readback_cannot_create_match
+      - assignment_revision_and_record_digest_are_exact
+      - originating_operation_matches_assignment_authority_when_not_bootstrap
+
+  operation_execution_receipt:
+    kind: immutable_record
+    identity: operation_execution_receipt_id
+    uses_record_envelope: true
+    fact_class: EXECUTION_ATTEMPT
+    required_fields:
+      - external_operation_id
+      - attempt_number
+      - adapter_identity
+      - provider_resource_identity
+      - request_digest
+      - response_digest
+      - adapter_outcome
+      - receipt_digest
+    proves: adapter_response_only
+    does_not_prove:
+      - desired_assignment_changed
+      - runtime_observed_match
+      - external_effect_verified
+      - case_resolved
+
+  external_effect_receipt:
+    kind: immutable_record
+    identity: external_effect_receipt_id
+    uses_record_envelope: true
+    fact_class: EXTERNAL_EFFECT
+    required_fields:
+      - origin_kind
+      - independent_observer_identity
+      - observed_at
+      - effect_status
+      - receipt_requirement_id
+      - exact_provenance_receipt_bindings
+      - receipt_digest
+    origin_union:
+      discriminator: origin_kind
+      variants:
+        CASELOOP_EXTERNAL_OPERATION:
+          requires: [exact_external_operation_binding, frozen_required_receipt_plan_digest]
+          forbids: [exact_system_episode_snapshot_binding, exact_run_or_evidence_binding]
+        GOVERNED_SYSTEM_EPISODE:
+          requires: [exact_system_episode_snapshot_binding, exact_run_or_evidence_binding]
+          forbids: [exact_external_operation_binding, frozen_required_receipt_plan_digest]
+    exact_run_or_evidence_binding_contract_ref: contracts/v5/schema-profiles.yaml#common/exact_evidence_binding_union
+    effect_status_values: [CONFIRMED, NOT_OBSERVED, FAILED, PARTIAL, UNKNOWN]
+    required_effect_terminal_semantics:
+      CONFIRMED: MAY_SATISFY_MATCHING_REQUIREMENT
+      NOT_OBSERVED: FAILED
+      FAILED: FAILED
+      PARTIAL: UNKNOWN
+      UNKNOWN: UNKNOWN
+    observer_identity_contract_ref: contracts/v5/domain-model.yaml#independent_observer_identity_contract
+    invariants:
+      - governed_episode_origin_snapshot_precedes_receipt
+      - governed_episode_origin_snapshot_does_not_contain_this_receipt
+      - provenance_graph_has_no_self_or_transitive_cycle
+      - caseloop_operation_origin_exactly_matches_current_operation_and_frozen_receipt_requirement
+      - governed_episode_run_or_evidence_binding_is_a_member_of_origin_snapshot
+
+  system_episode_view:
+    kind: projection
+    identity: system_episode_id
+    uses_record_envelope: false
+    commands: []
+    derives_from:
+      - evidence_receipt
+      - observed_state_snapshot
+      - operation_execution_receipt
+      - external_effect_receipt
+      - exact_system_assignment_revision
+    required_projection_fields:
+      - application_id
+      - environment_id
+      - projection_revision
+      - as_of
+      - source_event_watermark
+      - exact_system_assignment_binding
+      - exact_evidence_node_bindings
+      - provenance_edges
+      - coverage
+      - missing_reasons
+      - projection_digest
+    does_not_own:
+      - immutable_gate_evidence
+      - execution_success
+      - causal_attribution
+      - case_resolution
+
+  system_episode_snapshot:
+    kind: immutable_record
+    identity: system_episode_snapshot_id
+    uses_record_envelope: true
+    required_fields:
+      - system_episode_id
+      - application_id
+      - environment_id
+      - projection_revision
+      - as_of
+      - source_event_watermark
+      - exact_system_assignment_binding
+      - exact_evidence_node_bindings
+      - provenance_edges
+      - coverage
+      - completeness
+      - missing_reasons
+      - snapshot_digest
+    invariants:
+      - gate_and_attribution_bind_snapshot_not_mutable_view
+      - later_receipts_do_not_rewrite_snapshot
+      - assignment_revision_and_record_digest_are_exact
+
+  system_candidate_revision:
+    kind: schema_major_2_profile
+    contract_ref: contracts/v5/schema-profiles.yaml#profiles/system_candidate_revision
+    logical_lifecycle: v4.candidate_revision
+    canonical_owner: proposal-controller
+    extends_closed_v4_json_schema: false
+    candidate_kind: SYSTEM_CHANGE
+
+  evaluation_bundle:
+    kind: immutable_record
+    identity: evaluation_bundle_id
+    uses_record_envelope: true
+    required_fields:
+      - version
+      - applicable_scope
+      - exact_dataset_version_bindings
+      - exact_label_set_binding
+      - evaluator_version_bindings
+      - deterministic_suite_refs
+      - judge_policy_digest
+      - runtime_profile_binding
+      - thresholds
+      - required_evaluation_dimensions
+      - required_evidence_facets
+      - holdout_binding
+      - calibration_binding
+      - bundle_digest
+    optional_fields:
+      - workload_profile
+      - deployment_profile
+      - judge_applicability
+      - workload_baseline_repetitions
+      - workload_baseline_thresholds
+    invariants:
+      - generator_cannot_modify_or_read_sealed_holdout
+      - candidate_cannot_modify_its_governing_bundle
+      - runtime_dataset_and_governing_evaluation_assets_are_disjoint
+      - required_evidence_facets_are_subset_of_canonical_facets
+      - bundle_has_no_gate_verdict
+      - non_deterministic_repetitions_and_thresholds_derive_from_workload_baseline_not_global_constant
+      - required_judge_requires_calibration_binding
+      - uncalibrated_judge_is_advisory_only
+
+  system_evaluation_plan:
+    kind: schema_major_2_profile
+    contract_ref: contracts/v5/schema-profiles.yaml#profiles/system_evaluation_plan
+    logical_lifecycle: v4.evaluation_plan
+    canonical_owner: gate-controller
+    extends_closed_v4_json_schema: false
+
+  system_gate_report:
+    kind: schema_major_2_profile
+    contract_ref: contracts/v5/schema-profiles.yaml#profiles/system_gate_report
+    logical_record: v4.gate_report_terminal_artifact
+    canonical_owner: gate-controller
+    extends_closed_v4_json_schema: false
+    lifecycle_root: system_gate_execution
+    owns_business_state_machine: false
+
+  system_gate_execution:
+    kind: schema_major_2_profile
+    contract_ref: contracts/v5/schema-profiles.yaml#profiles/system_gate_execution
+    logical_lifecycle: v4.gate_execution
+    canonical_owner: gate-controller
+    extends_closed_v4_json_schema: false
+
+  system_gate_track_receipt:
+    kind: schema_major_2_profile
+    contract_ref: contracts/v5/schema-profiles.yaml#profiles/system_gate_track_receipt
+    logical_record: v4.gate_track_receipt
+    canonical_owner: gate-controller
+    extends_closed_v4_json_schema: false
+    owns_business_state_machine: false
+
+  release_plan:
+    kind: immutable_record
+    identity: release_plan_id
+    uses_record_envelope: true
+    required_fields:
+      - plan_kind
+      - exact_base_system_version_set_binding
+      - exact_target_system_version_set_binding
+      - expected_assignment_generation
+      - rollout_steps
+      - observed_verification_plan
+      - recovery_plan
+      - exact_known_good_rollback_spec
+      - risk_class
+      - post_release_gate_spec
+      - release_plan_digest
+    plan_kind_union:
+      discriminator: plan_kind
+      variants:
+        CANDIDATE_RELEASE:
+          requires: [exact_candidate_revision_binding]
+        BREAK_GLASS_RECOVERY:
+          requires:
+            - exact_current_assignment_binding
+            - exact_current_observed_state_binding
+            - exact_prior_trusted_gate_report_binding
+            - emergency_reason
+    forbidden_fields:
+      - exact_workorder_binding
+      - exact_approval_binding
+      - exact_policy_binding
+      - nonce
+      - expires_at
+    invariants:
+      - candidate_release_is_frozen_before_gate
+      - break_glass_recovery_is_frozen_before_human_emergency_approval
+      - candidate_gate_report_exactly_binds_release_plan
+      - executor_cannot_add_or_replace_parameters
+      - known_good_executable_target_is_owned_only_by_this_frozen_plan
+      - p0_post_release_gate_is_required
+
+  system_workorder:
+    kind: schema_major_2_profile
+    contract_ref: contracts/v5/schema-profiles.yaml#profiles/system_workorder
+    logical_lifecycle: v4.workorder
+    canonical_owner: gate-controller
+    extends_closed_v4_json_schema: false
+
+  system_recovery_workorder:
+    kind: schema_major_2_profile
+    contract_ref: contracts/v5/schema-profiles.yaml#profiles/system_recovery_workorder
+    logical_lifecycle: v4.workorder
+    canonical_owner: gate-controller
+    extends_closed_v4_json_schema: false
+    use_case: break_glass_restore_of_prior_trusted_known_good
+
+  system_approval_grant:
+    kind: schema_major_2_profile
+    contract_ref: contracts/v5/schema-profiles.yaml#profiles/system_approval_grant
+    logical_lifecycle: v4.approval_grant
+    canonical_owner: approval-controller
+    extends_closed_v4_json_schema: false
+    p0_authority_kinds: [HUMAN_APPROVAL, HUMAN_EMERGENCY_APPROVAL]
+    state_machine_ref: contracts/v5/state-machines.yaml#machines/system_approval_grant
+
+  system_capability_lease:
+    kind: schema_major_2_profile
+    contract_ref: contracts/v5/schema-profiles.yaml#profiles/system_capability_lease
+    logical_lifecycle: v4.capability_lease
+    canonical_owner: capability-controller
+    extends_closed_v4_json_schema: false
+
+  system_external_operation:
+    kind: schema_major_2_profile
+    contract_ref: contracts/v5/schema-profiles.yaml#profiles/system_external_operation
+    logical_lifecycle: v4.external_operation
+    canonical_owner: scoped-executor-controller
+    extends_closed_v4_json_schema: false
+    operation_kinds: [SYSTEM_RELEASE, SYSTEM_ROLLBACK]
+    event_profile_ref: contracts/v5/events.yaml#system_external_operation
+
+  rollback_authority:
+    kind: domain_rule
+    single_legal_path:
+      - frozen_break_glass_release_plan_binds_exact_current_and_known_good_target
+      - new_system_recovery_workorder_binds_prior_trusted_gate_and_known_good
+      - new_reauthenticated_human_emergency_approval_is_required
+      - new_single_use_capability_is_required
+      - new_system_rollback_external_operation_is_required
+      - post_incident_review_is_required
+    presealed_known_good_from_prior_release_plan_is_evidence_not_authority: true
+    forbidden_paths:
+      - direct_system_assignment_restore
+      - direct_system_assignment_resume
+      - reuse_original_release_approval_or_nonce
+      - caller_supplied_known_good_without_exact_prior_evidence
+
+  system_release_view:
+    kind: projection
+    identity: system_release_view_id
+    uses_record_envelope: false
+    commands: []
+    derives_from:
+      - system_workorder
+      - system_recovery_workorder
+      - system_approval_grant
+      - system_external_operation
+      - release_plan
+      - system_assignment
+      - observed_state_snapshot
+      - external_effect_receipt
+    does_not_own:
+      - release_execution
+      - assignment_change
+      - observed_success
+      - case_resolution
+
+  acceptance_criteria_revision:
+    kind: immutable_record
+    identity: acceptance_criteria_revision_id
+    uses_record_envelope: true
+    owner: case-controller
+    subordinate_to: resolution_contract
+    does_not_create_new_case_lifecycle: true
+    required_fields:
+      - exact_case_binding
+      - exact_resolution_contract_binding
+      - confirmation_status
+      - proposer_principal
+      - proposed_at
+      - acceptance_source
+      - expected_behavior
+      - applicable_workload_profile
+      - applicable_deployment_profile
+      - acceptance_digest
+    optional_fields:
+      - confirmer_principal
+      - confirmed_at
+      - exact_previous_proposed_revision_binding_or_null
+      - reproducer_input
+      - reproducer_environment
+      - oracle_or_evaluator
+    confirmation_status_union:
+      discriminator: confirmation_status
+      variants:
+        PROPOSED:
+          requires: [proposer_principal, proposed_at]
+          forbids: [confirmer_principal, confirmed_at]
+          is_untrusted: true
+          is_authoritative: false
+        CONFIRMED:
+          requires: [confirmer_principal, confirmed_at]
+          requires_confirmer_is_human_maintainer_or_domain_reviewer: true
+          forbids: [proposer_principal_equals_confirmer]
+          is_authoritative: true
+    invariants:
+      - proposal_does_not_confirm_itself
+      - only_human_maintainer_or_domain_reviewer_can_confirm
+      - agent_or_service_or_connector_principal_cannot_confirm
+      - confirmed_revision_is_new_immutable_record_not_in_place_rewrite
+      - confirmed_revision_is_subordinate_to_resolution_contract
+      - confirmed_revision_does_not_create_new_case_lifecycle
+      - confirmed_revision_does_not_rewrite_quality_case_payload_or_digest
+
+  badcase_spec:
+    kind: immutable_record
+    identity: badcase_spec_id
+    uses_record_envelope: true
+    owner: case-controller
+    subordinate_to: resolution_contract
+    does_not_create_new_case_lifecycle: true
+    required_fields:
+      - exact_case_binding
+      - exact_resolution_contract_binding
+      - exact_confirmed_acceptance_criteria_binding
+      - reproducer_input
+      - reproducer_environment
+      - expected_behavior
+      - badcase_digest
+    invariants:
+      - badcase_requires_confirmed_acceptance_criteria_revision
+      - badcase_is_subordinate_to_resolution_contract
+      - badcase_does_not_create_new_case_lifecycle
+
+  case_readiness:
+    kind: projection
+    identity: case_readiness_id
+    uses_record_envelope: false
+    commands: []
+    derives_from:
+      - exact_case_binding
+      - exact_resolution_contract_binding
+      - confirmed_acceptance_criteria_revision_for_resolution_contract
+    readiness_values: [NEEDS_ACCEPTANCE_CRITERIA, READY]
+    invariants:
+      - needs_acceptance_criteria_is_projection_not_case_lifecycle
+      - needs_acceptance_criteria_does_not_rewrite_quality_case_payload_or_digest
+      - needs_acceptance_criteria_blocks_gate_pass_but_allows_case_investigation
+
+  verified_candidate:
+    kind: projection
+    identity: verified_candidate_id
+    uses_record_envelope: false
+    commands: []
+    derives_from:
+      - exact_system_candidate_revision_binding
+      - exact_candidate_verification_gate_report_pass_binding
+    invariants:
+      - verified_candidate_is_read_only_projection_of_candidate_and_verification_pass
+      - verified_candidate_does_not_own_lifecycle_or_commands
+      - verified_candidate_does_not_claim_deployment
+      - reusing_verified_candidate_as_release_authority_is_forbidden
+      - release_requires_new_release_authorization_gate_not_prior_verification_pass
+
+  regression_asset:
+    kind: immutable_record
+    identity: regression_asset_id
+    uses_record_envelope: true
+    owner: case-controller
+    required_fields:
+      - exact_case_binding
+      - exact_confirmed_acceptance_criteria_binding
+      - exact_badcase_spec_binding
+      - regression_digest
+    invariants:
+      - regression_asset_is_closure_artifact_from_confirmed_badcase
+      - regression_asset_is_reused_in_subsequent_regression_bundles
+      - regression_asset_does_not_claim_case_resolution

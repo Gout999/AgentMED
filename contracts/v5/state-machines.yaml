@@ -1,0 +1,213 @@
+version: "0.2-draft"
+status: draft_target_contract
+runtime_status: NOT_IMPLEMENTED
+
+imports:
+  v4_state_machines: contracts/v4/events/state-machines.yaml
+  imported_without_redefinition:
+    - quality_case
+    - worker_task
+    - attempt
+    - gate_execution
+    - capability_lease
+    - external_operation
+    - closure_delivery
+
+machines:
+  ai_application:
+    created_by_event: application.registered
+    initial: REGISTERED
+    terminal: []
+    states: [REGISTERED, ACTIVE, ARCHIVED]
+    transitions:
+      - {from: REGISTERED, 'on': application.activated, to: ACTIVE}
+      - {from: ACTIVE, 'on': application.archived, to: ARCHIVED}
+      - {from: ARCHIVED, 'on': application.restored, to: ACTIVE}
+    failure_semantics:
+      archived_blocks_new_assignments: true
+
+  environment:
+    created_by_event: environment.registered
+    initial: ACTIVE
+    terminal: []
+    states: [ACTIVE, RETIRED]
+    transitions:
+      - {from: ACTIVE, 'on': environment.retired, to: RETIRED}
+      - {from: RETIRED, 'on': environment.restored, to: ACTIVE}
+    failure_semantics:
+      retired_blocks_new_assignments: true
+
+  system_component:
+    created_by_event: system_component.registered
+    initial: REGISTERED
+    terminal: [RETIRED]
+    states: [REGISTERED, ACTIVE, DEPRECATED, RETIRED]
+    transitions:
+      - {from: REGISTERED, 'on': system_component.activated, to: ACTIVE}
+      - {from: ACTIVE, 'on': system_component.deprecated, to: DEPRECATED}
+      - {from: DEPRECATED, 'on': system_component.reactivated, to: ACTIVE}
+      - {from: REGISTERED, 'on': system_component.retired, to: RETIRED}
+      - {from: ACTIVE, 'on': system_component.retired, to: RETIRED}
+      - {from: DEPRECATED, 'on': system_component.retired, to: RETIRED}
+    failure_semantics:
+      retired_component_cannot_enter_new_version_set: true
+
+  system_assignment:
+    created_by_event: system_assignment.recorded
+    initial: ACTIVE
+    terminal: [RETIRED]
+    states: [ACTIVE, FROZEN, RETIRED]
+    transitions:
+      - from: ACTIVE
+        'on': system_assignment.desired_updated
+        to: ACTIVE
+        guard: exact_release_or_rollback_operation_and_expected_generation
+      - from: FROZEN
+        'on': system_assignment.desired_updated
+        to: FROZEN
+        guard: exact_rollback_operation_and_expected_generation
+      - from: ACTIVE
+        'on': system_assignment.frozen
+        to: FROZEN
+        guard: exact_emergency_approval_or_failed_unknown_operation_for_current_assignment_and_generation
+      - from: FROZEN
+        'on': system_assignment.resumed
+        to: ACTIVE
+        guard: exact_terminal_succeeded_rollback_operation_and_independent_observed_match_for_exact_current_assignment
+      - {from: ACTIVE, 'on': system_assignment.retired, to: RETIRED}
+      - {from: FROZEN, 'on': system_assignment.retired, to: RETIRED}
+    failure_semantics:
+      generation_mismatch: REJECT_AND_AUDIT
+      missing_exact_authority: FAIL_CLOSED
+      desired_update_does_not_prove_observed: true
+      resume_without_independent_match: FAIL_CLOSED
+
+  system_approval_grant:
+    created_by_event: approval.requested
+    initial: REQUESTED
+    terminal: [DENIED, REVOKED, EXPIRED]
+    states: [REQUESTED, APPROVED, DENIED, REVOKED, EXPIRED]
+    transitions:
+      - {from: REQUESTED, 'on': approval.decided, to: APPROVED, guard: decision_APPROVED_reauthenticated_assignee_and_exact_requested_binding_unchanged}
+      - {from: REQUESTED, 'on': approval.decided, to: DENIED, guard: decision_DENIED_reauthenticated_assignee_and_exact_requested_binding_unchanged}
+      - {from: REQUESTED, 'on': approval.expired, to: EXPIRED, guard: clock_at_or_after_expires_at}
+      - {from: APPROVED, 'on': approval.revoked, to: REVOKED, guard: reauthenticated_authorized_human}
+      - {from: APPROVED, 'on': approval.expired, to: EXPIRED, guard: clock_at_or_after_expires_at}
+    failure_semantics:
+      agent_or_service_decision: DENY_AND_AUDIT
+      expired_or_revoked_grant: FAIL_CLOSED
+      rollback_requires_authority_kind: HUMAN_EMERGENCY_APPROVAL
+      denied_grant_is_never_reopened: true
+
+resources_without_business_state_machine:
+  - dependency_edge
+  - component_revision
+  - provider_version_attestation
+  - topology_revision
+  - system_version_set
+  - bootstrap_attestation
+  - application_case_binding
+  - case_episode_binding
+  - observed_state_snapshot
+  - operation_execution_receipt
+  - external_effect_receipt
+  - system_episode_view
+  - system_episode_snapshot
+  - system_candidate_revision
+  - evaluation_bundle
+  - system_evaluation_plan
+  - system_gate_track_receipt
+  - system_gate_report
+  - release_plan
+  - system_workorder
+  - system_recovery_workorder
+  - system_release_view
+
+schema_major_2_external_operation_profile:
+  logical_machine: v4.external_operation
+  adds_states: []
+  adds_terminal_states: []
+  operation_kinds: [SYSTEM_RELEASE, SYSTEM_ROLLBACK]
+  requested_event_contract: contracts/v5/events.yaml#system_external_operation/events/external_operation.requested
+  started_event_contract: contracts/v5/events.yaml#system_external_operation/events/external_operation.started
+  success_event_contract: contracts/v5/events.yaml#system_external_operation/events/external_operation.succeeded
+  success_guard:
+    - operation_kind_discriminates_exact_workorder_and_approval_kind
+    - exact_release_plan_revalidated
+    - nonce_and_expiry_revalidated
+    - exact_assignment_generation_receipt_attached
+    - all_required_execution_receipts_complete
+    - independent_observed_state_is_complete_match
+    - exact_post_release_gate_is_complete_and_pass
+    - no_required_child_operation_or_effect_is_unknown
+    - every_frozen_effect_requirement_is_covered_exactly_once_by_an_allowed_success_status
+    - failed_partial_not_observed_or_unknown_required_effect_cannot_succeed
+  adapter_receipt_alone_can_succeed: false
+  ambiguity_transition: external_operation.unknown
+  unknown_before_retry: reconcile_required
+  reconcile_to_success_reuses_full_success_guard: true
+  request_and_start_share_capability_consumption_transaction: true
+  committed_current_state_may_remain_pending_after_transaction: false
+  dispatcher_revalidates_approval_capability_target_nonce_and_expiry_before_side_effect: true
+  operation_kind_guard:
+    SYSTEM_RELEASE:
+      - exact_system_workorder
+      - exact_human_approval
+      - exact_candidate_release_plan
+    SYSTEM_ROLLBACK:
+      - exact_system_recovery_workorder
+      - exact_human_emergency_approval
+      - exact_break_glass_recovery_plan
+
+schema_major_2_gate_execution_profile:
+  logical_machine: v4.gate_execution
+  adds_states: []
+  adds_terminal_states: []
+  start_event_contract: contracts/v5/events.yaml#system_gate_execution/events/gate.started
+  track_attach_event_contract: contracts/v5/events.yaml#system_gate_execution/events/gate.track_receipt_recorded
+  terminal_event_contracts:
+    - contracts/v5/events.yaml#system_gate_execution/events/gate.completed
+    - contracts/v5/events.yaml#system_gate_execution/events/gate.failed
+    - contracts/v5/events.yaml#system_gate_execution/events/gate.inconclusive
+    - contracts/v5/events.yaml#system_gate_execution/events/gate.error
+  unknown_event_contract: contracts/v5/events.yaml#system_gate_execution/events/gate.unknown
+  reconcile_event_contracts:
+    - contracts/v5/events.yaml#system_gate_execution/events/gate.reconciled_pass
+    - contracts/v5/events.yaml#system_gate_execution/events/gate.reconciled_failed
+    - contracts/v5/events.yaml#system_gate_execution/events/gate.reconciled_inconclusive
+    - contracts/v5/events.yaml#system_gate_execution/events/gate.reconciled_error
+  gate_execution_is_only_business_lifecycle_root: true
+  gate_track_receipt_and_report_are_immutable_subordinate_artifacts: true
+
+rollback_rules:
+  direct_assignment_restore_event_exists: false
+  rollback_root: system_external_operation
+  rollback_operation_kind: SYSTEM_ROLLBACK
+  resume_requires_observed_known_good_match: true
+  resume_requires_terminal_succeeded_rollback_operation: true
+  every_rollback_requires_new_recovery_workorder_and_emergency_approval: true
+  prior_release_approval_is_never_reused: true
+  restore_requires_exact_frozen_assignment_and_independent_stopped_exposure_observation: true
+  failed_or_unknown_exposed_target_triggers_audited_fail_safe_freeze: true
+  prior_release_terminal_is_never_rewritten: true
+
+projection_vocabulary:
+  operation_state:
+    derives_from: [v4.worker_task, v4.attempt]
+    owns_state_machine: false
+  evaluation_run_state:
+    derives_from: [v4.worker_task, v4.attempt]
+    owns_state_machine: false
+  gate_verdict:
+    derives_from: system_gate_report
+    owns_state_machine: false
+
+cross_domain_rules:
+  external_operation_machine_is_imported_not_copied: true
+  system_release_uses_external_operation_kind: SYSTEM_RELEASE
+  system_rollback_uses_external_operation_kind: SYSTEM_ROLLBACK
+  rollback_does_not_rewrite_prior_release_terminal: true
+  external_operation_unknown_requires_reconcile_before_retry: true
+  gate_non_pass_cannot_create_system_workorder: true
+  p0_release_requires_human_approval_grant: true
+  policy_grant_is_p1: true

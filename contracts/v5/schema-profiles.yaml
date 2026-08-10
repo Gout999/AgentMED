@@ -1,0 +1,717 @@
+version: "0.1-draft"
+status: draft_target_contract
+runtime_status: NOT_IMPLEMENTED
+schema_major: 2
+field_contract_status: DRAFT
+route_status: DISABLED
+
+purpose:
+  - define_v5_exact_record_binding_space
+  - define_schema_major_2_successors_for_closed_v4_records
+  - preserve_v4_logical_owners_and_state_machines_without_json_schema_inheritance
+
+strictness:
+  additional_properties: false
+  canonicalization: jcs-rfc8785-v1
+  digest: sha256
+  unknown_fields: REJECT
+  closed_v4_schema_extension: FORBIDDEN
+  cross_major_binding_without_explicit_profile: FORBIDDEN
+
+common:
+  record_envelope_ref: contracts/v5/domain-model.yaml#record_envelope
+  canonical_record_digest:
+    scope: full_canonical_record_including_envelope_and_payload
+    excluded_json_pointer: /record_envelope/record_digest
+    algorithm: jcs-rfc8785-v1+sha256
+    exact_binding_digest_must_equal_target_record_digest: true
+    business_specific_digests_are_subartifact_checksums_not_authority: true
+  exact_record_binding_v4_bridge:
+    purpose: exact_reference_to_preserved_contract_major_1_record
+    required_fields: [contract_major, kind, id, revision, digest]
+    additional_properties: false
+    constants:
+      contract_major: 1
+    revision: integer_min_1_or_null_for_v4_singleton_immutable_records
+    kinds:
+      - QUALITY_CASE
+      - CANDIDATE_CONTRACT
+      - PROPOSAL
+      - PROPOSAL_DECISION
+      - ATTEMPT
+      - GATE_TRACK_RECEIPT
+      - CONTROLLER_REGISTRATION
+      - TRACE_EVIDENCE_RECEIPT
+      - MODEL_CALL_RECEIPT
+      - RESOLUTION_REVIEW_RECEIPT
+    digest_rule: digest_equals_preserved_v4_canonical_authority_digest
+  exact_record_binding_v5:
+    required_fields: [kind, id, revision, digest]
+    additional_properties: false
+    revision: integer_min_1
+    kinds:
+      - AI_APPLICATION
+      - ENVIRONMENT
+      - SYSTEM_COMPONENT
+      - DEPENDENCY_EDGE
+      - COMPONENT_REVISION
+      - PROVIDER_VERSION_ATTESTATION
+      - TOPOLOGY_REVISION
+      - SYSTEM_VERSION_SET
+      - BOOTSTRAP_ATTESTATION
+      - SYSTEM_ASSIGNMENT
+      - APPLICATION_CASE_BINDING
+      - CASE_EPISODE_BINDING
+      - ACCEPTANCE_CRITERIA_REVISION
+      - BADCASE_SPEC
+      - REGRESSION_ASSET
+      - OBSERVED_STATE_SNAPSHOT
+      - OPERATION_EXECUTION_RECEIPT
+      - EXTERNAL_EFFECT_RECEIPT
+      - SYSTEM_EPISODE_SNAPSHOT
+      - EVALUATION_BUNDLE
+      - RELEASE_PLAN
+      - SYSTEM_CANDIDATE_REVISION
+      - SYSTEM_EVALUATION_PLAN
+      - SYSTEM_GATE_EXECUTION
+      - SYSTEM_GATE_TRACK_RECEIPT
+      - SYSTEM_GATE_REPORT
+      - SYSTEM_WORKORDER
+      - SYSTEM_RECOVERY_WORKORDER
+      - SYSTEM_APPROVAL_GRANT
+      - SYSTEM_CAPABILITY_LEASE
+      - SYSTEM_EXTERNAL_OPERATION
+    digest_rule: digest_equals_target_record_envelope_record_digest
+  exact_evidence_binding_union:
+    one_of:
+      - exact_record_binding_v4_bridge:
+          allowed_kinds: [TRACE_EVIDENCE_RECEIPT, MODEL_CALL_RECEIPT, RESOLUTION_REVIEW_RECEIPT]
+      - exact_record_binding_v5:
+          allowed_kinds: [SYSTEM_EPISODE_SNAPSHOT, OBSERVED_STATE_SNAPSHOT, OPERATION_EXECUTION_RECEIPT, EXTERNAL_EFFECT_RECEIPT]
+    mutable_projection_binding: FORBIDDEN
+  exact_evaluation_subject_binding_union:
+    one_of:
+      - exact_record_binding_v5:SYSTEM_CANDIDATE_REVISION
+      - exact_record_binding_v5:SYSTEM_RECOVERY_WORKORDER
+  release_authority_key:
+    algorithm: sha256
+    inputs: [workspace_id, exact_workorder_or_recovery_workorder_binding, nonce, exact_target_system_version_set_binding, expected_assignment_generation, operation_kind]
+    caller_supplied: false
+    derived_and_verified_by_each_controller: true
+    one_key_may_authorize_at_most_one_approval_one_capability_and_one_external_operation: true
+  authority_receipt_v5:
+    logical_owner: control-plane-authority
+    schema_major: 2
+    required_fields:
+      - schema_version
+      - authority_receipt_id
+      - workspace_id
+      - controller_registration
+      - subject
+      - owner
+      - controller_principal
+      - command
+      - source_event_id
+      - transaction_id
+      - audit_ref
+      - recorded_at
+      - immutable
+      - hash_rule
+      - authority_receipt_digest
+    field_refs:
+      controller_registration: exact_record_binding_v4_bridge:CONTROLLER_REGISTRATION
+      subject: exact_record_binding_v5
+    constants:
+      immutable: true
+      hash_rule: jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)
+    digest_scope: full_canonical_authority_receipt
+    digest_rule: authority_receipt_digest_equals_sha256_of_canonical_receipt_excluding_digest_field
+    invariants:
+      - subject_kind_is_in_v5_binding_enum
+      - subject_and_receipt_share_transaction
+      - receipt_is_recording_proof_not_execution_authority
+      - receipt_digest_is_not_stored_in_subject
+      - receipt_is_not_itself_a_subject_in_the_v5_exact_binding_space
+      - controller_registration_was_active_unexpired_and_workspace_matched_at_recorded_at
+      - controller_owner_principal_allowed_command_and_subject_canonical_owner_all_match
+      - subject_equals_event_envelope_exact_subject_binding
+      - source_event_id_equals_event_envelope_event_id
+      - transaction_id_equals_event_envelope_transaction_id
+      - authority_receipt_id_equals_subject_envelope_and_event_envelope_authority_receipt_id
+    additional_properties: false
+
+profiles:
+  system_candidate_revision:
+    logical_resource: v4.candidate_revision
+    semantic_successor_of: contracts/v4/schemas/candidate-revision.schema.json
+    canonical_owner: proposal-controller
+    canonical_command: candidate-revisions.record
+    reuses_v4_business_state_machine: true
+    adds_business_state_machine: false
+    required_fields:
+      - record_envelope
+      - candidate_revision_id
+      - candidate_kind
+      - exact_case_binding
+      - exact_candidate_contract_binding
+      - exact_accepted_proposal_binding
+      - producer_attempt_binding
+      - application_id
+      - environment_id
+      - exact_base_system_version_set_binding
+      - exact_target_system_version_set_binding
+      - component_change_items
+      - topology_diff_artifact
+      - blast_radius_artifact
+      - recovery_requirements
+      - candidate_artifact_digest
+    field_refs:
+      exact_case_binding: exact_record_binding_v4_bridge:QUALITY_CASE
+      exact_candidate_contract_binding: exact_record_binding_v4_bridge:CANDIDATE_CONTRACT
+      exact_accepted_proposal_binding: exact_record_binding_v4_bridge:PROPOSAL
+      producer_attempt_binding: exact_record_binding_v4_bridge:ATTEMPT
+      exact_base_system_version_set_binding: exact_record_binding_v5:SYSTEM_VERSION_SET
+      exact_target_system_version_set_binding: exact_record_binding_v5:SYSTEM_VERSION_SET
+    constants:
+      candidate_kind: SYSTEM_CHANGE
+    invariants:
+      - accepted_proposal_exactly_matches_candidate
+      - candidate_contract_allowed_change_surface_is_enforced
+      - cross_external_atomicity_is_not_claimed
+      - partial_apply_stops_and_reconciles
+    additional_properties: false
+
+  system_evaluation_plan:
+    logical_resource: v4.evaluation_plan
+    semantic_successor_of: contracts/v4/schemas/evaluation-plan.schema.json
+    canonical_owner: gate-controller
+    canonical_command: evaluations.freeze-plan
+    reuses_v4_business_state_machine: true
+    adds_business_state_machine: false
+    required_fields:
+      - record_envelope
+      - evaluation_plan_id
+      - evaluation_purpose
+      - exact_base_system_version_set_binding
+      - exact_target_system_version_set_binding
+      - evaluation_subject_kind
+      - exact_evaluation_subject_binding
+      - exact_evaluation_bundle_binding
+      - exact_required_episode_snapshot_bindings
+      - required_track_definitions
+      - required_evaluation_dimensions
+      - required_evidence_facets
+      - holdout_binding_digest
+      - plan_digest
+    evaluation_purpose_values: [CANDIDATE_VERIFICATION, RELEASE_AUTHORIZATION]
+    release_plan_binding_union:
+      discriminator: evaluation_purpose
+      variants:
+        CANDIDATE_VERIFICATION:
+          does_not_bind_release_plan: true
+          forbidden_fields: [exact_release_plan_binding]
+        RELEASE_AUTHORIZATION:
+          required: true
+          required_fields: [exact_release_plan_binding]
+          exact_binds_pre_gate_sealed_release_plan: true
+    field_refs:
+      exact_base_system_version_set_binding: exact_record_binding_v5:SYSTEM_VERSION_SET
+      exact_target_system_version_set_binding: exact_record_binding_v5:SYSTEM_VERSION_SET
+      exact_evaluation_subject_binding: exact_evaluation_subject_binding_union
+      exact_evaluation_bundle_binding: exact_record_binding_v5:EVALUATION_BUNDLE
+      exact_release_plan_binding: exact_record_binding_v5:RELEASE_PLAN
+      exact_required_episode_snapshot_bindings: list[exact_record_binding_v5:SYSTEM_EPISODE_SNAPSHOT]
+    evaluation_subject_union:
+      discriminator: evaluation_subject_kind
+      variants:
+        CANDIDATE_RELEASE:
+          binding_constraint: SYSTEM_CANDIDATE_REVISION
+        ROLLBACK_RECOVERY:
+          binding_constraint: SYSTEM_RECOVERY_WORKORDER
+          requires: [exact_prior_trusted_gate_report_binding, exact_known_good_system_version_set_binding]
+    invariants:
+      - base_target_candidate_bundle_and_release_plan_are_independently_exact
+      - mutable_episode_view_is_forbidden_as_gate_evidence
+      - generator_and_evaluator_independence_is_enforced
+    additional_properties: false
+
+  system_gate_execution:
+    logical_resource: v4.gate_execution
+    canonical_owner: gate-controller
+    canonical_commands: [gates.start, gates.attach-track-receipt, gates.record-result, gates.reconcile]
+    reuses_v4_gate_state_machine: true
+    adds_business_state_machine: false
+    required_fields:
+      - record_envelope
+      - gate_execution_id
+      - lifecycle_state
+      - exact_evaluation_plan_binding
+      - exact_previous_gate_execution_binding_or_null
+      - exact_attached_gate_track_receipt_bindings
+      - exact_terminal_gate_report_binding_or_null
+    lifecycle_state_values: [CREATED, RUNNING, PASS, FAILED, INCONCLUSIVE, ERROR, UNKNOWN]
+    additional_properties: false
+
+  system_gate_report:
+    logical_resource: v4.gate_report_terminal_artifact
+    semantic_successor_of: v4.gate_report_terminal_artifact
+    canonical_owner: gate-controller
+    canonical_commands: [gates.record-result, gates.reconcile]
+    reuses_v4_gate_state_machine: false
+    lifecycle_root: system_gate_execution
+    immutable_subordinate_artifact: true
+    adds_business_state_machine: false
+    required_fields:
+      - record_envelope
+      - gate_report_id
+      - exact_gate_execution_binding
+      - evaluation_purpose
+      - exact_evaluation_plan_binding
+      - exact_base_system_version_set_binding
+      - exact_target_system_version_set_binding
+      - evaluation_subject_kind
+      - exact_evaluation_subject_binding
+      - exact_evaluation_bundle_binding
+      - exact_gate_track_receipt_bindings
+      - run_state
+      - gate_verdict
+      - evidence_completeness
+      - evaluation_dimension_results
+      - attribution_verdict_or_not_required
+      - gate_report_digest
+    evaluation_purpose_values: [CANDIDATE_VERIFICATION, RELEASE_AUTHORIZATION]
+    release_plan_binding_union:
+      discriminator: evaluation_purpose
+      variants:
+        CANDIDATE_VERIFICATION:
+          does_not_bind_release_plan: true
+          forbidden_fields: [exact_release_plan_binding]
+        RELEASE_AUTHORIZATION:
+          required: true
+          required_fields: [exact_release_plan_binding]
+          exact_binds_pre_gate_sealed_release_plan: true
+    terminal_gate_verdict_values: [PASS, FAILED, INCONCLUSIVE, ERROR]
+    field_refs:
+      exact_gate_execution_binding: exact_record_binding_v5:SYSTEM_GATE_EXECUTION
+      exact_evaluation_plan_binding: exact_record_binding_v5:SYSTEM_EVALUATION_PLAN
+      exact_evaluation_subject_binding: exact_evaluation_subject_binding_union
+      exact_gate_track_receipt_bindings: list[exact_record_binding_v5:SYSTEM_GATE_TRACK_RECEIPT]
+    evaluation_subject_must_match_plan_and_release_plan_kind: true
+    invariants:
+      - pass_iff_every_exact_required_track_is_complete_and_pass
+      - failed_inconclusive_error_unknown_cannot_create_system_workorder
+      - aggregate_score_cannot_override_hard_dimension
+      - raw_component_identity_assurance_is_revalidated_before_pass
+    additional_properties: false
+
+  system_gate_track_receipt:
+    logical_resource: v4.gate_track_receipt
+    semantic_successor_of: contracts/v4/schemas/gate-track-receipt.schema.json
+    canonical_owner: gate-controller
+    canonical_command: gate-track-receipts.record
+    lifecycle_root: system_gate_execution
+    immutable_subordinate_artifact: true
+    adds_business_state_machine: false
+    required_fields:
+      - record_envelope
+      - gate_track_receipt_id
+      - exact_gate_execution_binding
+      - evaluation_purpose
+      - exact_evaluation_plan_binding
+      - evaluation_subject_kind
+      - exact_evaluation_subject_binding
+      - exact_evaluation_bundle_binding
+      - track
+      - status
+      - completeness
+      - exact_evidence_bindings
+      - evaluator_kind
+      - evaluator_attestation
+      - gate_track_receipt_digest
+    evaluation_purpose_values: [CANDIDATE_VERIFICATION, RELEASE_AUTHORIZATION]
+    release_plan_binding_union:
+      discriminator: evaluation_purpose
+      variants:
+        CANDIDATE_VERIFICATION:
+          does_not_bind_release_plan: true
+          forbidden_fields: [exact_release_plan_binding]
+        RELEASE_AUTHORIZATION:
+          required: true
+          required_fields: [exact_release_plan_binding]
+          exact_binds_pre_gate_sealed_release_plan: true
+    field_refs:
+      exact_gate_execution_binding: exact_record_binding_v5:SYSTEM_GATE_EXECUTION
+      exact_evaluation_plan_binding: exact_record_binding_v5:SYSTEM_EVALUATION_PLAN
+      exact_evaluation_subject_binding: exact_evaluation_subject_binding_union
+      exact_evaluation_bundle_binding: exact_record_binding_v5:EVALUATION_BUNDLE
+      exact_release_plan_binding: exact_record_binding_v5:RELEASE_PLAN
+      exact_evidence_bindings: list[exact_evidence_binding_union]
+    evaluation_subject_must_match_plan_and_gate_execution: true
+    evaluator_attestation_union:
+      discriminator: evaluator_kind
+      variants:
+        RULE_ENGINE:
+          requires: [exact_controller_registration_binding, exact_attempt_binding, runner_artifact_digest, runner_version_digest]
+        DETERMINISTIC_RUNNER:
+          requires: [exact_controller_registration_binding, exact_attempt_binding, runner_artifact_digest, runner_version_digest]
+        SANDBOX_RUNNER:
+          requires: [exact_controller_registration_binding, exact_attempt_binding, runner_artifact_digest, runner_version_digest, sandbox_policy_digest]
+        AGENT_JUDGE:
+          requires: [exact_controller_registration_binding, exact_attempt_binding, exact_model_call_receipt_binding, evaluator_version_digest, model_independence_basis]
+    evaluator_field_refs:
+      exact_controller_registration_binding: exact_record_binding_v4_bridge:CONTROLLER_REGISTRATION
+      exact_attempt_binding: exact_record_binding_v4_bridge:ATTEMPT
+      exact_model_call_receipt_binding: exact_record_binding_v4_bridge:MODEL_CALL_RECEIPT
+    invariants:
+      - exact_track_definition_matches_evaluation_plan
+      - missing_or_unknown_required_evidence_cannot_pass
+      - evaluator_controller_is_active_unexpired_workspace_matched_and_allowed
+      - agent_judge_model_independence_is_verified_against_generator
+      - pre_release_evaluator_attestation_never_depends_on_post_workorder_external_operation_receipt
+    additional_properties: false
+
+  system_workorder:
+    logical_resource: v4.workorder
+    semantic_successor_of: contracts/v4/schemas/workorder-v4.schema.json
+    canonical_owner: gate-controller
+    canonical_command: workorders.create-from-pass
+    reuses_v4_business_state_machine: true
+    adds_business_state_machine: false
+    required_fields:
+      - record_envelope
+      - workorder_id
+      - exact_case_binding
+      - exact_candidate_revision_binding
+      - exact_evaluation_plan_binding
+      - exact_gate_report_pass_binding
+      - exact_release_plan_binding
+      - exact_base_system_version_set_binding
+      - exact_target_system_version_set_binding
+      - expected_assignment_generation
+      - action_scope
+      - risk_class
+      - required_authorization
+      - nonce
+      - expires_at
+      - workorder_hash
+    field_refs:
+      exact_case_binding: exact_record_binding_v4_bridge:QUALITY_CASE
+      exact_candidate_revision_binding: exact_record_binding_v5:SYSTEM_CANDIDATE_REVISION
+      exact_evaluation_plan_binding: exact_record_binding_v5:SYSTEM_EVALUATION_PLAN
+      exact_gate_report_pass_binding: exact_record_binding_v5:SYSTEM_GATE_REPORT
+      exact_release_plan_binding: exact_record_binding_v5:RELEASE_PLAN
+    constants:
+      gate_verdict: PASS
+    p0_constants:
+      required_authorization: HUMAN_APPROVAL
+    invariants:
+      - created_only_from_exact_trustworthy_gate_pass
+      - release_plan_was_frozen_before_gate
+      - nonce_target_generation_and_expiry_are_hashed
+      - executor_cannot_replace_release_parameters
+      - raw_component_identity_assurance_is_revalidated_before_creation
+    uniqueness_key: [workspace_id, exact_gate_report_pass_binding, exact_release_plan_binding, exact_target_system_version_set_binding, expected_assignment_generation]
+    duplicate_creation_returns_same_workorder: true
+    additional_properties: false
+
+  system_recovery_workorder:
+    logical_resource: v4.workorder
+    semantic_successor_of: contracts/v4/schemas/workorder-v4.schema.json
+    canonical_owner: gate-controller
+    canonical_command: workorders.create-break-glass-recovery
+    reuses_v4_business_state_machine: true
+    adds_business_state_machine: false
+    required_fields:
+      - record_envelope
+      - workorder_id
+      - exact_incident_or_case_binding
+      - exact_current_assignment_binding
+      - exact_current_observed_state_binding
+      - exact_prior_known_good_system_version_set_binding
+      - exact_prior_trusted_gate_report_binding
+      - exact_release_plan_binding
+      - expected_assignment_generation
+      - emergency_reason
+      - required_authorization
+      - nonce
+      - expires_at
+      - post_incident_review_required
+      - workorder_hash
+    field_refs:
+      exact_incident_or_case_binding: exact_record_binding_v4_bridge:QUALITY_CASE
+      exact_current_assignment_binding: exact_record_binding_v5:SYSTEM_ASSIGNMENT
+      exact_current_observed_state_binding: exact_record_binding_v5:OBSERVED_STATE_SNAPSHOT
+      exact_prior_known_good_system_version_set_binding: exact_record_binding_v5:SYSTEM_VERSION_SET
+      exact_prior_trusted_gate_report_binding: exact_record_binding_v5:SYSTEM_GATE_REPORT
+      exact_release_plan_binding: exact_record_binding_v5:RELEASE_PLAN
+    constants:
+      required_authorization: HUMAN_EMERGENCY_APPROVAL
+      post_incident_review_required: true
+    invariants:
+      - restores_only_exact_prior_trusted_known_good
+      - does_not_claim_new_candidate_gate_pass
+      - reauthenticated_human_emergency_approval_required
+    uniqueness_key: [workspace_id, exact_current_assignment_binding, exact_prior_known_good_system_version_set_binding, exact_release_plan_binding, expected_assignment_generation]
+    duplicate_creation_returns_same_recovery_workorder: true
+    additional_properties: false
+
+  system_approval_grant:
+    logical_resource: v4.approval_grant
+    canonical_owner: approval-controller
+    canonical_commands: [approvals.request, approvals.decide, approvals.revoke, approvals.expire]
+    reuses_v4_business_state_machine: false
+    defines_missing_v4_target_state_machine: true
+    adds_business_state_machine: true
+    required_fields:
+      - record_envelope
+      - approval_grant_id
+      - authority_kind
+      - lifecycle_status
+      - exact_workorder_or_recovery_workorder_binding
+      - exact_release_plan_binding
+      - exact_target_system_version_set_binding
+      - exact_approver_policy_binding
+      - approval_assignee_principal_or_group
+      - release_authority_key
+      - nonce
+      - expires_at
+      - approval_digest
+    authority_kind_union:
+      discriminator: authority_kind
+      variants:
+        HUMAN_APPROVAL:
+          binding_constraints:
+            exact_workorder_or_recovery_workorder_binding: SYSTEM_WORKORDER
+            exact_release_plan_binding: CANDIDATE_RELEASE
+          constants:
+            authorized_operation_kind: SYSTEM_RELEASE
+        HUMAN_EMERGENCY_APPROVAL:
+          binding_constraints:
+            exact_workorder_or_recovery_workorder_binding: SYSTEM_RECOVERY_WORKORDER
+            exact_release_plan_binding: BREAK_GLASS_RECOVERY
+          constants:
+            authorized_operation_kind: SYSTEM_ROLLBACK
+    lifecycle_status_union:
+      discriminator: lifecycle_status
+      variants:
+        REQUESTED:
+          requires: [requested_by_principal, requested_at]
+          forbids: [decision, decided_by_human_principal, reauthentication_receipt]
+        APPROVED:
+          requires: [exact_previous_requested_grant_binding, decision, decided_by_human_principal, reauthentication_receipt, decided_at]
+          constants: {decision: APPROVED}
+        DENIED:
+          requires: [exact_previous_requested_grant_binding, decision, decided_by_human_principal, reauthentication_receipt, decided_at]
+          constants: {decision: DENIED}
+        REVOKED:
+          requires: [exact_previous_approved_grant_binding, revoked_by_human_principal, reauthentication_receipt, revoked_at]
+        EXPIRED:
+          requires: [exact_previous_requested_or_approved_grant_binding, expired_at]
+    field_refs:
+      exact_approver_policy_binding: exact_record_binding_v5:COMPONENT_REVISION
+    invariants:
+      - decision_is_not_execution
+      - agent_or_service_cannot_decide
+      - workorder_plan_target_nonce_and_expiry_match
+      - decision_revision_carries_forward_authority_workorder_plan_target_nonce_and_expiry_unchanged
+      - decision_principal_matches_frozen_assignee_or_group_membership
+      - assignee_is_derived_by_approval_controller_from_frozen_policy_not_caller_payload
+      - approver_policy_is_a_base_or_current_trusted_POLICY_component_and_cannot_be_changed_by_the_same_candidate
+      - every_rollback_uses_a_new_emergency_approval
+    uniqueness_key: [release_authority_key]
+    second_grant_for_same_workorder_and_nonce: CONFLICT_AND_AUDIT
+    additional_properties: false
+
+  system_capability_lease:
+    logical_resource: v4.capability_lease
+    canonical_owner: capability-controller
+    canonical_commands: [capabilities.issue, capabilities.consume, capabilities.revoke, capabilities.expire]
+    reuses_v4_business_state_machine: true
+    adds_business_state_machine: false
+    required_fields:
+      - record_envelope
+      - capability_lease_id
+      - exact_workorder_or_recovery_workorder_binding
+      - exact_approval_grant_binding
+      - exact_target_binding
+      - release_authority_key
+      - lifecycle_status
+      - exact_previous_capability_snapshot_binding_or_null
+      - action_scope
+      - principal_id
+      - nonce
+      - expires_at
+      - lease_digest
+    lifecycle_status_union:
+      discriminator: lifecycle_status
+      variants:
+        ACTIVE:
+          requires: [issued_at]
+          forbids: [consumed_by_operation_id, consumed_at]
+        CONSUMED:
+          requires: [exact_previous_active_capability_binding, consumed_by_operation_id, consumed_at]
+        REVOKED:
+          requires: [exact_previous_active_capability_binding, revoked_at, revocation_reason]
+        EXPIRED:
+          requires: [exact_previous_active_capability_binding, expired_at]
+    workorder_authority_union:
+      SYSTEM_RELEASE:
+        workorder_kind: SYSTEM_WORKORDER
+        approval_kind: HUMAN_APPROVAL
+      SYSTEM_ROLLBACK:
+        workorder_kind: SYSTEM_RECOVERY_WORKORDER
+        approval_kind: HUMAN_EMERGENCY_APPROVAL
+        additionally_requires: [exact_frozen_assignment_binding, exact_stopped_exposure_observed_state_binding]
+    invariants:
+      - scope_is_no_broader_than_workorder
+      - lease_is_short_lived_and_single_target
+      - secret_value_is_never_in_record
+      - consumed_revision_has_same_id_and_previous_active_revision_plus_one
+      - consumed_revision_exactly_names_preallocated_external_operation_id
+      - every_non_active_revision_carries_forward_workorder_approval_target_scope_principal_nonce_and_expiry_unchanged
+      - active_revision_has_null_previous_and_every_transition_previous_field_equals_exact_previous_capability_snapshot_binding
+      - every_transition_uses_same_id_previous_revision_plus_one_and_compare_and_swap
+    uniqueness_key: [release_authority_key]
+    second_lease_for_same_approved_grant_and_nonce: RETURN_SAME_LEASE_OR_CONFLICT
+    additional_properties: false
+
+  release_plan:
+    logical_resource: release_plan
+    canonical_owner: proposal-controller
+    canonical_command: release-plans.freeze
+    required_fields:
+      - record_envelope
+      - release_plan_id
+      - plan_kind
+      - exact_base_system_version_set_binding
+      - exact_target_system_version_set_binding
+      - expected_assignment_generation
+      - rollout_steps
+      - observed_verification_plan
+      - recovery_plan
+      - exact_known_good_rollback_spec
+      - risk_class
+      - post_release_gate_spec
+      - release_plan_digest
+    plan_kind_union:
+      discriminator: plan_kind
+      variants:
+        CANDIDATE_RELEASE:
+          requires: [exact_candidate_revision_binding]
+        BREAK_GLASS_RECOVERY:
+          requires:
+            - exact_current_assignment_binding
+            - exact_current_observed_state_binding
+            - exact_prior_trusted_gate_report_binding
+            - emergency_reason
+    forbidden_fields: [approval_grant, policy_grant, workorder, nonce, expires_at]
+    p0_post_release_gate_policy: REQUIRED
+    additional_properties: false
+
+  system_external_operation:
+    logical_resource: v4.external_operation
+    canonical_owner: scoped-executor-controller
+    canonical_commands:
+      - external-operations.request
+      - external-operations.request-rollback
+      - external-operations.start
+      - external-operations.record-terminal
+      - external-operations.reconcile
+      - system-external-operations.attach-assignment-receipt
+      - system-external-operations.attach-observation-receipt
+      - system-external-operations.attach-effect-receipt
+      - system-external-operations.attach-post-release-gate-receipt
+    reuses_v4_external_operation_state_machine: true
+    adds_business_state_machine: false
+    required_fields:
+      - record_envelope
+      - operation_id
+      - operation_kind
+      - lifecycle_status
+      - transition_kind
+      - exact_previous_operation_binding_or_null
+      - exact_system_workorder_or_recovery_workorder_binding
+      - exact_human_approval_grant_binding
+      - exact_issued_capability_lease_binding
+      - exact_consumed_capability_lease_binding
+      - exact_release_plan_binding
+      - exact_target_system_version_set_binding
+      - release_authority_key
+      - expected_assignment_generation
+      - nonce
+      - expires_at
+      - idempotency_key
+      - required_receipt_plan
+      - operation_digest
+    operation_kinds: [SYSTEM_RELEASE, SYSTEM_ROLLBACK]
+    lifecycle_status_values: [PENDING, RUNNING, SUCCEEDED, FAILED, UNKNOWN]
+    transition_kind_union:
+      discriminator: transition_kind
+      variants:
+        REQUESTED:
+          constants: {lifecycle_status: PENDING}
+          requires: [exact_previous_operation_binding_or_null]
+        STARTED:
+          constants: {lifecycle_status: RUNNING}
+          requires: [exact_previous_pending_operation_binding]
+        RECEIPT_ATTACHED:
+          constants: {lifecycle_status: RUNNING}
+          requires: [exact_previous_running_operation_binding]
+        SUCCEEDED:
+          constants: {lifecycle_status: SUCCEEDED}
+          requires: [exact_previous_running_operation_binding]
+        FAILED:
+          constants: {lifecycle_status: FAILED}
+          requires: [exact_previous_running_operation_binding]
+        UNKNOWN:
+          constants: {lifecycle_status: UNKNOWN}
+          requires: [exact_previous_running_operation_binding]
+        RECONCILED_SUCCEEDED:
+          constants: {lifecycle_status: SUCCEEDED}
+          requires: [exact_previous_unknown_operation_binding]
+        RECONCILED_FAILED:
+          constants: {lifecycle_status: FAILED}
+          requires: [exact_previous_unknown_operation_binding]
+    operation_kind_union:
+      discriminator: operation_kind
+      variants:
+        SYSTEM_RELEASE:
+          binding_constraints:
+            exact_system_workorder_or_recovery_workorder_binding: SYSTEM_WORKORDER
+            exact_human_approval_grant_binding: HUMAN_APPROVAL
+            exact_release_plan_binding: CANDIDATE_RELEASE
+        SYSTEM_ROLLBACK:
+          binding_constraints:
+            exact_system_workorder_or_recovery_workorder_binding: SYSTEM_RECOVERY_WORKORDER
+            exact_human_approval_grant_binding: HUMAN_EMERGENCY_APPROVAL
+            exact_release_plan_binding: BREAK_GLASS_RECOVERY
+          additionally_requires:
+            - exact_frozen_assignment_binding
+            - exact_stopped_exposure_observed_state_binding
+    invariants:
+      - request_revalidates_workorder_approval_capability_target_nonce_and_expiry
+      - executor_consumes_only_presealed_parameters
+      - adapter_receipt_alone_cannot_succeed
+      - unknown_is_reconciled_before_retry
+      - capability_consumption_and_operation_creation_share_one_local_transaction
+      - issued_and_consumed_capability_bindings_share_id_and_adjacent_revisions
+      - consumed_capability_previous_binding_equals_issued_capability_binding
+      - consumed_capability_names_this_preallocated_operation_id
+      - every_rollback_has_new_recovery_workorder_and_emergency_approval
+      - every_revision_carries_forward_operation_kind_workorder_approval_capabilities_plan_target_generation_nonce_expiry_idempotency_and_receipt_plan_unchanged
+      - requested_revision_has_null_previous_and_every_transition_specific_previous_equals_exact_previous_operation_binding
+      - every_transition_uses_same_id_previous_revision_plus_one_and_compare_and_swap
+      - release_authority_key_matches_workorder_approval_capability_target_generation_and_operation_kind
+      - every_required_effect_requirement_is_covered_exactly_once_by_an_allowed_success_status_before_success
+      - failed_partial_not_observed_or_unknown_required_effect_cannot_succeed
+    uniqueness_key: [release_authority_key]
+    second_operation_for_same_release_authority_key: RETURN_SAME_OPERATION_OR_CONFLICT
+    additional_properties: false
+
+routing:
+  logical_lifecycle_key: [contract_major, resource_kind]
+  v4_contract_major: 1
+  v5_contract_major: 2
+  same_owner_across_major_required: true
+  dual_write_same_fact_forbidden: true
+  semantic_profile_selection_is_server_side: true

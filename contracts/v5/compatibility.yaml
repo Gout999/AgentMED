@@ -1,0 +1,133 @@
+version: "0.2-draft"
+status: draft_target_contract
+runtime_status: NOT_IMPLEMENTED
+
+current_implemented_public_slice:
+  contract: v4_s1a
+  api_prefix: /api/v1
+  schema_major: 1
+  behavior: unchanged
+  history_preserved_aggregates:
+    - quality_case
+  immutable_records:
+    - signal
+    - signal_content
+    - signal_case_link
+    - agent_run_ref
+    - trace_evidence_receipt
+    - authority_receipt
+  quality_case_semantics:
+    may_append_lifecycle_events: [triage, resolve, reopen]
+    prior_payload_event_and_digest_may_be_rewritten: false
+
+v5_target_surface:
+  api_prefix: /api/v2
+  schema_major: 2
+  route_status: DISABLED
+  discovery_status: DISABLED
+  cli_status: DISABLED
+  sdk_status: DISABLED
+  mcp_status: DISABLED
+  a2a_agent_card_status: DISABLED
+  a2a_transport_status: DISABLED
+  a2a_methods_status: DISABLED
+  first_wire_slice:
+    - capabilities.get
+    - system-manifests.import
+    - applications.get
+    - system-versions.get
+    - system-versions.diff
+    - cases.bind-application
+    - case-application-bindings.get
+    - acceptance-criteria.propose
+    - acceptance-criteria.get
+    - acceptance-criteria.confirm
+
+schema_major_rules:
+  v4_closed_json_schemas_are_not_extended: true
+  v5_system_profiles: contracts/v5/schema-profiles.yaml
+  v5_authority_receipt_uses_v5_exact_binding: true
+  same_logical_lifecycle_keeps_same_owner_across_major: true
+  default_cli_api_major: 1
+  v2_cli_requires_explicit_api_major: true
+  url_header_and_response_major_must_match: true
+  silent_upgrade_or_downgrade: REJECT_AND_AUDIT
+
+history_rules:
+  rewrite_existing_payload: false
+  recompute_existing_digest: false
+  reinterpret_governed_agent_id_as_application_id: false
+  rewrite_existing_authority_receipt: false
+  upgrade_historical_evidence_facet: false
+
+additive_links:
+  application_case_binding:
+    owns_original_case: false
+    exact_case_binding_fields: [case_id, case_revision, case_digest]
+    can_be_removed_from_new_read_route_without_mutating_case: true
+  case_episode_binding:
+    owns_original_case_or_episode: false
+    binds_immutable_episode_snapshot_only: true
+
+migration:
+  current_head: "007"
+  next_revision_must_descend_from_current_head: true
+  strategy:
+    - expand
+    - backfill_links_without_rehash
+    - verify
+    - route_by_contract_version
+    - contract_only_after_n_minus_1_window
+  draft_contract_generates_migration: false
+  downgrade_may_delete_authoritative_history: false
+
+route_authority:
+  routing_key: [public_contract_major, work_contract_version, resource_kind]
+  one_owner_per_routing_key: true
+  same_fact_dual_write_forbidden: true
+  cutover_receipt_required: true
+  cutover_receipt_fields:
+    - routing_key
+    - contract_version
+    - prior_authority
+    - new_authority
+    - reconciliation_evidence_digest
+    - activated_at
+  rollback:
+    - disable_new_v5_routes_and_all_generated_transports
+    - stop_new_v5_work
+    - drain_or_reconcile_existing_v5_work
+    - preserve_committed_append_only_v5_records
+    - continue_v4_s1a_facade
+
+lifecycle_compatibility:
+  v3_changeset:
+    status: SCENARIO_COMPATIBILITY_ONLY
+    may_be_reinterpreted_as_v5_system_candidate: false
+    may_own_v5_release: false
+  v4_candidate_gate_workorder_external_operation:
+    status: SEMANTICALLY_REUSED_VIA_SCHEMA_MAJOR_2_PROFILES
+    lifecycle_copied_into_v5: false
+    closed_schema_inherited: false
+    same_owner_required: true
+  v4_stage_4_execution:
+    current_runtime_status: NOT_IMPLEMENTED
+    must_be_implemented_before_v5_guarded_release: true
+  v4_skeleton_intents:
+    may_be_superseded_before_activation: true
+    superseded_names:
+      runviews.get: operations.get
+      work.stop-request: operations.cancel-request
+
+api_compatibility:
+  n_minus_1_compatible_minor_count: 1
+  breaking_system_resource_semantics_require_api_v2: true
+  v1_response_extension_without_schema_change_forbidden: true
+  v1_and_v2_call_same_governance_kernel: true
+  transport_adapters_may_not_create_parallel_authority: true
+
+implementation_gate:
+  exact_v5_field_contracts_frozen: false
+  v5_routes_may_activate: false
+  v5_migration_may_run: false
+  implementation_authorized: false

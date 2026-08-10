@@ -1,0 +1,704 @@
+version: "0.2-draft"
+status: draft_target_contract
+runtime_status: NOT_IMPLEMENTED
+public_api_prefix: /api/v2
+
+activation_flags:
+  http_routes: false
+  cli_commands: false
+  sdk_methods: false
+  capability_discovery: false
+  mcp_tools: false
+  a2a_agent_card: false
+  a2a_transport: false
+  a2a_methods: false
+
+compatibility_surface:
+  v4_s1a_registry: contracts/v4/intent-registry.yaml
+  public_api_prefix: /api/v1
+  behavior: unchanged_compatibility_facade
+  canonical_runtime_intents: [capabilities.get, signals.submit, cases.get, cases.timeline, evidence.get]
+
+wire_contract_rules:
+  draft_status: DRAFT
+  draft_requires_null_field_contract_ref: true
+  draft_must_not_generate_any_transport: true
+  draft_must_not_enter_capability_discovery: true
+  activation_requires_explicit_contract_freeze_and_runtime_evidence: true
+  all_transports_share_application_service: true
+
+api_major_selection:
+  canonical_intent_identity: [api_major, intent_name]
+  default_api_major: 1
+  v2_requires_explicit_selection: true
+  cli:
+    flag: "--api-version 2"
+    v2_invocation_prefix: "caseloop --api-version 2"
+    silent_default_change: FORBIDDEN
+  http:
+    request_header: X-CaseLoop-Contract-Version
+    response_header: X-CaseLoop-Contract-Version
+    v2_required_request_value: "2.0"
+    v2_missing_or_other_value_error: REQUEST_INVALID
+    v2_missing_or_other_value_is_audited: true
+    v2_never_falls_back_to_v1: true
+    v1_existing_1_0_header_contract: UNCHANGED
+    url_major_must_match_request_header_major: true
+    response_must_echo_contract_major: true
+    mismatched_or_downgraded_major: REJECT_AND_AUDIT
+  capability_response:
+    required_fields: [api_major, contract_version, enabled_intents, disabled_intents]
+    v1_response_schema_may_be_extended: false
+
+principal_types:
+  public: [human, external_agent, service, connector]
+  internal: [internal_controller, internal_worker]
+  trust_roles_are_server_derived: true
+  caller_payload_may_assert_trust_role: false
+
+authorization_defaults:
+  deny_unlisted_principal_type: true
+  deny_unlisted_scope: true
+  all_public_principals_denied_internal_intents: true
+  resource_visibility_is_checked_after_workspace_scope: true
+  unauthorized_resource_response: OPAQUE_NOT_FOUND
+
+forbidden_public_scopes:
+  human:
+    - external_operations:execute:internal
+    - controllers:record:internal
+    - work:claim:internal
+  external_agent:
+    - approvals:decide:human
+    - external_operations:execute:internal
+    - controllers:record:internal
+    - work:claim:internal
+    - observed_state:attest:trusted
+    - external_effects:attest:trusted
+  service:
+    - approvals:decide:human
+    - external_operations:execute:internal
+    - controllers:record:internal
+    - work:claim:internal
+  connector:
+    - approvals:decide:human
+    - external_operations:execute:internal
+    - controllers:record:internal
+    - work:claim:internal
+
+non_principal_resource_types: [ai_application, system_component, governed_agent]
+
+intents:
+  - name: capabilities.get
+    contract_major: 2
+    delivery_slice: V5-0C
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: query
+    execution_mode: synchronous
+    scope: capabilities:read
+    allowed_principal_types: [human, external_agent, service, connector]
+    idempotency: none
+    http: {method: GET, path: /api/v2/capabilities, operation_id: getV5Capabilities}
+    cli: capabilities get
+    cli_requires_explicit_api_major: true
+
+  - name: applications.register
+    contract_major: 2
+    delivery_slice: V5-1A
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: mutation
+    execution_mode: synchronous
+    scope: applications:manage
+    allowed_principal_types: [human, service]
+    required_trust_roles_any_of: [integrator, catalog_admin]
+    trust_roles_source: authenticated_server_registration
+    idempotency: required
+    command_target: {resource: ai_application, command: applications.register}
+    http: {method: POST, path: /api/v2/applications, operation_id: registerApplication}
+    cli: application register
+    cli_requires_explicit_api_major: true
+
+  - name: applications.get
+    contract_major: 2
+    delivery_slice: V5-1A
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: query
+    execution_mode: synchronous
+    scope: applications:read
+    allowed_principal_types: [human, external_agent, service, connector]
+    authorization_condition: application_authorized_reader
+    idempotency: none
+    http: {method: GET, path: "/api/v2/applications/{application_id}", operation_id: getApplication}
+    cli: application get
+    cli_requires_explicit_api_major: true
+
+  - name: system-manifests.import
+    contract_major: 2
+    delivery_slice: V5-1B
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: mutation
+    execution_mode: synchronous_local_transaction
+    scope: system_manifests:import
+    allowed_principal_types: [human, service]
+    required_trust_roles_any_of: [integrator, trusted_builder, trusted_attestor]
+    trust_roles_source: authenticated_server_registration
+    idempotency: required
+    workflow_owner: manifest_import_coordinator
+    workflow_targets:
+      - {resource: ai_application, command: applications.register}
+      - {resource: ai_application, command: applications.activate}
+      - {resource: environment, command: environments.register}
+      - {resource: system_component, command: system-components.register}
+      - {resource: dependency_edge, command: dependency-edges.record}
+      - {resource: component_revision, command: component-revisions.record}
+      - {resource: topology_revision, command: topology-revisions.record}
+      - {resource: system_version_set, command: system-versions.record}
+      - {resource: bootstrap_attestation, command: bootstrap-attestations.record}
+      - {resource: system_assignment, command: system-assignments.record}
+    transaction_semantics: ALL_OR_NOTHING_LOCAL_POSTGRES
+    external_side_effects: FORBIDDEN
+    http: {method: POST, path: /api/v2/system-manifests:import, operation_id: importSystemManifest}
+    cli: system-manifest import
+    cli_requires_explicit_api_major: true
+
+  - name: system-versions.record
+    contract_major: 2
+    delivery_slice: V5-1B
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: mutation
+    execution_mode: synchronous
+    scope: system_versions:record
+    allowed_principal_types: [human, service]
+    required_trust_roles_any_of: [integrator, trusted_builder, trusted_attestor]
+    trust_roles_source: authenticated_server_registration
+    idempotency: required
+    command_target: {resource: system_version_set, command: system-versions.record}
+    http: {method: POST, path: /api/v2/system-versions, operation_id: recordSystemVersion}
+    cli: system-version record
+    cli_requires_explicit_api_major: true
+
+  - name: system-versions.get
+    contract_major: 2
+    delivery_slice: V5-1B
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: query
+    execution_mode: synchronous
+    scope: system_versions:read
+    allowed_principal_types: [human, external_agent, service, connector]
+    authorization_condition: application_authorized_reader
+    idempotency: none
+    http: {method: GET, path: "/api/v2/system-versions/{system_version_set_id}", operation_id: getSystemVersion}
+    cli: system-version get
+    cli_requires_explicit_api_major: true
+
+  - name: system-versions.diff
+    contract_major: 2
+    delivery_slice: V5-1B
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: query
+    execution_mode: synchronous
+    scope: system_versions:read
+    allowed_principal_types: [human, external_agent, service, connector]
+    authorization_condition: authorized_reader_for_both_versions
+    idempotency: none
+    http: {method: GET, path: /api/v2/system-versions:diff, operation_id: diffSystemVersions}
+    cli: system-version diff
+    cli_requires_explicit_api_major: true
+
+  - name: cases.bind-application
+    contract_major: 2
+    delivery_slice: V5-1C
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: mutation
+    execution_mode: synchronous
+    scope: cases:bind
+    allowed_principal_types: [human, service]
+    required_trust_roles_any_of: [integrator, maintainer]
+    trust_roles_source: authenticated_server_registration
+    authorization_condition: case_application_and_environment_authorized_binder
+    same_workspace_required: true
+    unauthorized_result: OPAQUE_NOT_FOUND
+    idempotency: required
+    command_target: {resource: application_case_binding, command: cases.bind-application}
+    http: {method: POST, path: "/api/v2/cases/{case_id}:bind-application", operation_id: bindCaseApplication}
+    cli: case bind-application
+    cli_requires_explicit_api_major: true
+
+  - name: case-application-bindings.get
+    contract_major: 2
+    delivery_slice: V5-1C
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: query
+    execution_mode: synchronous
+    scope: cases:read
+    allowed_principal_types: [human, external_agent, service, connector]
+    authorization_condition: case_and_application_authorized_reader
+    required_query_fields: [case_revision, case_digest]
+    unique_result_key: [workspace_id, case_id, case_revision, case_digest]
+    different_target_for_same_exact_case: CONFLICT
+    idempotency: none
+    http: {method: GET, path: "/api/v2/cases/{case_id}/application-binding{?case_revision,case_digest}", operation_id: getCaseApplicationBinding}
+    cli: case application-binding get
+    cli_requires_explicit_api_major: true
+
+  - name: acceptance-criteria.propose
+    contract_major: 2
+    delivery_slice: V5-0C
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: mutation
+    execution_mode: synchronous
+    scope: acceptance_criteria:propose
+    allowed_principal_types: [human, external_agent, service, connector]
+    authorization_condition: case_authorized_actor
+    idempotency: required
+    records_untrusted_proposal_not_confirmed_acceptance_criteria: true
+    command_target: {resource: acceptance_criteria_revision, command: acceptance-criteria.propose}
+    http: {method: POST, path: "/api/v2/cases/{case_id}:propose-acceptance-criteria", operation_id: proposeAcceptanceCriteria}
+    cli: case acceptance-criteria propose
+    cli_requires_explicit_api_major: true
+
+  - name: acceptance-criteria.confirm
+    contract_major: 2
+    delivery_slice: V5-0C
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: mutation
+    execution_mode: synchronous
+    scope: acceptance_criteria:confirm
+    allowed_principal_types: [human]
+    required_trust_roles_any_of: [maintainer, domain_reviewer]
+    trust_roles_source: authenticated_server_registration
+    authorization_condition: human_maintainer_or_domain_reviewer_of_case
+    reauthentication: required
+    idempotency: required
+    confirmed_revision_is_immutable_and_additive: true
+    confirmed_revision_does_not_rewrite_quality_case_payload_or_digest: true
+    command_target: {resource: acceptance_criteria_revision, command: acceptance-criteria.confirm}
+    http: {method: POST, path: "/api/v2/acceptance-criteria/{acceptance_criteria_revision_id}:confirm", operation_id: confirmAcceptanceCriteria}
+    cli: acceptance-criteria confirm
+    cli_requires_explicit_api_major: true
+
+  - name: acceptance-criteria.get
+    contract_major: 2
+    delivery_slice: V5-0C
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: query
+    execution_mode: synchronous
+    scope: acceptance_criteria:read
+    allowed_principal_types: [human, external_agent, service, connector]
+    authorization_condition: case_authorized_reader
+    required_query_fields: [case_revision]
+    idempotency: none
+    http: {method: GET, path: "/api/v2/cases/{case_id}/acceptance-criteria{?case_revision}", operation_id: getAcceptanceCriteria}
+    cli: case acceptance-criteria get
+    cli_requires_explicit_api_major: true
+
+  - name: system-episodes.get
+    contract_major: 2
+    delivery_slice: V5-3A-core
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: query
+    execution_mode: synchronous
+    scope: artifacts:read
+    allowed_principal_types: [human, external_agent, service, connector]
+    authorization_condition: application_authorized_reader
+    idempotency: none
+    http: {method: GET, path: "/api/v2/system-episodes/{system_episode_id}", operation_id: getSystemEpisode}
+    cli: system-episode get
+    cli_requires_explicit_api_major: true
+
+  - name: investigations.start
+    contract_major: 2
+    delivery_slice: V5-2B
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: mutation
+    execution_mode: asynchronous
+    scope: investigations:start
+    allowed_principal_types: [human, external_agent, service]
+    authorization_condition: case_authorized_actor
+    idempotency: required
+    command_target: {resource: v4.automation_request, command: automation-requests.start-investigation}
+    http: {method: POST, path: "/api/v2/cases/{case_id}:investigate", operation_id: startInvestigation}
+    cli: case investigate
+    cli_requires_explicit_api_major: true
+
+  - name: operations.get
+    contract_major: 2
+    delivery_slice: V5-2B
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: query
+    execution_mode: synchronous
+    scope: operations:read
+    allowed_principal_types: [human, external_agent, service, connector]
+    authorization_condition: request_owner_or_application_authorized_reader
+    unauthorized_result: OPAQUE_NOT_FOUND
+    idempotency: none
+    http: {method: GET, path: "/api/v2/operations/{operation_id}", operation_id: getOperation}
+    cli: operation get
+    cli_requires_explicit_api_major: true
+
+  - name: operations.list
+    contract_major: 2
+    delivery_slice: V5-2B
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: query
+    execution_mode: synchronous
+    scope: operations:read
+    allowed_principal_types: [human, external_agent, service, connector]
+    authorization_condition: request_owner_or_application_authorized_reader
+    visibility_filter_before_count_and_pagination: true
+    cursor_required_for_pagination: true
+    idempotency: none
+    http: {method: GET, path: /api/v2/operations, operation_id: listOperations}
+    cli: operation list
+    cli_requires_explicit_api_major: true
+
+  - name: operations.cancel-request
+    contract_major: 2
+    delivery_slice: V5-2B
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: mutation
+    execution_mode: asynchronous
+    scope: operations:cancel
+    allowed_principal_types: [human, external_agent, service]
+    authorization_condition: request_owner_or_operations_controller
+    idempotency: required
+    command_target: {resource: v4.automation_request, command: automation-requests.request-stop}
+    http: {method: POST, path: "/api/v2/operations/{operation_id}:cancel", operation_id: requestOperationCancel}
+    cli: operation cancel
+    cli_requires_explicit_api_major: true
+
+  - name: candidates.submit
+    contract_major: 2
+    delivery_slice: V5-4
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: mutation
+    execution_mode: synchronous
+    scope: candidates:write
+    allowed_principal_types: [human, external_agent, service]
+    authorization_condition: application_candidate_submitter
+    idempotency: required
+    records_untrusted_proposal_not_candidate_revision: true
+    command_target: {resource: v4.proposal, command: proposals.submit}
+    http: {method: POST, path: /api/v2/candidate-proposals, operation_id: submitCandidateProposal}
+    cli: candidate submit
+    cli_requires_explicit_api_major: true
+
+  - name: evaluations.start
+    contract_major: 2
+    delivery_slice: V5-4
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: mutation
+    execution_mode: asynchronous
+    scope: evaluations:start
+    allowed_principal_types: [human, external_agent, service]
+    authorization_condition: application_evaluation_requester
+    idempotency: required
+    command_target: {resource: v4.automation_request, command: automation-requests.start-evaluation}
+    http: {method: POST, path: /api/v2/evaluations, operation_id: startEvaluation}
+    cli: evaluation start
+    cli_requires_explicit_api_major: true
+
+  - name: evaluations.get
+    contract_major: 2
+    delivery_slice: V5-4
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: query
+    execution_mode: synchronous
+    scope: evaluations:read
+    allowed_principal_types: [human, external_agent, service, connector]
+    authorization_condition: application_authorized_reader
+    idempotency: none
+    http: {method: GET, path: "/api/v2/evaluations/{evaluation_id}", operation_id: getEvaluation}
+    cli: evaluation get
+    cli_requires_explicit_api_major: true
+
+  - name: gate-reports.get
+    contract_major: 2
+    delivery_slice: V5-4
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: query
+    execution_mode: synchronous
+    scope: evaluations:read
+    allowed_principal_types: [human, external_agent, service, connector]
+    authorization_condition: application_authorized_reader
+    idempotency: none
+    http: {method: GET, path: "/api/v2/gate-reports/{gate_report_id}", operation_id: getGateReport}
+    cli: gate-report get
+    cli_requires_explicit_api_major: true
+
+  - name: approvals.decide
+    contract_major: 2
+    delivery_slice: V5-5
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: mutation
+    execution_mode: synchronous
+    scope: approvals:decide:human
+    allowed_principal_types: [human]
+    authorization_condition: exact_approval_assignee
+    reauthentication: required
+    idempotency: required
+    command_target: {resource: system_approval_grant, command: approvals.decide}
+    http: {method: POST, path: "/api/v2/approvals/{approval_id}:decide", operation_id: decideApproval}
+    cli: approval decide
+    cli_requires_explicit_api_major: true
+
+  - name: releases.request
+    contract_major: 2
+    delivery_slice: V5-5
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: mutation
+    execution_mode: asynchronous
+    scope: releases:request
+    allowed_principal_types: [human, external_agent, service]
+    authorization_condition: application_release_requester
+    idempotency: required
+    request_only_no_execute_authority: true
+    requested_action_kind: SYSTEM_RELEASE
+    command_target: {resource: system_approval_grant, command: approvals.request}
+    http: {method: POST, path: /api/v2/releases, operation_id: requestRelease}
+    cli: release request
+    cli_requires_explicit_api_major: true
+
+  - name: releases.rollback-request
+    contract_major: 2
+    delivery_slice: V5-5
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: mutation
+    execution_mode: asynchronous
+    scope: rollbacks:request
+    allowed_principal_types: [human, external_agent, service]
+    authorization_condition: application_rollback_requester
+    idempotency: required
+    request_only_no_execute_authority: true
+    requested_action_kind: SYSTEM_ROLLBACK
+    workflow_owner: recovery_request_coordinator
+    workflow_targets:
+      - {resource: release_plan, command: release-plans.freeze}
+      - {resource: system_recovery_workorder, command: workorders.create-break-glass-recovery}
+      - {resource: system_approval_grant, command: approvals.request}
+    workflow_semantics: FREEZE_BREAK_GLASS_PLAN_CREATE_RECOVERY_WORKORDER_THEN_REQUEST_EMERGENCY_APPROVAL
+    http: {method: POST, path: "/api/v2/releases/{external_operation_id}:rollback", operation_id: requestReleaseRollback}
+    cli: release rollback-request
+    cli_requires_explicit_api_major: true
+
+  - name: release-operations.get
+    contract_major: 2
+    delivery_slice: V5-5
+    wire_status: DRAFT
+    implementation_status: NOT_IMPLEMENTED
+    field_contract_ref: null
+    kind: query
+    execution_mode: synchronous
+    scope: releases:read
+    allowed_principal_types: [human, external_agent, service, connector]
+    authorization_condition: request_owner_or_application_authorized_reader
+    unauthorized_result: OPAQUE_NOT_FOUND
+    idempotency: none
+    http: {method: GET, path: "/api/v2/release-operations/{external_operation_id}", operation_id: getReleaseOperation}
+    cli: release get
+    cli_requires_explicit_api_major: true
+
+internal_intent_authorization:
+  work.claim: {allowed_principal_types: [internal_worker], required_scope: work:claim:internal, owner: work-controller}
+  work.heartbeat: {allowed_principal_types: [internal_worker], required_scope: work:heartbeat:internal, owner: work-controller}
+  attempts.record-receipt: {allowed_principal_types: [internal_worker], required_scope: attempts:record:internal, owner: work-controller}
+  candidate-revisions.record: {allowed_principal_types: [internal_controller], required_scope: candidates:record:internal, owner: proposal-controller}
+  release-plans.freeze: {allowed_principal_types: [internal_controller], required_scope: release_plans:freeze:internal, owner: proposal-controller}
+  evaluations.freeze-plan: {allowed_principal_types: [internal_controller], required_scope: evaluations:freeze:internal, owner: gate-controller}
+  gate-track-receipts.record: {allowed_principal_types: [internal_controller], required_scope: gates:record:internal, owner: gate-controller}
+  gates.start: {allowed_principal_types: [internal_controller], required_scope: gates:record:internal, owner: gate-controller}
+  gates.attach-track-receipt: {allowed_principal_types: [internal_controller], required_scope: gates:record:internal, owner: gate-controller}
+  gates.record-result: {allowed_principal_types: [internal_controller], required_scope: gates:record:internal, owner: gate-controller}
+  gates.reconcile: {allowed_principal_types: [internal_controller], required_scope: gates:reconcile:internal, owner: gate-controller}
+  workorders.create-from-pass: {allowed_principal_types: [internal_controller], required_scope: workorders:create:internal, owner: gate-controller}
+  workorders.create-break-glass-recovery: {allowed_principal_types: [internal_controller], required_scope: recovery_workorders:create:internal, owner: gate-controller}
+  capabilities.issue: {allowed_principal_types: [internal_controller], required_scope: capabilities:issue:internal, owner: capability-controller}
+  capabilities.consume: {allowed_principal_types: [internal_controller], required_scope: capabilities:consume:internal, owner: capability-controller}
+  capabilities.revoke: {allowed_principal_types: [internal_controller], required_scope: capabilities:revoke:internal, owner: capability-controller}
+  capabilities.expire: {allowed_principal_types: [internal_controller], required_scope: capabilities:expire:internal, owner: capability-controller}
+  external-operations.request: {allowed_principal_types: [internal_controller], required_scope: external_operations:request:internal, owner: scoped-executor-controller}
+  external-operations.request-rollback: {allowed_principal_types: [internal_controller], required_scope: external_operations:request:internal, owner: scoped-executor-controller}
+  external-operations.start: {allowed_principal_types: [internal_controller], required_scope: external_operations:record:internal, owner: scoped-executor-controller}
+  external-operations.record-terminal: {allowed_principal_types: [internal_controller], required_scope: external_operations:record:internal, owner: scoped-executor-controller}
+  external-operations.reconcile: {allowed_principal_types: [internal_controller], required_scope: external_operations:reconcile:internal, owner: scoped-executor-controller}
+  operation-execution-receipts.record: {allowed_principal_types: [internal_controller], required_scope: operation_receipts:record:internal, owner: scoped-executor-controller}
+  system-external-operations.attach-assignment-receipt: {allowed_principal_types: [internal_controller], required_scope: external_operations:record:internal, owner: scoped-executor-controller}
+  system-external-operations.attach-observation-receipt: {allowed_principal_types: [internal_controller], required_scope: external_operations:record:internal, owner: scoped-executor-controller}
+  system-external-operations.attach-effect-receipt: {allowed_principal_types: [internal_controller], required_scope: external_operations:record:internal, owner: scoped-executor-controller}
+  system-external-operations.attach-post-release-gate-receipt: {allowed_principal_types: [internal_controller], required_scope: external_operations:record:internal, owner: scoped-executor-controller}
+  observed-state.record: {allowed_principal_types: [internal_controller], required_scope: observed_state:record:internal, owner: evidence-controller}
+  provider-version-attestations.record: {allowed_principal_types: [internal_controller], required_scope: provider_versions:attest:internal, owner: evidence-controller}
+  external-effect-receipts.record: {allowed_principal_types: [internal_controller], required_scope: external_effects:record:internal, owner: evidence-controller}
+  system-assignments.set-desired: {allowed_principal_types: [internal_controller], required_scope: assignments:update:internal, owner: version-controller}
+  system-assignments.freeze: {allowed_principal_types: [internal_controller], required_scope: assignments:freeze:internal, owner: version-controller}
+  system-assignments.resume: {allowed_principal_types: [internal_controller], required_scope: assignments:resume:internal, owner: version-controller}
+
+internal_workflow_authorization:
+  capabilities.consume-and-create-external-operation:
+    allowed_principal_types: [internal_controller]
+    required_scope: release_authorization:coordinate:internal
+    owner: release_authorization_coordinator
+    requires_exact_source_event: capability.issued
+    local_transaction: ALL_OR_NOTHING
+  recovery-requests.freeze-plan-create-workorder-and-request-approval:
+    allowed_principal_types: [internal_controller]
+    required_scope: recovery_requests:coordinate:internal
+    owner: recovery_request_coordinator
+    requires_exact_public_request_authorization: application_rollback_requester
+    local_transaction: ALL_OR_NOTHING
+
+sealed_adapter_dispatch:
+  is_canonical_domain_command: false
+  issuer: scoped-executor-controller
+  requires_started_system_external_operation: true
+  input_is_exact_presealed_operation_payload: true
+  adapter_may_write_control_plane: false
+  adapter_returns_untrusted_raw_execution_result: true
+  raw_result_must_enter_via: operation-execution-receipts.record
+  adapter_result_never_sets_domain_terminal_state_directly: true
+
+operation_projection_contract:
+  owner: projection-builder
+  creates_business_state_machine: false
+  derives_from: [v4.worker_task, v4.attempt, trusted_domain_artifact]
+  states: [SUBMITTED, WORKING, INPUT_REQUIRED, AUTH_REQUIRED, CANCEL_REQUESTED, CANCELED, REJECTED, FAILED, COMPLETED]
+  domain_result_fields: [artifact_kind, schema_major, domain_verdict, evidence_completeness, exact_artifact_binding]
+  semantics:
+    completed: trusted_domain_artifact_was_produced
+    failed: no_trustworthy_domain_artifact_was_produced
+    cancel_requested: stop_requested_but_not_confirmed
+    canceled: cancellation_confirmed_by_work_owner
+    domain_non_pass_can_be_completed: true
+
+agent_protocol_target:
+  activation: AFTER_V5_2_DURABLE_WORK_AND_SEPARATE_ACCEPTANCE
+  activation_authority: activation_flags
+  domain_task_state_is_transport_state: false
+  a2a:
+    draft_status: DRAFT_NOT_ACTIVE
+    protocolVersion: "1.0"
+    activation_flag_refs: [a2a_agent_card, a2a_transport, a2a_methods]
+    activation_requires_all_referenced_flags_true: true
+    required_request_version_header: A2A-Version
+    methods: [SendMessage, GetTask, ListTasks, CancelTask]
+    send_message_creates_server_task: true
+    method_mapping:
+      SendMessage:
+        canonical_async_intents: [investigations.start, evaluations.start]
+        intent_discriminator_field: caseloop_intent
+        discriminator_location: structured_message_data_part
+        missing_or_ambiguous_discriminator: REJECT
+      GetTask: operations.get
+      ListTasks: operations.list
+      CancelTask: operations.cancel-request
+    visibility_inherits_canonical_operation_authorization: true
+    task_binding_required_fields: [authenticated_principal_id, operation_id, context_id, task_id, message_id, canonical_intent, canonical_idempotency_key]
+    task_id_issued_by_server: true
+    task_id_globally_unique: true
+    idempotency_derivation: sha256(authenticated_principal_id,context_id,message_id,canonical_intent,canonical_request_digest)
+    duplicate_message_same_digest_returns_same_task: true
+    duplicate_message_different_digest: CONFLICT
+    continuation_requires_existing_visible_context_and_task: true
+    artifact_required_fields: [artifact_kind, schema_major, domain_verdict, evidence_completeness, exact_artifact_binding]
+    operation_state_mapping:
+      SUBMITTED: TASK_STATE_SUBMITTED
+      WORKING: TASK_STATE_WORKING
+      CANCEL_REQUESTED: TASK_STATE_WORKING
+      INPUT_REQUIRED: TASK_STATE_INPUT_REQUIRED
+      AUTH_REQUIRED: TASK_STATE_AUTH_REQUIRED
+      CANCELED: TASK_STATE_CANCELED
+      REJECTED: TASK_STATE_REJECTED
+      FAILED: TASK_STATE_FAILED
+      COMPLETED: TASK_STATE_COMPLETED
+    task_completed_can_contain_domain_non_pass_artifact: true
+    auth_required_grants_approval_capability_or_scope: false
+    auth_required_resume_requires_fresh_authentication_and_authorization: true
+    agent_card_contract:
+      required_fields: [protocolVersion, supportedInterfaces, securitySchemes, security, skills]
+      supported_interface_fields: [url, protocolBinding, protocolVersion]
+      required_protocol_binding: JSONRPC
+      skills_map_one_to_one_to_allowlisted_canonical_intents: true
+      unpublished_or_disabled_intents_are_omitted: true
+    forbidden_domain_translation: [task_completed_to_gate_pass, task_completed_to_release_success]
+  mcp:
+    draft_status: DRAFT_NOT_ACTIVE
+    specification_target: "2026-07-28"
+    activation_flag_ref: mcp_tools
+    tasks_extension: OPTIONAL_NEGOTIATED_NOT_BASELINE
+    baseline_async_result: operation_id_then_operations_get
+    exposes_only_canonical_public_intents: true
+    tools_filtered_by_authenticated_scope: true
+    tool_annotations_are_authority: false
+    approval_and_execute_tools_forbidden: true
+    structured_content_required: true
+    transport_error_is_domain_verdict: false
+    every_tool_call_reauthorizes: [audience, expiry, revocation, scope, object_visibility]
+    operation_id_or_task_handle_is_capability: false
+    mutation_idempotency_field: _meta.caseloop/idempotencyKey
+    mutation_idempotency_required: true
+    disconnect_or_transport_cancel_effect: DETACH_WAIT_ONLY
+    durable_operation_cancel_requires_tool: caseloop_operation_cancel
+    tool_call_cancel_is_domain_terminal: false
+    tool_allowlist:
+      caseloop_capabilities: {intent: capabilities.get, input_schema_ref: null, output_schema_ref: null}
+      caseloop_investigate: {intent: investigations.start, input_schema_ref: null, output_schema_ref: null}
+      caseloop_evaluate: {intent: evaluations.start, input_schema_ref: null, output_schema_ref: null}
+      caseloop_operation_get: {intent: operations.get, input_schema_ref: null, output_schema_ref: null}
+      caseloop_operation_cancel: {intent: operations.cancel-request, input_schema_ref: null, output_schema_ref: null}
+
+competition_profile:
+  real_external_agent_via_cli_is_sufficient_for_agent_native_transport_proof: true
+  explicit_cli_api_major_required: 2
+  public_mcp_runtime_required: false
+  public_a2a_runtime_required: false
+  generic_operations_list_required: false
+  generic_cancel_required: false
+  competition_slice_is_delivery_sequence_not_product_scope_reduction: true

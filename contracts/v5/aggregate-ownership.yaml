@@ -1,0 +1,836 @@
+version: "0.2-draft"
+status: draft_target_contract
+runtime_status: NOT_IMPLEMENTED
+
+imports:
+  v4:
+    ownership_contract: contracts/v4/aggregate-ownership.yaml
+    state_machine_contract: contracts/v4/events/state-machines.yaml
+    mode: semantic_reuse_with_schema_major_routing
+    no_state_machine_copy: true
+    closed_json_schemas_are_not_inherited: true
+    resources:
+      - signal
+      - quality_case
+      - automation_request
+      - worker_task
+      - attempt
+      - evidence_receipt
+      - resolution_contract
+      - candidate_contract
+      - proposal
+      - proposal_decision
+      - candidate_revision
+      - evaluation_plan
+      - gate_execution
+      - workorder
+      - approval_grant
+      - capability_lease
+      - external_operation
+      - authority_receipt
+      - automation_run_view
+    implementation_boundary:
+      exact_executable_chain_currently_ends_at: v4.workorder
+      approval_capability_external_operation_runtime: NOT_IMPLEMENTED
+      v5_stage_5_must_implement_not_merely_reference_stage_4: true
+
+rules:
+  command_has_exactly_one_owner_per_contract_major: true
+  imported_lifecycle_is_not_copied: true
+  schema_major_profile_keeps_same_logical_owner: true
+  missing_v4_target_lifecycle_may_be_defined_only_once_in_major_2: true
+  public_mutation_has_explicit_command_or_workflow_targets: true
+  projection_accepts_commands: false
+  agent_output_is_authoritative: false
+  transport_task_owns_domain_success: false
+  release_manager_owns_domain_success: false
+  system_assignment_has_one_owner: true
+  executor_can_mutate_system_assignment: false
+  authority_receipt_required_for_new_authoritative_record: true
+  all_authoritative_v5_subject_records_use_record_envelope: true
+  authority_receipt_is_non_recursive_recording_proof: true
+  release_authority_chain_uses_database_uniqueness_and_compare_and_swap: true
+  duplicate_outbox_delivery_may_not_mint_new_approval_capability_or_operation: true
+
+record_authority:
+  AI_APPLICATION:
+    resource: ai_application
+    owner: application-catalog-controller
+    command_events:
+      applications.register: [application.registered]
+      applications.activate: [application.activated]
+      applications.archive: [application.archived]
+      applications.restore: [application.restored]
+  ENVIRONMENT:
+    resource: environment
+    owner: application-catalog-controller
+    command_events:
+      environments.register: [environment.registered]
+      environments.retire: [environment.retired]
+      environments.restore: [environment.restored]
+  SYSTEM_COMPONENT:
+    resource: system_component
+    owner: application-catalog-controller
+    command_events:
+      system-components.register: [system_component.registered]
+      system-components.activate: [system_component.activated]
+      system-components.deprecate: [system_component.deprecated]
+      system-components.reactivate: [system_component.reactivated]
+      system-components.retire: [system_component.retired]
+  DEPENDENCY_EDGE:
+    resource: dependency_edge
+    owner: application-catalog-controller
+    command_events:
+      dependency-edges.record: [dependency_edge.recorded]
+  COMPONENT_REVISION:
+    resource: component_revision
+    owner: version-controller
+    command_events:
+      component-revisions.record: [component_revision.recorded]
+  PROVIDER_VERSION_ATTESTATION:
+    resource: provider_version_attestation
+    owner: evidence-controller
+    command_events:
+      provider-version-attestations.record: [provider_version_attestation.recorded]
+  TOPOLOGY_REVISION:
+    resource: topology_revision
+    owner: version-controller
+    command_events:
+      topology-revisions.record: [topology_revision.recorded]
+  SYSTEM_VERSION_SET:
+    resource: system_version_set
+    owner: version-controller
+    command_events:
+      system-versions.record: [system_version_set.recorded]
+  BOOTSTRAP_ATTESTATION:
+    resource: bootstrap_attestation
+    owner: version-controller
+    command_events:
+      bootstrap-attestations.record: [bootstrap_attestation.recorded]
+  SYSTEM_ASSIGNMENT:
+    resource: system_assignment
+    owner: version-controller
+    command_events:
+      system-assignments.record: [system_assignment.recorded]
+      system-assignments.set-desired: [system_assignment.desired_updated]
+      system-assignments.freeze: [system_assignment.frozen]
+      system-assignments.resume: [system_assignment.resumed]
+      system-assignments.retire: [system_assignment.retired]
+  APPLICATION_CASE_BINDING:
+    resource: application_case_binding
+    owner: case-controller
+    command_events:
+      cases.bind-application: [case.application_bound]
+  CASE_EPISODE_BINDING:
+    resource: case_episode_binding
+    owner: case-controller
+    command_events:
+      cases.bind-episode: [case.episode_bound]
+  ACCEPTANCE_CRITERIA_REVISION:
+    resource: acceptance_criteria_revision
+    owner: case-controller
+    command_events:
+      acceptance-criteria.propose: [acceptance_criteria.proposed]
+      acceptance-criteria.confirm: [acceptance_criteria.confirmed]
+  BADCASE_SPEC:
+    resource: badcase_spec
+    owner: case-controller
+    command_events:
+      badcase-specs.record: [badcase_spec.recorded]
+  REGRESSION_ASSET:
+    resource: regression_asset
+    owner: case-controller
+    command_events:
+      regression-assets.record: [regression_asset.recorded]
+  OBSERVED_STATE_SNAPSHOT:
+    resource: observed_state_snapshot
+    owner: evidence-controller
+    command_events:
+      observed-state.record: [observed_state.recorded]
+  OPERATION_EXECUTION_RECEIPT:
+    resource: operation_execution_receipt
+    owner: scoped-executor-controller
+    command_events:
+      operation-execution-receipts.record: [operation_execution_receipt.recorded]
+  EXTERNAL_EFFECT_RECEIPT:
+    resource: external_effect_receipt
+    owner: evidence-controller
+    command_events:
+      external-effect-receipts.record: [external_effect_receipt.recorded]
+  SYSTEM_EPISODE_SNAPSHOT:
+    resource: system_episode_snapshot
+    owner: evidence-controller
+    command_events:
+      system-episodes.freeze-snapshot: [system_episode.snapshot_frozen]
+  EVALUATION_BUNDLE:
+    resource: evaluation_bundle
+    owner: evaluation-registry-controller
+    command_events:
+      evaluation-bundles.record: [evaluation_bundle.recorded]
+  RELEASE_PLAN:
+    resource: release_plan
+    owner: proposal-controller
+    command_events:
+      release-plans.freeze: [release_plan.frozen]
+
+schema_major_2_lifecycle_authority:
+  SYSTEM_CANDIDATE_REVISION:
+    logical_resource: v4.candidate_revision
+    profile_resource: system_candidate_revision
+    owner: proposal-controller
+    command_events:
+      candidate-revisions.record: [candidate_revision.recorded]
+    routing_key: [contract_major, candidate_kind]
+  SYSTEM_EVALUATION_PLAN:
+    logical_resource: v4.evaluation_plan
+    profile_resource: system_evaluation_plan
+    owner: gate-controller
+    command_events:
+      evaluations.freeze-plan: [evaluation.plan_frozen]
+    routing_key: [contract_major, subject_kind]
+  SYSTEM_GATE_EXECUTION:
+    logical_resource: v4.gate_execution
+    profile_resource: system_gate_execution
+    owner: gate-controller
+    command_events:
+      gates.start: [gate.started]
+      gates.attach-track-receipt: [gate.track_receipt_recorded]
+      gates.record-result: [gate.completed, gate.failed, gate.inconclusive, gate.error, gate.unknown]
+      gates.reconcile: [gate.reconciled_pass, gate.reconciled_failed, gate.reconciled_inconclusive, gate.reconciled_error]
+    routing_key: [contract_major, evaluation_plan_kind]
+  SYSTEM_WORKORDER:
+    logical_resource: v4.workorder
+    profile_resource: system_workorder
+    owner: gate-controller
+    command_events:
+      workorders.create-from-pass: [workorder.created]
+    routing_key: [contract_major, target_kind]
+  SYSTEM_RECOVERY_WORKORDER:
+    logical_resource: v4.workorder
+    profile_resource: system_recovery_workorder
+    owner: gate-controller
+    command_events:
+      workorders.create-break-glass-recovery: [workorder.recovery_created]
+    routing_key: [contract_major, target_kind]
+  SYSTEM_APPROVAL_GRANT:
+    logical_resource: v4.approval_grant
+    profile_resource: system_approval_grant
+    owner: approval-controller
+    command_events:
+      approvals.request: [approval.requested]
+      approvals.decide: [approval.decided]
+      approvals.revoke: [approval.revoked]
+      approvals.expire: [approval.expired]
+    routing_key: [contract_major, target_kind]
+  SYSTEM_CAPABILITY_LEASE:
+    logical_resource: v4.capability_lease
+    profile_resource: system_capability_lease
+    owner: capability-controller
+    command_events:
+      capabilities.issue: [capability.issued]
+      capabilities.consume: [capability.consumed]
+      capabilities.revoke: [capability.revoked]
+      capabilities.expire: [capability.expired]
+    routing_key: [contract_major, target_kind]
+  SYSTEM_EXTERNAL_OPERATION:
+    logical_resource: v4.external_operation
+    profile_resource: system_external_operation
+    owner: scoped-executor-controller
+    command_events:
+      external-operations.request: [external_operation.requested]
+      external-operations.request-rollback: [external_operation.requested]
+      external-operations.start: [external_operation.started]
+      external-operations.record-terminal: [external_operation.succeeded, external_operation.failed, external_operation.unknown]
+      external-operations.reconcile: [external_operation.reconciled]
+      system-external-operations.attach-assignment-receipt: [system_external_operation.assignment_receipt_attached]
+      system-external-operations.attach-observation-receipt: [system_external_operation.observation_receipt_attached]
+      system-external-operations.attach-effect-receipt: [system_external_operation.effect_receipt_attached]
+      system-external-operations.attach-post-release-gate-receipt: [system_external_operation.post_release_gate_receipt_attached]
+    routing_key: [contract_major, operation_kind]
+
+schema_major_2_subordinate_record_authority:
+  SYSTEM_GATE_REPORT:
+    logical_record: v4.gate_report_terminal_artifact
+    profile_resource: system_gate_report
+    owner: gate-controller
+    command_events:
+      gates.record-result: [gate.completed, gate.failed, gate.inconclusive, gate.error]
+      gates.reconcile: [gate.reconciled_pass, gate.reconciled_failed, gate.reconciled_inconclusive, gate.reconciled_error]
+    same_transaction_root: SYSTEM_GATE_EXECUTION
+  SYSTEM_GATE_TRACK_RECEIPT:
+    logical_record: v4.gate_track_receipt
+    profile_resource: system_gate_track_receipt
+    owner: gate-controller
+    command_events:
+      gate-track-receipts.record: [gate_track_receipt.recorded]
+    same_transaction_root: SYSTEM_GATE_EXECUTION
+
+resources:
+  ai_application:
+    kind: aggregate
+    owner: application-catalog-controller
+    commands: [applications.register, applications.activate, applications.archive, applications.restore]
+    events: [application.registered, application.activated, application.archived, application.restored]
+    explicitly_does_not_own: [system_version, desired_assignment, observed_runtime, case_resolution, release_status]
+
+  environment:
+    kind: aggregate
+    owner: application-catalog-controller
+    commands: [environments.register, environments.retire, environments.restore]
+    events: [environment.registered, environment.retired, environment.restored]
+    explicitly_does_not_own: [desired_assignment, observed_runtime]
+
+  system_component:
+    kind: aggregate
+    owner: application-catalog-controller
+    commands: [system-components.register, system-components.activate, system-components.deprecate, system-components.reactivate, system-components.retire]
+    events: [system_component.registered, system_component.activated, system_component.deprecated, system_component.reactivated, system_component.retired]
+    explicitly_does_not_own: [component_revision, observed_identity, deployment_success]
+
+  dependency_edge:
+    kind: immutable_record
+    owner: application-catalog-controller
+    commands: [dependency-edges.record]
+    events: [dependency_edge.recorded]
+    explicitly_does_not_own: [historical_topology, observed_call_graph]
+
+  component_revision:
+    kind: immutable_record
+    owner: version-controller
+    commands: [component-revisions.record]
+    events: [component_revision.recorded]
+    explicitly_does_not_own: [desired_assignment, observed_runtime, deployment_success]
+
+  provider_version_attestation:
+    kind: immutable_record
+    owner: evidence-controller
+    commands: [provider-version-attestations.record]
+    events: [provider_version_attestation.recorded]
+    explicitly_does_not_own: [component_revision, desired_assignment, release_success]
+
+  topology_revision:
+    kind: immutable_record
+    owner: version-controller
+    commands: [topology-revisions.record]
+    events: [topology_revision.recorded]
+    explicitly_does_not_own: [observed_call_graph]
+
+  system_version_set:
+    kind: immutable_record
+    owner: version-controller
+    commands: [system-versions.record]
+    events: [system_version_set.recorded]
+    explicitly_does_not_own: [evaluation_bundle, gate_result, desired_assignment, observed_runtime, release_status]
+
+  bootstrap_attestation:
+    kind: immutable_record
+    owner: version-controller
+    commands: [bootstrap-attestations.record]
+    events: [bootstrap_attestation.recorded]
+    explicitly_does_not_own: [observed_runtime, release_success]
+
+  system_assignment:
+    kind: aggregate
+    owner: version-controller
+    commands: [system-assignments.record, system-assignments.set-desired, system-assignments.freeze, system-assignments.resume, system-assignments.retire]
+    events: [system_assignment.recorded, system_assignment.desired_updated, system_assignment.frozen, system_assignment.resumed, system_assignment.retired]
+    explicitly_does_not_own: [observed_runtime, external_operation_result, external_effect, case_resolution]
+
+  application_case_binding:
+    kind: immutable_record
+    owner: case-controller
+    commands: [cases.bind-application]
+    events: [case.application_bound]
+    explicitly_does_not_own: [original_signal_content, original_case_digest, system_version_content]
+
+  case_episode_binding:
+    kind: immutable_record
+    owner: case-controller
+    commands: [cases.bind-episode]
+    events: [case.episode_bound]
+    explicitly_does_not_own: [episode_content, original_case_digest]
+
+  observed_state_snapshot:
+    kind: immutable_record
+    owner: evidence-controller
+    commands: [observed-state.record]
+    events: [observed_state.recorded]
+    explicitly_does_not_own: [desired_assignment, external_effect, deployment_success]
+
+  operation_execution_receipt:
+    kind: immutable_record
+    owner: scoped-executor-controller
+    commands: [operation-execution-receipts.record]
+    events: [operation_execution_receipt.recorded]
+    explicitly_does_not_own: [desired_assignment, observed_runtime, independently_verified_effect]
+
+  external_effect_receipt:
+    kind: immutable_record
+    owner: evidence-controller
+    commands: [external-effect-receipts.record]
+    events: [external_effect_receipt.recorded]
+    explicitly_does_not_own: [desired_assignment, operation_terminal, case_resolution]
+
+  system_episode_snapshot:
+    kind: immutable_record
+    owner: evidence-controller
+    commands: [system-episodes.freeze-snapshot]
+    events: [system_episode.snapshot_frozen]
+    explicitly_does_not_own: [execution_success, causal_attribution, case_resolution]
+
+  evaluation_bundle:
+    kind: immutable_record
+    owner: evaluation-registry-controller
+    commands: [evaluation-bundles.record]
+    events: [evaluation_bundle.recorded]
+    explicitly_does_not_own: [gate_result, candidate_content, release_decision]
+
+  release_plan:
+    kind: immutable_record
+    owner: proposal-controller
+    commands: [release-plans.freeze]
+    events: [release_plan.frozen]
+    explicitly_does_not_own: [gate_result, approval_decision, external_operation_terminal, desired_assignment, observed_runtime]
+
+  system_episode_view:
+    kind: projection
+    owner: projection-builder
+    commands: []
+    events: []
+    derives_from: [v4.evidence_receipt, observed_state_snapshot, operation_execution_receipt, external_effect_receipt, exact_system_assignment_revision]
+
+  system_release_view:
+    kind: projection
+    owner: projection-builder
+    commands: []
+    events: []
+    derives_from: [system_workorder, system_recovery_workorder, system_approval_grant, system_external_operation, release_plan, system_assignment, observed_state_snapshot, external_effect_receipt]
+
+  acceptance_criteria_revision:
+    kind: immutable_record
+    owner: case-controller
+    commands: [acceptance-criteria.propose, acceptance-criteria.confirm]
+    events: [acceptance_criteria.proposed, acceptance_criteria.confirmed]
+    explicitly_does_not_own: [case_lifecycle, quality_case_payload_or_digest, gate_pass, release_decision]
+    subordinate_to: resolution_contract
+
+  badcase_spec:
+    kind: immutable_record
+    owner: case-controller
+    commands: [badcase-specs.record]
+    events: [badcase_spec.recorded]
+    explicitly_does_not_own: [case_lifecycle, gate_pass, release_decision]
+    subordinate_to: resolution_contract
+
+  case_readiness:
+    kind: projection
+    owner: projection-builder
+    commands: []
+    events: []
+    derives_from: [exact_case_binding, exact_resolution_contract_binding, confirmed_acceptance_criteria_revision_for_resolution_contract]
+
+  verified_candidate:
+    kind: projection
+    owner: projection-builder
+    commands: []
+    events: []
+    derives_from: [system_candidate_revision, system_gate_report]
+
+  regression_asset:
+    kind: immutable_record
+    owner: case-controller
+    commands: [regression-assets.record]
+    events: [regression_asset.recorded]
+    explicitly_does_not_own: [case_resolution, gate_pass, release_decision]
+
+schema_major_2_lifecycle_profiles:
+  system_candidate_revision:
+    kind: immutable_schema_profile
+    logical_resource: v4.candidate_revision
+    owner: proposal-controller
+    adds_business_state_machine: false
+  system_evaluation_plan:
+    kind: immutable_schema_profile
+    logical_resource: v4.evaluation_plan
+    owner: gate-controller
+    adds_business_state_machine: false
+  system_gate_execution:
+    kind: aggregate_schema_profile
+    logical_resource: v4.gate_execution
+    owner: gate-controller
+    reuses_v4_state_machine: true
+    adds_business_state_machine: false
+  system_workorder:
+    kind: immutable_schema_profile
+    logical_resource: v4.workorder
+    owner: gate-controller
+    adds_business_state_machine: false
+  system_recovery_workorder:
+    kind: immutable_schema_profile
+    logical_resource: v4.workorder
+    owner: gate-controller
+    adds_business_state_machine: false
+  system_approval_grant:
+    kind: aggregate_schema_profile
+    logical_resource: v4.approval_grant
+    owner: approval-controller
+    reuses_v4_state_machine: false
+    defines_missing_v4_target_state_machine: true
+    state_machine_ref: contracts/v5/state-machines.yaml#machines/system_approval_grant
+  system_capability_lease:
+    kind: aggregate_schema_profile
+    logical_resource: v4.capability_lease
+    owner: capability-controller
+    reuses_v4_state_machine: true
+  system_external_operation:
+    kind: aggregate_schema_profile
+    logical_resource: v4.external_operation
+    owner: scoped-executor-controller
+    reuses_v4_state_machine: true
+
+schema_major_2_subordinate_record_profiles:
+  system_gate_report:
+    kind: immutable_terminal_artifact_profile
+    logical_record: v4.gate_report_terminal_artifact
+    owner: gate-controller
+    lifecycle_root: system_gate_execution
+  system_gate_track_receipt:
+    kind: immutable_schema_profile
+    logical_record: v4.gate_track_receipt
+    owner: gate-controller
+    lifecycle_root: system_gate_execution
+
+v4_additive_command_profile:
+  automation_request:
+    owner: automation-request-controller
+    commands:
+      automation-requests.start-evaluation: [automation_request.evaluation_submitted]
+      automation-requests.start-investigation: [automation_request.investigation_submitted]
+    adds_business_state_machine: false
+
+gate_controller_same_owner_transactions:
+  track_receipt_and_execution_attach:
+    commands: [gate-track-receipts.record, gates.attach-track-receipt]
+    required_records: [system_gate_track_receipt, track_authority_receipt, gate_execution_revision, execution_authority_receipt, gate_track_receipt.recorded, gate.track_receipt_recorded, outbox, audit]
+    atomicity: ALL_OR_NOTHING_LOCAL_POSTGRES
+  terminal_execution_and_report:
+    commands: [gates.record-result, gates.reconcile]
+    event_condition: terminal_event_excluding_gate_unknown
+    required_records: [terminal_gate_execution_revision, execution_authority_receipt, system_gate_report, report_authority_receipt, terminal_gate_event, outbox, audit]
+    atomicity: ALL_OR_NOTHING_LOCAL_POSTGRES
+  unknown_execution_without_report:
+    command: gates.record-result
+    event_condition: gate.unknown
+    required_records: [unknown_gate_execution_revision, execution_authority_receipt, gate.unknown, outbox, audit]
+    forbidden_records: [system_gate_report, report_authority_receipt]
+    atomicity: ALL_OR_NOTHING_LOCAL_POSTGRES
+  rules:
+    gate_execution_is_only_business_lifecycle_root: true
+    gate_track_receipt_and_gate_report_are_immutable_subordinate_artifacts: true
+
+authorized_cross_owner_reactions:
+  pre_release_gate_request:
+    source_owner: proposal-controller
+    source_resource: release_plan
+    source_events: [release_plan.frozen]
+    source_condition: plan_kind_CANDIDATE_RELEASE
+    transport: transactional_outbox
+    target_owner: gate-controller
+    target_resource: system_evaluation_plan
+    target_command: evaluations.freeze-plan
+    exact_candidate_bundle_release_plan_and_episode_snapshot_required: true
+  approved_grant_issues_capability:
+    source_owner: approval-controller
+    source_resource: system_approval_grant
+    source_event: approval.decided
+    source_condition: decision_APPROVED_and_authority_kind_HUMAN_APPROVAL
+    source_exact_binding_field: exact_decided_approval_grant_binding
+    transport: transactional_outbox
+    target_owner: capability-controller
+    target_resource: system_capability_lease
+    target_command: capabilities.issue
+    exact_workorder_plan_target_nonce_expiry_required: true
+    reaction_idempotency_key: release_authority_key
+    duplicate_reaction_returns_same_capability_lease: true
+    current_row_rebinding_forbidden: true
+  approved_emergency_grant_freezes_exposure:
+    source_owner: approval-controller
+    source_resource: system_approval_grant
+    source_event: approval.decided
+    source_condition: decision_APPROVED_and_authority_kind_HUMAN_EMERGENCY_APPROVAL
+    source_exact_binding_field: exact_decided_approval_grant_binding
+    transport: transactional_outbox
+    target_owner: version-controller
+    target_resource: system_assignment
+    target_command: system-assignments.freeze
+    exact_recovery_workorder_current_assignment_and_generation_required: true
+  frozen_exposure_verification_request:
+    source_owner: version-controller
+    source_resource: system_assignment
+    source_events: [system_assignment.frozen]
+    source_condition: freeze_authority_kind_ROLLBACK_PREPARATION
+    transport: transactional_outbox
+    target_owner: evidence-controller
+    target_resource: observed_state_snapshot
+    target_command: observed-state.record
+    requires_independent_zero_exposure_observation: true
+  verified_frozen_exposure_issues_rollback_capability:
+    source_owner: evidence-controller
+    source_resource: observed_state_snapshot
+    source_events: [observed_state.recorded]
+    source_condition: exact_frozen_assignment_COMPLETE_MATCH_and_exposure_STOPPED
+    transport: transactional_outbox
+    target_owner: capability-controller
+    target_resource: system_capability_lease
+    target_command: capabilities.issue
+    requires_exact_emergency_approval_causation: true
+    reaction_idempotency_key: release_authority_key
+  issued_capability_starts_authorization_transaction:
+    source_owner: capability-controller
+    source_resource: system_capability_lease
+    source_event: capability.issued
+    transport: transactional_outbox
+    target_component: release_authorization_coordinator
+    target_workflow: capabilities.consume-and-create-external-operation
+    exact_approval_workorder_plan_target_nonce_expiry_required: true
+    reaction_idempotency_key: release_authority_key
+    duplicate_reaction_returns_same_operation: true
+  release_assignment_request:
+    source_owner: scoped-executor-controller
+    source_resource: system_external_operation
+    source_events: [external_operation.started]
+    transport: transactional_outbox
+    target_owner: version-controller
+    target_resource: system_assignment
+    target_command: system-assignments.set-desired
+    target_revalidates_exact_authority: true
+  assignment_receipt_return:
+    source_owner: version-controller
+    source_resource: system_assignment
+    source_events: [system_assignment.desired_updated]
+    transport: transactional_outbox
+    target_owner: scoped-executor-controller
+    target_resource: system_external_operation
+    target_command: system-external-operations.attach-assignment-receipt
+    exact_assignment_generation_required: true
+  observed_verification_request:
+    source_owner: scoped-executor-controller
+    source_resource: system_external_operation
+    source_events: [system_external_operation.assignment_receipt_attached]
+    source_condition: exact_assignment_generation_attached
+    transport: transactional_outbox
+    target_owner: evidence-controller
+    target_resource: observed_state_snapshot
+    target_command: observed-state.record
+    requires_independent_target_observation: true
+  observation_receipt_return:
+    source_owner: evidence-controller
+    source_resource: observed_state_snapshot
+    source_events: [observed_state.recorded]
+    transport: transactional_outbox
+    target_owner: scoped-executor-controller
+    target_resource: system_external_operation
+    target_command: system-external-operations.attach-observation-receipt
+    exact_operation_and_assignment_generation_required: true
+  effect_receipt_return:
+    source_owner: evidence-controller
+    source_resource: external_effect_receipt
+    source_events: [external_effect_receipt.recorded]
+    transport: transactional_outbox
+    target_owner: scoped-executor-controller
+    target_resource: system_external_operation
+    target_command: system-external-operations.attach-effect-receipt
+    only_when_release_plan_requires_effect_verification: true
+  post_release_gate_request:
+    source_owner: scoped-executor-controller
+    source_resource: system_external_operation
+    source_events: [system_external_operation.observation_receipt_attached]
+    source_condition: observed_COMPLETE_MATCH_and_release_plan_requires_post_gate
+    transport: transactional_outbox
+    target_owner: gate-controller
+    target_resource: system_evaluation_plan
+    target_command: evaluations.freeze-plan
+    exact_release_plan_gate_spec_assignment_and_observation_required: true
+  post_release_gate_receipt_return:
+    source_owner: gate-controller
+    source_resource: system_gate_report
+    source_events: [gate.completed, gate.failed, gate.inconclusive, gate.error, gate.reconciled_pass, gate.reconciled_failed, gate.reconciled_inconclusive, gate.reconciled_error]
+    source_condition: evaluation_phase_POST_RELEASE
+    transport: transactional_outbox
+    target_owner: scoped-executor-controller
+    target_resource: system_external_operation
+    target_command: system-external-operations.attach-post-release-gate-receipt
+    exact_operation_release_plan_and_target_required: true
+  resume_after_verified_rollback:
+    source_owner: scoped-executor-controller
+    source_resource: system_external_operation
+    operation_kind: SYSTEM_ROLLBACK
+    source_terminal_events: [external_operation.succeeded, external_operation.reconciled]
+    source_terminal_condition: terminal_SUCCEEDED_with_full_success_guard
+    transport: transactional_outbox
+    target_owner: version-controller
+    target_resource: system_assignment
+    target_command: system-assignments.resume
+    target_requires_exact_known_good_observed_match: true
+    target_requires_exact_current_assignment_binding: true
+  fail_safe_freeze_after_failed_or_unknown_operation:
+    source_owner: scoped-executor-controller
+    source_resource: system_external_operation
+    source_terminal_events: [external_operation.failed, external_operation.unknown]
+    source_condition: current_assignment_matches_operation_target_and_exposure_is_not_stopped
+    transport: transactional_outbox
+    target_owner: version-controller
+    target_resource: system_assignment
+    target_command: system-assignments.freeze
+    target_requires_exact_operation_assignment_and_generation: true
+
+gate_controller_same_owner_workflows:
+  frozen_evaluation_plan_to_gate_start:
+    source_events: [evaluation.plan_frozen]
+    command: gates.start
+    exact_evaluation_plan_required: true
+    outbox_or_local_queue_required: true
+  gate_track_record_and_attach:
+    commands: [gate-track-receipts.record, gates.attach-track-receipt]
+    atomicity: ALL_OR_NOTHING_LOCAL_POSTGRES
+  gate_terminal_pass_to_workorder:
+    source_events: [gate.completed, gate.reconciled_pass]
+    source_condition: gate_purpose_RELEASE_AUTHORIZATION_and_exact_PASS
+    forbidden_when_gate_purpose: CANDIDATE_VERIFICATION
+    command: workorders.create-from-pass
+    exact_gate_report_release_plan_and_candidate_required: true
+    reaction_idempotency_key: sha256(exact_gate_report_binding,exact_release_plan_binding,expected_assignment_generation)
+    duplicate_reaction_returns_same_workorder: true
+  candidate_verification_pass_to_verified_candidate:
+    source_events: [gate.completed, gate.reconciled_pass]
+    source_condition: gate_purpose_CANDIDATE_VERIFICATION_and_exact_PASS
+    forbidden_command: workorders.create-from-pass
+    produces: [verified_candidate, regression_asset]
+    does_not_claim_deployment: true
+    deployment_status_for_library_or_offline: NOT_DEPLOYED
+  post_release_gate_terminal_to_root_operation:
+    source_events: [gate.completed, gate.failed, gate.inconclusive, gate.error, gate.reconciled_pass, gate.reconciled_failed, gate.reconciled_inconclusive, gate.reconciled_error]
+    source_condition: evaluation_phase_POST_RELEASE
+    cross_owner_reaction: post_release_gate_receipt_return
+
+scoped_executor_same_owner_reactions:
+  post_release_gate_attachment_to_terminal_evaluation:
+    source_events: [system_external_operation.post_release_gate_receipt_attached]
+    command: external-operations.record-terminal
+    pass_condition: full_success_guard_including_exact_post_release_gate_PASS
+    non_pass_condition: deterministic_FAILED_or_ambiguous_UNKNOWN
+  reconciliation_to_terminal:
+    source_events: [external_operation.unknown]
+    command: external-operations.reconcile
+    requires_exact_reconciliation_evidence: true
+
+proposal_controller_same_owner_workflows:
+  candidate_to_frozen_release_plan:
+    source_events: [candidate_revision.recorded]
+    command: release-plans.freeze
+    plan_kind: CANDIDATE_RELEASE
+    exact_candidate_base_target_generation_and_recovery_spec_required: true
+
+components:
+  release_authorization_coordinator:
+    owns_domain_records: false
+    mode: single_local_postgresql_unit_of_work
+    workflow: capabilities.consume-and-create-external-operation
+    preallocates: [external_operation_id, capability_revision, authority_receipt_ids]
+    canonical_command_order:
+      - capabilities.consume
+      - selected_external_operation_request_command
+      - external-operations.start
+    operation_kind_command_map:
+      SYSTEM_RELEASE: external-operations.request
+      SYSTEM_ROLLBACK: external-operations.request-rollback
+    same_transaction_records:
+      - consumed_system_capability_lease_revision
+      - capability_authority_receipt
+      - capability.consumed
+      - pending_system_external_operation_revision
+      - pending_operation_authority_receipt
+      - external_operation.requested
+      - running_system_external_operation_revision
+      - running_operation_authority_receipt
+      - external_operation.started
+      - sealed_adapter_dispatch_outbox
+      - audit
+    invariants:
+      - release_authority_key_is_identical_across_approval_capability_and_operation
+      - capability_compare_and_swap_active_to_consumed
+      - unique_external_operation_per_consumed_capability_revision
+      - retry_same_idempotency_returns_same_operation
+      - any_receipt_audit_or_outbox_failure_rolls_back_every_record
+      - no_committed_current_operation_state_remains_pending_after_transaction
+    database_unique_constraints:
+      - system_approval_grant.release_authority_key
+      - system_capability_lease.release_authority_key
+      - system_external_operation.release_authority_key
+    must_not:
+      - broaden_scope
+      - replace_owner_validation
+      - execute_adapter_action
+  recovery_request_coordinator:
+    owns_domain_records: false
+    mode: single_local_postgresql_unit_of_work
+    workflow: recovery-requests.freeze-plan-create-workorder-and-request-approval
+    canonical_command_order:
+      - release-plans.freeze
+      - workorders.create-break-glass-recovery
+      - approvals.request
+    invariants:
+      - every_owner_revalidates_the_same_current_assignment_generation_and_known_good_target
+      - release_plan_kind_is_BREAK_GLASS_RECOVERY
+      - workorder_requires_HUMAN_EMERGENCY_APPROVAL
+      - approval_authority_kind_is_HUMAN_EMERGENCY_APPROVAL
+      - any_receipt_audit_or_outbox_failure_rolls_back_every_record
+    must_not:
+      - reuse_original_release_approval
+      - issue_capability
+      - create_external_operation
+  manifest_import_coordinator:
+    owns_domain_records: false
+    mode: single_local_postgresql_unit_of_work
+    canonical_command_order:
+      - applications.register
+      - applications.activate
+      - environments.register
+      - system-components.register
+      - dependency-edges.record
+      - component-revisions.record
+      - topology-revisions.record
+      - system-versions.record
+      - bootstrap-attestations.record
+      - system-assignments.record
+    failure_semantics:
+      local_database_atomicity: ALL_OR_NOTHING
+      external_atomicity: NOT_APPLICABLE
+      retry: IDEMPOTENT_REPLAY_OF_SAME_MANIFEST_DIGEST
+      rollback: ROLLBACK_ENTIRE_LOCAL_BUSINESS_TRANSACTION
+    must_not:
+      - bypass_resource_owner
+      - perform_external_side_effect
+      - create_observed_state
+      - infer_release_success
+  release_execution_manager:
+    may:
+      - consume_system_external_operation_events
+      - record_reaction_ledger
+      - request_exact_cross_owner_commands_via_outbox
+    must_not:
+      - author_or_modify_release_plan
+      - own_external_operation_terminal
+      - mutate_system_assignment_directly
+      - record_observed_match_from_desired_readback
+      - decide_case_resolution
+  transport_adapter:
+    may: [authenticate_principal, map_canonical_intent, render_structured_artifact]
+    must_not: [write_database_directly, own_domain_success, human_approve, execute_internal_operation]
+
+forbidden_new_lifecycles:
+  - system_change_lifecycle
+  - change_record_lifecycle
+  - system_release_lifecycle
+  - evaluation_run_lifecycle
+  - transport_task_domain_lifecycle

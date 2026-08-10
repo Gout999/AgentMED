@@ -1,0 +1,618 @@
+version: "0.1-draft"
+status: draft_target_contract
+runtime_status: NOT_IMPLEMENTED
+event_contract_major: 2
+
+event_envelope_v5:
+  applies_to: every_event_in_this_major_2_catalog
+  required_fields: [event_id, event_type, event_version, event_contract_major, workspace_id, transaction_id, occurred_at, actor_principal, correlation_id, causation_id, routing_key, exact_subject_binding, authority_receipt_id, payload, payload_digest]
+  constants:
+    event_contract_major: 2
+  routing_key_fields: [contract_major, resource_kind, subject_id]
+  exact_subject_binding_profile: contracts/v5/schema-profiles.yaml#common/exact_record_binding_v5
+  subject_binding_is_the_post_event_immutable_revision: true
+  outbox_carries_envelope_without_rebinding_current_state: true
+  payload_digest_rule: jcs-rfc8785-v1+sha256(payload)
+  authority_receipt_must_share_event_subject_transaction_actor_and_command: true
+
+rules:
+  v4_event_payloads_are_not_reinterpreted: true
+  v5_release_chain_events_use_explicit_major_2_envelopes: true
+  catalog_event_payloads_must_be_frozen_before_route_activation: true
+  event_and_subject_authority_receipt_share_transaction: true
+  adapter_receipt_does_not_imply_domain_success: true
+  ambiguous_external_outcome_is_unknown: true
+  authority_fields_are_carried_forward_from_exact_previous_aggregate_revision: true
+
+system_release_sequence:
+  ordered_authority:
+    - candidate_revision.recorded
+    - release_plan.frozen
+    - evaluation.plan_frozen
+    - gate_terminal_pass
+    - workorder.created
+    - approval.requested
+    - approval.decided_approved
+    - capability.issued
+    - capability.consumed_and_external_operation.requested_same_transaction
+    - external_operation.started
+    - operation_execution_receipt.recorded
+    - system_assignment.desired_updated
+    - observed_state.recorded
+    - post_release_evaluation.plan_frozen
+    - post_release_gate_terminal
+    - external_operation.succeeded_or_unknown
+  forbidden_orderings:
+    - release_plan_frozen_after_approval
+    - workorder_created_before_gate_pass
+    - operation_requested_before_human_approval
+    - operation_succeeded_from_adapter_receipt_only
+
+ai_application:
+  events:
+    application.registered:
+      event_version: "2.0"
+      payload_required: [exact_application_binding, project_id, slug, lifecycle_state]
+    application.activated:
+      event_version: "2.0"
+      payload_required: [exact_previous_application_binding, exact_application_binding, lifecycle_state]
+    application.archived:
+      event_version: "2.0"
+      payload_required: [exact_previous_application_binding, exact_application_binding, archive_reason, lifecycle_state]
+    application.restored:
+      event_version: "2.0"
+      payload_required: [exact_previous_application_binding, exact_application_binding, lifecycle_state]
+
+environment:
+  events:
+    environment.registered:
+      event_version: "2.0"
+      payload_required: [exact_environment_binding, application_id, logical_name, lifecycle_state]
+    environment.retired:
+      event_version: "2.0"
+      payload_required: [exact_previous_environment_binding, exact_environment_binding, retirement_reason, lifecycle_state]
+    environment.restored:
+      event_version: "2.0"
+      payload_required: [exact_previous_environment_binding, exact_environment_binding, lifecycle_state]
+
+system_component:
+  events:
+    system_component.registered:
+      event_version: "2.0"
+      payload_required: [exact_system_component_binding, application_id, component_kind, logical_name, lifecycle_state]
+    system_component.activated:
+      event_version: "2.0"
+      payload_required: [exact_previous_system_component_binding, exact_system_component_binding, lifecycle_state]
+    system_component.deprecated:
+      event_version: "2.0"
+      payload_required: [exact_previous_system_component_binding, exact_system_component_binding, deprecation_reason, lifecycle_state]
+    system_component.reactivated:
+      event_version: "2.0"
+      payload_required: [exact_previous_system_component_binding, exact_system_component_binding, lifecycle_state]
+    system_component.retired:
+      event_version: "2.0"
+      payload_required: [exact_previous_system_component_binding, exact_system_component_binding, retirement_reason, lifecycle_state]
+
+dependency_edge:
+  events:
+    dependency_edge.recorded:
+      event_version: "2.0"
+      payload_required: [exact_dependency_edge_binding, application_id, from_component_id, to_component_id, relation, edge_digest]
+
+component_revision:
+  events:
+    component_revision.recorded:
+      event_version: "2.0"
+      payload_required: [exact_component_revision_binding, exact_system_component_binding, component_kind, identity_assurance, configuration_digest]
+
+topology_revision:
+  events:
+    topology_revision.recorded:
+      event_version: "2.0"
+      payload_required: [exact_topology_revision_binding, application_id, exact_edge_revision_bindings, topology_digest]
+
+system_version_set:
+  events:
+    system_version_set.recorded:
+      event_version: "2.0"
+      payload_required: [exact_system_version_set_binding, application_id, declared_environment_id, exact_component_revision_bindings, exact_topology_revision_binding, version_set_digest]
+
+bootstrap_attestation:
+  events:
+    bootstrap_attestation.recorded:
+      event_version: "2.0"
+      payload_required: [exact_bootstrap_attestation_binding, application_id, environment_id, exact_initial_system_version_set_binding, attester_principal_id, attester_trust_role, attestation_scope]
+
+application_case_binding:
+  events:
+    case.application_bound:
+      event_version: "2.0"
+      payload_required: [exact_application_case_binding, exact_case_binding, application_id, environment_id, declared_system_version_set_binding_or_unknown]
+
+case_episode_binding:
+  events:
+    case.episode_bound:
+      event_version: "2.0"
+      payload_required: [exact_case_episode_binding, exact_case_binding, exact_system_episode_snapshot_binding, relation]
+
+acceptance_criteria_revision:
+  events:
+    acceptance_criteria.proposed:
+      event_version: "2.0"
+      payload_required:
+        - exact_acceptance_criteria_revision_binding
+        - exact_case_binding
+        - exact_resolution_contract_binding
+        - confirmation_status
+        - proposer_principal
+        - proposed_at
+        - acceptance_source
+        - expected_behavior
+        - applicable_workload_profile
+        - applicable_deployment_profile
+        - acceptance_digest
+      constants: {confirmation_status: PROPOSED}
+      guards:
+        - proposer_is_agent_service_or_connector_not_human_maintainer_or_domain_reviewer
+        - proposed_revision_is_untrusted_and_not_authoritative
+    acceptance_criteria.confirmed:
+      event_version: "2.0"
+      payload_required:
+        - exact_acceptance_criteria_revision_binding
+        - exact_previous_proposed_revision_binding
+        - exact_case_binding
+        - exact_resolution_contract_binding
+        - confirmation_status
+        - confirmer_principal
+        - confirmed_at
+        - acceptance_source
+        - expected_behavior
+        - applicable_workload_profile
+        - applicable_deployment_profile
+        - acceptance_digest
+      constants: {confirmation_status: CONFIRMED}
+      guards:
+        - confirmer_is_human_maintainer_or_domain_reviewer
+        - confirmer_is_not_the_proposer
+        - confirmed_revision_is_new_immutable_record_not_in_place_rewrite
+        - confirmed_revision_does_not_rewrite_quality_case_payload_or_digest
+
+badcase_spec:
+  events:
+    badcase_spec.recorded:
+      event_version: "2.0"
+      payload_required:
+        - exact_badcase_spec_binding
+        - exact_case_binding
+        - exact_resolution_contract_binding
+        - exact_confirmed_acceptance_criteria_binding
+        - reproducer_input
+        - reproducer_environment
+        - expected_behavior
+        - badcase_digest
+      guards:
+        - badcase_requires_confirmed_acceptance_criteria_revision
+        - badcase_is_subordinate_to_resolution_contract
+        - badcase_does_not_create_new_case_lifecycle
+
+regression_asset:
+  events:
+    regression_asset.recorded:
+      event_version: "2.0"
+      payload_required:
+        - exact_regression_asset_binding
+        - exact_case_binding
+        - exact_confirmed_acceptance_criteria_binding
+        - exact_badcase_spec_binding
+        - regression_digest
+      guards:
+        - regression_asset_is_closure_artifact_from_confirmed_badcase
+        - regression_asset_does_not_claim_case_resolution
+
+operation_execution_receipt:
+  events:
+    operation_execution_receipt.recorded:
+      event_version: "2.0"
+      payload_required: [exact_operation_execution_receipt_binding, exact_external_operation_binding, attempt_number, adapter_identity, provider_resource_identity, request_digest, response_digest, adapter_outcome]
+      adapter_receipt_is_domain_terminal: false
+
+system_episode_snapshot:
+  events:
+    system_episode.snapshot_frozen:
+      event_version: "2.0"
+      payload_required: [exact_system_episode_snapshot_binding, application_id, environment_id, exact_assignment_binding, evidence_watermark, evidence_completeness]
+
+evaluation_bundle:
+  events:
+    evaluation_bundle.recorded:
+      event_version: "2.0"
+      payload_required: [exact_evaluation_bundle_binding, dataset_bindings, evaluator_bindings, runtime_profile_binding, threshold_policy_digest]
+
+system_candidate_revision:
+  events:
+    candidate_revision.recorded:
+      event_version: "2.0"
+      payload_required: [exact_candidate_revision_binding, exact_case_binding, exact_base_system_version_set_binding, exact_target_system_version_set_binding]
+
+release_plan:
+  events:
+    release_plan.frozen:
+      event_version: "2.0"
+      payload_required: [exact_release_plan_binding, plan_kind, exact_base_system_version_set_binding, exact_target_system_version_set_binding, expected_assignment_generation]
+
+system_evaluation_plan:
+  events:
+    evaluation.plan_frozen:
+      event_version: "2.0"
+      payload_required: [exact_evaluation_plan_binding, evaluation_purpose, evaluation_subject_kind, exact_evaluation_subject_binding, exact_evaluation_bundle_binding]
+      release_plan_binding_union:
+        discriminator: evaluation_purpose
+        variants:
+          CANDIDATE_VERIFICATION:
+            payload_forbidden: [exact_release_plan_binding]
+          RELEASE_AUTHORIZATION:
+            payload_required: [exact_release_plan_binding]
+            exact_binds_pre_gate_sealed_release_plan: true
+
+system_workorder:
+  events:
+    workorder.created:
+      event_version: "2.0"
+      payload_required: [exact_system_workorder_binding, exact_gate_report_pass_binding, exact_release_plan_binding, exact_target_system_version_set_binding, nonce, expires_at]
+    workorder.recovery_created:
+      event_version: "2.0"
+      payload_required: [exact_system_recovery_workorder_binding, exact_current_assignment_binding, exact_prior_known_good_system_version_set_binding, exact_release_plan_binding, nonce, expires_at]
+
+system_assignment:
+  events:
+    system_assignment.recorded:
+      event_version: "2.0"
+      payload_required: [exact_assignment_binding, exact_bootstrap_attestation_binding, exact_initial_system_version_set_binding, application_id, environment_id, generation, exposure]
+      constants: {generation: 1}
+      guards:
+        - assignment_slots_application_environment_and_scope_equal_bootstrap_attestation
+        - one_assignment_aggregate_per_workspace_application_environment
+    system_assignment.desired_updated:
+      event_version: "2.0"
+      payload_required: [exact_previous_assignment_binding, exact_updated_assignment_binding, exact_running_external_operation_binding, exact_release_plan_binding, exact_target_slot_version_set_bindings, target_exposure, expected_previous_generation, generation]
+      guards:
+        - slots_exposure_target_and_generation_equal_external_operation_and_release_plan
+        - generation_is_previous_plus_one
+    system_assignment.frozen:
+      event_version: "2.0"
+      payload_required: [exact_previous_assignment_binding, exact_frozen_assignment_binding, freeze_authority_kind, exact_freeze_authority_binding, generation, exposure]
+      constants: {exposure: STOPPED}
+      guards:
+        - authority_is_emergency_approval_or_failed_unknown_operation_for_exact_assignment
+        - generation_and_slots_unchanged
+    system_assignment.resumed:
+      event_version: "2.0"
+      payload_required: [exact_previous_frozen_assignment_binding, exact_resumed_assignment_binding, exact_terminal_succeeded_rollback_operation_binding, exact_observed_state_snapshot_binding, generation, exposure]
+      guards:
+        - observed_snapshot_is_independent_complete_match_for_exact_current_assignment
+        - generation_and_slots_unchanged
+    system_assignment.retired:
+      event_version: "2.0"
+      payload_required: [exact_previous_assignment_binding, exact_retired_assignment_binding, retirement_authority_binding]
+
+observed_state:
+  events:
+    observed_state.recorded:
+      event_version: "2.0"
+      payload_required: [exact_observed_state_snapshot_binding, exact_compared_assignment_binding, observation_origin_kind, exact_observation_origin_binding, independent_observer_identity, exact_observation_evidence_bindings, comparison, completeness]
+      guards:
+        - observer_registration_is_active_unexpired_workspace_matched_and_independent
+        - origin_union_is_typed_and_matches_assignment_authority
+        - desired_assignment_readback_is_not_observation_evidence
+
+provider_version_attestation:
+  events:
+    provider_version_attestation.recorded:
+      event_version: "2.0"
+      payload_required: [exact_provider_version_attestation_binding, provider_origin, immutable_provider_version, exact_provider_response_evidence_binding, resolver_controller_registration_binding, resolved_at, validity_scope]
+      guards:
+        - resolver_controller_is_active_unexpired_workspace_matched_and_allowed
+        - provider_version_is_immutable_not_alias
+
+external_effect_receipt:
+  events:
+    external_effect_receipt.recorded:
+      event_version: "2.0"
+      payload_required: [exact_external_effect_receipt_binding, origin_kind, receipt_requirement_id, independent_observer_identity, effect_status, exact_provenance_receipt_bindings]
+      origin_union:
+        CASELOOP_EXTERNAL_OPERATION:
+          requires: [exact_external_operation_binding, frozen_required_receipt_plan_digest]
+          forbids: [exact_system_episode_snapshot_binding, exact_run_or_evidence_binding]
+        GOVERNED_SYSTEM_EPISODE:
+          requires: [exact_system_episode_snapshot_binding, exact_run_or_evidence_binding]
+          forbids: [exact_external_operation_binding, frozen_required_receipt_plan_digest]
+
+system_approval_grant:
+  events:
+    approval.requested:
+      event_version: "2.0"
+      payload_required: [approval_grant_id, authority_kind, exact_workorder_or_recovery_workorder_binding, exact_release_plan_binding, exact_target_system_version_set_binding, exact_approver_policy_binding, approval_assignee_principal_or_group, release_authority_key, nonce, expires_at, requested_by_principal, requested_at]
+      guards:
+        - assignee_is_derived_server_side_from_frozen_approver_policy
+    approval.decided:
+      event_version: "2.0"
+      payload_required: [approval_grant_id, exact_previous_requested_grant_binding, exact_decided_approval_grant_binding, decision, decided_by_human_principal, reauthentication_receipt, decided_at]
+      allowed_decisions: [APPROVED, DENIED]
+      guards:
+        - authority_kind_workorder_plan_target_nonce_and_expiry_unchanged_from_requested_revision
+        - deciding_principal_matches_frozen_assignee_or_group_membership
+    approval.revoked:
+      event_version: "2.0"
+      payload_required: [approval_grant_id, exact_previous_approved_grant_binding, revocation_reason, revoked_by_human_principal, reauthentication_receipt, revoked_at]
+    approval.expired:
+      event_version: "2.0"
+      payload_required: [approval_grant_id, exact_previous_requested_or_approved_grant_binding, expired_at]
+
+system_capability_lease:
+  logical_state_machine: contracts/v4/events/state-machines.yaml#machines/capability_lease
+  profile_adds_states: false
+  events:
+    capability.issued:
+      event_version: "2.0"
+      payload_required: [capability_lease_id, exact_active_capability_binding, exact_workorder_or_recovery_workorder_binding, exact_approval_grant_binding, exact_target_binding, release_authority_key, nonce, expires_at, issued_at]
+    capability.consumed:
+      event_version: "2.0"
+      payload_required: [capability_lease_id, exact_previous_active_capability_binding, exact_consumed_capability_binding, consumed_by_operation_id, consumed_at]
+    capability.revoked:
+      event_version: "2.0"
+      payload_required: [capability_lease_id, exact_previous_active_capability_binding, revocation_reason, revoked_at]
+    capability.expired:
+      event_version: "2.0"
+      payload_required: [capability_lease_id, exact_previous_active_capability_binding, expired_at]
+
+system_gate_execution:
+  logical_state_machine: contracts/v4/events/state-machines.yaml#machines/gate_execution
+  profile_adds_states: false
+  events:
+    gate_track_receipt.recorded:
+      event_version: "2.0"
+      payload_required: [gate_execution_id, exact_system_gate_track_receipt_binding]
+    gate.started:
+      event_version: "2.0"
+      payload_required: [gate_execution_id, exact_evaluation_plan_binding]
+    gate.track_receipt_recorded:
+      event_version: "2.0"
+      payload_required: [gate_execution_id, exact_system_gate_track_receipt_binding]
+    gate.completed:
+      event_version: "2.0"
+      payload_required: [gate_execution_id, exact_system_gate_report_binding, gate_verdict]
+      constants: {gate_verdict: PASS}
+    gate.failed:
+      event_version: "2.0"
+      payload_required: [gate_execution_id, exact_system_gate_report_binding, gate_verdict]
+      constants: {gate_verdict: FAILED}
+    gate.inconclusive:
+      event_version: "2.0"
+      payload_required: [gate_execution_id, exact_system_gate_report_binding, gate_verdict]
+      constants: {gate_verdict: INCONCLUSIVE}
+    gate.error:
+      event_version: "2.0"
+      payload_required: [gate_execution_id, exact_system_gate_report_binding, gate_verdict]
+      constants: {gate_verdict: ERROR}
+    gate.unknown:
+      event_version: "2.0"
+      payload_required: [gate_execution_id, ambiguity_reason, reconciliation_required]
+      constants: {reconciliation_required: true}
+    gate.reconciled_pass:
+      event_version: "2.0"
+      payload_required: [gate_execution_id, exact_system_gate_report_binding]
+    gate.reconciled_failed:
+      event_version: "2.0"
+      payload_required: [gate_execution_id, exact_system_gate_report_binding]
+    gate.reconciled_inconclusive:
+      event_version: "2.0"
+      payload_required: [gate_execution_id, exact_system_gate_report_binding]
+    gate.reconciled_error:
+      event_version: "2.0"
+      payload_required: [gate_execution_id, exact_system_gate_report_binding]
+
+system_external_operation:
+  logical_state_machine: contracts/v4/events/state-machines.yaml#machines/external_operation
+  profile_adds_states: false
+  events:
+    external_operation.requested:
+      event_version: "2.0"
+      payload_required:
+        - operation_id
+        - operation_kind
+        - exact_previous_operation_binding_or_null
+        - exact_system_workorder_or_recovery_workorder_binding
+        - exact_human_approval_grant_binding
+        - exact_issued_capability_lease_binding
+        - exact_consumed_capability_lease_binding
+        - exact_release_plan_binding
+        - exact_target_system_version_set_binding
+        - release_authority_key
+        - expected_assignment_generation
+        - nonce
+        - expires_at
+        - idempotency_key
+        - required_receipt_plan
+      guards:
+        - all_exact_bindings_revalidated
+        - human_approval_is_active_and_unexpired
+        - capability_compare_and_swap_active_to_consumed_in_same_transaction
+        - consumed_capability_revision_is_unique_to_this_operation
+        - assignment_generation_matches
+        - every_required_component_identity_assurance_is_revalidated
+      operation_kind_union:
+        SYSTEM_RELEASE:
+          forbids: [exact_frozen_assignment_binding, exact_stopped_exposure_observed_state_binding]
+        SYSTEM_ROLLBACK:
+          additionally_requires: [exact_frozen_assignment_binding, exact_stopped_exposure_observed_state_binding]
+    external_operation.started:
+      event_version: "2.0"
+      payload_required:
+        - operation_id
+        - exact_previous_pending_operation_binding
+        - exact_operation_binding
+        - attempt_number
+        - sealed_adapter_dispatch_digest
+        - started_at
+      guards:
+        - operation_is_pending
+        - approval_and_capability_are_still_valid
+        - exact_target_and_generation_still_match
+    system_external_operation.assignment_receipt_attached:
+      event_version: "2.0"
+      payload_required:
+        - operation_id
+        - exact_previous_running_operation_binding
+        - exact_assignment_binding
+        - assignment_generation
+        - assignment_transition_receipt_digest
+      changes_terminal_state: false
+    system_external_operation.observation_receipt_attached:
+      event_version: "2.0"
+      payload_required:
+        - operation_id
+        - exact_previous_running_operation_binding
+        - exact_observed_state_snapshot_binding
+        - comparison
+        - completeness
+      changes_terminal_state: false
+    system_external_operation.effect_receipt_attached:
+      event_version: "2.0"
+      payload_required:
+        - operation_id
+        - exact_previous_running_operation_binding
+        - exact_external_effect_receipt_binding
+        - receipt_requirement_id
+        - effect_status
+      guards:
+        - receipt_origin_exactly_matches_current_operation
+        - receipt_requirement_is_present_in_frozen_required_receipt_plan
+        - observer_and_provenance_are_typed_and_trusted
+      changes_terminal_state: false
+    system_external_operation.post_release_gate_receipt_attached:
+      event_version: "2.0"
+      payload_required:
+        - operation_id
+        - exact_previous_running_operation_binding
+        - exact_post_release_gate_report_binding
+        - gate_verdict
+        - evidence_completeness
+      changes_terminal_state: false
+    external_operation.succeeded:
+      event_version: "2.0"
+      payload_required:
+        - operation_id
+        - exact_previous_running_operation_binding
+        - exact_assignment_binding
+        - exact_observed_state_snapshot_binding
+        - exact_required_execution_receipt_bindings
+        - exact_required_effect_receipt_bindings
+        - exact_post_release_gate_report_binding
+        - success_guard_digest
+      guards:
+        - workorder_approval_release_plan_target_nonce_expiry_still_match
+        - assignment_generation_is_exact_target_generation
+        - all_required_execution_receipts_are_complete
+        - observed_snapshot_is_independent_complete_and_match
+        - exact_post_release_gate_is_complete_and_pass
+        - no_required_child_operation_or_effect_is_unknown
+        - every_frozen_effect_requirement_is_covered_exactly_once_by_an_allowed_success_status
+        - failed_partial_not_observed_or_unknown_required_effect_cannot_succeed
+      adapter_receipt_alone_is_sufficient: false
+    external_operation.failed:
+      event_version: "2.0"
+      payload_required:
+        - operation_id
+        - exact_previous_running_operation_binding
+        - failure_classification
+        - exact_failure_execution_receipt_bindings
+        - recovery_required
+      payload_optional: [exact_current_assignment_binding]
+      guards:
+        - operation_is_running
+        - failure_is_deterministically_supported_by_receipts
+    external_operation.unknown:
+      event_version: "2.0"
+      payload_required:
+        - operation_id
+        - exact_previous_running_operation_binding
+        - ambiguity_reason
+        - missing_or_conflicting_receipt_refs
+        - reconciliation_required
+      payload_optional: [exact_current_assignment_binding]
+      constants:
+        reconciliation_required: true
+    external_operation.reconciled:
+      event_version: "2.0"
+      payload_required:
+        - operation_id
+        - exact_previous_unknown_operation_binding
+        - reconciliation_receipt_digest
+        - reconciled_status
+        - exact_reconciled_evidence_bindings
+      allowed_reconciled_status: [SUCCEEDED, FAILED]
+      reconciled_status_union:
+        SUCCEEDED:
+          additionally_requires:
+            - exact_assignment_binding
+            - exact_observed_state_snapshot_binding
+            - exact_required_execution_receipt_bindings
+            - exact_required_effect_receipt_bindings
+            - exact_post_release_gate_report_binding
+            - success_guard_digest
+          guards_identical_to: external_operation.succeeded
+        FAILED:
+          additionally_requires:
+            - exact_failure_execution_receipt_bindings
+            - failure_classification
+          guards:
+            - verified_failure_receipt
+
+rollback:
+  operation_kind: SYSTEM_ROLLBACK
+  direct_assignment_restore_event: FORBIDDEN
+  direct_assignment_resume_event_without_operation: FORBIDDEN
+  single_legal_authority_path:
+    required:
+      - frozen_break_glass_recovery_plan
+      - new_system_recovery_workorder
+      - new_reauthenticated_human_emergency_approval
+      - new_single_use_capability
+      - exact_prior_trusted_gate_report
+      - exact_known_good_system_version_set
+      - new_system_rollback_external_operation
+      - post_incident_review_obligation_recorded_in_recovery_workorder
+  prior_release_plan_known_good_spec_is_evidence_not_reusable_authority: true
+  resume_guard:
+    - exact_terminal_succeeded_rollback_operation
+    - exact_current_assignment_binding
+    - independent_observed_snapshot_complete_match_known_good
+
+same_transaction_sets:
+  release_plan_freeze:
+    required: [release_plan, authority_receipt, release_plan.frozen, outbox, audit]
+  system_workorder_creation:
+    required: [system_workorder, authority_receipt, workorder.created, outbox, audit]
+  assignment_transition:
+    required: [system_assignment_revision, authority_receipt, system_assignment_event, outbox, audit]
+  observed_snapshot_record:
+    required: [observed_state_snapshot, authority_receipt, observed_state.recorded, outbox, audit]
+  external_operation_terminal:
+    required: [system_external_operation_revision, authority_receipt, terminal_event, exact_receipt_set, outbox, audit]
+  capability_consumption_and_operation_creation:
+    required: [consumed_capability_revision, capability_authority_receipt, capability.consumed, pending_system_external_operation_revision, pending_operation_authority_receipt, external_operation.requested, running_system_external_operation_revision, running_operation_authority_receipt, external_operation.started, sealed_adapter_dispatch_outbox, audit]
+    atomicity: ALL_OR_NOTHING_LOCAL_POSTGRES
+    unique_key: exact_consumed_capability_lease_binding
+    committed_current_operation_state_after_transaction: RUNNING
+    immutable_operation_revision_chain: PENDING_revision_then_RUNNING_revision
+  gate_track_receipt_and_execution_attach:
+    required: [system_gate_track_receipt, track_authority_receipt, gate_track_receipt.recorded, gate_execution_revision, execution_authority_receipt, gate.track_receipt_recorded, outbox, audit]
+    atomicity: ALL_OR_NOTHING_LOCAL_POSTGRES
+  terminal_gate_execution_and_report:
+    required: [terminal_gate_execution_revision, execution_authority_receipt, system_gate_report, report_authority_receipt, terminal_gate_event, outbox, audit]
+    atomicity: ALL_OR_NOTHING_LOCAL_POSTGRES
+    event_condition: [gate.completed, gate.failed, gate.inconclusive, gate.error, gate.reconciled_pass, gate.reconciled_failed, gate.reconciled_inconclusive, gate.reconciled_error]
+  unknown_gate_execution_without_report:
+    required: [unknown_gate_execution_revision, execution_authority_receipt, gate.unknown, outbox, audit]
+    forbidden: [system_gate_report, report_authority_receipt]
+    atomicity: ALL_OR_NOTHING_LOCAL_POSTGRES

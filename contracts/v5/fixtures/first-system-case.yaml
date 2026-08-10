@@ -1,0 +1,121 @@
+version: "0.1-draft"
+status: draft_contract_fixture
+runtime_status: NOT_RUN
+fixture_id: v5-first-system-case-empty-db
+
+preconditions:
+  authoritative_v5_domain_tables: EMPTY
+  seeded_v4_trust_roots:
+    - controller_registration_for_application_catalog_controller
+    - controller_registration_for_version_controller
+    - controller_registration_for_case_controller
+  full_database_empty: false
+  existing_v4_case:
+    case_id: case_fixture0001
+    revision: 1
+    digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  authenticated_principal:
+    principal_type: human
+    trust_role: integrator
+    trust_role_source: server_registration
+
+manifest_import:
+  workspace_id: ws_fixture0001
+  application:
+    application_id: app_fixture0001
+    slug: fixture-ai-app
+  environment:
+    environment_id: env_fixture0001
+    logical_name: local-shadow
+  components:
+    - component_id: cmp_fixture0001
+      component_kind: APPLICATION_CODE
+      identity_assurance: IMMUTABLE_DIGEST
+      revision_id: crev_fixture0001
+      content_digest: sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    - component_id: cmp_fixture_policy0001
+      component_kind: POLICY
+      logical_name: trusted-human-approver-policy
+      identity_assurance: IMMUTABLE_DIGEST
+      revision_id: crev_fixture_policy0001
+      content_digest: sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc
+      governance_purpose: APPROVER_ASSIGNMENT
+  dependency_edges: []
+  topology_revision_id: topo_fixture0001
+  system_version_set_id: svs_fixture0001
+  system_version_set_component_revision_ids: [crev_fixture0001]
+  governance_policy_revision_ids: [crev_fixture_policy0001]
+  trusted_approver_policy_revision_id: crev_fixture_policy0001
+  bootstrap_attestation_id: batt_fixture0001
+  assignment:
+    assignment_id: asn_fixture0001
+    generation: 1
+    expected_previous_generation: null
+
+expected_command_order:
+  - applications.register
+  - applications.activate
+  - environments.register
+  - system-components.register
+  - dependency-edges.record
+  - component-revisions.record
+  - topology-revisions.record
+  - system-versions.record
+  - bootstrap-attestations.record
+  - system-assignments.record
+  - cases.bind-application
+
+expected_authoritative_subject_kinds:
+  - AI_APPLICATION
+  - ENVIRONMENT
+  - SYSTEM_COMPONENT
+  - COMPONENT_REVISION
+  - TOPOLOGY_REVISION
+  - SYSTEM_VERSION_SET
+  - BOOTSTRAP_ATTESTATION
+  - SYSTEM_ASSIGNMENT
+  - APPLICATION_CASE_BINDING
+
+expected_assertions:
+  local_manifest_import_transaction: ALL_OR_NOTHING
+  authority_receipt_per_subject: true
+  assignment_proves: DESIRED_ONLY
+  observed_state_created: false
+  external_effect_created: false
+  release_success_created: false
+  trusted_approver_policy_is_imported_outside_runtime_version_set: true
+  case_binding_exact_fields: [case_id, case_revision, case_digest]
+
+negative_cases:
+  - name: missing_component_revision
+    mutation: remove_component_revision
+    expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION
+  - name: caller_self_reports_integrator
+    mutation: trust_role_source_is_payload
+    expected: DENY_AND_AUDIT
+  - name: cross_workspace_component
+    mutation: component_workspace_differs
+    expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION
+  - name: case_binder_cannot_read_application
+    mutation: remove_application_authorization
+    expected: OPAQUE_NOT_FOUND_AND_AUDIT
+  - name: case_and_application_cross_workspace
+    mutation: move_case_to_other_workspace
+    expected: OPAQUE_NOT_FOUND_AND_AUDIT
+  - name: authority_receipt_failure
+    mutation: fail_one_authority_receipt
+    expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION
+  - name: bootstrap_claims_observed
+    mutation: add_observed_match_to_assignment
+    expected: REJECT
+  - name: parallel_assignment_bootstrap
+    mutation: use_new_assignment_id_for_same_workspace_application_environment
+    expected: CONFLICT_AND_ROLLBACK_ENTIRE_TRANSACTION
+
+does_not_prove:
+  - runtime_path_implemented
+  - migration_exists
+  - observed_runtime_match
+  - external_agent_execution
+  - provider_live
+  - production_release
