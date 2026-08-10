@@ -23,10 +23,14 @@ VALID_FIXTURES = {
     "agent-manifest-reviewer.json": "agent-manifest.schema.json",
     "agent-manifest-judge.json": "agent-manifest.schema.json",
     "public-error.json": "public-error.schema.json",
+    "public-error-auth-before-workspace.json": "public-error.schema.json",
+    "public-error-audit-unavailable.json": "public-error.schema.json",
+    "public-principal-context.json": "public-principal-context.schema.json",
     "idempotency-receipt.json": "idempotency-receipt.schema.json",
     "signal-envelope.json": "signal-envelope.schema.json",
     "agent-run-ref.json": "agent-run-ref.schema.json",
     "trace-evidence-receipt.json": "trace-evidence-receipt.schema.json",
+    "trace-evidence-receipt-no-locator.json": "trace-evidence-receipt.schema.json",
     "attempt.json": "attempt.schema.json",
     "attempt-created.json": "attempt.schema.json",
     "attempt-starting.json": "attempt.schema.json",
@@ -81,9 +85,11 @@ VALID_FIXTURES = {
 INVALID_FIXTURES = {
     "public-error-missing-retryable.json": "public-error.schema.json",
     "idempotency-receipt-bad-fingerprint.json": "idempotency-receipt.schema.json",
+    "idempotency-receipt-owner-kind-id-mismatch.json": "idempotency-receipt.schema.json",
     "signal-envelope-missing-source-event-id.json": "signal-envelope.schema.json",
     "agent-run-ref-complete-with-missing-fields.json": "agent-run-ref.schema.json",
     "trace-evidence-receipt-complete-with-missing-fields.json": "trace-evidence-receipt.schema.json",
+    "public-error-audit-unavailable-fake-ref.json": "public-error.schema.json",
 }
 
 STRUCTURAL_MUTATION_FIXTURES = {
@@ -99,6 +105,30 @@ STRUCTURAL_MUTATION_FIXTURES = {
     "skill-manifest-expanded-without-approval.json": "skill-manifest.schema.json",
     "worker-task-delegated-without-parent.json": "worker-task.schema.json",
     "workorder-v4-failed-gate.json": "workorder-v4.schema.json",
+    "public-principal-context-accepted-revoked.json": "public-principal-context.schema.json",
+    "trace-evidence-no-locator-fake-run.json": "trace-evidence-receipt.schema.json",
+    "trace-evidence-no-locator-fake-query.json": "trace-evidence-receipt.schema.json",
+    "trace-evidence-no-locator-missing-requested.json": "trace-evidence-receipt.schema.json",
+    "trace-evidence-requested-result-mismatch.json": "trace-evidence-receipt.schema.json",
+    "trace-evidence-no-locator-extra-requested.json": "trace-evidence-receipt.schema.json",
+    "trace-evidence-no-locator-extra-result.json": "trace-evidence-receipt.schema.json",
+    "trace-evidence-no-locator-renamed-requested.json": "trace-evidence-receipt.schema.json",
+    "trace-evidence-no-locator-renamed-result.json": "trace-evidence-receipt.schema.json",
+    "public-error-preauth-fake-workspace.json": "public-error.schema.json",
+}
+
+FRAGMENT_FIXTURES = {
+    "public-signal-submission.json": "signal_submission",
+    "public-signal-submission-response.json": "signal_submission_response",
+    "public-source-sync-run-unknown-response.json": "source_sync_run_response",
+    "public-server-capabilities-response.json": "server_capabilities_response",
+}
+
+INVALID_FRAGMENT_FIXTURES = {
+    "public-signal-submission-self-assert-workspace.json": "signal_submission",
+    "public-signal-response-missing-next-action.json": "signal_submission_response",
+    "public-source-sync-run-unknown-without-reconcile.json": "source_sync_run_response",
+    "public-server-capabilities-skeleton-intent.json": "server_capabilities_response",
 }
 
 
@@ -140,7 +170,7 @@ def _mutated_fixture(name: str) -> dict[str, Any]:
             target[final].append(mutation["value"])
         elif mutation["op"] == "remove":
             if isinstance(target, list):
-                target[int(final)]
+                del target[int(final)]
             else:
                 del target[final]
         else:  # pragma: no cover - fixtures are enumerated below
@@ -171,6 +201,8 @@ def test_every_v4_schema_is_draft_2020_12_and_has_stable_id() -> None:
         "proposal-decision.schema.json",
         "proposal.schema.json",
         "public-error.schema.json",
+        "public-api-wire.schema.json",
+        "public-principal-context.schema.json",
         "resolution-contract.schema.json",
         "resolution-review-receipt.schema.json",
         "signal-envelope.schema.json",
@@ -194,6 +226,22 @@ def test_positive_fixture_validates(fixture_name: str, schema_name: str) -> None
     )
 
 
+@pytest.mark.parametrize("fixture_name,definition", sorted(FRAGMENT_FIXTURES.items()))
+def test_public_wire_fragment_fixture_validates(
+    fixture_name: str, definition: str
+) -> None:
+    schema_id = "https://caseloop.dev/contracts/v4/schemas/public-api-wire.schema.json"
+    validator = Draft202012Validator(
+        {"$ref": f"{schema_id}#/$defs/{definition}"},
+        registry=_registry(),
+        format_checker=FormatChecker(),
+    )
+    errors = list(validator.iter_errors(_json(VALID / fixture_name)))
+    assert not errors, "\n".join(
+        f"{list(error.absolute_path)}: {error.message}" for error in errors
+    )
+
+
 @pytest.mark.parametrize("fixture_name,schema_name", sorted(INVALID_FIXTURES.items()))
 def test_negative_fixture_is_rejected(fixture_name: str, schema_name: str) -> None:
     errors = list(_validator(schema_name).iter_errors(_json(INVALID / fixture_name)))
@@ -208,6 +256,45 @@ def test_structural_mutation_fixture_is_rejected(
 ) -> None:
     errors = list(_validator(schema_name).iter_errors(_mutated_fixture(fixture_name)))
     assert errors, f"negative mutation {fixture_name} unexpectedly passed {schema_name}"
+
+
+@pytest.mark.parametrize(
+    "fixture_name,definition", sorted(INVALID_FRAGMENT_FIXTURES.items())
+)
+def test_invalid_public_wire_fragment_fixture_is_rejected(
+    fixture_name: str, definition: str
+) -> None:
+    schema_id = "https://caseloop.dev/contracts/v4/schemas/public-api-wire.schema.json"
+    validator = Draft202012Validator(
+        {"$ref": f"{schema_id}#/$defs/{definition}"},
+        registry=_registry(),
+        format_checker=FormatChecker(),
+    )
+    errors = list(validator.iter_errors(_mutated_fixture(fixture_name)))
+    assert errors, f"negative wire fixture {fixture_name} unexpectedly passed"
+
+
+@pytest.mark.parametrize(
+    "section,field,value",
+    [
+        ("case", "status", "RESOLVED"),
+        ("case", "correlation_status", "CORRELATED"),
+        ("case", "triage_status", "TRIAGED"),
+        ("evidence", "status", "PARTIAL"),
+    ],
+)
+def test_no_trace_signal_response_statuses_are_linked(
+    section: str, field: str, value: str
+) -> None:
+    response = _json(VALID / "public-signal-submission-response.json")
+    response[section][field] = value
+    schema_id = "https://caseloop.dev/contracts/v4/schemas/public-api-wire.schema.json"
+    validator = Draft202012Validator(
+        {"$ref": f"{schema_id}#/$defs/signal_submission_response"},
+        registry=_registry(),
+        format_checker=FormatChecker(),
+    )
+    assert list(validator.iter_errors(response))
 
 
 def test_resolution_requires_a_distinct_agent_review_execution() -> None:
@@ -361,6 +448,12 @@ def test_signal_fixture_has_one_content_digest_and_keeps_source_identity_separat
 
 def test_trace_receipt_reports_each_requested_field_once() -> None:
     receipt = _json(VALID / "trace-evidence-receipt.json")
+    run_ref = _json(VALID / "agent-run-ref.json")
+    signal = _json(VALID / "signal-envelope.json")
+    assert receipt["agent_run_ref_id"] == run_ref["agent_run_ref_id"]
+    assert receipt["agent_run_ref_digest"] == run_ref["agent_run_ref_digest"]
+    assert receipt["signal_id"] == signal["signal_id"]
+    assert receipt["signal_digest"] == signal["signal_digest"]
     results = receipt["field_results"]
     names = [result["name"] for result in results]
     observed = {result["name"] for result in results if result["status"] == "OBSERVED"}
@@ -375,10 +468,66 @@ def test_trace_receipt_reports_each_requested_field_once() -> None:
     )
     assert receipt["completeness"] == "PARTIAL"
     assert receipt["failure"] is None
+    assert set(receipt["requested_fields"]) == set(names)
 
     duplicate = _mutated_fixture("trace-evidence-receipt-duplicate-field-name.json")
     duplicate_names = [result["name"] for result in duplicate["field_results"]]
     assert len(duplicate_names) != len(set(duplicate_names))
+
+
+def test_no_locator_receipt_cannot_invent_a_run_or_query() -> None:
+    receipt = _json(VALID / "trace-evidence-receipt-no-locator.json")
+    signal = _json(VALID / "signal-envelope.json")
+    assert receipt["signal_id"] == signal["signal_id"]
+    assert receipt["signal_digest"] == signal["signal_digest"]
+    assert receipt["collection_mode"] == "NO_LOCATOR"
+    assert receipt["query"] is None
+    assert receipt["agent_run_ref_id"] is None
+    assert receipt["agent_run_ref_digest"] is None
+    assert receipt["completeness"] == "UNKNOWN"
+    assert receipt["artifact_ref"] is None
+    assert receipt["source_payload_digest"] is None
+    assert receipt["deep_link"] is None
+    assert receipt["failure"]["code"] == "NO_TRACE_LOCATOR"
+    assert receipt["failure"]["retryable"] is False
+    assert set(receipt["requested_fields"]) == {
+        result["name"] for result in receipt["field_results"]
+    }
+    assert all(result["status"] == "MISSING" for result in receipt["field_results"])
+
+    mismatched = _json(VALID / "trace-evidence-receipt-no-locator.json")
+    mismatched["field_results"].pop()
+    assert set(mismatched["requested_fields"]) != {
+        result["name"] for result in mismatched["field_results"]
+    }
+
+
+def test_requested_field_result_mismatch_negative_fixture_is_rejected() -> None:
+    receipt = _mutated_fixture("trace-evidence-requested-result-mismatch.json")
+    errors = list(
+        _validator("trace-evidence-receipt.schema.json").iter_errors(receipt)
+    )
+    assert errors
+
+
+def test_accepted_public_context_is_workspace_scope_and_time_bound() -> None:
+    context = _json(VALID / "public-principal-context.json")
+    requested = context["requested_context"]
+    assert requested["workspace_id"] == context["workspace_id"]
+    assert requested["project_id"] in context["project_ids"]
+    assert requested["environment_id"] in context["environment_ids"]
+    assert requested["required_scope"] in context["scopes"]
+    assert context["not_before"] <= context["evaluated_at"] < context["expires_at"]
+    assert context["revoked_at"] is None
+    assert "jti" not in context and context["jti_digest"].startswith("sha256:")
+
+
+def test_immutable_idempotency_receipt_excludes_delivery_replay_state() -> None:
+    receipt = _json(VALID / "idempotency-receipt.json")
+    assert "replayed" not in receipt
+    delivery = _json(VALID / "public-signal-submission-response.json")["idempotency"]
+    assert delivery["receipt"] == receipt
+    assert delivery["replayed"] is False
 
 
 def test_contract_fixtures_never_contain_credentials() -> None:

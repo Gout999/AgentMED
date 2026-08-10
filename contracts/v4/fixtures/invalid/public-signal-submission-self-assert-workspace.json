@@ -1,0 +1,6 @@
+{
+  "base_fixture": "public-signal-submission.json",
+  "mutations": [
+    {"op": "set", "path": "workspace_id", "value": "ws_01J0000000000009"}
+  ]
+}

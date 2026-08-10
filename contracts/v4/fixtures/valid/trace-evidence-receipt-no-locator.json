@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "receipt_id": "ter_01J0000000000002",
+  "workspace_id": "ws_01J0000000000001",
+  "source_id": "src_01J0000000000001",
+  "signal_id": "sig_01J0000000000001",
+  "signal_digest": "sha256:8cd547e1df9992d4d5eabb8000c9a0634b59c7885f93632d255eb0b931f3e3da",
+  "collection_mode": "NO_LOCATOR",
+  "agent_run_ref_id": null,
+  "agent_run_ref_digest": null,
+  "query": null,
+  "requested_fields": [
+    "trace.input",
+    "trace.output",
+    "observations.model",
+    "observations.tools"
+  ],
+  "field_results": [
+    {"name": "trace.input", "status": "MISSING", "reason_digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"},
+    {"name": "trace.output", "status": "MISSING", "reason_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"},
+    {"name": "observations.model", "status": "MISSING", "reason_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"},
+    {"name": "observations.tools", "status": "MISSING", "reason_digest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"}
+  ],
+  "completeness": "UNKNOWN",
+  "artifact_ref": null,
+  "source_payload_digest": null,
+  "collected_at": "2026-08-10T09:00:02Z",
+  "retention_expires_at": "2026-09-09T09:00:00Z",
+  "deep_link": null,
+  "failure": {
+    "code": "NO_TRACE_LOCATOR",
+    "retryable": false,
+    "message_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+  },
+  "authority_receipt_id": "arec_manualtrace0000000",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+  "receipt_digest": "sha256:2783211065e6fdb7b3cb9a7a22649162a7c6e18e094c5516d19431ffaa28b43b"
+}

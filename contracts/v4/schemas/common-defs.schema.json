@@ -32,6 +32,10 @@
       "type": "string",
       "pattern": "^src_[0-9A-Za-z]{8,64}$"
     },
+    "source_sync_run_id": {
+      "type": "string",
+      "pattern": "^ssr_[0-9A-Za-z]{8,64}$"
+    },
     "signal_id": {
       "type": "string",
       "pattern": "^sig_[0-9A-Za-z]{8,64}$"
@@ -39,6 +43,34 @@
     "case_id": {
       "type": "string",
       "pattern": "^case_[0-9A-Za-z]{8,64}$"
+    },
+    "automation_request_id": {
+      "type": "string",
+      "pattern": "^arq_[0-9A-Za-z]{8,64}$"
+    },
+    "run_id": {
+      "type": "string",
+      "pattern": "^run_[0-9A-Za-z]{8,64}$"
+    },
+    "operation_id": {
+      "type": "string",
+      "pattern": "^op_[0-9A-Za-z]{8,64}$"
+    },
+    "approval_id": {
+      "type": "string",
+      "pattern": "^appr_[0-9A-Za-z]{8,64}$"
+    },
+    "release_id": {
+      "type": "string",
+      "pattern": "^rel_[0-9A-Za-z]{8,64}$"
+    },
+    "external_operation_id": {
+      "type": "string",
+      "pattern": "^eop_[0-9A-Za-z]{8,64}$"
+    },
+    "credential_id": {
+      "type": "string",
+      "pattern": "^cred_[0-9A-Za-z]{8,64}$"
     },
     "principal_id": {
       "type": "string",
@@ -254,7 +286,11 @@
             "AUTHORITY_RECEIPT",
             "MODEL_CALL_RECEIPT",
             "RESOLUTION_REVIEW_RECEIPT",
-            "GATE_TRACK_RECEIPT"
+            "GATE_TRACK_RECEIPT",
+            "SIGNAL_RECORD",
+            "SIGNAL_CASE_LINK",
+            "QUALITY_CASE",
+            "SOURCE_SYNC_RUN"
           ]
         },
         "id": {

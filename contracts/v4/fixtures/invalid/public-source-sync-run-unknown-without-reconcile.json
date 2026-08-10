@@ -1,0 +1,6 @@
+{
+  "base_fixture": "public-source-sync-run-unknown-response.json",
+  "mutations": [
+    {"op": "set", "path": "data.reconcile_required", "value": false}
+  ]
+}

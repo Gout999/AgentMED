@@ -13,11 +13,10 @@
   "request_id": "req_01J0000000000002",
   "audit_ref": "audit://aud_01J0000000000002",
   "status": "COMPLETED",
-  "replayed": false,
   "response_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
   "created_at": "2026-08-10T09:00:00Z",
   "idempotency_receipt_id": "idemr_01J0000000000001",
   "immutable": true,
   "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
-  "receipt_digest": "sha256:cd377ebc4d31b4f9e2b5c77c26acd334d1572eeaeda54ab0387ca87660c52093"
+  "receipt_digest": "sha256:de98472e716a6cecd8039faa5887d7c9cc1d9d45e1e1c547a3f1e83770355947"
 }

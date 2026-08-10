@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "workspace_id": "ws_01J0000000000001",
+  "request_id": "req_01J0000000000004",
+  "audit_ref": "audit://aud_01J0000000000004",
+  "data": {
+    "server_version": "4.0.0-stage1",
+    "public_api_major": 1,
+    "supported_contract_versions": ["1.0"],
+    "principal": {
+      "principal_id": "prn_01J0000000000001",
+      "principal_type": "human",
+      "scopes": [
+        "signals:write",
+        "cases:read",
+        "artifacts:read",
+        "sources:read",
+        "sources:manage",
+        "capabilities:read"
+      ],
+      "credential_expires_at": "2026-08-10T18:00:00Z"
+    },
+    "enabled_intents": [
+      {"name": "signals.submit", "scope": "signals:write", "execution_mode": "synchronous", "http": true, "cli": true},
+      {"name": "cases.get", "scope": "cases:read", "execution_mode": "synchronous", "http": true, "cli": true},
+      {"name": "cases.timeline", "scope": "cases:read", "execution_mode": "synchronous", "http": true, "cli": true},
+      {"name": "evidence.get", "scope": "artifacts:read", "execution_mode": "synchronous", "http": true, "cli": true},
+      {"name": "sources.capabilities", "scope": "sources:read", "execution_mode": "synchronous", "http": true, "cli": true},
+      {"name": "sources.doctor", "scope": "sources:manage", "execution_mode": "asynchronous", "http": true, "cli": true},
+      {"name": "source-sync-runs.get", "scope": "sources:read", "execution_mode": "synchronous", "http": true, "cli": true},
+      {"name": "capabilities.get", "scope": "capabilities:read", "execution_mode": "synchronous", "http": true, "cli": true}
+    ],
+    "generated_at": "2026-08-10T09:00:00Z"
+  }
+}

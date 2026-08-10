@@ -1,0 +1,7 @@
+{
+  "base_fixture": "public-error-auth-before-workspace.json",
+  "mutations": [
+    {"op": "set", "path": "workspace_resolved", "value": true},
+    {"op": "set", "path": "workspace_id", "value": "ws_01J0000000000001"}
+  ]
+}

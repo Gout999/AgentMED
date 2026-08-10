@@ -1,0 +1,6 @@
+{
+  "base_fixture": "public-signal-submission-response.json",
+  "mutations": [
+    {"op": "remove", "path": "next_action"}
+  ]
+}

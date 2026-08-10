@@ -1,0 +1,17 @@
+{
+  "schema_version": "1.0",
+  "workspace_id": null,
+  "workspace_resolved": false,
+  "error": {
+    "code": "TOKEN_INVALID",
+    "message": "The bearer credential is invalid.",
+    "retryable": false,
+    "retry_after_ms": null,
+    "request_id": "req_01J0000000000003",
+    "operation_id": null,
+    "audit_ref": null,
+    "audit_status": "NOT_APPLICABLE",
+    "details": {},
+    "help_url": "https://docs.caseloop.dev/errors/TOKEN_INVALID"
+  }
+}

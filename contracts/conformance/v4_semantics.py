@@ -151,6 +151,124 @@ def _parse_time(value: str) -> datetime:
     return datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
+def public_principal_context_violations(
+    context: Document,
+) -> tuple[SemanticViolation, ...]:
+    """Validate the accepted, server-resolved public authorization context."""
+
+    violations: list[SemanticViolation] = []
+    times: dict[str, datetime] = {}
+    for field in ("not_before", "evaluated_at", "expires_at"):
+        value = context.get(field)
+        try:
+            if not isinstance(value, str):
+                raise TypeError(field)
+            times[field] = _parse_time(value)
+        except (TypeError, ValueError):
+            violations.append(
+                _violation(
+                    "public_principal_context.invalid_time",
+                    ("public_principal_context", field),
+                    "accepted context time bounds must be parseable RFC 3339 timestamps",
+                )
+            )
+    if len(times) == 3 and not (
+        times["not_before"] <= times["evaluated_at"] < times["expires_at"]
+    ):
+        violations.append(
+            _violation(
+                "public_principal_context.outside_validity",
+                ("public_principal_context", "evaluated_at"),
+                "accepted context requires not_before <= evaluated_at < expires_at",
+            )
+        )
+
+    requested = context.get("requested_context")
+    if not isinstance(requested, Mapping):
+        violations.append(
+            _violation(
+                "public_principal_context.requested_context_missing",
+                ("public_principal_context", "requested_context"),
+                "accepted context must bind the exact requested authorization context",
+            )
+        )
+    else:
+        if requested.get("workspace_id") != context.get("workspace_id"):
+            violations.append(
+                _violation(
+                    "public_principal_context.workspace_mismatch",
+                    ("public_principal_context", "requested_context", "workspace_id"),
+                    "requested workspace must equal the server-resolved workspace",
+                )
+            )
+        for singular, plural in (
+            ("project_id", "project_ids"),
+            ("environment_id", "environment_ids"),
+        ):
+            requested_id = requested.get(singular)
+            grants = context.get(plural)
+            if requested_id is not None and (
+                not isinstance(grants, Sequence)
+                or isinstance(grants, (str, bytes))
+                or requested_id not in grants
+            ):
+                violations.append(
+                    _violation(
+                        f"public_principal_context.{singular}_not_granted",
+                        ("public_principal_context", "requested_context", singular),
+                        f"requested {singular} must be null or present in the resolved grants",
+                    )
+                )
+        scopes = context.get("scopes")
+        required_scope = requested.get("required_scope")
+        if (
+            not isinstance(scopes, Sequence)
+            or isinstance(scopes, (str, bytes))
+            or required_scope not in scopes
+        ):
+            violations.append(
+                _violation(
+                    "public_principal_context.required_scope_not_granted",
+                    ("public_principal_context", "requested_context", "required_scope"),
+                    "the required scope must be present in the accepted resolved scopes",
+                )
+            )
+
+    if "caseloop-public-api" not in context.get("audiences", ()):
+        violations.append(
+            _violation(
+                "public_principal_context.audience_not_accepted",
+                ("public_principal_context", "audiences"),
+                "accepted context must include the CaseLoop public API audience",
+            )
+        )
+    if context.get("revoked_at") is not None:
+        violations.append(
+            _violation(
+                "public_principal_context.revoked_credential_accepted",
+                ("public_principal_context", "revoked_at"),
+                "a revoked credential cannot produce an accepted context",
+            )
+        )
+    for field in (
+        "jti",
+        "raw_jti",
+        "token",
+        "raw_token",
+        "access_token",
+        "authorization",
+    ):
+        if field in context:
+            violations.append(
+                _violation(
+                    "public_principal_context.raw_credential_exposed",
+                    ("public_principal_context", field),
+                    "accepted context may expose only jti_digest, never raw credential material",
+                )
+            )
+    return tuple(violations)
+
+
 def _authority_context_violations(bundle: Bundle) -> list[SemanticViolation]:
     subjects = [
         ((bundle_key,), record_name, bundle[bundle_key])
@@ -497,7 +615,9 @@ def _authority_context_violations(bundle: Bundle) -> list[SemanticViolation]:
                 )
             )
         elif (
-            event.get("event_type") != event_type
+            event.get("contract_version") != "v4"
+            or event.get("aggregate_type") != receipt.get("resource")
+            or event.get("event_type") != event_type
             or event.get("transaction_id") != receipt.get("transaction_id")
             or event.get("actor_principal") != receipt.get("controller_principal")
             or event.get("authority_receipt_id") != receipt_id
@@ -507,7 +627,7 @@ def _authority_context_violations(bundle: Bundle) -> list[SemanticViolation]:
                 _violation(
                     "authority.event_binding_mismatch",
                     ("authority_events", receipt.get("event_id")),
-                    "event must bind receipt, subject, type, actor and transaction exactly",
+                    "event must bind v4 routing, receipt, subject, type, actor and transaction exactly",
                 )
             )
         audit = audit_by_ref.get(receipt.get("audit_ref"))
@@ -2533,6 +2653,11 @@ def validate_semantics(bundle: Bundle) -> tuple[SemanticViolation, ...]:
     """
 
     violations: list[SemanticViolation] = []
+    public_principal_context = bundle.get("public_principal_context")
+    if isinstance(public_principal_context, Mapping):
+        violations.extend(
+            public_principal_context_violations(public_principal_context)
+        )
     violations.extend(_authority_context_violations(bundle))
     violations.extend(_validate_capability_chain(bundle))
     resolution = bundle.get("resolution_contract")

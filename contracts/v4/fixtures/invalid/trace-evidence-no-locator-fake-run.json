@@ -1,0 +1,7 @@
+{
+  "base_fixture": "trace-evidence-receipt-no-locator.json",
+  "mutations": [
+    {"op": "set", "path": "agent_run_ref_id", "value": "arr_01J0000000000009"},
+    {"op": "set", "path": "agent_run_ref_digest", "value": "sha256:9999999999999999999999999999999999999999999999999999999999999999"}
+  ]
+}

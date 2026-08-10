@@ -1,0 +1,55 @@
+{
+  "schema_version": "1.0",
+  "workspace_id": "ws_01J0000000000001",
+  "request_id": "req_01J0000000000002",
+  "audit_ref": "audit://aud_01J0000000000002",
+  "signal": {
+    "signal_id": "sig_01J0000000000001",
+    "signal_digest": "sha256:8cd547e1df9992d4d5eabb8000c9a0634b59c7885f93632d255eb0b931f3e3da",
+    "source_event_id": "maintainer-report-01J0000000000001",
+    "duplicate_of_signal_id": null
+  },
+  "case": {
+    "case_id": "case_stage0001",
+    "status": "OPEN",
+    "revision": 1,
+    "disposition": "NEW",
+    "correlation_status": "NEEDS_CORRELATION",
+    "triage_status": "UNTRIAGED"
+  },
+  "evidence": {
+    "status": "UNKNOWN",
+    "receipt_id": "ter_01J0000000000002",
+    "receipt_digest": "sha256:2783211065e6fdb7b3cb9a7a22649162a7c6e18e094c5516d19431ffaa28b43b",
+    "agent_run_ref_id": null,
+    "missing_fields": ["trace.input", "trace.output", "observations.model", "observations.tools"]
+  },
+  "missing_fields": ["trace.input", "trace.output", "observations.model", "observations.tools"],
+  "next_action": {
+    "code": "CORRELATE_TRACE",
+    "command": "case correlate",
+    "href": "https://caseloop.local/api/v1/cases/case_stage0001"
+  },
+  "idempotency": {
+    "receipt": {
+      "schema_version": "1.0",
+      "workspace_id": "ws_01J0000000000001",
+      "principal_id": "prn_01J0000000000001",
+      "intent": "signals.submit",
+      "idempotency_key": "signal-submit-0001",
+      "request_fingerprint": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "resource": {"kind": "signal", "id": "sig_01J0000000000001"},
+      "operation_id": null,
+      "request_id": "req_01J0000000000002",
+      "audit_ref": "audit://aud_01J0000000000002",
+      "status": "COMPLETED",
+      "response_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "created_at": "2026-08-10T09:00:00Z",
+      "idempotency_receipt_id": "idemr_01J0000000000001",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+      "receipt_digest": "sha256:de98472e716a6cecd8039faa5887d7c9cc1d9d45e1e1c547a3f1e83770355947"
+    },
+    "replayed": false
+  }
+}

@@ -174,6 +174,10 @@ def test_record_authority_has_an_exact_owner_command_event_mapping() -> None:
         "WORKER_TASK",
         "ATTEMPT",
         "MODEL_CALL_RECEIPT",
+        "SIGNAL_RECORD",
+        "SIGNAL_CASE_LINK",
+        "QUALITY_CASE",
+        "SOURCE_SYNC_RUN",
     }
     assert set(document["record_authority"]) == expected_kinds
     for kind, mapping in document["record_authority"].items():

@@ -4,7 +4,10 @@
   "workspace_id": "ws_01J0000000000001",
   "source_id": "src_01J0000000000001",
   "signal_id": "sig_01J0000000000001",
+  "signal_digest": "sha256:8cd547e1df9992d4d5eabb8000c9a0634b59c7885f93632d255eb0b931f3e3da",
+  "collection_mode": "SOURCE_QUERY",
   "agent_run_ref_id": "arr_01J0000000000001",
+  "agent_run_ref_digest": "sha256:6e618a195b5963e9b5df1d6cd003d83ceed643ab6b27c5eb69aef51077e1465d",
   "query": {
     "adapter_kind": "langfuse",
     "endpoint_origin": "https://cloud.langfuse.com",
@@ -14,6 +17,12 @@
     "window_end": "2026-08-10T09:00:00Z",
     "filters_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
   },
+  "requested_fields": [
+    "trace.input",
+    "trace.output",
+    "observations.model",
+    "observations.tools"
+  ],
   "field_results": [
     {
       "name": "trace.input",
@@ -47,5 +56,5 @@
   "authority_receipt_id": "arec_traceevidence00000000",
   "immutable": true,
   "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
-  "receipt_digest": "sha256:5591b77f668f2eb3130fa37e6b435bc0dab2a87412b404c2b82b765be57f472d"
+  "receipt_digest": "sha256:a55dd1947ba3999bdd11a16a5ff93106ca07b63bf0a21e3377abfac56c020e6f"
 }

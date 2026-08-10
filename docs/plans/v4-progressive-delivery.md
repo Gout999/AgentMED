@@ -160,7 +160,7 @@ Attempt:    CREATED → STARTING → RUNNING → OUTPUT_RECORDED → SUCCEEDED
 - v4 身份、能力与执行工件切片：`AgentManifest`、`ParticipationManifest`、`CapabilityLease`、仅在 exact Gate `PASS` 后创建的 `WorkOrder-v4`、`SkillManifest`、`MCPManifest`。
 - event catalog、可达且 fail-closed 的 state machines、正向 fixtures、定向 negative mutation fixtures，以及 ownership/causality/permission-intersection/cutover conformance tests。
 - v1 Intent Registry 与 transport exposure rules；公共 auth/scope/idempotency/error/compatibility 契约。
-- OpenAPI 3.1 **骨架**：Stage 0 只冻结已注册 intent 的名称/首次交付 Stage、`execution_mode`、HTTP method/path/operation ID、CLI canonical/aliases、CLI/MCP/A2A 映射及 `transport_stages`、scope、`command_target`、幂等要求，以及公共鉴权、错误和幂等 envelope。HTTP/CLI 在 intent 的 `first_stage` 启用；非空 Public MCP/A2A mapping 到 Stage 6 才启用，空 mapping 的 stage 也必须为 null。它不是完整 request/response 字段合同；当前 v1 registry 中所有已注册 intent 的完整 request/response fields 必须在 Stage 1 Entry 前另行冻结并通过 schema/conformance review，届时才可声称字段合同完整。
+- OpenAPI 3.1 从 Stage 1 Entry 起按 slice 冻结：registry 用 `wire_status / activation_stage / field_contract_ref` 区分。S1A 冻结 common + `capabilities.get/signals.submit/cases.get/cases.timeline/evidence.get`，S1B 冻结 `sources.capabilities/sources.doctor/source-sync-runs.get`；OpenAPI 只含这些 FROZEN operations。Stage 2/4 目标 intent 保持 `SKELETON + null field_contract_ref`，不能生成 route、CLI/SDK 或 discovery 广告。
 - 双 Team 的明确现状/目标表；删除“把现有六角色重组为 coding PGE”的表述。
 
 ### 主要文件
@@ -206,7 +206,7 @@ wiki/
 - 上述 Stage 0 contract slices、event/state-machine catalog、fixtures 与 ownership/causality/permission/cutover tests 全部通过；缺失、跳过或无法核验不得记为完成。
 - 每条 command 只有一个 aggregate owner；scoped `ExternalOperation` 的唯一 PostgreSQL owner 是 `scoped-executor-controller`。Repo、Release、Closure、Distribution 只是按类型执行副作用并返回 receipt 的 Executor/Adapter，不共同拥有或直接改写 `ExternalOperation`。
 - Intent Registry 与 OpenAPI 骨架在 intent、transport、scope、error 与 idempotency 上一致；Stage 0 只据此关闭“骨架”交付，**不得**声称完整 request/response 字段已经冻结或 Public API 已实现。
-- 当前 v1 registry 全部已注册 intent 的完整 request/response field freeze 明确保留为 Stage 1 Entry 硬门；该门未过不得开始 Stage 1 runtime/API 实现，也不得 advertise 对应能力。
+- 当前施工 slice 的完整 request/response field freeze 是该 slice runtime Entry 硬门；未来 Stage 的 skeleton 不阻塞 Stage 1，但也不得 advertise。
 
 ### Rollback
 
@@ -224,7 +224,9 @@ test(contracts): freeze v4 work and identity contracts
 ### Entry
 
 - Stage 0 contract/verifier 通过。
-- 当前 v1 Intent Registry 中所有已注册 intent 的完整 request/response 字段、required/optional/nullability、成功/错误响应、异步 receipt/correlation 和版本兼容规则已经冻结，OpenAPI 不再使用通用占位 envelope，且 schema/conformance review 通过。Stage 0 骨架通过不能替代这项 Entry Gate。
+- S1A/S1B 的 exact request/response、required/optional/nullability、显式错误、async durable query/correlation、cursor snapshot、contract-version handshake 已冻结并通过 schema/conformance；Stage 2/4 skeleton 不在 OpenAPI，也不进入 route/CLI/capability discovery。
+- S1A 的 `signals.submit` 必须在同一 PG 事务写四个领域事实与各 owner receipt/audit/outbox/idempotency；无 locator 返回 `UNKNOWN + null AgentRunRef`，禁止伪造 run。`source_id` 必须绑定 authenticated workspace 的 `ACTIVE` manual SourceConnection；007 提供最小 bootstrap，008 再扩 connector cursor/DLQ。
+- runtime pin `rfc8785==0.1.4` 并使用 no-float JCS/self-field exclusion；PG audit 权威，JSONL/export 只能 after-commit/outbox，避免 rollback 后留下幽灵成功。
 - Langfuse credential 由 Connector/Secret Broker 隔离，Adapter 只允许 allowlisted reads；除非 provider-side read-only 机制已单独验证，否则按广权限 project secret 管理且不宣称 key 本身最小权限。字段范围、retention 和脱敏策略已发现。
 - CaseLoop OTel sink 使用独立 Langfuse project 与独立 write credential；不得复用 TraceSource read credential。两者分别有 credential reference、audience/project binding、rotation/revocation、retention 与脱敏策略。
 - 未配置 AgentTeams 时也必须能产生 Shadow 价值。

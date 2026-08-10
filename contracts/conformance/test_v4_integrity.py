@@ -185,7 +185,7 @@ def test_new_record_self_hash_rejects_coordinated_content_substitution(
     elif record_name == "agent_run_ref":
         document["completeness"] = "UNKNOWN"
     elif record_name == "idempotency_receipt":
-        document["replayed"] = not document["replayed"]
+        document["response_digest"] = "sha256:" + "f" * 64
     elif record_name == "signal_envelope":
         document["untrusted_content"] = not document["untrusted_content"]
     elif record_name == "controller_registration":

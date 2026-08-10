@@ -16,11 +16,11 @@
       ],
       "ownership_contract": {
         "version": "1.0",
-        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+        "digest": "sha256:479e3501d7b76a006864e634269a9018c8f3d6da90547b152e95c627180f848d"
       },
       "event_catalog": {
         "version": "1.0",
-        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+        "digest": "sha256:01b8a4e1f8328060d6bfdf77fe057f5eb1740d1334ced3560365a59396cb8611"
       },
       "valid_from": "2026-08-10T00:00:00Z",
       "expires_at": null,
@@ -30,7 +30,7 @@
       "registered_at": "2026-08-10T00:00:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
-      "registration_digest": "sha256:c5efeb5a070a39d1cda4a9b021ef8b08df1d60449a4d09de91305c1cb9555261"
+      "registration_digest": "sha256:1e8a4b4dc63909812f571b8c96bc364444c173dee1eaf253cb3a374bbce12d20"
     },
     {
       "schema_version": "1.0",
@@ -47,11 +47,11 @@
       ],
       "ownership_contract": {
         "version": "1.0",
-        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+        "digest": "sha256:479e3501d7b76a006864e634269a9018c8f3d6da90547b152e95c627180f848d"
       },
       "event_catalog": {
         "version": "1.0",
-        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+        "digest": "sha256:01b8a4e1f8328060d6bfdf77fe057f5eb1740d1334ced3560365a59396cb8611"
       },
       "valid_from": "2026-08-10T00:00:00Z",
       "expires_at": null,
@@ -61,7 +61,7 @@
       "registered_at": "2026-08-10T00:00:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
-      "registration_digest": "sha256:f01ad47dd8b73dabc0f5b6677f0c628f7a8dafa732b19cc19cc7907616838fc4"
+      "registration_digest": "sha256:2a7adcf9575e4338aa800e08ead41c6183da5f1606cd946271bc228a41b3541d"
     },
     {
       "schema_version": "1.0",
@@ -78,11 +78,11 @@
       ],
       "ownership_contract": {
         "version": "1.0",
-        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+        "digest": "sha256:479e3501d7b76a006864e634269a9018c8f3d6da90547b152e95c627180f848d"
       },
       "event_catalog": {
         "version": "1.0",
-        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+        "digest": "sha256:01b8a4e1f8328060d6bfdf77fe057f5eb1740d1334ced3560365a59396cb8611"
       },
       "valid_from": "2026-08-10T00:00:00Z",
       "expires_at": null,
@@ -92,7 +92,7 @@
       "registered_at": "2026-08-10T00:00:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
-      "registration_digest": "sha256:4988ad6bd5061156ae9167dc4ddeff6f6154a7d1ebc78261a9c646c42f31e0a2"
+      "registration_digest": "sha256:fe1f75c89d4cdf5221a04942cbee1999477782281b71910e1e9a73afe06b1bf1"
     },
     {
       "schema_version": "1.0",
@@ -121,11 +121,11 @@
       ],
       "ownership_contract": {
         "version": "1.0",
-        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+        "digest": "sha256:479e3501d7b76a006864e634269a9018c8f3d6da90547b152e95c627180f848d"
       },
       "event_catalog": {
         "version": "1.0",
-        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+        "digest": "sha256:01b8a4e1f8328060d6bfdf77fe057f5eb1740d1334ced3560365a59396cb8611"
       },
       "valid_from": "2026-08-10T00:00:00Z",
       "expires_at": null,
@@ -135,7 +135,7 @@
       "registered_at": "2026-08-10T00:00:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
-      "registration_digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      "registration_digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
     },
     {
       "schema_version": "1.0",
@@ -153,11 +153,11 @@
       ],
       "ownership_contract": {
         "version": "1.0",
-        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+        "digest": "sha256:479e3501d7b76a006864e634269a9018c8f3d6da90547b152e95c627180f848d"
       },
       "event_catalog": {
         "version": "1.0",
-        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+        "digest": "sha256:01b8a4e1f8328060d6bfdf77fe057f5eb1740d1334ced3560365a59396cb8611"
       },
       "valid_from": "2026-08-10T00:00:00Z",
       "expires_at": null,
@@ -167,7 +167,7 @@
       "registered_at": "2026-08-10T00:00:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
-      "registration_digest": "sha256:cc37a5523a6421a45144aacc9d0c49b0b18f0f5c759db23050c984c36f2d5238"
+      "registration_digest": "sha256:991ef7f3e7e00347f1a4b1504c5b01af494086ef91270dfc79ad9dc70bc995d9"
     },
     {
       "schema_version": "1.0",
@@ -188,11 +188,11 @@
       ],
       "ownership_contract": {
         "version": "1.0",
-        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+        "digest": "sha256:479e3501d7b76a006864e634269a9018c8f3d6da90547b152e95c627180f848d"
       },
       "event_catalog": {
         "version": "1.0",
-        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+        "digest": "sha256:01b8a4e1f8328060d6bfdf77fe057f5eb1740d1334ced3560365a59396cb8611"
       },
       "valid_from": "2026-08-10T00:00:00Z",
       "expires_at": null,
@@ -202,7 +202,7 @@
       "registered_at": "2026-08-10T00:00:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
-      "registration_digest": "sha256:18d25dd10b8e1bbb3eb84a22b44212ae1c67dee5f8cd1978d1f7e8095730773f"
+      "registration_digest": "sha256:316123ab316ac1eecfd2b8268ae745bf85aaa5717fb7496361bd04fb80677a99"
     },
     {
       "schema_version": "1.0",
@@ -222,11 +222,11 @@
       ],
       "ownership_contract": {
         "version": "1.0",
-        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+        "digest": "sha256:479e3501d7b76a006864e634269a9018c8f3d6da90547b152e95c627180f848d"
       },
       "event_catalog": {
         "version": "1.0",
-        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+        "digest": "sha256:01b8a4e1f8328060d6bfdf77fe057f5eb1740d1334ced3560365a59396cb8611"
       },
       "valid_from": "2026-08-10T00:00:00Z",
       "expires_at": null,
@@ -236,7 +236,7 @@
       "registered_at": "2026-08-10T00:00:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
-      "registration_digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      "registration_digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
     },
     {
       "schema_version": "1.0",
@@ -256,11 +256,11 @@
       ],
       "ownership_contract": {
         "version": "1.0",
-        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+        "digest": "sha256:479e3501d7b76a006864e634269a9018c8f3d6da90547b152e95c627180f848d"
       },
       "event_catalog": {
         "version": "1.0",
-        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+        "digest": "sha256:01b8a4e1f8328060d6bfdf77fe057f5eb1740d1334ced3560365a59396cb8611"
       },
       "valid_from": "2026-08-10T00:00:00Z",
       "expires_at": null,
@@ -270,7 +270,7 @@
       "registered_at": "2026-08-10T00:00:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
-      "registration_digest": "sha256:936496a8ef5ca64400205d271428c62f08d44944df17633696e51a1ec4541818"
+      "registration_digest": "sha256:e47f2b297056a06248f2e7b238a4373e42951ca25e8e2736b0f6d36e3eed5b48"
     },
     {
       "schema_version": "1.0",
@@ -287,11 +287,11 @@
       ],
       "ownership_contract": {
         "version": "1.0",
-        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+        "digest": "sha256:479e3501d7b76a006864e634269a9018c8f3d6da90547b152e95c627180f848d"
       },
       "event_catalog": {
         "version": "1.0",
-        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+        "digest": "sha256:01b8a4e1f8328060d6bfdf77fe057f5eb1740d1334ced3560365a59396cb8611"
       },
       "valid_from": "2026-08-10T00:00:00Z",
       "expires_at": null,
@@ -301,7 +301,7 @@
       "registered_at": "2026-08-10T00:00:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
-      "registration_digest": "sha256:581922c1e796af855b72eda21bf86ee5ef120bd2809340273c56cada7a8154c7"
+      "registration_digest": "sha256:cf2aaa3893bf52d902c4935b59ac8648cf0e3d3f29067d318cbc33dd84319d5f"
     }
   ],
   "receipts": [
@@ -313,7 +313,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_skillregistrycontroller",
         "revision": 1,
-        "digest": "sha256:c5efeb5a070a39d1cda4a9b021ef8b08df1d60449a4d09de91305c1cb9555261"
+        "digest": "sha256:1e8a4b4dc63909812f571b8c96bc364444c173dee1eaf253cb3a374bbce12d20"
       },
       "subject": {
         "kind": "SKILL_MANIFEST",
@@ -332,7 +332,7 @@
       "recorded_at": "2026-08-10T00:40:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:2c048e2fddb692f721b7d417a4ab84c0a26875b2d1b675653b2af7e24489ca62"
+      "authority_receipt_digest": "sha256:2574b21688786d3f391cdc8b5987a0552962d5a3ea97babb78af0922ae75b25b"
     },
     {
       "schema_version": "1.0",
@@ -342,7 +342,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_mcpregistrycontroller",
         "revision": 1,
-        "digest": "sha256:f01ad47dd8b73dabc0f5b6677f0c628f7a8dafa732b19cc19cc7907616838fc4"
+        "digest": "sha256:2a7adcf9575e4338aa800e08ead41c6183da5f1606cd946271bc228a41b3541d"
       },
       "subject": {
         "kind": "MCP_MANIFEST",
@@ -361,7 +361,7 @@
       "recorded_at": "2026-08-10T00:45:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:e22323c74f51c84156c4220c406a1aa755af049eb575d663ddcabf89800f2cfe"
+      "authority_receipt_digest": "sha256:4302941ab49cc9d867ffbc0cedcad8d51f4de951491a2dc271d7cdf73c128fc2"
     },
     {
       "schema_version": "1.0",
@@ -371,7 +371,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_manifestcontroller",
         "revision": 1,
-        "digest": "sha256:4988ad6bd5061156ae9167dc4ddeff6f6154a7d1ebc78261a9c646c42f31e0a2"
+        "digest": "sha256:fe1f75c89d4cdf5221a04942cbee1999477782281b71910e1e9a73afe06b1bf1"
       },
       "subject": {
         "kind": "AGENT_MANIFEST",
@@ -390,7 +390,7 @@
       "recorded_at": "2026-08-10T00:45:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:06266b0b560d13270d2bc3eec435469e6ff234a4758b15b461b3ddac151fd62e"
+      "authority_receipt_digest": "sha256:fe9e69308f9ce2598b674f23fddfa2e26f0506f8ecbe4f06faac8d0b10c04b89"
     },
     {
       "schema_version": "1.0",
@@ -400,7 +400,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_manifestcontroller",
         "revision": 1,
-        "digest": "sha256:4988ad6bd5061156ae9167dc4ddeff6f6154a7d1ebc78261a9c646c42f31e0a2"
+        "digest": "sha256:fe1f75c89d4cdf5221a04942cbee1999477782281b71910e1e9a73afe06b1bf1"
       },
       "subject": {
         "kind": "AGENT_MANIFEST",
@@ -419,7 +419,7 @@
       "recorded_at": "2026-08-10T00:45:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:0be2ee6356ef9eec0ab147fbf333cc0a3f0042f204b2dcbf8d82efb56427a002"
+      "authority_receipt_digest": "sha256:eb1e58f073a41b0e39688bd38e55c429d4d65028c454048b1a10bd1a93ef2ce6"
     },
     {
       "schema_version": "1.0",
@@ -429,7 +429,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_manifestcontroller",
         "revision": 1,
-        "digest": "sha256:4988ad6bd5061156ae9167dc4ddeff6f6154a7d1ebc78261a9c646c42f31e0a2"
+        "digest": "sha256:fe1f75c89d4cdf5221a04942cbee1999477782281b71910e1e9a73afe06b1bf1"
       },
       "subject": {
         "kind": "AGENT_MANIFEST",
@@ -448,7 +448,7 @@
       "recorded_at": "2026-08-10T00:45:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:277007c2b6a5240bc7f66ce771170ebaf03d6f21f36046ba1b950fb13df6b632"
+      "authority_receipt_digest": "sha256:55749560778c8ee3fc01956d23d5ef50145d741ea76d23195578e4acb5451081"
     },
     {
       "schema_version": "1.0",
@@ -458,7 +458,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_manifestcontroller",
         "revision": 1,
-        "digest": "sha256:4988ad6bd5061156ae9167dc4ddeff6f6154a7d1ebc78261a9c646c42f31e0a2"
+        "digest": "sha256:fe1f75c89d4cdf5221a04942cbee1999477782281b71910e1e9a73afe06b1bf1"
       },
       "subject": {
         "kind": "AGENT_MANIFEST",
@@ -477,7 +477,7 @@
       "recorded_at": "2026-08-10T00:45:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:56af12a6c4da65269b3f0ee245ba0242f3949eb8b9f8b7e0b54f4b8c71c7e4a2"
+      "authority_receipt_digest": "sha256:803ef111e9d2c114df44e67fc87781b6749b6e2c82c1af3e862db84c5751497c"
     },
     {
       "schema_version": "1.0",
@@ -487,7 +487,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "ATTEMPT",
@@ -506,7 +506,7 @@
       "recorded_at": "2026-08-10T00:30:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:efaa45c10129cafa5de49537a13bb23b8d1731d9312bae3fddccdd5718794a87"
+      "authority_receipt_digest": "sha256:9c5729fd2d21af1ad66a084fbc67ef6732fc6c0cd51155067c84221b34f636e8"
     },
     {
       "schema_version": "1.0",
@@ -516,7 +516,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "MODEL_CALL_RECEIPT",
@@ -535,7 +535,7 @@
       "recorded_at": "2026-08-10T00:54:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:526fa17864d4a80e2a4752f30968ff3d16f220bedb38804947d60349626cd1ad"
+      "authority_receipt_digest": "sha256:48bbfbdd0b6df5dea4e2f4fb67c66f91b4ab1a7df037110686201193b694b683"
     },
     {
       "schema_version": "1.0",
@@ -545,7 +545,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "ATTEMPT",
@@ -564,7 +564,7 @@
       "recorded_at": "2026-08-10T00:54:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:0e7bddc381973731bf230c1de55c0510767b59cc1491289d9517d936b6dbc9ed"
+      "authority_receipt_digest": "sha256:f0038ecd2f44894813cfa7556287aee4484d7576e6d5f4d8753491548975e474"
     },
     {
       "schema_version": "1.0",
@@ -574,7 +574,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "ATTEMPT",
@@ -593,7 +593,7 @@
       "recorded_at": "2026-08-10T00:30:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:228ab2a30d4bccdd11aaf35631ae475f75623c06365589b130bba0c915c194e5"
+      "authority_receipt_digest": "sha256:f2b29df4fe0fe524a579acb1bda8e542541b55f43aca11216da55578de35993d"
     },
     {
       "schema_version": "1.0",
@@ -603,7 +603,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "MODEL_CALL_RECEIPT",
@@ -622,7 +622,7 @@
       "recorded_at": "2026-08-10T00:58:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:67ffc43670d603267df13839db31e7f952963901475b84331ec24c1ef561cc36"
+      "authority_receipt_digest": "sha256:0306fe1d9e74274d1e576f6ddcccb5a12857c76f0fe04a0f77495b93e02dc1a4"
     },
     {
       "schema_version": "1.0",
@@ -632,7 +632,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "ATTEMPT",
@@ -651,7 +651,7 @@
       "recorded_at": "2026-08-10T00:58:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:a6e8f7d47d661ec1fa85923ec0c7706bde3c85c38abddc727d8faf70fa818915"
+      "authority_receipt_digest": "sha256:ebb7d5c92883b4dfdcbcec308da0f6e5eba4e6a7d4c7bbc621715a36282496ff"
     },
     {
       "schema_version": "1.0",
@@ -661,7 +661,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_casecontroller",
         "revision": 1,
-        "digest": "sha256:cc37a5523a6421a45144aacc9d0c49b0b18f0f5c759db23050c984c36f2d5238"
+        "digest": "sha256:991ef7f3e7e00347f1a4b1504c5b01af494086ef91270dfc79ad9dc70bc995d9"
       },
       "subject": {
         "kind": "RESOLUTION_REVIEW_RECEIPT",
@@ -680,7 +680,7 @@
       "recorded_at": "2026-08-10T00:59:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:be88dcdb9e3bddb43a27fd2b7702b6387ef4ae475800e10da18eb9566ada34a9"
+      "authority_receipt_digest": "sha256:d66a19d3b86ddde2efec7f349895bcd773aa5ff9a7a40286411eed25c350f06e"
     },
     {
       "schema_version": "1.0",
@@ -690,7 +690,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_casecontroller",
         "revision": 1,
-        "digest": "sha256:cc37a5523a6421a45144aacc9d0c49b0b18f0f5c759db23050c984c36f2d5238"
+        "digest": "sha256:991ef7f3e7e00347f1a4b1504c5b01af494086ef91270dfc79ad9dc70bc995d9"
       },
       "subject": {
         "kind": "RESOLUTION_CONTRACT",
@@ -709,7 +709,7 @@
       "recorded_at": "2026-08-10T01:00:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:1da9b46c3a5d644257228dee824629695bc83d1ee418804ef0bbcee89e899ae0"
+      "authority_receipt_digest": "sha256:091f889adc6938891c0314ffb6ddda7d14ba6d9da6597c8d4aa059973c83f589"
     },
     {
       "schema_version": "1.0",
@@ -719,7 +719,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_proposalcontroller",
         "revision": 1,
-        "digest": "sha256:18d25dd10b8e1bbb3eb84a22b44212ae1c67dee5f8cd1978d1f7e8095730773f"
+        "digest": "sha256:316123ab316ac1eecfd2b8268ae745bf85aaa5717fb7496361bd04fb80677a99"
       },
       "subject": {
         "kind": "CANDIDATE_CONTRACT",
@@ -738,7 +738,7 @@
       "recorded_at": "2026-08-10T01:10:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:3c5703fe289596231c21da8666101e2989517f2d545913562c9fafc889569be4"
+      "authority_receipt_digest": "sha256:156f848694850d6015e1d15e33042cad59d6999110ba042cb4089f63dbb015a4"
     },
     {
       "schema_version": "1.0",
@@ -748,7 +748,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_gatecontroller",
         "revision": 1,
-        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+        "digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
       },
       "subject": {
         "kind": "EVALUATION_PLAN",
@@ -767,7 +767,7 @@
       "recorded_at": "2026-08-10T01:20:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:16265d1d959d3bb3f597d7796a83ac339db11e87e749d11a69baa9f04963bbf7"
+      "authority_receipt_digest": "sha256:b5572427308be50557a0f3eb541641d4ad9c122cb55c6a4cf4a48433753e9f08"
     },
     {
       "schema_version": "1.0",
@@ -777,7 +777,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "PARTICIPATION_MANIFEST",
@@ -796,7 +796,7 @@
       "recorded_at": "2026-08-10T01:25:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:4e28c72321e1acb55c60db5fecc7c9544ea7a0fbd286482c6736583bd8f4d7b8"
+      "authority_receipt_digest": "sha256:cacc5df9505515d7fae7e62e4e1defcdfa8ebc9c57ccb3b46d2a486db3b263c4"
     },
     {
       "schema_version": "1.0",
@@ -806,7 +806,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "WORKER_TASK",
@@ -825,7 +825,7 @@
       "recorded_at": "2026-08-10T01:30:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:3412bc322a2faec70059fc27b174b743150c18168ed07a55550382ed5db44790"
+      "authority_receipt_digest": "sha256:bb96d666b48b1e25b27597762d97c7277a4af6b7d95b9eb5733919c058772faa"
     },
     {
       "schema_version": "1.0",
@@ -835,7 +835,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_capabilitycontroller",
         "revision": 1,
-        "digest": "sha256:936496a8ef5ca64400205d271428c62f08d44944df17633696e51a1ec4541818"
+        "digest": "sha256:e47f2b297056a06248f2e7b238a4373e42951ca25e8e2736b0f6d36e3eed5b48"
       },
       "subject": {
         "kind": "CAPABILITY_LEASE",
@@ -854,7 +854,7 @@
       "recorded_at": "2026-08-10T01:31:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:1e19427ca02b754272e0e395718a9d546ecfb48b0334815d1ba9f708af2ef901"
+      "authority_receipt_digest": "sha256:f36d902bb36716db9c49eb9662930e23830237cff587c74601e480545f0de9ec"
     },
     {
       "schema_version": "1.0",
@@ -864,7 +864,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "WORKER_TASK",
@@ -883,7 +883,7 @@
       "recorded_at": "2026-08-10T01:30:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:4e8009a26320fa092c77d9db24015d09470bf704f6feaebcf93752be136e4eb2"
+      "authority_receipt_digest": "sha256:257fab81999ffa456eacc3ade05d1e8d170c77239b00eed6e9c5e4a07386b232"
     },
     {
       "schema_version": "1.0",
@@ -893,7 +893,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "ATTEMPT",
@@ -912,7 +912,7 @@
       "recorded_at": "2026-08-10T00:30:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:0a0984990faa99fd637f723ab213ba7fe1c9bb80519971384fca5183e8674663"
+      "authority_receipt_digest": "sha256:018fa5ad6a58fb23642c7402b995978277344088f3876115ea4b6923d8364156"
     },
     {
       "schema_version": "1.0",
@@ -922,7 +922,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_capabilitycontroller",
         "revision": 1,
-        "digest": "sha256:936496a8ef5ca64400205d271428c62f08d44944df17633696e51a1ec4541818"
+        "digest": "sha256:e47f2b297056a06248f2e7b238a4373e42951ca25e8e2736b0f6d36e3eed5b48"
       },
       "subject": {
         "kind": "CAPABILITY_LEASE",
@@ -941,7 +941,7 @@
       "recorded_at": "2026-08-10T01:34:01Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:dc4c80106a6051d650d2b2a450ea22ccc8184a13420acb04dc9c01343218c145"
+      "authority_receipt_digest": "sha256:f5ab9c635683cde64ebe90ee4e3e8a48598424073a267499125de7d779caf750"
     },
     {
       "schema_version": "1.0",
@@ -951,7 +951,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "ATTEMPT",
@@ -970,7 +970,7 @@
       "recorded_at": "2026-08-10T00:30:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:59559f52e1110c6115d4df0db27a59c1d77829e8e338dedf8258a46d557124ad"
+      "authority_receipt_digest": "sha256:7567a71492c417af828e2dc21e77496dd3932a1267883e0a73c5d8f50d1ea514"
     },
     {
       "schema_version": "1.0",
@@ -980,7 +980,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "ATTEMPT",
@@ -999,7 +999,7 @@
       "recorded_at": "2026-08-10T00:30:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:5de1e82bd79927dd08b790ec76e48e72737d413e05ae6fbc1babadcbf2fd3e12"
+      "authority_receipt_digest": "sha256:ee09ceeb8f322f2a5af46c0591106768dede019a779ba3254418d84d8296cc92"
     },
     {
       "schema_version": "1.0",
@@ -1009,7 +1009,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "MODEL_CALL_RECEIPT",
@@ -1028,7 +1028,7 @@
       "recorded_at": "2026-08-10T01:39:10Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:c85282ae20e49775e14a87aac910d049b9d6e433430aa591153769f2f21be4dc"
+      "authority_receipt_digest": "sha256:b58525275b9d3fd61618a655d2f6aba26979466ade288a6deb7570bf33144fbb"
     },
     {
       "schema_version": "1.0",
@@ -1038,7 +1038,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "ATTEMPT",
@@ -1057,7 +1057,7 @@
       "recorded_at": "2026-08-10T00:30:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:8ee490a75b36bbff87811118d13c3786275c590793f576712ebeb93e4b2c86d0"
+      "authority_receipt_digest": "sha256:3ddde3ebf8b008e1bc693510d646b54823a95da8108e5cb495758acbd53d2467"
     },
     {
       "schema_version": "1.0",
@@ -1067,7 +1067,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_proposalcontroller",
         "revision": 1,
-        "digest": "sha256:18d25dd10b8e1bbb3eb84a22b44212ae1c67dee5f8cd1978d1f7e8095730773f"
+        "digest": "sha256:316123ab316ac1eecfd2b8268ae745bf85aaa5717fb7496361bd04fb80677a99"
       },
       "subject": {
         "kind": "PROPOSAL",
@@ -1086,7 +1086,7 @@
       "recorded_at": "2026-08-10T01:40:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:e858c81451e0327153987c71a7fed4a84030aa83c8c5c7ffafaaa7f4261909f0"
+      "authority_receipt_digest": "sha256:d90f07000e537d8d2df9d3eb035fbc6ef5fd5364d400f6eeb67cc1d3b988d9d9"
     },
     {
       "schema_version": "1.0",
@@ -1096,7 +1096,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_proposalcontroller",
         "revision": 1,
-        "digest": "sha256:18d25dd10b8e1bbb3eb84a22b44212ae1c67dee5f8cd1978d1f7e8095730773f"
+        "digest": "sha256:316123ab316ac1eecfd2b8268ae745bf85aaa5717fb7496361bd04fb80677a99"
       },
       "subject": {
         "kind": "PROPOSAL_DECISION",
@@ -1115,7 +1115,7 @@
       "recorded_at": "2026-08-10T01:40:30Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:753b419de555eec9582fcf2fd46a63b721e6ecbfb77525786dfe3fd10ef71f31"
+      "authority_receipt_digest": "sha256:f90bc8894ff1259a535f3c9b4865aa22838af08db6887849c790a0bf5ddee2ad"
     },
     {
       "schema_version": "1.0",
@@ -1125,7 +1125,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_proposalcontroller",
         "revision": 1,
-        "digest": "sha256:18d25dd10b8e1bbb3eb84a22b44212ae1c67dee5f8cd1978d1f7e8095730773f"
+        "digest": "sha256:316123ab316ac1eecfd2b8268ae745bf85aaa5717fb7496361bd04fb80677a99"
       },
       "subject": {
         "kind": "AGENT_INTENT",
@@ -1144,7 +1144,7 @@
       "recorded_at": "2026-08-10T01:40:10Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:3bc8a487c91052ab12cd27df8cca4057ec1ec33b87cde2d8ce23ea957be0ac1e"
+      "authority_receipt_digest": "sha256:a1905e85abfbdf96823219364d00eef72101d2154948b66fdf0c7f1dbe279490"
     },
     {
       "schema_version": "1.0",
@@ -1154,7 +1154,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "ATTEMPT",
@@ -1173,7 +1173,7 @@
       "recorded_at": "2026-08-10T01:50:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:337308385c0dfbe26ae4c8580208f74c9e2cb6fa12917ce079a4c05cdac30828"
+      "authority_receipt_digest": "sha256:f6bdc3243c1aeb02cf54d5e2c5f6f4c9b91ce87e9ae1e0da198566b86298a50c"
     },
     {
       "schema_version": "1.0",
@@ -1183,7 +1183,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "WORKER_TASK",
@@ -1202,7 +1202,7 @@
       "recorded_at": "2026-08-10T01:30:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:8a54523b354241b3eef476edb5ccf6d0c13f6f4e9a36b70d643d6db11d880a23"
+      "authority_receipt_digest": "sha256:6b76660b1546e86737691c3bb5c1eae1e0fbbe7e999bbd17735f3dfac3a57a80"
     },
     {
       "schema_version": "1.0",
@@ -1212,7 +1212,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_capabilitycontroller",
         "revision": 1,
-        "digest": "sha256:936496a8ef5ca64400205d271428c62f08d44944df17633696e51a1ec4541818"
+        "digest": "sha256:e47f2b297056a06248f2e7b238a4373e42951ca25e8e2736b0f6d36e3eed5b48"
       },
       "subject": {
         "kind": "CAPABILITY_LEASE",
@@ -1231,7 +1231,7 @@
       "recorded_at": "2026-08-10T01:34:01Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:733055c668f1d3b7935c74ace79372c5f3c8752c366564d5e406004661cf24d2"
+      "authority_receipt_digest": "sha256:5732fcdea3f2f0423a2314f6315a52d62ed4c034aed9c0f87ddf46c5e4998c43"
     },
     {
       "schema_version": "1.0",
@@ -1241,7 +1241,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_proposalcontroller",
         "revision": 1,
-        "digest": "sha256:18d25dd10b8e1bbb3eb84a22b44212ae1c67dee5f8cd1978d1f7e8095730773f"
+        "digest": "sha256:316123ab316ac1eecfd2b8268ae745bf85aaa5717fb7496361bd04fb80677a99"
       },
       "subject": {
         "kind": "CANDIDATE_REVISION",
@@ -1260,7 +1260,7 @@
       "recorded_at": "2026-08-10T01:51:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:b513a9fcb2de7bae8895e6dd623268db93d37ce04d42b70b6030379434e9f7c9"
+      "authority_receipt_digest": "sha256:b5b10bac69a86921d86d613b4dd975da75848fbc2dfc24da819331ceb13289c0"
     },
     {
       "schema_version": "1.0",
@@ -1270,7 +1270,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "ATTEMPT",
@@ -1289,7 +1289,7 @@
       "recorded_at": "2026-08-10T00:30:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:1e651c89eddd6ac268eead8a136c289dc766c0ed2a75b9314592aaaec6c26d52"
+      "authority_receipt_digest": "sha256:38ca1bf60cf8ba0fee97bdcc9430950b5e79529e3b3ac8295a544cc7aa706118"
     },
     {
       "schema_version": "1.0",
@@ -1299,7 +1299,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "MODEL_CALL_RECEIPT",
@@ -1318,7 +1318,7 @@
       "recorded_at": "2026-08-10T01:57:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:05aeeec3907a7afa40bcad14258e7c6bb9b35931a439afe95b1b19d5c70b4d8e"
+      "authority_receipt_digest": "sha256:a3228dc9e2e29853aff11b57c7d44a3f6eb42a646a4e5061e618ee015fb73807"
     },
     {
       "schema_version": "1.0",
@@ -1328,7 +1328,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_workcontroller",
         "revision": 1,
-        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+        "digest": "sha256:51d173ce54d91cf8a224c1cea7ee211e698135831bfd72c6322ede56044f6ab0"
       },
       "subject": {
         "kind": "ATTEMPT",
@@ -1347,7 +1347,7 @@
       "recorded_at": "2026-08-10T01:57:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:578ef4ce37d3081fd8f76165fc65b2de491594ad771902e3c03683eb6a31c4d7"
+      "authority_receipt_digest": "sha256:494d5adc2c15dc0705fd0cc50c3e6740ba10460841a9f07cdfa09a4999fe318d"
     },
     {
       "schema_version": "1.0",
@@ -1357,7 +1357,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_gatecontroller",
         "revision": 1,
-        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+        "digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
       },
       "subject": {
         "kind": "GATE_TRACK_RECEIPT",
@@ -1376,7 +1376,7 @@
       "recorded_at": "2026-08-10T01:55:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:bd7286f7c1b3822b2fefc1b6d36d6235ada15f4477b62373dfa52324a5882f6d"
+      "authority_receipt_digest": "sha256:3b6787e71141408358670d95d34bbba2822e2a312527e333da1f13b2823fa23b"
     },
     {
       "schema_version": "1.0",
@@ -1386,7 +1386,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_gatecontroller",
         "revision": 1,
-        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+        "digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
       },
       "subject": {
         "kind": "GATE_TRACK_RECEIPT",
@@ -1405,7 +1405,7 @@
       "recorded_at": "2026-08-10T01:58:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:24df2b4d1a4084605ef964402148109c475cfc26fec5499127513eb2bbf09769"
+      "authority_receipt_digest": "sha256:eaac1b6f6d4d020fa97358572aee9eda6f5bd971dd7b4cd8fc3f18504d8c5288"
     },
     {
       "schema_version": "1.0",
@@ -1415,7 +1415,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_gatecontroller",
         "revision": 1,
-        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+        "digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
       },
       "subject": {
         "kind": "GATE_TRACK_RECEIPT",
@@ -1434,7 +1434,7 @@
       "recorded_at": "2026-08-10T01:55:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:4ef012062eb55b48bca75fe56400160b96935d582df389da9917c560bef20cdc"
+      "authority_receipt_digest": "sha256:8ac4623ea7aecf7013d562cb01d5e857cdadc3c2d6281a8b21db45b758a928f1"
     },
     {
       "schema_version": "1.0",
@@ -1444,7 +1444,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_gatecontroller",
         "revision": 1,
-        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+        "digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
       },
       "subject": {
         "kind": "GATE_TRACK_RECEIPT",
@@ -1463,7 +1463,7 @@
       "recorded_at": "2026-08-10T01:58:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:d76e5b787bdabfa07578894a69e0f390e24a92e4a32ad3ae35b81228987187ae"
+      "authority_receipt_digest": "sha256:b224eab18ee5afd609fed51650bfb6884069cc36c9dcba43a5c33fc558d30f6e"
     },
     {
       "schema_version": "1.0",
@@ -1473,7 +1473,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_gatecontroller",
         "revision": 1,
-        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+        "digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
       },
       "subject": {
         "kind": "GATE_TRACK_RECEIPT",
@@ -1492,7 +1492,7 @@
       "recorded_at": "2026-08-10T01:55:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:2472f186bcb8086b42e791a6107e732c9a20d8c1d2885763d337ea7ba2326875"
+      "authority_receipt_digest": "sha256:44037aea0d2349f4da284de40206f5b2242388ae436e6d40b3f2ebd72d992254"
     },
     {
       "schema_version": "1.0",
@@ -1502,7 +1502,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_gatecontroller",
         "revision": 1,
-        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+        "digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
       },
       "subject": {
         "kind": "GATE_TRACK_RECEIPT",
@@ -1521,7 +1521,7 @@
       "recorded_at": "2026-08-10T01:58:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:7ea5f92f7ca3e60eb8f5aa83c7637093abf5cac3b075c33cbcc35ac7cdf829be"
+      "authority_receipt_digest": "sha256:2b2da5c0497852ef7790a71c9d60f830e2f78bbaae7816f0f4b3f4b7c3b04cd8"
     },
     {
       "schema_version": "1.0",
@@ -1531,7 +1531,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_gatecontroller",
         "revision": 1,
-        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+        "digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
       },
       "subject": {
         "kind": "GATE_TRACK_RECEIPT",
@@ -1550,7 +1550,7 @@
       "recorded_at": "2026-08-10T01:55:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:5cc6a6b745f8233988805e1195364fcf5a708c77b16c47681f57ba7a59caf351"
+      "authority_receipt_digest": "sha256:8d9e1e99d453d7a88dfdb23daf2bb47d7e4e06f0c0a5a0c471d8e7b2f80c25a1"
     },
     {
       "schema_version": "1.0",
@@ -1560,7 +1560,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_gatecontroller",
         "revision": 1,
-        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+        "digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
       },
       "subject": {
         "kind": "GATE_TRACK_RECEIPT",
@@ -1579,7 +1579,7 @@
       "recorded_at": "2026-08-10T01:58:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:6b2bb3d448b77505e89c6367e746c069a6ec9127411a9b69b322bd5dcb842bce"
+      "authority_receipt_digest": "sha256:061cb4c07a05ad7ef26194ec2d835aa60b3666008d2181f92af3367038945abc"
     },
     {
       "schema_version": "1.0",
@@ -1589,7 +1589,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_gatecontroller",
         "revision": 1,
-        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+        "digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
       },
       "subject": {
         "kind": "GATE_TRACK_RECEIPT",
@@ -1608,7 +1608,7 @@
       "recorded_at": "2026-08-10T01:55:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:f61f750974617d66735cde338529c73ab4348973ac921836e167f78c90b19485"
+      "authority_receipt_digest": "sha256:a222dafdb26c1957fc07046a1d54eb73134c707b3dbc8d1cd102a5bfd3dc49a5"
     },
     {
       "schema_version": "1.0",
@@ -1618,7 +1618,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_gatecontroller",
         "revision": 1,
-        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+        "digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
       },
       "subject": {
         "kind": "GATE_TRACK_RECEIPT",
@@ -1637,7 +1637,7 @@
       "recorded_at": "2026-08-10T01:58:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:c27a53872390327764e05b9917cd9ba5541b19e363f43105f85594b240965062"
+      "authority_receipt_digest": "sha256:97f1a7037193b17972d57a20beba45f4c1037babc3338e38d5508551a13880ec"
     },
     {
       "schema_version": "1.0",
@@ -1647,7 +1647,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_gatecontroller",
         "revision": 1,
-        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+        "digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
       },
       "subject": {
         "kind": "GATE_REPORT",
@@ -1666,7 +1666,7 @@
       "recorded_at": "2026-08-10T01:59:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:1c4f9ab449cbbcc8e36d94d48525cd2d71237679dbe9f33e3dc1f6fcdb315408"
+      "authority_receipt_digest": "sha256:fbb2ad2545ef9b488e58681eadccfe7b7ad1a0ae64239483b9070f78f50c970a"
     },
     {
       "schema_version": "1.0",
@@ -1676,7 +1676,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_gatecontroller",
         "revision": 1,
-        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+        "digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
       },
       "subject": {
         "kind": "GATE_REPORT",
@@ -1695,7 +1695,7 @@
       "recorded_at": "2026-08-10T01:59:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:b729646f184d3a78955c6b7f577f81347405f4a37efe54a07cb92ea05e93574c"
+      "authority_receipt_digest": "sha256:9cbc46ae46911c592486044b5d6a6d9a4f73bdbf048e8564518a83fa3c769cc7"
     },
     {
       "schema_version": "1.0",
@@ -1705,7 +1705,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_gatecontroller",
         "revision": 1,
-        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+        "digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
       },
       "subject": {
         "kind": "GATE_REPORT",
@@ -1724,7 +1724,7 @@
       "recorded_at": "2026-08-10T01:59:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:976ae4c81b506741b551b0427ca5e230e6c8fee1539dcaa2e8141250cb0c30bb"
+      "authority_receipt_digest": "sha256:78e995d5b063a1e1458583df91d55cb7e21ed1039d1809566006309518740daf"
     },
     {
       "schema_version": "1.0",
@@ -1734,7 +1734,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_gatecontroller",
         "revision": 1,
-        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+        "digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
       },
       "subject": {
         "kind": "GATE_REPORT",
@@ -1753,7 +1753,7 @@
       "recorded_at": "2026-08-10T01:59:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:1c41008f7e013343bfd7dd38721434dd0ccb5324e6cb3fb3d44714305ded2de7"
+      "authority_receipt_digest": "sha256:c3c05048fbca73d6f127f77f8a32f9e0e4072c70ae6db532f9f959c844a87fc3"
     },
     {
       "schema_version": "1.0",
@@ -1763,7 +1763,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_gatecontroller",
         "revision": 1,
-        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+        "digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
       },
       "subject": {
         "kind": "GATE_REPORT",
@@ -1782,7 +1782,7 @@
       "recorded_at": "2026-08-10T01:59:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:c989926775e5455fa71fedc4c04df259966207fda8136646ec95833f0101cc24"
+      "authority_receipt_digest": "sha256:fdaf1bc97c453a8c8ab900a9a41edf96ab1f55a353985c4a5ac5d88cc8554687"
     },
     {
       "schema_version": "1.0",
@@ -1792,7 +1792,7 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_gatecontroller",
         "revision": 1,
-        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+        "digest": "sha256:13b5c566450757c77a8f7ced0fcba134ed17f9f273141fb6161f26ce3bcda2c8"
       },
       "subject": {
         "kind": "WORKORDER",
@@ -1811,7 +1811,7 @@
       "recorded_at": "2026-08-10T02:00:00Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:2ceb7edda67c2aa4320c959021429448771987152d9c8140285bf1b7b254fc8c"
+      "authority_receipt_digest": "sha256:97e6a4a3d05d5d388f3912cd5b36db5b20581b4231bc46ec64d17daed1774a05"
     },
     {
       "schema_version": "1.0",
@@ -1821,13 +1821,13 @@
         "kind": "CONTROLLER_REGISTRATION",
         "id": "creg_evidenceworkspace",
         "revision": 1,
-        "digest": "sha256:581922c1e796af855b72eda21bf86ee5ef120bd2809340273c56cada7a8154c7"
+        "digest": "sha256:cf2aaa3893bf52d902c4935b59ac8648cf0e3d3f29067d318cbc33dd84319d5f"
       },
       "subject": {
         "kind": "TRACE_EVIDENCE_RECEIPT",
         "id": "ter_01J0000000000001",
         "revision": null,
-        "digest": "sha256:5591b77f668f2eb3130fa37e6b435bc0dab2a87412b404c2b82b765be57f472d"
+        "digest": "sha256:a55dd1947ba3999bdd11a16a5ff93106ca07b63bf0a21e3377abfac56c020e6f"
       },
       "resource": "evidence_receipt",
       "owner": "evidence-controller",
@@ -1840,11 +1840,13 @@
       "recorded_at": "2026-08-10T09:00:02Z",
       "immutable": true,
       "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-      "authority_receipt_digest": "sha256:5307b2496dd781128d704db0020942ea4a79c9eb44b03b7fc5203363095fd3b6"
+      "authority_receipt_digest": "sha256:6be1d51784f977cb78b2e38e6f7b46cbb5d47afddb2cdbdf4431c2c1484f6072"
     }
   ],
   "events": [
     {
+      "contract_version": "v4",
+      "aggregate_type": "skill_manifest",
       "event_id": "evt_auth0001",
       "event_type": "skill_manifest.registered",
       "transaction_id": "txn_auth0001",
@@ -1858,6 +1860,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "mcp_manifest",
       "event_id": "evt_auth0002",
       "event_type": "mcp_manifest.registered",
       "transaction_id": "txn_auth0002",
@@ -1871,6 +1875,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "agent_manifest",
       "event_id": "evt_auth0003",
       "event_type": "agent_manifest.registered",
       "transaction_id": "txn_auth0003",
@@ -1884,6 +1890,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "agent_manifest",
       "event_id": "evt_auth0004",
       "event_type": "agent_manifest.registered",
       "transaction_id": "txn_auth0004",
@@ -1897,6 +1905,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "agent_manifest",
       "event_id": "evt_auth0005",
       "event_type": "agent_manifest.registered",
       "transaction_id": "txn_auth0005",
@@ -1910,6 +1920,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "agent_manifest",
       "event_id": "evt_auth0006",
       "event_type": "agent_manifest.registered",
       "transaction_id": "txn_auth0006",
@@ -1923,6 +1935,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "attempt",
       "event_id": "evt_auth0007",
       "event_type": "attempt.started",
       "transaction_id": "txn_auth0007",
@@ -1936,6 +1950,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "attempt",
       "event_id": "evt_auth0008",
       "event_type": "attempt.receipt_recorded",
       "transaction_id": "txn_auth0008",
@@ -1949,6 +1965,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "attempt",
       "event_id": "evt_auth0009",
       "event_type": "attempt.succeeded",
       "transaction_id": "txn_auth0009",
@@ -1962,6 +1980,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "attempt",
       "event_id": "evt_auth0010",
       "event_type": "attempt.started",
       "transaction_id": "txn_auth0010",
@@ -1975,6 +1995,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "attempt",
       "event_id": "evt_auth0011",
       "event_type": "attempt.receipt_recorded",
       "transaction_id": "txn_auth0011",
@@ -1988,6 +2010,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "attempt",
       "event_id": "evt_auth0012",
       "event_type": "attempt.succeeded",
       "transaction_id": "txn_auth0012",
@@ -2001,6 +2025,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "resolution_contract",
       "event_id": "evt_auth0013",
       "event_type": "resolution_review.recorded",
       "transaction_id": "txn_auth0013",
@@ -2014,6 +2040,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "resolution_contract",
       "event_id": "evt_auth0014",
       "event_type": "resolution_contract.frozen",
       "transaction_id": "txn_auth0014",
@@ -2027,6 +2055,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "candidate_contract",
       "event_id": "evt_auth0015",
       "event_type": "candidate_contract.frozen",
       "transaction_id": "txn_auth0015",
@@ -2040,6 +2070,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "evaluation_plan",
       "event_id": "evt_auth0016",
       "event_type": "evaluation.plan_frozen",
       "transaction_id": "txn_auth0016",
@@ -2053,6 +2085,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "participation_manifest",
       "event_id": "evt_auth0017",
       "event_type": "participation_manifest.frozen",
       "transaction_id": "txn_auth0017",
@@ -2066,6 +2100,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "worker_task",
       "event_id": "evt_auth0018",
       "event_type": "work.requested",
       "transaction_id": "txn_auth0018",
@@ -2079,6 +2115,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "capability_lease",
       "event_id": "evt_auth0019",
       "event_type": "capability.issued",
       "transaction_id": "txn_auth0019",
@@ -2092,6 +2130,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "worker_task",
       "event_id": "evt_auth0020",
       "event_type": "work.claimed",
       "transaction_id": "txn_auth0020",
@@ -2105,6 +2145,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "attempt",
       "event_id": "evt_auth0021",
       "event_type": "attempt.created",
       "transaction_id": "txn_auth0021",
@@ -2118,6 +2160,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "capability_lease",
       "event_id": "evt_auth0022",
       "event_type": "capability.issued",
       "transaction_id": "txn_auth0022",
@@ -2131,6 +2175,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "attempt",
       "event_id": "evt_auth0023",
       "event_type": "attempt.starting",
       "transaction_id": "txn_auth0023",
@@ -2144,6 +2190,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "attempt",
       "event_id": "evt_auth0024",
       "event_type": "attempt.started",
       "transaction_id": "txn_auth0024",
@@ -2157,6 +2205,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "attempt",
       "event_id": "evt_auth0025",
       "event_type": "attempt.receipt_recorded",
       "transaction_id": "txn_auth0025",
@@ -2170,6 +2220,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "attempt",
       "event_id": "evt_auth0026",
       "event_type": "attempt.output_recorded",
       "transaction_id": "txn_auth0026",
@@ -2183,6 +2235,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "proposal",
       "event_id": "evt_auth0027",
       "event_type": "proposal.submitted",
       "transaction_id": "txn_auth0027",
@@ -2196,6 +2250,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "proposal_decision",
       "event_id": "evt_accept0001",
       "event_type": "proposal.accepted",
       "transaction_id": "txn_stage0001",
@@ -2209,6 +2265,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "agent_intent",
       "event_id": "evt_auth0029",
       "event_type": "agent_intent.submitted",
       "transaction_id": "txn_auth0029",
@@ -2222,6 +2280,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "attempt",
       "event_id": "evt_auth0030",
       "event_type": "attempt.succeeded",
       "transaction_id": "txn_auth0030",
@@ -2235,6 +2295,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "worker_task",
       "event_id": "evt_auth0031",
       "event_type": "work.completed",
       "transaction_id": "txn_auth0031",
@@ -2248,6 +2310,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "capability_lease",
       "event_id": "evt_auth0032",
       "event_type": "capability.consumed",
       "transaction_id": "txn_auth0032",
@@ -2261,6 +2325,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "candidate_revision",
       "event_id": "evt_candidate001",
       "event_type": "candidate_revision.recorded",
       "transaction_id": "txn_stage0001",
@@ -2274,6 +2340,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "attempt",
       "event_id": "evt_auth0034",
       "event_type": "attempt.started",
       "transaction_id": "txn_auth0034",
@@ -2287,6 +2355,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "attempt",
       "event_id": "evt_auth0035",
       "event_type": "attempt.receipt_recorded",
       "transaction_id": "txn_auth0035",
@@ -2300,6 +2370,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "attempt",
       "event_id": "evt_auth0036",
       "event_type": "attempt.succeeded",
       "transaction_id": "txn_auth0036",
@@ -2313,6 +2385,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "gate_execution",
       "event_id": "evt_auth0037",
       "event_type": "gate.track_receipt_recorded",
       "transaction_id": "txn_auth0037",
@@ -2326,6 +2400,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "gate_execution",
       "event_id": "evt_auth0038",
       "event_type": "gate.track_receipt_recorded",
       "transaction_id": "txn_auth0038",
@@ -2339,6 +2415,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "gate_execution",
       "event_id": "evt_auth0039",
       "event_type": "gate.track_receipt_recorded",
       "transaction_id": "txn_auth0039",
@@ -2352,6 +2430,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "gate_execution",
       "event_id": "evt_auth0040",
       "event_type": "gate.track_receipt_recorded",
       "transaction_id": "txn_auth0040",
@@ -2365,6 +2445,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "gate_execution",
       "event_id": "evt_auth0041",
       "event_type": "gate.track_receipt_recorded",
       "transaction_id": "txn_auth0041",
@@ -2378,6 +2460,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "gate_execution",
       "event_id": "evt_auth0042",
       "event_type": "gate.track_receipt_recorded",
       "transaction_id": "txn_auth0042",
@@ -2391,6 +2475,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "gate_execution",
       "event_id": "evt_auth0043",
       "event_type": "gate.track_receipt_recorded",
       "transaction_id": "txn_auth0043",
@@ -2404,6 +2490,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "gate_execution",
       "event_id": "evt_auth0044",
       "event_type": "gate.track_receipt_recorded",
       "transaction_id": "txn_auth0044",
@@ -2417,6 +2505,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "gate_execution",
       "event_id": "evt_auth0045",
       "event_type": "gate.track_receipt_recorded",
       "transaction_id": "txn_auth0045",
@@ -2430,6 +2520,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "gate_execution",
       "event_id": "evt_auth0046",
       "event_type": "gate.track_receipt_recorded",
       "transaction_id": "txn_auth0046",
@@ -2443,6 +2535,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "gate_execution",
       "event_id": "evt_auth0047",
       "event_type": "gate.completed",
       "transaction_id": "txn_auth0047",
@@ -2456,6 +2550,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "gate_execution",
       "event_id": "evt_auth0048",
       "event_type": "gate.failed",
       "transaction_id": "txn_auth0048",
@@ -2469,6 +2565,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "gate_execution",
       "event_id": "evt_auth0049",
       "event_type": "gate.inconclusive",
       "transaction_id": "txn_auth0049",
@@ -2482,6 +2580,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "gate_execution",
       "event_id": "evt_auth0050",
       "event_type": "gate.error",
       "transaction_id": "txn_auth0050",
@@ -2495,6 +2595,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "gate_execution",
       "event_id": "evt_auth0051",
       "event_type": "gate.unknown",
       "transaction_id": "txn_auth0051",
@@ -2508,6 +2610,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "workorder",
       "event_id": "evt_auth0052",
       "event_type": "workorder.created",
       "transaction_id": "txn_auth0052",
@@ -2521,6 +2625,8 @@
       }
     },
     {
+      "contract_version": "v4",
+      "aggregate_type": "evidence_receipt",
       "event_id": "evt_auth0053",
       "event_type": "evidence.recorded",
       "transaction_id": "txn_auth0053",
@@ -2530,7 +2636,7 @@
         "kind": "TRACE_EVIDENCE_RECEIPT",
         "id": "ter_01J0000000000001",
         "revision": null,
-        "digest": "sha256:5591b77f668f2eb3130fa37e6b435bc0dab2a87412b404c2b82b765be57f472d"
+        "digest": "sha256:a55dd1947ba3999bdd11a16a5ff93106ca07b63bf0a21e3377abfac56c020e6f"
       }
     }
   ],
@@ -3168,7 +3274,7 @@
         "kind": "TRACE_EVIDENCE_RECEIPT",
         "id": "ter_01J0000000000001",
         "revision": null,
-        "digest": "sha256:5591b77f668f2eb3130fa37e6b435bc0dab2a87412b404c2b82b765be57f472d"
+        "digest": "sha256:a55dd1947ba3999bdd11a16a5ff93106ca07b63bf0a21e3377abfac56c020e6f"
       }
     }
   ]

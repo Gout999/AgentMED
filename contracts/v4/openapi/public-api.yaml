@@ -3,39 +3,96 @@ info:
   title: CaseLoop Public API
   version: 1.0.0
   description: >-
-    Target v4 public intent surface. This contract is versioned separately from
-    the current implementation routes and does not prove runtime availability.
+    Stage-aware v4 public contract. This document contains only FROZEN S1A/S1B
+    operations. The Intent Registry also catalogs later SKELETON intents, but
+    those must not generate routes, CLI discovery, SDK methods, or capability
+    advertisements until their own field contract and implementation gate pass.
 servers:
   - url: /
 security:
   - BearerAuth: []
+x-caseloop-intent-registry: ../intent-registry.yaml
+x-caseloop-auth-order:
+  - validate_bearer_without_trusting_workspace_header
+  - resolve_principal_and_active_nonrevoked_credential
+  - bind_requested_workspace_project_environment
+  - authorize_required_scope
+x-caseloop-error-rules:
+  auth_before_workspace_uses_null_workspace: true
+  audit_failure_uses_null_audit_ref_and_rolls_back: true
 
 paths:
+  /api/v1/capabilities:
+    get:
+      operationId: getCapabilities
+      x-caseloop-intent: capabilities.get
+      x-caseloop-scope: capabilities:read
+      x-caseloop-wire-status: FROZEN
+      x-caseloop-delivery-slice: S1A
+      x-caseloop-activation-stage: 1
+      x-caseloop-discovery-filter: FROZEN_AND_IMPLEMENTED_AND_AUTHORIZED
+      parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ContractVersion'
+        - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/ClientVersion'
+      responses:
+        '200':
+          description: Enabled capabilities for this exact principal and workspace; SKELETON intents are excluded.
+          headers:
+            X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
+          content:
+            application/json:
+              schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/server_capabilities_response'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '412': {$ref: '#/components/responses/PreconditionFailed'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/ServiceUnavailable'}
+        default: {$ref: '#/components/responses/PublicError'}
+
   /api/v1/signals:
     post:
       operationId: submitSignal
       x-caseloop-intent: signals.submit
       x-caseloop-scope: signals:write
+      x-caseloop-wire-status: FROZEN
+      x-caseloop-delivery-slice: S1A
+      x-caseloop-activation-stage: 1
+      x-caseloop-source-guard: workspace-bound ACTIVE SourceConnection
       parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ContractVersion'
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/ClientVersion'
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/SignalSubmission'
+            schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/signal_submission'}
       responses:
         '201':
-          description: Signal accepted and normalized.
+          description: >-
+            Signal, OPEN Case, link, UNKNOWN/PARTIAL/COMPLETE evidence and immutable
+            idempotency receipt committed atomically. NO_LOCATOR never creates an AgentRunRef.
+          headers:
+            X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
           content:
             application/json:
-              schema:
-                $ref: '../schemas/signal-envelope.schema.json'
-        '409':
-          $ref: '#/components/responses/PublicError'
-        default:
-          $ref: '#/components/responses/PublicError'
+              schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/signal_submission_response'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '412': {$ref: '#/components/responses/PreconditionFailed'}
+        '413': {$ref: '#/components/responses/ContentTooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/ServiceUnavailable'}
+        default: {$ref: '#/components/responses/PublicError'}
 
   /api/v1/cases/{case_id}:
     parameters:
@@ -44,13 +101,30 @@ paths:
       operationId: getCase
       x-caseloop-intent: cases.get
       x-caseloop-scope: cases:read
+      x-caseloop-wire-status: FROZEN
+      x-caseloop-delivery-slice: S1A
+      x-caseloop-activation-stage: 1
       parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ContractVersion'
         - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/ClientVersion'
       responses:
         '200':
-          $ref: '#/components/responses/ResourceEnvelope'
-        default:
-          $ref: '#/components/responses/PublicError'
+          description: Exact workspace-bound QualityCase view.
+          headers:
+            X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
+          content:
+            application/json:
+              schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/case_response'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '412': {$ref: '#/components/responses/PreconditionFailed'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/ServiceUnavailable'}
+        default: {$ref: '#/components/responses/PublicError'}
 
   /api/v1/cases/{case_id}/timeline:
     parameters:
@@ -59,13 +133,34 @@ paths:
       operationId: getCaseTimeline
       x-caseloop-intent: cases.timeline
       x-caseloop-scope: cases:read
+      x-caseloop-wire-status: FROZEN
+      x-caseloop-delivery-slice: S1A
+      x-caseloop-activation-stage: 1
+      x-caseloop-cursor-binding: workspace_id+case_id+order+filter+watermark
       parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ContractVersion'
         - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/ClientVersion'
+        - $ref: '#/components/parameters/Cursor'
+        - $ref: '#/components/parameters/Limit'
       responses:
         '200':
-          $ref: '#/components/responses/ResourceEnvelope'
-        default:
-          $ref: '#/components/responses/PublicError'
+          description: Stable snapshot page; appends after the watermark cannot duplicate or skip entries.
+          headers:
+            X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
+          content:
+            application/json:
+              schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/case_timeline_response'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '412': {$ref: '#/components/responses/PreconditionFailed'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/ServiceUnavailable'}
+        default: {$ref: '#/components/responses/PublicError'}
 
   /api/v1/evidence/{receipt_id}:
     parameters:
@@ -74,17 +169,30 @@ paths:
       operationId: getEvidence
       x-caseloop-intent: evidence.get
       x-caseloop-scope: artifacts:read
+      x-caseloop-wire-status: FROZEN
+      x-caseloop-delivery-slice: S1A
+      x-caseloop-activation-stage: 1
       parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ContractVersion'
         - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/ClientVersion'
       responses:
         '200':
-          description: Immutable trace evidence receipt.
+          description: Exact immutable TraceEvidenceReceipt view.
+          headers:
+            X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
           content:
             application/json:
-              schema:
-                $ref: '../schemas/trace-evidence-receipt.schema.json'
-        default:
-          $ref: '#/components/responses/PublicError'
+              schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/evidence_response'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '412': {$ref: '#/components/responses/PreconditionFailed'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/ServiceUnavailable'}
+        default: {$ref: '#/components/responses/PublicError'}
 
   /api/v1/sources/{source_id}/capabilities:
     parameters:
@@ -93,13 +201,30 @@ paths:
       operationId: getSourceCapabilities
       x-caseloop-intent: sources.capabilities
       x-caseloop-scope: sources:read
+      x-caseloop-wire-status: FROZEN
+      x-caseloop-delivery-slice: S1B
+      x-caseloop-activation-stage: 1
       parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ContractVersion'
         - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/ClientVersion'
       responses:
         '200':
-          $ref: '#/components/responses/ResourceEnvelope'
-        default:
-          $ref: '#/components/responses/PublicError'
+          description: Exact latest immutable capability snapshot.
+          headers:
+            X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
+          content:
+            application/json:
+              schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/source_capabilities_response'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '412': {$ref: '#/components/responses/PreconditionFailed'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/ServiceUnavailable'}
+        default: {$ref: '#/components/responses/PublicError'}
 
   /api/v1/sources/{source_id}:doctor:
     parameters:
@@ -108,125 +233,72 @@ paths:
       operationId: doctorSource
       x-caseloop-intent: sources.doctor
       x-caseloop-scope: sources:manage
+      x-caseloop-wire-status: FROZEN
+      x-caseloop-delivery-slice: S1B
+      x-caseloop-activation-stage: 1
       parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ContractVersion'
         - $ref: '#/components/parameters/IdempotencyKey'
         - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/ClientVersion'
       requestBody:
         required: true
         content:
           application/json:
-            schema:
-              $ref: '#/components/schemas/EmptyCommand'
+            schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/source_doctor_request'}
       responses:
         '202':
-          $ref: '#/components/responses/IdempotencyReceipt'
-        default:
-          $ref: '#/components/responses/PublicError'
+          description: Durable SourceSyncRun accepted; provider failure becomes a queryable terminal domain status.
+          headers:
+            X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
+          content:
+            application/json:
+              schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/source_doctor_response'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '409': {$ref: '#/components/responses/Conflict'}
+        '412': {$ref: '#/components/responses/PreconditionFailed'}
+        '413': {$ref: '#/components/responses/ContentTooLarge'}
+        '415': {$ref: '#/components/responses/UnsupportedMediaType'}
+        '422': {$ref: '#/components/responses/UnprocessableEntity'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/ServiceUnavailable'}
+        default: {$ref: '#/components/responses/PublicError'}
 
-  /api/v1/cases/{case_id}/investigations:
+  /api/v1/source-sync-runs/{source_sync_run_id}:
     parameters:
-      - $ref: '#/components/parameters/CaseId'
-    post:
-      operationId: startInvestigation
-      x-caseloop-intent: investigations.start
-      x-caseloop-scope: runs:start
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/RequestId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/InvestigationRequest'
-      responses:
-        '202':
-          $ref: '#/components/responses/IdempotencyReceipt'
-        default:
-          $ref: '#/components/responses/PublicError'
-
-  /api/v1/run-views/{run_id}:
-    parameters:
-      - $ref: '#/components/parameters/RunId'
+      - $ref: '#/components/parameters/SourceSyncRunId'
     get:
-      operationId: getRunView
-      x-caseloop-intent: runviews.get
-      x-caseloop-scope: runs:read
+      operationId: getSourceSyncRun
+      x-caseloop-intent: source-sync-runs.get
+      x-caseloop-scope: sources:read
+      x-caseloop-wire-status: FROZEN
+      x-caseloop-delivery-slice: S1B
+      x-caseloop-activation-stage: 1
       parameters:
+        - $ref: '#/components/parameters/WorkspaceId'
+        - $ref: '#/components/parameters/ContractVersion'
         - $ref: '#/components/parameters/RequestId'
+        - $ref: '#/components/parameters/ClientVersion'
       responses:
         '200':
-          $ref: '#/components/responses/ResourceEnvelope'
-        default:
-          $ref: '#/components/responses/PublicError'
-
-  /api/v1/run-views/{run_id}:stop:
-    parameters:
-      - $ref: '#/components/parameters/RunId'
-    post:
-      operationId: requestRunStop
-      x-caseloop-intent: work.stop-request
-      x-caseloop-scope: runs:cancel
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/RequestId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/StopRequest'
-      responses:
-        '202':
-          $ref: '#/components/responses/IdempotencyReceipt'
-        default:
-          $ref: '#/components/responses/PublicError'
-
-  /api/v1/approvals/{approval_id}:decide:
-    parameters:
-      - $ref: '#/components/parameters/ApprovalId'
-    post:
-      operationId: decideApproval
-      x-caseloop-intent: approvals.decide
-      x-caseloop-scope: approvals:decide:human
-      x-caseloop-human-only: true
-      x-caseloop-mcp-exposed: false
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/RequestId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ApprovalDecision'
-      responses:
-        '200':
-          $ref: '#/components/responses/IdempotencyReceipt'
-        default:
-          $ref: '#/components/responses/PublicError'
-
-  /api/v1/releases/{release_id}:rollback-request:
-    parameters:
-      - $ref: '#/components/parameters/ReleaseId'
-    post:
-      operationId: requestReleaseRollback
-      x-caseloop-intent: releases.rollback-request
-      x-caseloop-scope: releases:request
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-        - $ref: '#/components/parameters/RequestId'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/RollbackRequest'
-      responses:
-        '202':
-          $ref: '#/components/responses/IdempotencyReceipt'
-        default:
-          $ref: '#/components/responses/PublicError'
+          description: Durable SourceSyncRun status, including FAILED or UNKNOWN without converting it to HTTP 500.
+          headers:
+            X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
+          content:
+            application/json:
+              schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/source_sync_run_response'}
+        '400': {$ref: '#/components/responses/BadRequest'}
+        '401': {$ref: '#/components/responses/Unauthorized'}
+        '403': {$ref: '#/components/responses/Forbidden'}
+        '404': {$ref: '#/components/responses/NotFound'}
+        '412': {$ref: '#/components/responses/PreconditionFailed'}
+        '429': {$ref: '#/components/responses/RateLimited'}
+        '503': {$ref: '#/components/responses/ServiceUnavailable'}
+        default: {$ref: '#/components/responses/PublicError'}
 
 components:
   securitySchemes:
@@ -234,201 +306,101 @@ components:
       type: http
       scheme: bearer
       bearerFormat: opaque
+      description: >-
+        The credential is resolved server-side into the accepted principal
+        context below. Raw token and raw jti are never persisted or echoed.
+      x-caseloop-accepted-context: ../schemas/public-principal-context.schema.json
 
   parameters:
+    WorkspaceId:
+      name: X-CaseLoop-Workspace-ID
+      in: header
+      required: true
+      description: Requested workspace. It is accepted only after bearer claims bind the same workspace.
+      schema:
+        type: string
+        pattern: '^ws_[0-9A-Za-z]{8,64}$'
+    ContractVersion:
+      name: X-CaseLoop-Contract-Version
+      in: header
+      required: true
+      description: Exact public field contract. Unsupported versions fail with 412 CONTRACT_VERSION_UNSUPPORTED.
+      schema: {type: string, const: '1.0'}
     IdempotencyKey:
       name: Idempotency-Key
       in: header
       required: true
-      schema:
-        type: string
-        minLength: 8
-        maxLength: 128
+      schema: {type: string, minLength: 8, maxLength: 128}
     RequestId:
       name: X-Request-ID
       in: header
       required: false
-      schema:
-        type: string
-        pattern: '^req_[0-9A-Za-z]{8,64}$'
+      schema: {type: string, pattern: '^req_[0-9A-Za-z]{8,64}$'}
+    ClientVersion:
+      name: X-CaseLoop-Client-Version
+      in: header
+      required: false
+      schema: {type: string, minLength: 1, maxLength: 128}
+    Cursor:
+      name: cursor
+      in: query
+      required: false
+      description: Opaque authenticated cursor bound to workspace, case, order, filter and snapshot watermark.
+      schema: {type: string, pattern: '^cur_[0-9A-Za-z_-]{8,512}$'}
+    Limit:
+      name: limit
+      in: query
+      required: false
+      schema: {type: integer, minimum: 1, maximum: 200, default: 50}
     CaseId:
       name: case_id
       in: path
       required: true
-      schema:
-        type: string
-        pattern: '^case_[0-9A-Za-z]{8,64}$'
+      schema: {type: string, pattern: '^case_[0-9A-Za-z]{8,64}$'}
     ReceiptId:
       name: receipt_id
       in: path
       required: true
-      schema:
-        type: string
-        pattern: '^ter_[0-9A-Za-z]{8,64}$'
+      schema: {type: string, pattern: '^ter_[0-9A-Za-z]{8,64}$'}
     SourceId:
       name: source_id
       in: path
       required: true
-      schema:
-        type: string
-        pattern: '^src_[0-9A-Za-z]{8,64}$'
-    RunId:
-      name: run_id
+      schema: {type: string, pattern: '^src_[0-9A-Za-z]{8,64}$'}
+    SourceSyncRunId:
+      name: source_sync_run_id
       in: path
       required: true
-      schema:
-        type: string
-        pattern: '^run_[0-9A-Za-z]{8,64}$'
-    ApprovalId:
-      name: approval_id
-      in: path
-      required: true
-      schema:
-        type: string
-        pattern: '^appr_[0-9A-Za-z]{8,64}$'
-    ReleaseId:
-      name: release_id
-      in: path
-      required: true
-      schema:
-        type: string
-        pattern: '^rel_[0-9A-Za-z]{8,64}$'
+      schema: {type: string, pattern: '^ssr_[0-9A-Za-z]{8,64}$'}
 
-  schemas:
-    SignalSubmission:
-      type: object
-      required:
-        - schema_version
-        - workspace_id
-        - source_id
-        - source_event_id
-        - signal_kind
-        - reporter_kind
-        - content_ref
-      properties:
-        schema_version:
-          type: string
-          const: '1.0'
-        workspace_id:
-          type: string
-          pattern: '^ws_[0-9A-Za-z]{8,64}$'
-        source_id:
-          type: string
-          pattern: '^src_[0-9A-Za-z]{8,64}$'
-        source_event_id:
-          type: string
-          minLength: 1
-          maxLength: 512
-        signal_kind:
-          type: string
-        reporter_kind:
-          type: string
-        content_ref:
-          $ref: '../schemas/common-defs.schema.json#/$defs/artifact_ref'
-      additionalProperties: false
-    EmptyCommand:
-      type: object
-      required:
-        - schema_version
-      properties:
-        schema_version:
-          type: string
-          const: '1.0'
-      additionalProperties: false
-    InvestigationRequest:
-      type: object
-      required:
-        - schema_version
-        - budget
-      properties:
-        schema_version:
-          type: string
-          const: '1.0'
-        budget:
-          type: object
-      additionalProperties: false
-    StopRequest:
-      type: object
-      required:
-        - schema_version
-        - reason
-      properties:
-        schema_version:
-          type: string
-          const: '1.0'
-        reason:
-          type: string
-          minLength: 1
-      additionalProperties: false
-    ApprovalDecision:
-      type: object
-      required:
-        - schema_version
-        - workorder_hash
-        - decision
-        - nonce
-      properties:
-        schema_version:
-          type: string
-          const: '1.0'
-        workorder_hash:
-          type: string
-          pattern: '^sha256:[0-9a-f]{64}$'
-        decision:
-          type: string
-          enum: [approve, reject]
-        nonce:
-          type: string
-          minLength: 16
-      additionalProperties: false
-    RollbackRequest:
-      type: object
-      required:
-        - schema_version
-        - reason
-      properties:
-        schema_version:
-          type: string
-          const: '1.0'
-        reason:
-          type: string
-          minLength: 1
-      additionalProperties: false
-    ResourceEnvelope:
-      type: object
-      required:
-        - schema_version
-        - request_id
-        - audit_ref
-        - data
-      properties:
-        schema_version:
-          type: string
-          const: '1.0'
-        request_id:
-          type: string
-        audit_ref:
-          type: string
-        data:
-          type: object
-      additionalProperties: false
+  headers:
+    ContractVersion:
+      required: true
+      schema: {type: string, const: '1.0'}
 
   responses:
+    BadRequest: {$ref: '#/components/responses/PublicError'}
+    Unauthorized: {$ref: '#/components/responses/PublicError'}
+    Forbidden: {$ref: '#/components/responses/PublicError'}
+    NotFound: {$ref: '#/components/responses/PublicError'}
+    Conflict: {$ref: '#/components/responses/PublicError'}
+    PreconditionFailed: {$ref: '#/components/responses/PublicError'}
+    ContentTooLarge: {$ref: '#/components/responses/PublicError'}
+    UnsupportedMediaType: {$ref: '#/components/responses/PublicError'}
+    UnprocessableEntity: {$ref: '#/components/responses/PublicError'}
+    RateLimited:
+      description: Rate limited; PublicError.retry_after_ms is non-null.
+      headers:
+        X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
+        Retry-After: {schema: {type: integer, minimum: 0}}
+      content:
+        application/json:
+          schema: {$ref: '../schemas/public-error.schema.json'}
+    ServiceUnavailable: {$ref: '#/components/responses/PublicError'}
     PublicError:
-      description: Public machine-readable failure.
+      description: Machine-readable failure. Workspace or audit reference is null when it was not authoritatively resolved/committed.
+      headers:
+        X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
       content:
         application/json:
-          schema:
-            $ref: '../schemas/public-error.schema.json'
-    IdempotencyReceipt:
-      description: Durable command identity and replay result.
-      content:
-        application/json:
-          schema:
-            $ref: '../schemas/idempotency-receipt.schema.json'
-    ResourceEnvelope:
-      description: Read-only resource response.
-      content:
-        application/json:
-          schema:
-            $ref: '#/components/schemas/ResourceEnvelope'
+          schema: {$ref: '../schemas/public-error.schema.json'}

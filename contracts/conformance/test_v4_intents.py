@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+import json
 from pathlib import Path
 
 import yaml
@@ -9,6 +10,7 @@ import yaml
 
 REGISTRY = Path(__file__).resolve().parents[1] / "v4" / "intent-registry.yaml"
 OWNERSHIP = Path(__file__).resolve().parents[1] / "v4" / "aggregate-ownership.yaml"
+PUBLIC_WIRE = Path(__file__).resolve().parents[1] / "v4" / "schemas" / "public-api-wire.schema.json"
 
 
 def _document() -> dict:
@@ -128,13 +130,64 @@ def test_stage_one_registry_is_the_frozen_http_cli_vertical_slice() -> None:
         intent["name"] for intent in _document()["intents"] if intent["first_stage"] == 1
     }
     assert stage_one == {
+        "capabilities.get",
         "signals.submit",
         "cases.get",
         "cases.timeline",
         "evidence.get",
         "sources.capabilities",
         "sources.doctor",
+        "source-sync-runs.get",
     }
+
+
+def test_wire_freeze_is_stage_sliced_and_skeletons_have_no_field_contract() -> None:
+    intents = {intent["name"]: intent for intent in _document()["intents"]}
+    expected_s1a = {
+        "capabilities.get",
+        "signals.submit",
+        "cases.get",
+        "cases.timeline",
+        "evidence.get",
+    }
+    expected_s1b = {
+        "sources.capabilities",
+        "sources.doctor",
+        "source-sync-runs.get",
+    }
+    assert {
+        name for name, intent in intents.items() if intent["delivery_slice"] == "S1A"
+    } == expected_s1a
+    assert {
+        name for name, intent in intents.items() if intent["delivery_slice"] == "S1B"
+    } == expected_s1b
+    for intent in intents.values():
+        assert intent["activation_stage"] == intent["first_stage"]
+        if intent["wire_status"] == "FROZEN":
+            assert set(intent["field_contract_ref"]) == {"request", "response"}
+        else:
+            assert intent["wire_status"] == "SKELETON"
+            assert intent["field_contract_ref"] is None
+            assert intent["delivery_slice"] is None
+
+
+def test_capability_discovery_schema_allows_only_frozen_intents() -> None:
+    intents = _document()["intents"]
+    frozen = {intent["name"] for intent in intents if intent["wire_status"] == "FROZEN"}
+    skeleton = {intent["name"] for intent in intents if intent["wire_status"] == "SKELETON"}
+    schema = json.loads(PUBLIC_WIRE.read_text(encoding="utf-8"))
+    allowlist = set(
+        schema["$defs"]["server_capabilities_response"]["properties"]["data"]
+        ["properties"]["enabled_intents"]["items"]["properties"]["name"]["enum"]
+    )
+    assert allowlist == frozen
+    assert allowlist.isdisjoint(skeleton)
+
+
+def test_async_intents_have_a_durable_query_companion_before_activation() -> None:
+    intents = {intent["name"]: intent for intent in _document()["intents"]}
+    assert intents["sources.doctor"]["first_stage"] == intents["source-sync-runs.get"]["first_stage"] == 1
+    assert intents["releases.rollback-request"]["first_stage"] == intents["external-operations.get"]["first_stage"] == 4
 
 
 def test_human_approval_is_not_exposed_to_agent_protocols() -> None:

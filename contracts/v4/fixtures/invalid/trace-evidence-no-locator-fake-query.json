@@ -1,0 +1,18 @@
+{
+  "base_fixture": "trace-evidence-receipt-no-locator.json",
+  "mutations": [
+    {
+      "op": "set",
+      "path": "query",
+      "value": {
+        "adapter_kind": "langfuse",
+        "endpoint_origin": "https://cloud.langfuse.com",
+        "source_version": "api-v2",
+        "requested_at": "2026-08-10T09:00:00Z",
+        "window_start": "2026-08-10T08:55:00Z",
+        "window_end": "2026-08-10T09:00:00Z",
+        "filters_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+      }
+    }
+  ]
+}

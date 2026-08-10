@@ -1,0 +1,6 @@
+{
+  "base_fixture": "public-error-audit-unavailable.json",
+  "mutations": [
+    {"op": "set", "path": "error.audit_ref", "value": "audit://aud_01J0000000000009"}
+  ]
+}

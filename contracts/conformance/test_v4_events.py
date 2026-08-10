@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import defaultdict, deque
+import json
 from pathlib import Path
 
 import yaml
@@ -11,6 +12,7 @@ V4_ROOT = Path(__file__).resolve().parents[1] / "v4"
 EVENTS = V4_ROOT / "events" / "events.yaml"
 MACHINES = V4_ROOT / "events" / "state-machines.yaml"
 OWNERSHIP = V4_ROOT / "aggregate-ownership.yaml"
+AUTHORITY_BUNDLE = V4_ROOT / "fixtures" / "valid" / "authority-bundle.json"
 
 
 def _yaml(path: Path) -> dict:
@@ -91,6 +93,33 @@ def test_event_catalog_exactly_matches_aggregate_ownership() -> None:
             ownership[name]["events"]
         ), name
     assert all(event["event_version"] == "1.0" for event in catalog.values())
+
+
+def test_event_envelope_freezes_v4_routing_tuple_and_fixture_is_constructable() -> None:
+    document, _catalog_events = _catalog()
+    envelope = document["envelope"]
+    assert "contract_version" in envelope["required"]
+    assert envelope["rules"]["contract_version"] == {
+        "const": "v4",
+        "enum": ["v4"],
+    }
+    routing_fields = envelope["routing_tuple"]
+    assert routing_fields == ["contract_version", "aggregate_type", "event_type"]
+
+    ownership = _yaml(OWNERSHIP)["resources"]
+    bundle = json.loads(AUTHORITY_BUNDLE.read_text(encoding="utf-8"))
+    receipts = {
+        receipt["authority_receipt_id"]: receipt for receipt in bundle["receipts"]
+    }
+    tuples = []
+    for event in bundle["events"]:
+        receipt = receipts[event["authority_receipt_id"]]
+        routing_tuple = tuple(event[field] for field in routing_fields)
+        assert routing_tuple[0] == "v4"
+        assert routing_tuple[1] == receipt["resource"]
+        assert routing_tuple[1] in ownership
+        tuples.append(routing_tuple)
+    assert len(tuples) == len(bundle["events"])
 
 
 def test_claim_atomically_creates_the_controller_owned_attempt() -> None:
@@ -278,3 +307,60 @@ def test_review_model_and_gate_receipts_have_non_cyclic_transaction_boundaries()
         "same_transaction": True,
         "exact_required_track_set": True,
     }
+
+
+def test_stage1_signal_intake_is_four_controller_records_in_one_transaction() -> None:
+    document, _events = _catalog()
+    invariant = document["transactional_invariants"]["stage1_signal_intake"]
+    assert invariant["status"] == "contract_only_not_implemented"
+    assert invariant["command"] == "signals.submit"
+    assert invariant["source_connection_guard"] == {
+        "kind": "manual",
+        "state": "ACTIVE",
+        "workspace_id_equals_authenticated_workspace": True,
+        "caller_cannot_self_assert_connection": True,
+    }
+    assert invariant["same_postgresql_transaction"] is True
+    assert invariant["audit_failure_rolls_back_every_record"] is True
+    assert invariant["owners"] == {
+        "signal.received": "signal-controller",
+        "case.opened": "case-controller",
+        "signal_case_link.linked": "signal-controller",
+        "evidence.recorded": "evidence-controller",
+    }
+    assert invariant["causation"] == {
+        "signal.received": "public_command_id",
+        "case.opened": "signal.received.event_id",
+        "signal_case_link.linked": "case.opened.event_id",
+        "evidence.recorded": "signal.received.event_id",
+    }
+    assert invariant["event_routing_key"] == [
+        "contract_version",
+        "aggregate_type",
+        "event_type",
+    ]
+    assert invariant["outbox_channel"] == "v4.domain.events"
+    assert invariant["v3_event_type_only_routing_forbidden"] is True
+    assert invariant["jsonl_audit_export"] == "after_commit_or_outbox_only"
+
+
+def test_quality_case_keeps_correlation_orthogonal_and_source_sync_is_queryable() -> None:
+    machines = _yaml(MACHINES)["machines"]
+    quality_case = machines["quality_case"]
+    assert quality_case["initial"] == "OPEN"
+    assert "NEEDS_CORRELATION" not in quality_case["states"]
+    assert quality_case["orthogonal_status"]["correlation_status"]["initial"] == (
+        "NEEDS_CORRELATION"
+    )
+    assert quality_case["orthogonal_status"]["triage_status"]["initial"] == (
+        "UNTRIAGED"
+    )
+    source_sync = machines["source_sync_run"]
+    assert source_sync["created_by_event"] == "source_sync_run.doctor_requested"
+    assert source_sync["states"] == [
+        "QUEUED",
+        "RUNNING",
+        "SUCCEEDED",
+        "FAILED",
+        "UNKNOWN",
+    ]

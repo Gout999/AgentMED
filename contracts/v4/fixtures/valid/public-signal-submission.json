@@ -1,0 +1,22 @@
+{
+  "schema_version": "1.0",
+  "source_id": "src_01J0000000000001",
+  "source_event_id": "maintainer-report-01J0000000000001",
+  "source_event_version": "1",
+  "signal_kind": "maintainer_report",
+  "reporter": {
+    "kind": "maintainer",
+    "source_subject_ref": "maintainer-01J0000000000001"
+  },
+  "project_id": "proj_01J0000000000001",
+  "environment_id": "env_01J0000000000001",
+  "governed_agent_id": "ga_01J0000000000001",
+  "occurred_at": "2026-08-10T09:00:00Z",
+  "content": {
+    "summary": "The agent returned an incomplete answer.",
+    "body": "Maintainer could not provide a trace locator.",
+    "attachments": []
+  },
+  "run_locator": null,
+  "privacy_classification": "INTERNAL"
+}

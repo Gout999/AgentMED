@@ -13,6 +13,7 @@ from referencing import Registry, Resource
 from v4_semantics import (
     SemanticValidationError,
     assert_semantically_valid,
+    public_principal_context_violations,
     validate_semantics,
 )
 
@@ -307,3 +308,87 @@ def test_proposal_semantics_fail_closed_without_task_and_candidate_context() -> 
         "proposal.candidate_contract_context_missing",
         "identity_chain.context_missing",
     } <= {violation.code for violation in validate_semantics(bundle)}
+
+
+def test_public_principal_context_passes_executable_semantic_validator() -> None:
+    context = _json(VALID / "public-principal-context.json")
+    assert public_principal_context_violations(context) == ()
+    assert validate_semantics({"public_principal_context": context}) == ()
+    context["requested_context"]["project_id"] = None
+    context["requested_context"]["environment_id"] = None
+    assert public_principal_context_violations(context) == ()
+
+
+@pytest.mark.parametrize(
+    "mutation,expected_code",
+    [
+        (
+            ("evaluated_at", "2026-08-10T18:00:00Z"),
+            "public_principal_context.outside_validity",
+        ),
+        (
+            ("requested_context.workspace_id", "ws_01J0000000000099"),
+            "public_principal_context.workspace_mismatch",
+        ),
+        (
+            ("requested_context.project_id", "proj_01J0000000000099"),
+            "public_principal_context.project_id_not_granted",
+        ),
+        (
+            ("requested_context.environment_id", "env_01J0000000000099"),
+            "public_principal_context.environment_id_not_granted",
+        ),
+        (
+            ("requested_context.required_scope", "releases:write"),
+            "public_principal_context.required_scope_not_granted",
+        ),
+        (
+            ("revoked_at", "2026-08-10T08:59:00Z"),
+            "public_principal_context.revoked_credential_accepted",
+        ),
+        (
+            ("audiences", ["some-other-api"]),
+            "public_principal_context.audience_not_accepted",
+        ),
+        (
+            ("jti", "raw-token-id-must-not-escape"),
+            "public_principal_context.raw_credential_exposed",
+        ),
+    ],
+)
+def test_public_principal_context_semantic_attacks_fail_closed(
+    mutation: tuple[str, Any], expected_code: str
+) -> None:
+    context = copy.deepcopy(_json(VALID / "public-principal-context.json"))
+    path, value = mutation
+    if "." in path:
+        parent, field = path.split(".", 1)
+        context[parent][field] = value
+    else:
+        context[path] = value
+    codes = {
+        violation.code
+        for violation in validate_semantics({"public_principal_context": context})
+    }
+    assert expected_code in codes
+
+
+@pytest.mark.parametrize(
+    "field,value",
+    [("contract_version", "v3"), ("aggregate_type", "quality_case")],
+)
+def test_authority_event_routing_tuple_tamper_fails_semantics(
+    field: str, value: str
+) -> None:
+    bundle = _valid_bundle()
+    bundle["authority_events"] = copy.deepcopy(bundle["authority_events"])
+    receipt_id = bundle["trace_evidence_receipt"]["authority_receipt_id"]
+    event = next(
+        item
+        for item in bundle["authority_events"]
+        if item["authority_receipt_id"] == receipt_id
+    )
+    event[field] = value
+    assert "authority.event_binding_mismatch" in {
+        violation.code for violation in validate_semantics(bundle)
+    }

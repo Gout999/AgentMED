@@ -17,6 +17,10 @@ rules:
 # Exact command -> event authority for controller-recorded v4 snapshots.  A
 # command/event pair that is not listed here cannot back an AuthorityReceipt.
 record_authority:
+  SIGNAL_RECORD: {resource: signal, owner: signal-controller, command_events: {signals.submit: [signal.received]}}
+  SIGNAL_CASE_LINK: {resource: signal, owner: signal-controller, command_events: {signals.link-case: [signal_case_link.linked]}}
+  QUALITY_CASE: {resource: quality_case, owner: case-controller, command_events: {cases.open-from-signal: [case.opened]}}
+  SOURCE_SYNC_RUN: {resource: source_sync_run, owner: source-controller, command_events: {source-sync-runs.request-doctor: [source_sync_run.doctor_requested], source-sync-runs.start: [source_sync_run.started], source-sync-runs.record-terminal: [source_sync_run.completed, source_sync_run.failed, source_sync_run.unknown], source-sync-runs.reconcile: [source_sync_run.reconciled]}}
   RESOLUTION_CONTRACT: {resource: resolution_contract, owner: case-controller, command_events: {resolution-contracts.freeze: [resolution_contract.frozen]}}
   RESOLUTION_REVIEW_RECEIPT: {resource: resolution_contract, owner: case-controller, command_events: {resolution-reviews.record: [resolution_review.recorded]}}
   CANDIDATE_CONTRACT: {resource: candidate_contract, owner: proposal-controller, command_events: {candidate-contracts.freeze: [candidate_contract.frozen]}}

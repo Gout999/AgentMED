@@ -2,6 +2,42 @@ version: "1.0"
 status: target_contract
 
 machines:
+  quality_case:
+    created_by_event: case.opened
+    initial: OPEN
+    terminal: [RESOLVED]
+    states: [OPEN, RESOLVED]
+    transitions:
+      - {from: OPEN, 'on': case.triaged, to: OPEN}
+      - {from: OPEN, 'on': case.finding_accepted, to: OPEN}
+      - {from: OPEN, 'on': case.resolution_recorded, to: RESOLVED}
+    orthogonal_status:
+      correlation_status:
+        initial: NEEDS_CORRELATION
+        values: [NEEDS_CORRELATION, PARTIAL, CORRELATED, UNKNOWN]
+      triage_status:
+        initial: UNTRIAGED
+        values: [UNTRIAGED, TRIAGED, NEEDS_INPUT]
+    failure_semantics:
+      missing_trace_locator: {state: OPEN, correlation_status: NEEDS_CORRELATION}
+      correlation_status_is_not_main_state: true
+
+  source_sync_run:
+    created_by_event: source_sync_run.doctor_requested
+    initial: QUEUED
+    terminal: [SUCCEEDED, FAILED]
+    states: [QUEUED, RUNNING, SUCCEEDED, FAILED, UNKNOWN]
+    transitions:
+      - {from: QUEUED, 'on': source_sync_run.started, to: RUNNING}
+      - {from: RUNNING, 'on': source_sync_run.completed, to: SUCCEEDED}
+      - {from: RUNNING, 'on': source_sync_run.failed, to: FAILED}
+      - {from: RUNNING, 'on': source_sync_run.unknown, to: UNKNOWN}
+      - {from: UNKNOWN, 'on': source_sync_run.reconciled, to: SUCCEEDED, guard: reconciled_status_SUCCEEDED}
+      - {from: UNKNOWN, 'on': source_sync_run.reconciled, to: FAILED, guard: reconciled_status_FAILED}
+    failure_semantics:
+      ambiguous_provider_outcome: UNKNOWN
+      unknown_before_retry: reconcile_required
+
   worker_task:
     initial: QUEUED
     terminal: [COMPLETED, CANCELLED, EXHAUSTED]
@@ -91,6 +127,7 @@ machines:
       revoked_or_expired: FAIL_CLOSED
 
   external_operation:
+    created_by_event: external_operation.requested
     initial: PENDING
     terminal: [SUCCEEDED, FAILED]
     states: [PENDING, RUNNING, SUCCEEDED, FAILED, UNKNOWN]

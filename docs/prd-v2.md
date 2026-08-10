@@ -159,17 +159,18 @@ Claude Code 是受控执行 harness，不是 AgentTeams 当前原生 Worker，�
 
 公共 HTTP 是唯一能力基线；CLI、portable Skill、Public MCP、SDK/Webhook 和未来 A2A 都是同一 intent/application service 的 Adapter。
 
-Stage 0 v1 Intent Registry 的完整冻结切片是：
+Stage 0 v1 Intent Registry 是 target catalog；`wire_status` 决定当前是否已有可执行字段合同：
 
-- Stage 1：`signals.submit`、`cases.get`、`cases.timeline`、`evidence.get`、`sources.capabilities`、`sources.doctor`；
-- Stage 2：`investigations.start`、`runviews.get`、`work.stop-request`；
-- Stage 4：`approvals.decide`、`releases.rollback-request`。
+- Stage 1 S1A `FROZEN`：`capabilities.get`、`signals.submit`、`cases.get`、`cases.timeline`、`evidence.get`；
+- Stage 1 S1B `FROZEN`：`sources.capabilities`、`sources.doctor`、`source-sync-runs.get`；
+- Stage 2 `SKELETON`：`investigations.start`、`runviews.get`、`work.stop-request`；
+- Stage 4 `SKELETON`：`approvals.decide`、`releases.rollback-request`、`external-operations.get`。
 
-每个 intent 机器可读地声明 `execution_mode` 和 `transport_stages`：HTTP/CLI 在 `first_stage` 启用；非空 Public MCP/A2A mapping 到 Stage 6 才启用；null mapping 的 stage 也为 null。当前 CLI canonical command 是 `signal submit`、`source capabilities`、`source doctor` 与 `evidence get`；`report` 只是 `signal submit` 的 alias。`capabilities.get`、source connect/list、signal get/import、case list、run watch、proposal/gate query、evidence export/verify 等是目标命令目录，尚未进入这版 registry；只有新增 OpenAPI/schema/conformance 后才可 advertise。CLI 中存在目标命令名不等于服务端 intent 已实现。
+每个 intent 机器可读地声明 `execution_mode`、`transport_stages`、`activation_stage`、`wire_status` 和 `field_contract_ref`。只有 `FROZEN + implemented + caller authorized` 才生成 HTTP/CLI 并进入 `capabilities.get`；SKELETON 即使已有 method/path/CLI target mapping 也不得暴露。`report` 只是 `signal submit` alias；Public MCP/A2A 到 Stage 6 才启用。
 
 审批决定只进入人类 Console/HTTP/CLI；不进入 model-invocable MCP、A2A 或 portable Skill。Release execute 永不进入公共 Agent token。
 
-所有 mutation 按 `(workspace, principal, intent, idempotency_key)` 保存 canonical request fingerprint；同 key 同请求返回原结果，不重复执行；同 key 异请求返回稳定 `IDEMPOTENCY_CONFLICT`。CLI/MCP/HTTP 必须共享 resource ID、状态、error code、request ID 与 audit ref。
+所有 mutation 按 `(workspace, principal, intent, idempotency_key)` 保存 canonical request fingerprint；同 key 同请求返回原结果和原 immutable receipt，不重复执行；同 key 异请求返回稳定 `IDEMPOTENCY_CONFLICT`。`replayed` 是 delivery metadata，不进入 receipt self-hash。CLI/MCP/HTTP 必须共享 resource ID、状态、error code、request ID 与可信 audit ref；认证前 workspace 或 audit commit 失败时对应字段为 null，禁止伪造。
 
 ## 9. 自治与权限
 

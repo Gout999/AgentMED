@@ -534,7 +534,7 @@ completeness
 
 Stage 0 冻结唯一 Intent Registry 的**名称与传输骨架**：intent 名称、首次交付 Stage、HTTP method/path/operation ID、CLI canonical command/aliases、MCP/A2A mapping、scope、`execution_mode`、`transport_stages`、幂等要求与公共 error/idempotency envelope。HTTP/CLI 的启用 Stage 必须等于 `first_stage`；非空 Public MCP/A2A mapping 到 Stage 6 才启用，null mapping 的 transport stage 也必须为 null。mapping 存在不等于该 transport 已启用。每个 mutation 还必须携带唯一的 `command_target {resource, command}`：resource 是 `aggregate-ownership.yaml` 中的非 projection，command 只出现在该 resource 下并由其唯一 owner 处理；query 不携带 command target。下面是 `contracts/v4/intent-registry.yaml` v1 的完整 registry/transport 冻结切片，不是示例或全产品愿望清单；未列出的目标命令在 contract 增量批准前不得 advertise。
 
-当前 `contracts/v4/openapi/public-api.yaml` 是与该 registry 对齐的 OpenAPI 3.1 **骨架**，不是完整 request/response 字段合同。当前 v1 registry 中所有已注册 intent 的 request/response fields、required/optional/nullability、成功/错误响应、异步 receipt/correlation 与版本兼容必须在 Stage 1 Entry 前冻结并通过 schema/conformance review；完成 Stage 0 skeleton lint 不能被表述为“字段合同已经完整冻结”或“Public API 已实现”。
+`contracts/v4/intent-registry.yaml` 现在是 stage-aware target catalog：每个 intent 具有 `activation_stage / wire_status / field_contract_ref`。S1A 已冻结 `capabilities.get / signals.submit / cases.get / cases.timeline / evidence.get`，S1B 已冻结 `sources.capabilities / sources.doctor / source-sync-runs.get`；`contracts/v4/openapi/public-api.yaml` 只包含这些 `FROZEN` operation。Stage 2/4 intent 继续为 `SKELETON + field_contract_ref:null`，不得生成 route、CLI/SDK method 或出现在 capability discovery，直到所属 Stage 的字段合同和实现 Gate 分别通过。字段冻结仍只是 contract evidence，不证明 runtime 已实现。
 
 | intent | HTTP | CLI / MCP | scope | command target | 语义 |
 |---|---|---|---|---|---|
@@ -544,11 +544,14 @@ Stage 0 冻结唯一 Intent Registry 的**名称与传输骨架**：intent 名�
 | `evidence.get` | `GET /api/v1/evidence/{receipt_id}` | `evidence get` / `evidence.get` | `artifacts:read` | — | 只读 immutable receipt |
 | `sources.capabilities` | `GET /api/v1/sources/{source_id}/capabilities` | `source capabilities` / `sources.capabilities` | `sources:read` | — | discovery |
 | `sources.doctor` | `POST /api/v1/sources/{source_id}:doctor` | `source doctor` / `sources.doctor` | `sources:manage` | `source_sync_run / source-sync-runs.request-doctor` | 幂等诊断 mutation |
+| `source-sync-runs.get` | `GET /api/v1/source-sync-runs/{source_sync_run_id}` | `source sync-run get` / `source-sync-runs.get` | `sources:read` | — | doctor 的 durable 状态查询 |
+| `capabilities.get` | `GET /api/v1/capabilities` | `capabilities get` / `capabilities.get` | `capabilities:read` | — | 只返回已冻结、已实现且 caller 有权的 intent |
 | `investigations.start` | `POST /api/v1/cases/{case_id}/investigations` | `run start` / `runs.start` | `runs:start` | `automation_request / automation-requests.start-investigation` | 异步，返回 operation/run correlation |
 | `runviews.get` | `GET /api/v1/run-views/{run_id}` | `run get` / `runs.get` | `runs:read` | — | 只读投影；独立 watch/stream intent 尚未冻结 |
 | `work.stop-request` | `POST /api/v1/run-views/{run_id}:stop` | `run cancel` / `runs.cancel` | `runs:cancel` | `automation_request / automation-requests.request-stop` | best-effort 停止未来工作，不撤销副作用 |
 | `approvals.decide` | `POST /api/v1/approvals/{approval_id}:decide` | human CLI/Console only | `approvals:decide:human` | `approval_grant / approvals.decide` | step-up 人类动作，不进入 MCP/Skill/A2A |
 | `releases.rollback-request` | `POST /api/v1/releases/{release_id}:rollback-request` | `release rollback-request` | `releases:request` | `external_operation / external-operations.request-rollback` | 只创建 scoped rollback request，不给 caller execute authority |
+| `external-operations.get` | `GET /api/v1/external-operations/{external_operation_id}` | `external-operation get` / `external-operations.get` | `releases:read` | — | Stage 4 skeleton；未暴露 route |
 
 `quickstart`、`project init`、`up` 与 `mcp serve --stdio` 是 local orchestration，不伪装成远端 intent。所有远端 CLI 命令必须映射一个 registry intent；跨入口“一致”指相同权威 resource/operation ID、领域结果、`error_code` 和 `audit_ref`，不要求 transport envelope 字节相同。
 
@@ -585,7 +588,7 @@ Stage 6 才启用远端 Streamable HTTP + OAuth 与本地 stdio Public MCP。只
 
 ### 10.5 Public principal 与 scope
 
-四类 caller principal 必须分开：human、external agent/service、connector、internal controller/worker；`GovernedAgent` 是被治理资源，不是调用者自报身份。token 绑定 issuer、audience、workspace/project/environment、subject type、expiry 与 jti，调用者不能自报 role。
+四类 caller principal 必须分开：human、external agent/service、connector、internal controller/worker；`GovernedAgent` 是被治理资源，不是调用者自报身份。Public API 必须先校验 bearer，再把 `X-CaseLoop-Workspace-ID` 与服务端解析的 issuer/audience/workspace/project/environment、subject type、scope、not-before、expiry 和 active/non-revoked credential 绑定；调用者不能在 body 自报 principal/workspace/role。持久化和返回的是 `jti_digest`，不是 raw jti。认证前失败的 `workspace_id` 可以为 null；audit/DB 提交失败时 `audit_ref` 必须为 null，并回滚业务事务，不能伪造审计引用。
 
 最小 scopes 包括：
 
@@ -602,13 +605,15 @@ Agent/service token 永远不能获得 `approvals:decide:human` 或 `external_op
 
 ### 10.6 幂等、错误和兼容
 
-所有 mutation 在 `(workspace, principal, intent, idempotency_key)` 下持久化规范化请求 fingerprint；同 key/同 fingerprint 返回原 `operation_id/resource_id` 和原结果，同 key/不同 fingerprint 返回 `409 IDEMPOTENCY_CONFLICT`。Connector 的 `source_event_id` 去重与 public command idempotency 分开建模；key 在长任务终态和 replay window 结束前不得过期。
+所有 mutation 在 `(workspace, principal, intent, idempotency_key)` 下持久化规范化请求 fingerprint；同 key/同 fingerprint 返回原 `operation_id/resource_id`、原结果和原 immutable `IdempotencyReceipt`，同 key/不同 fingerprint 返回 `409 IDEMPOTENCY_CONFLICT`。`replayed` 只属于本次 delivery metadata，不进入 receipt self-hash，避免同一 receipt ID 出现两个 digest。Connector 的 `source_event_id` 去重与 public command idempotency 分开建模；key 在长任务终态和 replay window 结束前不得过期。
 
 公共机器错误统一为：
 
 ```json
 {
   "schema_version": "1.0",
+  "workspace_id": "ws_...",
+  "workspace_resolved": true,
   "error": {
     "code": "DEPENDENCY_UNAVAILABLE",
     "message": "Langfuse is unreachable; verify endpoint and network, then retry.",
@@ -617,6 +622,7 @@ Agent/service token 永远不能获得 `approvals:decide:human` 或 `external_op
     "request_id": "req_...",
     "operation_id": "op_...",
     "audit_ref": "audit://...",
+    "audit_status": "RECORDED",
     "details": {},
     "help_url": "..."
   }
@@ -827,7 +833,11 @@ Day-2 必须覆盖 connector health/水位、漏投回补、dead-letter 重放�
 
 ### Stage 1：可安装的只读纵切
 
-Entry：Stage 0 contract/verifier 已通过；当前 v1 Intent Registry 中所有已注册 intent 的完整 request/response 字段合同已经冻结，OpenAPI 不再依赖通用占位 envelope，且 schema/conformance review 通过。仅有 Stage 0 OpenAPI skeleton 不得开始 Stage 1 runtime/API 实现。
+Entry：Stage 0 contract/verifier 已通过；只要求本次施工 slice 的字段合同先冻结。S1A 的 common auth/error/idempotency + Signal/Case/Evidence 与 S1B 的 Source capability/doctor/SourceSyncRun 已有 exact request/response、nullability、显式错误、async query、cursor snapshot 和 conformance；Stage 2/4 skeleton 不构成 Stage 1 blocker，也不得提前暴露。
+
+S1A runtime 开始前还必须满足：`signals.submit.source_id` 解析到同 workspace 的 `ACTIVE` manual `SourceConnection`，不得接受 caller 自报或全局常量；007 包含这一最小 manual bootstrap，008 才扩展 capability/sync/cursor/DLQ。一次提交在同一 PostgreSQL 事务写 `signal.received / case.opened / signal_case_link.linked / evidence.recorded` 及各 owner 的 record/AuthorityReceipt、audit、outbox、idempotency；主 Case 状态保持 `OPEN`，无 locator 只设置 `correlation_status=NEEDS_CORRELATION`、`triage_status=UNTRIAGED`，并记录 `TraceEvidenceReceipt(collection_mode=NO_LOCATOR, query=null, AgentRunRef=null, UNKNOWN)`。v4 event route 必须按 `(contract_version, aggregate_type, event_type)` 进入独立 channel，不能复用 v3 仅按 event type 的路由。
+
+Runtime 的 immutable hash 必须 pin `rfc8785==0.1.4` 并复用 no-float、排除唯一 self-digest field 的规则；现有 sorted-JSON hash 不可充当 v4 record hash。PG audit 是权威事务记录；JSONL/导出只能 after-commit/outbox 执行或禁用，不能在可能 rollback 的同步事务前写出“幽灵成功”。
 
 首发支持矩阵冻结为：macOS/Linux + Docker Compose、单 Workspace、Shadow only、Manual CLI/HTTP maintainer report、Langfuse Cloud/明确验证过的 self-host 版本、Langfuse negative score。飞书仍是 v3 客服 Scenario 的现有渠道；把它升级为 v4 通用 maintainer Signal Adapter 属于 Stage 1B 增量，需独立 contract/live receipt。Phoenix、GitHub/GitLab、Sentry、企微和生产写面继续是后续 Adapter，不把配置占位当支持。
 

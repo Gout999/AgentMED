@@ -1,0 +1,6 @@
+{
+  "base_fixture": "public-server-capabilities-response.json",
+  "mutations": [
+    {"op": "set", "path": "data.enabled_intents.0.name", "value": "investigations.start"}
+  ]
+}

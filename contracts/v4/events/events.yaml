@@ -3,6 +3,7 @@ status: target_contract
 
 envelope:
   required:
+    - contract_version
     - event_id
     - event_type
     - event_version
@@ -15,7 +16,9 @@ envelope:
     - transaction_id
     - payload
     - payload_digest
+  routing_tuple: [contract_version, aggregate_type, event_type]
   rules:
+    contract_version: {const: v4, enum: [v4]}
     event_id: globally_prefixed
     event_version: additive_within_major
     causation_id: immediate_command_or_event
@@ -46,6 +49,7 @@ aggregates:
 
   source_sync_run:
     owner: source-controller
+    state_machine: source_sync_run
     events:
       - {event_type: source_sync_run.doctor_requested, event_version: "1.0", payload_required: [source_sync_run_id, source_connection_id, request_digest]}
       - {event_type: source_sync_run.started, event_version: "1.0", payload_required: [source_sync_run_id, connector_identity, started_at]}
@@ -56,6 +60,7 @@ aggregates:
 
   quality_case:
     owner: case-controller
+    state_machine: quality_case
     events:
       - {event_type: case.opened, event_version: "1.0", payload_required: [case_id, opening_signal_id]}
       - {event_type: case.triaged, event_version: "1.0", payload_required: [case_id, triage_digest]}
@@ -274,6 +279,32 @@ aggregates:
       - {event_type: reaction.retry_scheduled, event_version: "1.0", payload_required: [reaction_id, source_event_id, retry_after]}
 
 transactional_invariants:
+  stage1_signal_intake:
+    status: contract_only_not_implemented
+    command: signals.submit
+    source_connection_guard:
+      kind: manual
+      state: ACTIVE
+      workspace_id_equals_authenticated_workspace: true
+      caller_cannot_self_assert_connection: true
+    required_records: [signal_record, signal_authority_receipt, quality_case_snapshot, quality_case_authority_receipt, signal_case_link, signal_case_link_authority_receipt, trace_evidence_receipt, trace_evidence_authority_receipt, public_idempotency_record, signal.received, case.opened, signal_case_link.linked, evidence.recorded, outbox, audit]
+    same_postgresql_transaction: true
+    audit_failure_rolls_back_every_record: true
+    shared_transaction_id: true
+    causation:
+      signal.received: public_command_id
+      case.opened: signal.received.event_id
+      signal_case_link.linked: case.opened.event_id
+      evidence.recorded: signal.received.event_id
+    owners:
+      signal.received: signal-controller
+      case.opened: case-controller
+      signal_case_link.linked: signal-controller
+      evidence.recorded: evidence-controller
+    event_routing_key: [contract_version, aggregate_type, event_type]
+    outbox_channel: v4.domain.events
+    v3_event_type_only_routing_forbidden: true
+    jsonl_audit_export: after_commit_or_outbox_only
   resolution_review_recording:
     required_records: [resolution_review_receipt, resolution_review_authority_receipt, resolution_review.recorded, outbox, audit]
     same_transaction: true

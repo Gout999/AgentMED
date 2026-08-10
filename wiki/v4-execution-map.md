@@ -113,7 +113,7 @@ Plugin     Claude Code 等客户端分发包
 A2A        稳定 Run API 之上的长任务 Adapter
 ```
 
-当前内部 MCP projection 不能直接给客户 Agent。Stage 0 registry 冻结的公共 MCP 映射仅为 `signals.submit`、`cases.get/timeline`、`evidence.get`、`sources.capabilities/doctor`、`runs.start/get/cancel`，且 transport 到 Stage 6 才启用。`proposals.get`、`gates.get` 等未进入 registry 的目标 intent 不得提前 advertise。Agent/service token 永远不能获得 human approval 或内部 release execute 权限。
+当前内部 MCP projection 不能直接给客户 Agent。Registry 是 target catalog：S1A/S1B 仅 `capabilities.get`、`signals.submit`、`cases.get/timeline`、`evidence.get`、`sources.capabilities/doctor`、`source-sync-runs.get` 具有 `FROZEN` field contract；Stage 2/4 intent 保持 `SKELETON`，不能生成 route/CLI/discovery。所有 Public MCP mapping 到 Stage 6 才启用。Agent/service token 永远不能获得 human approval 或内部 release execute 权限。
 
 ## Langfuse
 
@@ -122,7 +122,7 @@ A2A        稳定 Run API 之上的长任务 Adapter
 1. CaseLoop 自身的 Agent/LLM/tool trace 通过 OTel/OTLP 发往 Langfuse；
 2. `LangfuseTraceSource` 读取被治理 Agent 的 observations/scores。
 
-进入 Case 前形成 `TraceEvidenceReceipt`，记录精确查询、来源版本、字段、digest、`COMPLETE/PARTIAL/UNKNOWN` 和缺失项。Langfuse 不是 CaseLoop 权威数据库，也不默认拥有全部输入输出。
+进入 Case 前形成 `TraceEvidenceReceipt`，记录 exact Signal binding、requested/result field set、来源版本、digest、`COMPLETE/PARTIAL/UNKNOWN` 和缺失项。无 trace locator 时固定为 `collection_mode=NO_LOCATOR / query=null / AgentRunRef=null / UNKNOWN`，禁止伪造 run。Case 主状态仍为 `OPEN`，另记 `correlation_status=NEEDS_CORRELATION`。Langfuse 不是 CaseLoop 权威数据库，也不默认拥有全部输入输出。
 
 ## Skill/MCP 自进化
 

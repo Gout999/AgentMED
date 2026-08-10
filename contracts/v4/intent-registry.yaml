@@ -2,6 +2,15 @@ version: "1.0"
 status: target_contract
 public_api_prefix: /api/v1
 
+wire_contract_rules:
+  frozen_status: FROZEN
+  deferred_status: SKELETON
+  frozen_requires_field_contract_ref: true
+  skeleton_requires_null_field_contract_ref: true
+  route_generation_requires: [wire_status_FROZEN, implementation_available, authenticated_scope]
+  cli_discovery_requires: [wire_status_FROZEN, implementation_available, authenticated_scope]
+  target_catalog_does_not_imply_route: true
+
 principal_types:
   - human
   - external_agent
@@ -27,6 +36,12 @@ forbidden_public_scopes:
 intents:
   - name: signals.submit
     first_stage: 1
+    activation_stage: 1
+    delivery_slice: S1A
+    wire_status: FROZEN
+    field_contract_ref:
+      request: contracts/v4/schemas/public-api-wire.schema.json#/$defs/signal_submission
+      response: contracts/v4/schemas/public-api-wire.schema.json#/$defs/signal_submission_response
     kind: mutation
     execution_mode: synchronous
     scope: signals:write
@@ -51,6 +66,12 @@ intents:
 
   - name: cases.get
     first_stage: 1
+    activation_stage: 1
+    delivery_slice: S1A
+    wire_status: FROZEN
+    field_contract_ref:
+      request: contracts/v4/openapi/public-api.yaml#/paths/~1api~1v1~1cases~1{case_id}/get
+      response: contracts/v4/schemas/public-api-wire.schema.json#/$defs/case_response
     kind: query
     execution_mode: synchronous
     scope: cases:read
@@ -71,6 +92,12 @@ intents:
 
   - name: cases.timeline
     first_stage: 1
+    activation_stage: 1
+    delivery_slice: S1A
+    wire_status: FROZEN
+    field_contract_ref:
+      request: contracts/v4/openapi/public-api.yaml#/paths/~1api~1v1~1cases~1{case_id}~1timeline/get
+      response: contracts/v4/schemas/public-api-wire.schema.json#/$defs/case_timeline_response
     kind: query
     execution_mode: synchronous
     scope: cases:read
@@ -91,6 +118,12 @@ intents:
 
   - name: evidence.get
     first_stage: 1
+    activation_stage: 1
+    delivery_slice: S1A
+    wire_status: FROZEN
+    field_contract_ref:
+      request: contracts/v4/openapi/public-api.yaml#/paths/~1api~1v1~1evidence~1{receipt_id}/get
+      response: contracts/v4/schemas/public-api-wire.schema.json#/$defs/evidence_response
     kind: query
     execution_mode: synchronous
     scope: artifacts:read
@@ -111,6 +144,12 @@ intents:
 
   - name: sources.capabilities
     first_stage: 1
+    activation_stage: 1
+    delivery_slice: S1B
+    wire_status: FROZEN
+    field_contract_ref:
+      request: contracts/v4/openapi/public-api.yaml#/paths/~1api~1v1~1sources~1{source_id}~1capabilities/get
+      response: contracts/v4/schemas/public-api-wire.schema.json#/$defs/source_capabilities_response
     kind: query
     execution_mode: synchronous
     scope: sources:read
@@ -131,6 +170,12 @@ intents:
 
   - name: sources.doctor
     first_stage: 1
+    activation_stage: 1
+    delivery_slice: S1B
+    wire_status: FROZEN
+    field_contract_ref:
+      request: contracts/v4/schemas/public-api-wire.schema.json#/$defs/source_doctor_request
+      response: contracts/v4/schemas/public-api-wire.schema.json#/$defs/source_doctor_response
     kind: mutation
     execution_mode: asynchronous
     scope: sources:manage
@@ -152,8 +197,64 @@ intents:
     mcp: sources.doctor
     a2a: null
 
+  - name: source-sync-runs.get
+    first_stage: 1
+    activation_stage: 1
+    delivery_slice: S1B
+    wire_status: FROZEN
+    field_contract_ref:
+      request: contracts/v4/openapi/public-api.yaml#/paths/~1api~1v1~1source-sync-runs~1{source_sync_run_id}/get
+      response: contracts/v4/schemas/public-api-wire.schema.json#/$defs/source_sync_run_response
+    kind: query
+    execution_mode: synchronous
+    scope: sources:read
+    idempotency: none
+    transport_stages:
+      http: 1
+      cli: 1
+      mcp: 6
+      a2a: null
+    http:
+      method: GET
+      path: /api/v1/source-sync-runs/{source_sync_run_id}
+      operation_id: getSourceSyncRun
+    cli: source sync-run get
+    cli_aliases: []
+    mcp: source-sync-runs.get
+    a2a: null
+
+  - name: capabilities.get
+    first_stage: 1
+    activation_stage: 1
+    delivery_slice: S1A
+    wire_status: FROZEN
+    field_contract_ref:
+      request: contracts/v4/openapi/public-api.yaml#/paths/~1api~1v1~1capabilities/get
+      response: contracts/v4/schemas/public-api-wire.schema.json#/$defs/server_capabilities_response
+    kind: query
+    execution_mode: synchronous
+    scope: capabilities:read
+    idempotency: none
+    transport_stages:
+      http: 1
+      cli: 1
+      mcp: 6
+      a2a: null
+    http:
+      method: GET
+      path: /api/v1/capabilities
+      operation_id: getCapabilities
+    cli: capabilities get
+    cli_aliases: []
+    mcp: capabilities.get
+    a2a: null
+
   - name: investigations.start
     first_stage: 2
+    activation_stage: 2
+    delivery_slice: null
+    wire_status: SKELETON
+    field_contract_ref: null
     kind: mutation
     execution_mode: asynchronous
     scope: runs:start
@@ -177,6 +278,10 @@ intents:
 
   - name: runviews.get
     first_stage: 2
+    activation_stage: 2
+    delivery_slice: null
+    wire_status: SKELETON
+    field_contract_ref: null
     kind: query
     execution_mode: synchronous
     scope: runs:read
@@ -197,6 +302,10 @@ intents:
 
   - name: work.stop-request
     first_stage: 2
+    activation_stage: 2
+    delivery_slice: null
+    wire_status: SKELETON
+    field_contract_ref: null
     kind: mutation
     execution_mode: asynchronous
     scope: runs:cancel
@@ -220,6 +329,10 @@ intents:
 
   - name: approvals.decide
     first_stage: 4
+    activation_stage: 4
+    delivery_slice: null
+    wire_status: SKELETON
+    field_contract_ref: null
     kind: mutation
     execution_mode: synchronous
     scope: approvals:decide:human
@@ -245,6 +358,10 @@ intents:
 
   - name: releases.rollback-request
     first_stage: 4
+    activation_stage: 4
+    delivery_slice: null
+    wire_status: SKELETON
+    field_contract_ref: null
     kind: mutation
     execution_mode: asynchronous
     scope: releases:request
@@ -264,6 +381,30 @@ intents:
     cli: release rollback-request
     cli_aliases: []
     mcp: releases.rollback-request
+    a2a: null
+
+  - name: external-operations.get
+    first_stage: 4
+    activation_stage: 4
+    delivery_slice: null
+    wire_status: SKELETON
+    field_contract_ref: null
+    kind: query
+    execution_mode: synchronous
+    scope: releases:read
+    idempotency: none
+    transport_stages:
+      http: 4
+      cli: 4
+      mcp: 6
+      a2a: null
+    http:
+      method: GET
+      path: /api/v1/external-operations/{external_operation_id}
+      operation_id: getExternalOperation
+    cli: external-operation get
+    cli_aliases: []
+    mcp: external-operations.get
     a2a: null
 
 local_only_commands:

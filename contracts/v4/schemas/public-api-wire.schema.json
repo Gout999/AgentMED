@@ -1,0 +1,650 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/public-api-wire.schema.json",
+  "title": "CaseLoop v4 public HTTP request and response bodies",
+  "description": "Exact, closed wire models. Workspace and principal are derived from required headers and the resolved opaque bearer context; request bodies cannot override them.",
+  "$defs": {
+    "nullable_string": {
+      "type": ["string", "null"],
+      "maxLength": 4096
+    },
+    "nullable_uri": {
+      "type": ["string", "null"],
+      "format": "uri"
+    },
+    "nullable_date_time": {
+      "oneOf": [
+        {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
+        {"type": "null"}
+      ]
+    },
+    "nullable_digest": {
+      "oneOf": [
+        {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+        {"type": "null"}
+      ]
+    },
+    "nullable_artifact_ref": {
+      "oneOf": [
+        {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"},
+        {"type": "null"}
+      ]
+    },
+    "missing_fields": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1, "maxLength": 128},
+      "uniqueItems": true
+    },
+    "next_action": {
+      "type": "object",
+      "required": ["code", "command", "href"],
+      "properties": {
+        "code": {
+          "enum": [
+            "NONE",
+            "VIEW_CASE",
+            "CORRELATE_TRACE",
+            "WAIT_FOR_SOURCE_SYNC",
+            "WAIT_FOR_INVESTIGATION",
+            "WAIT_FOR_STOP",
+            "WAIT_FOR_APPROVAL_EFFECT",
+            "WAIT_FOR_EXTERNAL_OPERATION",
+            "RECONCILE_UNKNOWN"
+          ]
+        },
+        "command": {"type": ["string", "null"], "maxLength": 256},
+        "href": {"$ref": "#/$defs/nullable_uri"}
+      },
+      "additionalProperties": false
+    },
+    "idempotency_delivery": {
+      "description": "The immutable receipt is returned byte-for-byte on replay. Replay state belongs to this per-delivery metadata and is excluded from the receipt self-hash.",
+      "type": "object",
+      "required": ["receipt", "replayed"],
+      "properties": {
+        "receipt": {"$ref": "https://caseloop.dev/contracts/v4/schemas/idempotency-receipt.schema.json"},
+        "replayed": {"type": "boolean"}
+      },
+      "additionalProperties": false
+    },
+    "signal_binding": {
+      "type": "object",
+      "required": ["signal_id", "signal_digest", "source_event_id", "duplicate_of_signal_id"],
+      "properties": {
+        "signal_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/signal_id"},
+        "signal_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+        "source_event_id": {"type": "string", "minLength": 1, "maxLength": 512},
+        "duplicate_of_signal_id": {
+          "oneOf": [
+            {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/signal_id"},
+            {"type": "null"}
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "case_summary": {
+      "type": "object",
+      "required": ["case_id", "status", "revision", "disposition", "correlation_status", "triage_status"],
+      "properties": {
+        "case_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/case_id"},
+        "status": {"enum": ["OPEN", "RESOLVED"]},
+        "revision": {"type": "integer", "minimum": 1},
+        "disposition": {"enum": ["NEW", "LINKED_EXISTING", "DUPLICATE"]},
+        "correlation_status": {"enum": ["CORRELATED", "PARTIAL", "NEEDS_CORRELATION", "UNKNOWN"]},
+        "triage_status": {"enum": ["UNTRIAGED", "TRIAGED", "NEEDS_INPUT"]}
+      },
+      "additionalProperties": false
+    },
+    "evidence_summary": {
+      "type": "object",
+      "required": ["status", "receipt_id", "receipt_digest", "agent_run_ref_id", "missing_fields"],
+      "properties": {
+        "status": {"enum": ["COMPLETE", "PARTIAL", "UNKNOWN"]},
+        "receipt_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/trace_evidence_receipt_id"},
+        "receipt_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+        "agent_run_ref_id": {
+          "oneOf": [
+            {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/agent_run_ref_id"},
+            {"type": "null"}
+          ]
+        },
+        "missing_fields": {"$ref": "#/$defs/missing_fields"}
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"status": {"const": "COMPLETE"}}, "required": ["status"]},
+          "then": {"properties": {"missing_fields": {"maxItems": 0}}}
+        },
+        {
+          "if": {"properties": {"status": {"enum": ["PARTIAL", "UNKNOWN"]}}, "required": ["status"]},
+          "then": {"properties": {"missing_fields": {"minItems": 1}}}
+        }
+      ],
+      "additionalProperties": false
+    },
+    "budget": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/budget"
+    },
+    "consumption": {
+      "type": "object",
+      "required": ["attempts", "wall_seconds", "tokens", "cost_microunits"],
+      "properties": {
+        "attempts": {"type": "integer", "minimum": 0},
+        "wall_seconds": {"type": "integer", "minimum": 0},
+        "tokens": {"type": "integer", "minimum": 0},
+        "cost_microunits": {"type": "integer", "minimum": 0}
+      },
+      "additionalProperties": false
+    },
+    "terminal_error": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": ["code", "retryable", "message_digest"],
+          "properties": {
+            "code": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,63}$"},
+            "retryable": {"type": "boolean"},
+            "message_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"}
+          },
+          "additionalProperties": false
+        },
+        {"type": "null"}
+      ]
+    },
+    "signal_submission": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "source_id",
+        "source_event_id",
+        "source_event_version",
+        "signal_kind",
+        "reporter",
+        "project_id",
+        "environment_id",
+        "governed_agent_id",
+        "occurred_at",
+        "content",
+        "run_locator",
+        "privacy_classification"
+      ],
+      "properties": {
+        "schema_version": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"},
+        "source_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/source_id"},
+        "source_event_id": {"type": "string", "minLength": 1, "maxLength": 512},
+        "source_event_version": {"type": "string", "minLength": 1, "maxLength": 64},
+        "signal_kind": {
+          "enum": [
+            "external_feedback",
+            "internal_feedback",
+            "maintainer_report",
+            "monitor_alert",
+            "eval_regression",
+            "runtime_failure",
+            "policy_violation",
+            "agent_self_report",
+            "scheduled_inspection"
+          ]
+        },
+        "reporter": {
+          "type": "object",
+          "required": ["kind", "source_subject_ref"],
+          "properties": {
+            "kind": {"enum": ["external_user", "maintainer", "monitor", "governed_agent", "system"]},
+            "source_subject_ref": {"type": "string", "minLength": 1, "maxLength": 256}
+          },
+          "additionalProperties": false
+        },
+        "project_id": {
+          "oneOf": [
+            {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/project_id"},
+            {"type": "null"}
+          ]
+        },
+        "environment_id": {
+          "oneOf": [
+            {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/environment_id"},
+            {"type": "null"}
+          ]
+        },
+        "governed_agent_id": {
+          "oneOf": [
+            {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/governed_agent_id"},
+            {"type": "null"}
+          ]
+        },
+        "occurred_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
+        "content": {
+          "type": "object",
+          "required": ["summary", "body", "attachments"],
+          "properties": {
+            "summary": {"type": "string", "minLength": 1, "maxLength": 500},
+            "body": {"type": ["string", "null"], "maxLength": 20000},
+            "attachments": {
+              "type": "array",
+              "items": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"},
+              "maxItems": 20,
+              "uniqueItems": true
+            }
+          },
+          "additionalProperties": false
+        },
+        "run_locator": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["source_kind", "project_ref", "trace_id", "session_id", "root_observation_id"],
+              "properties": {
+                "source_kind": {"enum": ["langfuse", "otel", "phoenix", "custom"]},
+                "project_ref": {"type": "string", "minLength": 1, "maxLength": 256},
+                "trace_id": {"type": "string", "minLength": 1, "maxLength": 256},
+                "session_id": {"type": ["string", "null"], "maxLength": 256},
+                "root_observation_id": {"type": ["string", "null"], "maxLength": 256}
+              },
+              "additionalProperties": false
+            },
+            {"type": "null"}
+          ]
+        },
+        "privacy_classification": {"enum": ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"]}
+      },
+      "additionalProperties": false
+    },
+    "signal_submission_response": {
+      "type": "object",
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "request_id",
+        "audit_ref",
+        "signal",
+        "case",
+        "evidence",
+        "missing_fields",
+        "next_action",
+        "idempotency"
+      ],
+      "properties": {
+        "schema_version": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"},
+        "workspace_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"},
+        "request_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/request_id"},
+        "audit_ref": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"},
+        "signal": {"$ref": "#/$defs/signal_binding"},
+        "case": {"$ref": "#/$defs/case_summary"},
+        "evidence": {"$ref": "#/$defs/evidence_summary"},
+        "missing_fields": {"$ref": "#/$defs/missing_fields"},
+        "next_action": {"$ref": "#/$defs/next_action"},
+        "idempotency": {"$ref": "#/$defs/idempotency_delivery"}
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "evidence": {
+                "properties": {"agent_run_ref_id": {"type": "null"}},
+                "required": ["agent_run_ref_id"]
+              }
+            },
+            "required": ["evidence"]
+          },
+          "then": {
+            "properties": {
+              "case": {
+                "properties": {
+                  "status": {"const": "OPEN"},
+                  "correlation_status": {"const": "NEEDS_CORRELATION"},
+                  "triage_status": {"const": "UNTRIAGED"}
+                }
+              },
+              "evidence": {
+                "properties": {"status": {"const": "UNKNOWN"}}
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "case_response": {
+      "type": "object",
+      "required": ["schema_version", "workspace_id", "request_id", "audit_ref", "data"],
+      "properties": {
+        "schema_version": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"},
+        "workspace_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"},
+        "request_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/request_id"},
+        "audit_ref": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"},
+        "data": {
+          "type": "object",
+          "required": [
+            "case_id", "status", "revision", "title", "project_id", "environment_id", "governed_agent_id",
+            "correlation_status", "triage_status", "signal_refs", "run_refs", "evidence_summary",
+            "input_summary", "output_summary", "opened_at", "updated_at", "resolved_at", "resolution_ref", "next_action"
+          ],
+          "properties": {
+            "case_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/case_id"},
+            "status": {"enum": ["OPEN", "RESOLVED"]},
+            "revision": {"type": "integer", "minimum": 1},
+            "title": {"type": "string", "minLength": 1, "maxLength": 500},
+            "project_id": {"oneOf": [{"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/project_id"}, {"type": "null"}]},
+            "environment_id": {"oneOf": [{"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/environment_id"}, {"type": "null"}]},
+            "governed_agent_id": {"oneOf": [{"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/governed_agent_id"}, {"type": "null"}]},
+            "correlation_status": {"enum": ["CORRELATED", "PARTIAL", "NEEDS_CORRELATION", "UNKNOWN"]},
+            "triage_status": {"enum": ["UNTRIAGED", "TRIAGED", "NEEDS_INPUT"]},
+            "signal_refs": {"type": "array", "items": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/signal_id"}, "minItems": 1, "uniqueItems": true},
+            "run_refs": {"type": "array", "items": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/agent_run_ref_id"}, "uniqueItems": true},
+            "evidence_summary": {"$ref": "#/$defs/evidence_summary"},
+            "input_summary": {"$ref": "#/$defs/nullable_artifact_ref"},
+            "output_summary": {"$ref": "#/$defs/nullable_artifact_ref"},
+            "opened_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
+            "updated_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
+            "resolved_at": {"$ref": "#/$defs/nullable_date_time"},
+            "resolution_ref": {"$ref": "#/$defs/nullable_artifact_ref"},
+            "next_action": {"$ref": "#/$defs/next_action"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "case_timeline_response": {
+      "type": "object",
+      "required": ["schema_version", "workspace_id", "request_id", "audit_ref", "data"],
+      "properties": {
+        "schema_version": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"},
+        "workspace_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"},
+        "request_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/request_id"},
+        "audit_ref": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"},
+        "data": {
+          "type": "object",
+          "required": ["case_id", "events", "page"],
+          "properties": {
+            "case_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/case_id"},
+            "events": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": [
+                  "event_id", "event_type", "event_version", "occurred_at", "causation_id", "correlation_id",
+                  "actor_principal_id", "transaction_id", "payload_ref", "payload_digest", "redaction_status"
+                ],
+                "properties": {
+                  "event_id": {"type": "string", "pattern": "^evt_[0-9A-Za-z]{8,64}$"},
+                  "event_type": {"type": "string", "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$"},
+                  "event_version": {"const": "1.0"},
+                  "occurred_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
+                  "causation_id": {"type": ["string", "null"], "maxLength": 128},
+                  "correlation_id": {"type": "string", "minLength": 1, "maxLength": 128},
+                  "actor_principal_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"},
+                  "transaction_id": {"type": "string", "pattern": "^txn_[0-9A-Za-z]{8,64}$"},
+                  "payload_ref": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"},
+                  "payload_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+                  "redaction_status": {"enum": ["NOT_REQUIRED", "REDACTED", "UNKNOWN"]}
+                },
+                "additionalProperties": false
+              },
+              "uniqueItems": true
+            },
+            "page": {
+              "type": "object",
+              "required": ["limit", "next_cursor", "has_more", "snapshot"],
+              "properties": {
+                "limit": {"type": "integer", "minimum": 1, "maximum": 200},
+                "next_cursor": {"type": ["string", "null"], "pattern": "^cur_[0-9A-Za-z_-]{8,512}$"},
+                "has_more": {"type": "boolean"},
+                "snapshot": {
+                  "type": "object",
+                  "required": ["watermark_event_id", "order", "filter_digest", "cursor_scope_digest"],
+                  "properties": {
+                    "watermark_event_id": {"type": "string", "pattern": "^evt_[0-9A-Za-z]{8,64}$"},
+                    "order": {"const": "occurred_at,event_id"},
+                    "filter_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+                    "cursor_scope_digest": {
+                      "description": "Digest binding workspace_id, case_id, order, filter and watermark; cross-case or tampered cursors are rejected.",
+                      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "evidence_response": {
+      "type": "object",
+      "required": ["schema_version", "workspace_id", "request_id", "audit_ref", "data"],
+      "properties": {
+        "schema_version": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"},
+        "workspace_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"},
+        "request_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/request_id"},
+        "audit_ref": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"},
+        "data": {
+          "type": "object",
+          "required": ["receipt_kind", "receipt", "receipt_digest", "verification_status", "verified_at", "superseded_by"],
+          "properties": {
+            "receipt_kind": {"const": "TRACE_EVIDENCE_RECEIPT"},
+            "receipt": {"$ref": "https://caseloop.dev/contracts/v4/schemas/trace-evidence-receipt.schema.json"},
+            "receipt_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+            "verification_status": {"enum": ["VERIFIED", "FAILED", "NOT_VERIFIED"]},
+            "verified_at": {"$ref": "#/$defs/nullable_date_time"},
+            "superseded_by": {
+              "oneOf": [
+                {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/trace_evidence_receipt_id"},
+                {"type": "null"}
+              ]
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "source_capabilities_response": {
+      "type": "object",
+      "required": ["schema_version", "workspace_id", "request_id", "audit_ref", "data"],
+      "properties": {
+        "schema_version": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"},
+        "workspace_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"},
+        "request_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/request_id"},
+        "audit_ref": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"},
+        "data": {
+          "type": "object",
+          "required": [
+            "source_id", "source_kind", "connection_revision", "connection_digest", "status", "endpoint_origin",
+            "provider_api_version", "adapter_version", "supported_signal_kinds", "observable_fields", "masking_mode",
+            "retention_days", "minimum_poll_delay_ms", "credential_scope", "capability_digest", "discovered_at", "expires_at"
+          ],
+          "properties": {
+            "source_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/source_id"},
+            "source_kind": {"enum": ["manual", "langfuse", "otel", "phoenix", "custom"]},
+            "connection_revision": {"type": "integer", "minimum": 1},
+            "connection_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+            "status": {"enum": ["ACTIVE", "DISABLED", "DEGRADED", "UNKNOWN"]},
+            "endpoint_origin": {"$ref": "#/$defs/nullable_uri"},
+            "provider_api_version": {"type": ["string", "null"], "maxLength": 128},
+            "adapter_version": {"type": "string", "minLength": 1, "maxLength": 128},
+            "supported_signal_kinds": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+            "observable_fields": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+            "masking_mode": {"enum": ["SOURCE_MASKED", "CLIENT_MASKED", "NONE", "UNKNOWN"]},
+            "retention_days": {"type": ["integer", "null"], "minimum": 0},
+            "minimum_poll_delay_ms": {"type": "integer", "minimum": 0},
+            "credential_scope": {
+              "type": "object",
+              "required": ["declared", "read_only_verified", "too_broad"],
+              "properties": {
+                "declared": {"type": "array", "items": {"type": "string", "minLength": 1}, "uniqueItems": true},
+                "read_only_verified": {"type": "boolean"},
+                "too_broad": {"type": "boolean"}
+              },
+              "additionalProperties": false
+            },
+            "capability_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+            "discovered_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
+            "expires_at": {"$ref": "#/$defs/nullable_date_time"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "source_doctor_request": {
+      "type": "object",
+      "required": ["schema_version", "checks", "force_refresh", "timeout_ms"],
+      "properties": {
+        "schema_version": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"},
+        "checks": {
+          "type": "array",
+          "items": {"enum": ["AUTHENTICATION", "AUTHORIZATION", "CONNECTIVITY", "CAPABILITIES", "RETENTION", "MASKING"]},
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "force_refresh": {"type": "boolean"},
+        "timeout_ms": {"type": "integer", "minimum": 1000, "maximum": 120000}
+      },
+      "additionalProperties": false
+    },
+    "source_doctor_response": {
+      "type": "object",
+      "required": ["schema_version", "workspace_id", "request_id", "audit_ref", "data", "idempotency"],
+      "properties": {
+        "schema_version": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"},
+        "workspace_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"},
+        "request_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/request_id"},
+        "audit_ref": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"},
+        "data": {
+          "type": "object",
+          "required": ["operation_id", "source_sync_run_id", "source_id", "status", "accepted_at", "status_url"],
+          "properties": {
+            "operation_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/operation_id"},
+            "source_sync_run_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/source_sync_run_id"},
+            "source_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/source_id"},
+            "status": {"const": "QUEUED"},
+            "accepted_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
+            "status_url": {"type": "string", "format": "uri-reference", "pattern": "^/api/v1/source-sync-runs/ssr_"}
+          },
+          "additionalProperties": false
+        },
+        "idempotency": {"$ref": "#/$defs/idempotency_delivery"}
+      },
+      "additionalProperties": false
+    },
+    "source_sync_run_response": {
+      "type": "object",
+      "required": ["schema_version", "workspace_id", "request_id", "audit_ref", "data"],
+      "properties": {
+        "schema_version": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"},
+        "workspace_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"},
+        "request_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/request_id"},
+        "audit_ref": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"},
+        "data": {
+          "type": "object",
+          "required": [
+            "source_sync_run_id", "operation_id", "source_id", "run_kind", "status", "requested_checks", "capability_digest",
+            "evidence_receipt_ids", "terminal_error", "reconcile_required", "requested_at", "started_at", "completed_at", "updated_at"
+          ],
+          "properties": {
+            "source_sync_run_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/source_sync_run_id"},
+            "operation_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/operation_id"},
+            "source_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/source_id"},
+            "run_kind": {"enum": ["DOCTOR", "POLL", "REPLAY"]},
+            "status": {"enum": ["QUEUED", "RUNNING", "SUCCEEDED", "FAILED", "UNKNOWN"]},
+            "requested_checks": {"type": "array", "items": {"enum": ["AUTHENTICATION", "AUTHORIZATION", "CONNECTIVITY", "CAPABILITIES", "RETENTION", "MASKING"]}, "minItems": 1, "uniqueItems": true},
+            "capability_digest": {"$ref": "#/$defs/nullable_digest"},
+            "evidence_receipt_ids": {"type": "array", "items": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/trace_evidence_receipt_id"}, "uniqueItems": true},
+            "terminal_error": {"$ref": "#/$defs/terminal_error"},
+            "reconcile_required": {"type": "boolean"},
+            "requested_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
+            "started_at": {"$ref": "#/$defs/nullable_date_time"},
+            "completed_at": {"$ref": "#/$defs/nullable_date_time"},
+            "updated_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"}
+          },
+          "allOf": [
+            {
+              "if": {"properties": {"status": {"const": "UNKNOWN"}}, "required": ["status"]},
+              "then": {"properties": {"reconcile_required": {"const": true}, "terminal_error": {"type": "object"}}}
+            },
+            {
+              "if": {"properties": {"status": {"const": "SUCCEEDED"}}, "required": ["status"]},
+              "then": {"properties": {"terminal_error": {"type": "null"}, "reconcile_required": {"const": false}, "capability_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"}, "completed_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"}}}
+            },
+            {
+              "if": {"properties": {"status": {"const": "FAILED"}}, "required": ["status"]},
+              "then": {"properties": {"terminal_error": {"type": "object"}, "reconcile_required": {"const": false}, "completed_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"}}}
+            },
+            {
+              "if": {"properties": {"status": {"enum": ["QUEUED", "RUNNING"]}}, "required": ["status"]},
+              "then": {"properties": {"terminal_error": {"type": "null"}, "reconcile_required": {"const": false}, "completed_at": {"type": "null"}}}
+            }
+          ],
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "server_capabilities_response": {
+      "type": "object",
+      "required": ["schema_version", "workspace_id", "request_id", "audit_ref", "data"],
+      "properties": {
+        "schema_version": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"},
+        "workspace_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"},
+        "request_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/request_id"},
+        "audit_ref": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"},
+        "data": {
+          "type": "object",
+          "required": ["server_version", "public_api_major", "supported_contract_versions", "principal", "enabled_intents", "generated_at"],
+          "properties": {
+            "server_version": {"type": "string", "minLength": 1, "maxLength": 128},
+            "public_api_major": {"const": 1},
+            "supported_contract_versions": {"type": "array", "items": {"type": "string", "pattern": "^1\\.[0-9]+$"}, "minItems": 1, "uniqueItems": true},
+            "principal": {
+              "type": "object",
+              "required": ["principal_id", "principal_type", "scopes", "credential_expires_at"],
+              "properties": {
+                "principal_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"},
+                "principal_type": {"enum": ["human", "external_agent", "service", "connector"]},
+                "scopes": {"type": "array", "items": {"type": "string", "pattern": "^[a-z][a-z0-9_-]*:[a-z][a-z0-9_:-]*$"}, "uniqueItems": true},
+                "credential_expires_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"}
+              },
+              "additionalProperties": false
+            },
+            "enabled_intents": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "scope", "execution_mode", "http", "cli"],
+                "properties": {
+                  "name": {
+                    "enum": [
+                      "signals.submit",
+                      "cases.get",
+                      "cases.timeline",
+                      "evidence.get",
+                      "sources.capabilities",
+                      "sources.doctor",
+                      "source-sync-runs.get",
+                      "capabilities.get"
+                    ]
+                  },
+                  "scope": {"type": "string", "pattern": "^[a-z][a-z0-9_-]*:[a-z][a-z0-9_:-]*$"},
+                  "execution_mode": {"enum": ["synchronous", "asynchronous"]},
+                  "http": {"const": true},
+                  "cli": {"const": true}
+                },
+                "additionalProperties": false
+              },
+              "uniqueItems": true
+            },
+            "generated_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

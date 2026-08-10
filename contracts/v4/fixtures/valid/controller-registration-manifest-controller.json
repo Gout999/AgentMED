@@ -13,11 +13,11 @@
   ],
   "ownership_contract": {
     "version": "1.0",
-    "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+    "digest": "sha256:479e3501d7b76a006864e634269a9018c8f3d6da90547b152e95c627180f848d"
   },
   "event_catalog": {
     "version": "1.0",
-    "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+    "digest": "sha256:01b8a4e1f8328060d6bfdf77fe057f5eb1740d1334ced3560365a59396cb8611"
   },
   "valid_from": "2026-08-10T00:00:00Z",
   "expires_at": null,
@@ -27,5 +27,5 @@
   "registered_at": "2026-08-10T00:00:00Z",
   "immutable": true,
   "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
-  "registration_digest": "sha256:4988ad6bd5061156ae9167dc4ddeff6f6154a7d1ebc78261a9c646c42f31e0a2"
+  "registration_digest": "sha256:fe1f75c89d4cdf5221a04942cbee1999477782281b71910e1e9a73afe06b1bf1"
 }

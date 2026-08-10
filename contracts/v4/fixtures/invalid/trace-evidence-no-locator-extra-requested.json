@@ -1,0 +1,6 @@
+{
+  "base_fixture": "trace-evidence-receipt-no-locator.json",
+  "mutations": [
+    {"op": "append", "path": "requested_fields", "value": "trace.input"}
+  ]
+}

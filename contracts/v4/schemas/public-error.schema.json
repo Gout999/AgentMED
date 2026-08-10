@@ -5,12 +5,23 @@
   "type": "object",
   "required": [
     "schema_version",
+    "workspace_id",
+    "workspace_resolved",
     "error"
   ],
   "properties": {
     "schema_version": {
       "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
     },
+    "workspace_id": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+        },
+        {"type": "null"}
+      ]
+    },
+    "workspace_resolved": {"type": "boolean"},
     "error": {
       "type": "object",
       "required": [
@@ -19,6 +30,7 @@
         "retryable",
         "request_id",
         "audit_ref",
+        "audit_status",
         "details"
       ],
       "properties": {
@@ -52,7 +64,15 @@
           "pattern": "^op_[0-9A-Za-z]{8,64}$"
         },
         "audit_ref": {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"
+          "oneOf": [
+            {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"
+            },
+            {"type": "null"}
+          ]
+        },
+        "audit_status": {
+          "enum": ["RECORDED", "UNAVAILABLE", "NOT_APPLICABLE"]
         },
         "details": {
           "type": "object"
@@ -65,8 +85,83 @@
           "format": "uri"
         }
       },
+      "allOf": [
+        {
+          "if": {
+            "properties": {"audit_status": {"const": "RECORDED"}},
+            "required": ["audit_status"]
+          },
+          "then": {
+            "properties": {
+              "audit_ref": {
+                "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"
+              }
+            }
+          },
+          "else": {"properties": {"audit_ref": {"type": "null"}}}
+        },
+        {
+          "if": {
+            "properties": {"code": {"const": "AUDIT_UNAVAILABLE"}},
+            "required": ["code"]
+          },
+          "then": {
+            "properties": {
+              "audit_status": {"const": "UNAVAILABLE"},
+              "audit_ref": {"type": "null"},
+              "retryable": {"const": true}
+            }
+          }
+        }
+      ],
       "additionalProperties": false
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"workspace_resolved": {"const": true}},
+        "required": ["workspace_resolved"]
+      },
+      "then": {
+        "properties": {
+          "workspace_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+          }
+        }
+      },
+      "else": {"properties": {"workspace_id": {"type": "null"}}}
+    },
+    {
+      "if": {
+        "properties": {
+          "error": {
+            "properties": {
+              "code": {
+                "enum": [
+                  "AUTHENTICATION_REQUIRED",
+                  "TOKEN_INVALID",
+                  "TOKEN_EXPIRED",
+                  "TOKEN_NOT_YET_VALID",
+                  "TOKEN_REVOKED",
+                  "AUDIENCE_MISMATCH",
+                  "ISSUER_MISMATCH",
+                  "SIGNATURE_INVALID"
+                ]
+              }
+            },
+            "required": ["code"]
+          }
+        },
+        "required": ["error"]
+      },
+      "then": {
+        "properties": {
+          "workspace_resolved": {"const": false},
+          "workspace_id": {"type": "null"}
+        }
+      }
+    }
+  ],
   "additionalProperties": false
 }

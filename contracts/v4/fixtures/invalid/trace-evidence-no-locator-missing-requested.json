@@ -1,0 +1,6 @@
+{
+  "base_fixture": "trace-evidence-receipt-no-locator.json",
+  "mutations": [
+    {"op": "remove", "path": "requested_fields.3"}
+  ]
+}

@@ -6,7 +6,7 @@
     "kind": "CONTROLLER_REGISTRATION",
     "id": "creg_skillregistrycontroller",
     "revision": 1,
-    "digest": "sha256:c5efeb5a070a39d1cda4a9b021ef8b08df1d60449a4d09de91305c1cb9555261"
+    "digest": "sha256:1e8a4b4dc63909812f571b8c96bc364444c173dee1eaf253cb3a374bbce12d20"
   },
   "subject": {
     "kind": "SKILL_MANIFEST",
@@ -25,5 +25,5 @@
   "recorded_at": "2026-08-10T00:40:00Z",
   "immutable": true,
   "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
-  "authority_receipt_digest": "sha256:2c048e2fddb692f721b7d417a4ab84c0a26875b2d1b675653b2af7e24489ca62"
+  "authority_receipt_digest": "sha256:2574b21688786d3f391cdc8b5987a0552962d5a3ea97babb78af0922ae75b25b"
 }

@@ -11,10 +11,11 @@
     "idempotency_key",
     "request_fingerprint",
     "resource",
+    "operation_id",
     "request_id",
     "audit_ref",
     "status",
-    "replayed",
+    "response_digest",
     "created_at",
     "idempotency_receipt_id",
     "immutable",
@@ -32,7 +33,14 @@
       "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
     },
     "intent": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/intent_name"
+      "enum": [
+        "signals.submit",
+        "sources.doctor",
+        "investigations.start",
+        "work.stop-request",
+        "approvals.decide",
+        "releases.rollback-request"
+      ]
     },
     "idempotency_key": {
       "type": "string",
@@ -54,11 +62,10 @@
           "type": "string",
           "enum": [
             "signal",
-            "source_diagnostic",
-            "investigation",
-            "stop_request",
-            "approval_decision",
-            "rollback_request"
+            "source_sync_run",
+            "automation_request",
+            "approval_grant",
+            "external_operation"
           ]
         },
         "id": {
@@ -69,11 +76,14 @@
       "additionalProperties": false
     },
     "operation_id": {
-      "type": [
-        "string",
-        "null"
-      ],
-      "pattern": "^op_[0-9A-Za-z]{8,64}$"
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/operation_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "request_id": {
       "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/request_id"
@@ -88,19 +98,9 @@
         "COMPLETED"
       ]
     },
-    "replayed": {
-      "type": "boolean"
-    },
     "response_digest": {
-      "description": "Digest of response content when present, not the receipt self-hash.",
-      "oneOf": [
-        {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
-        },
-        {
-          "type": "null"
-        }
-      ]
+      "description": "Digest of the durable command result payload excluding this delivery receipt, so the response and receipt never form a cyclic hash.",
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
     },
     "created_at": {
       "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
@@ -115,9 +115,103 @@
       "const": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)"
     },
     "receipt_digest": {
-      "description": "Whole immutable wire-response self-hash excluding only this field. Each delivery or replay has its own receipt id; this is not the authoritative PostgreSQL idempotency record.",
+      "description": "Whole immutable wire-response self-hash excluding only this field. Every replay returns the original receipt byte-for-byte with the same receipt id and self-hash; per-delivery replay metadata is outside this record. This is not the authoritative PostgreSQL idempotency record.",
       "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
     }
   },
+  "allOf": [
+    {
+      "if": {
+        "properties": {"intent": {"const": "signals.submit"}},
+        "required": ["intent"]
+      },
+      "then": {
+        "properties": {
+          "resource": {
+            "properties": {
+              "kind": {"const": "signal"},
+              "id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/signal_id"}
+            }
+          },
+          "operation_id": {"type": "null"},
+          "status": {"const": "COMPLETED"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"intent": {"const": "sources.doctor"}},
+        "required": ["intent"]
+      },
+      "then": {
+        "properties": {
+          "resource": {
+            "properties": {
+              "kind": {"const": "source_sync_run"},
+              "id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/source_sync_run_id"}
+            }
+          },
+          "operation_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/operation_id"},
+          "status": {"const": "ACCEPTED"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "intent": {"enum": ["investigations.start", "work.stop-request"]}
+        },
+        "required": ["intent"]
+      },
+      "then": {
+        "properties": {
+          "resource": {
+            "properties": {
+              "kind": {"const": "automation_request"},
+              "id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/automation_request_id"}
+            }
+          },
+          "operation_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/operation_id"},
+          "status": {"const": "ACCEPTED"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"intent": {"const": "approvals.decide"}},
+        "required": ["intent"]
+      },
+      "then": {
+        "properties": {
+          "resource": {
+            "properties": {
+              "kind": {"const": "approval_grant"},
+              "id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/approval_id"}
+            }
+          },
+          "operation_id": {"type": "null"},
+          "status": {"const": "COMPLETED"}
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {"intent": {"const": "releases.rollback-request"}},
+        "required": ["intent"]
+      },
+      "then": {
+        "properties": {
+          "resource": {
+            "properties": {
+              "kind": {"const": "external_operation"},
+              "id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/external_operation_id"}
+            }
+          },
+          "operation_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/operation_id"},
+          "status": {"const": "ACCEPTED"}
+        }
+      }
+    }
+  ],
   "additionalProperties": false
 }

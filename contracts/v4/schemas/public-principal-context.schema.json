@@ -1,0 +1,126 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/public-principal-context.schema.json",
+  "title": "CaseLoop accepted public principal context",
+  "description": "Server-resolved accepted authorization context. Callers never self-assert these fields in a request body; denial is represented by PublicError.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "principal_id",
+    "principal_type",
+    "issuer",
+    "subject",
+    "audiences",
+    "workspace_id",
+    "project_ids",
+    "environment_ids",
+    "scopes",
+    "credential_id",
+    "jti_digest",
+    "issued_at",
+    "not_before",
+    "expires_at",
+    "revoked_at",
+    "revocation_checked_at",
+    "requested_context",
+    "evaluated_at",
+    "claims_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+    },
+    "principal_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+    },
+    "principal_type": {
+      "enum": ["human", "external_agent", "service", "connector"]
+    },
+    "issuer": {"type": "string", "format": "uri"},
+    "subject": {"type": "string", "minLength": 1, "maxLength": 256},
+    "audiences": {
+      "type": "array",
+      "items": {"type": "string", "minLength": 1, "maxLength": 128},
+      "contains": {"const": "caseloop-public-api"},
+      "minContains": 1,
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "workspace_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+    },
+    "project_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/project_id"
+      },
+      "uniqueItems": true
+    },
+    "environment_ids": {
+      "type": "array",
+      "items": {
+        "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/environment_id"
+      },
+      "uniqueItems": true
+    },
+    "scopes": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9_-]*:[a-z][a-z0-9_:-]*$"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "credential_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/credential_id"
+    },
+    "jti_digest": {
+      "description": "Digest of the token identifier; the raw jti is never persisted or exposed.",
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "issued_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "not_before": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "expires_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "revoked_at": {
+      "type": "null"
+    },
+    "revocation_checked_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "requested_context": {
+      "type": "object",
+      "required": ["workspace_id", "project_id", "environment_id", "required_scope"],
+      "properties": {
+        "workspace_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"},
+        "project_id": {
+          "oneOf": [
+            {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/project_id"},
+            {"type": "null"}
+          ]
+        },
+        "environment_id": {
+          "oneOf": [
+            {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/environment_id"},
+            {"type": "null"}
+          ]
+        },
+        "required_scope": {"type": "string", "pattern": "^[a-z][a-z0-9_-]*:[a-z][a-z0-9_:-]*$"}
+      },
+      "additionalProperties": false
+    },
+    "evaluated_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "claims_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    }
+  },
+  "additionalProperties": false
+}

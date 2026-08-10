@@ -130,9 +130,11 @@ manifest/aggregate digests. Content anchors remain distinct:
 `MCPManifest.tool_catalog_digest` hashes only the tool catalog, and
 idempotency request/response digests hash their respective wire content. None
 of those content anchors is the containing record's self-hash. An
-IdempotencyReceipt is an immutable wire-response receipt: each delivery or
-replay receives its own receipt id and self-hash, while authoritative
-PostgreSQL idempotency state remains a separate Controller record.
+IdempotencyReceipt is an immutable wire-response receipt: every replay returns
+the original immutable receipt byte-for-byte with the same id and self-hash.
+`replayed` belongs to per-delivery
+metadata outside that record. Authoritative PostgreSQL idempotency state
+remains a separate Controller record.
 SignalEnvelope is a client-computable immutable submission envelope: its
 `signal_digest` is the envelope self-hash, but it does not claim a
 ControllerRegistration or AuthorityReceipt. Controller acceptance must create
@@ -143,9 +145,46 @@ Each registered intent has a machine-readable `execution_mode` and per-transport
 activation stage. HTTP and CLI activate at `first_stage`; a non-null Public MCP
 or A2A mapping activates at Stage 6, while a null mapping has a null stage.
 `signal submit` is the canonical CLI command and `report` is only its alias.
-The frozen source/evidence commands are `source capabilities`, `source doctor`,
-and `evidence get`; adjacent command-directory names are not implemented merely
+The frozen S1A/S1B source/evidence commands are `capabilities get`,
+`source capabilities`, `source doctor`, `source sync-run get`, and
+`evidence get`; adjacent command-directory names are not implemented merely
 because they appear in a roadmap.
+
+## Stage 1 wire-entry extension
+
+The Registry is a stage-aware target catalog. `FROZEN` S1A/S1B intents have
+non-null request/response `field_contract_ref` values and are the only
+operations present in `openapi/public-api.yaml`. Stage 2/4 entries remain
+`SKELETON` with null field contracts; they cannot generate routes, CLI/SDK
+methods, or capability discovery results.
+
+Every frozen operation requires bearer authorization, a workspace header, and
+an exact contract-version header. The server resolves principal, audience,
+workspace/project/environment, scopes, time bounds, and revocation before it
+trusts the requested workspace. Raw token and raw jti are never stored or
+returned. Auth-before-workspace failures use `workspace_id:null`; an audit/DB
+commit failure uses `audit_ref:null` and rolls back the business transaction.
+
+The no-trace maintainer path is explicit evidence, not a fake Agent run:
+`TraceEvidenceReceipt.collection_mode=NO_LOCATOR`, `query=null`, both AgentRunRef
+binding fields null, every canonical requested trace field `MISSING`, and
+`completeness=UNKNOWN` with non-retryable `NO_TRACE_LOCATOR`. The receipt binds
+the exact Signal id and digest. QualityCase remains `OPEN`; correlation and
+triage are orthogonal statuses (`NEEDS_CORRELATION`, `UNTRIAGED`).
+
+Signal intake is a four-owner transaction: Signal record, QualityCase,
+SignalCaseLink, and TraceEvidenceReceipt each receive their own Controller
+record and AuthorityReceipt, while `signal.received`, `case.opened`,
+`signal_case_link.linked`, `evidence.recorded`, audit, outbox, and idempotency
+commit together. The source must be an `ACTIVE` manual SourceConnection bound
+to the authenticated workspace. v4 routing is keyed by contract version,
+aggregate type, and event type on a separate channel; v3 event-name-only
+routing is forbidden for this slice.
+
+Runtime implementation must pin `rfc8785==0.1.4` and reuse the contract's
+no-float, one-self-field-exclusion profile. A legacy sorted-JSON digest is not a
+v4 immutable-record hash. PostgreSQL audit is authoritative; JSONL/export is
+after-commit/outbox-only or disabled so rollback cannot leave a ghost success.
 
 ## Compatibility rules
 

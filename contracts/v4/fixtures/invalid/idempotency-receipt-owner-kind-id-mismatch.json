@@ -1,0 +1,6 @@
+{
+  "base_fixture": "idempotency-receipt.json",
+  "mutations": [
+    {"op": "set", "path": "resource.kind", "value": "source_sync_run"}
+  ]
+}
