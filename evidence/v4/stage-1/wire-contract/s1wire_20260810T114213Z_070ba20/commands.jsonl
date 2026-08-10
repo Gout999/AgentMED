@@ -1,0 +1,5 @@
+{"command":"cd contracts && ../eval-harness/.venv/bin/python -m pytest conformance/test_schemas.py conformance/test_wilson.py conformance/test_v4_*.py -q","result":"PASS","tests":449}
+{"command":"find contracts/v4 -name '*.json' | jq empty","result":"PASS","documents":244}
+{"command":"yaml.safe_load(contracts/v4/**/*.yaml)","result":"PASS","documents":5}
+{"command":"python -m py_compile contracts/conformance/test_v4_*.py contracts/conformance/v4_*.py","result":"PASS","documents":19}
+{"command":"git diff --check","result":"PASS"}

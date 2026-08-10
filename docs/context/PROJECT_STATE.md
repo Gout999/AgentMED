@@ -1,14 +1,14 @@
 # Project State
 
-- `repository_snapshot`: `6604712b37409cf679dfb43ce97fb9882efdc713`
-- `last_independently_verified_evidence_subject_commit`: `6604712b37409cf679dfb43ce97fb9882efdc713`
+- `repository_snapshot`: `070ba200acc09dfbcb725cc3466ef3ebd1e4f6fd`
+- `last_independently_verified_evidence_subject_commit`: `070ba200acc09dfbcb725cc3466ef3ebd1e4f6fd`
 - `stage0_documentation_commit`: `b7889a7e200f76bd5985188ff6fb7e9e1860fd28`
 - `previous_v3_evidence_commit`: `cef1598b4ac1d42fdd4f206c5747eb89a06f24fc`
 - `active_branch`: `codex/v4-foundation`
 - `origin/main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `local main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `collaborator_sync_merge`: `4b5377dae317eaeadbf23ab85481881096b6d6d2`
-- `working_tree`: after the Stage 0 evidence/context commit, the only intended dirty paths are the two preserved historical WIP groups: six tracked judge/live files plus five untracked tests/adapters. The Stage 0 documentation and contract groups are committed separately and must not be recombined with those historical code changes.
+- `working_tree`: after the Stage 1 Entry evidence/context commit, the only intended dirty paths are the two preserved historical WIP groups: six tracked judge/live files plus five untracked tests/adapters. The v4 wire-contract and evidence groups are committed separately and must not be recombined with those historical code changes.
 - `last_updated`: `2026-08-10` (Asia/Shanghai)
 
 ## Current product and requirements state
@@ -17,7 +17,7 @@
 - Product baseline: `docs/product-principles.md`. The approved `docs/plan-v4.md` is the target architecture, dependency order, and new-development baseline. `docs/plan-v3.md`, `docs/spec.md`, existing contracts, migrations, and executable tests remain the implemented customer-service Scenario Pack compatibility baseline until explicitly migrated.
 - Confirmed new requirement, not implemented: CaseLoop self-observability through Langfuse and a pluggable TraceSource that can retrieve a governed Agent's Langfuse input/output/model/tool evidence with explicit completeness state.
 - The first reference workflow remains customer service. General Signal/Closure/VersionSet contracts, Langfuse as the first TraceSource, coding Agent governance as the second workload, separate real-Agent/exporter acceptance, and the two-Team direction are approved requirements. They remain unimplemented until their v4 contracts, migrations, runtime path, tests, and evidence land.
-- `docs/plan-v4.md`, backed by `docs/research/demand/caseloop-v4-small-team-adoption.md`, is approved for progressive local construction. Stage 0 is `DONE (contract-only)`: 397 tests and an independent authority-equivocation verifier passed. No migration/runtime/live capability follows from this status. Stage 1 Entry wire-contract freeze is now `IN_PROGRESS`; runtime implementation remains blocked until it passes.
+- `docs/plan-v4.md`, backed by `docs/research/demand/caseloop-v4-small-team-adoption.md`, is approved for progressive local construction. Stage 0 and Stage 1 Entry are `DONE (contract-only)`. The Stage 1 Entry subject commit passed 449 tests and an independent seven-group attack replay. No migration/runtime/live capability follows from this status; Stage 1A runtime implementation is now active.
 - The Wiki alignment is WIP. It must retain AgentTeams as a versioned internal adapter, Langfuse as a planned dual integration, platform evidence export as distinct from real Agent causal execution, and v3 assets as the current implemented compatibility baseline.
 - The user authorized local branching, planning, contracts, code, and tests. Push, PR, paid provider calls, human approval, and production or other external writes remain separately gated.
 - The user's earlier live demo and the independently verifiable P0-4 live acceptance are different evidence claims. A prior run does not need to be repeated merely because time passed; rerun only when the acceptance target, code/provider path, evidence contract or reproducibility requirement makes a new run necessary.
@@ -102,7 +102,7 @@ This is the observed 2026-08-10 local platform snapshot and must be rechecked be
 - Full acceptance criteria, dependencies, evidence, and commits are in
   `PLANS.md`.
 
-The current active work is the v4 Stage 1 Entry wire-contract freeze in `PLANS.md`. Local implementation is authorized; live-provider calls and external writes remain separately gated.
+The current active work is v4 Stage 1A in `PLANS.md`: the 007 migration and authenticated no-trace maintainer-report vertical slice. Local implementation is authorized; live-provider calls and external writes remain separately gated.
 
 ## Actual runnable commands
 
@@ -143,6 +143,17 @@ If FileProvider has offloaded an ignored virtual environment, rebuild it under
 | v3 + v4 contract suite | 397 passed, 0 failed, 0 skipped | contract only |
 | v3 compatibility subset | 29 passed | existing schema/Wilson baseline retained |
 | v4 JSON/YAML/Python | 218 JSON, 5 YAML, 15 Python files passed | static contract validation |
+
+## Independently verified v4 Stage 1 Entry record
+
+| Scope | Result | Classification |
+|---|---|---|
+| v3 + v4 contract suite | 449 passed, 0 failed, 0 skipped | contract only |
+| coordinated wire attacks | 7 attack groups rejected | independent verifier |
+| v4 JSON/YAML/Python | 244 JSON, 5 YAML, 19 Python files passed | static contract validation |
+| runtime/provider/external facets | all `NOT_RUN` | no capability claim |
+
+Evidence: `evidence/v4/stage-1/wire-contract/s1wire_20260810T114213Z_070ba20/`; subject commit: `070ba200acc09dfbcb725cc3466ef3ebd1e4f6fd`.
 | documentation links/SOUL/diff | 111 local links, SOUL sync and diff-check passed | repository consistency |
 | independent verifier | PASS; 0 remaining P0/P1 | repeated event/audit keys and same `(kind,id,revision)` equivocation attacks rejected |
 

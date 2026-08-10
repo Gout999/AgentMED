@@ -1,0 +1,10 @@
+{
+  "result": "PASS",
+  "contract_tests": 449,
+  "independent_attack_groups": 7,
+  "json_documents": 244,
+  "yaml_documents": 5,
+  "python_documents": 19,
+  "provider_calls": 0,
+  "external_writes": 0
+}

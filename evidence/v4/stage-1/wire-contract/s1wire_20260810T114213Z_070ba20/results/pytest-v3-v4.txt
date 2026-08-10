@@ -1,0 +1,6 @@
+command: cd contracts && ../eval-harness/.venv/bin/python -m pytest conformance/test_schemas.py conformance/test_wilson.py conformance/test_v4_*.py -q
+result: PASS
+count: 449 passed
+duration: 8.78s
+
+Independent verifier repeated the same suite after coordinated-attack replay.

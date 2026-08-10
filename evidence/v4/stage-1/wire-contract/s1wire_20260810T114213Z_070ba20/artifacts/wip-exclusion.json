@@ -1,0 +1,23 @@
+{
+  "excluded_groups": [
+    {
+      "name": "judge-provider-wip",
+      "paths": [
+        "eval-harness/.env.example",
+        "eval-harness/README.md",
+        "eval-harness/eval_harness/config.py",
+        "eval-harness/eval_harness/gate.py",
+        "eval-harness/eval_harness/llm.py",
+        "eval-harness/tests/unit/test_llm.py"
+      ]
+    },
+    {
+      "name": "b1-live-adapter-wip",
+      "paths": [
+        "scripts/run_b1_live.py",
+        "scripts/b1_live/"
+      ]
+    }
+  ],
+  "included_in_contract_commit": false
+}

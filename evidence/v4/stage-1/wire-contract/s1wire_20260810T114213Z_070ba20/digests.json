@@ -1,0 +1,14 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "artifacts/wip-exclusion.json": "53fb75b82f697fc3e6cdffe23d28a5659289cd21eceb1d2d83d3e185d73e1eeb",
+    "commands.jsonl": "754d955c7b90387d2d5ff85866d596757d9e9867b2f66c2bbd08ba51da9d9b6f",
+    "environment.json": "a60f4ecd2ffcd52671e5a857e294a1c344988f2ac7ec161c1c4790f35b339314",
+    "receipts/README.md": "ae11858e2fd3c9dfab0eeef86990fcbc6b6e6ad422cf450f98641bb9fc3c9f88",
+    "results/pytest-v3-v4.txt": "68924c1e072a162b75b1ee3680fb9917ffd38d69f16d6c35a75e56eea3a20399",
+    "results/static-checks.txt": "dc8e83f66e92680de28ecd53ca92c24b5e153a0f4b7fe1d511c6fb82a6a55459",
+    "results/summary.json": "81039829b5f776e1c417adaab267442da62a597d42f525ddc465f0188035224b",
+    "run-manifest.json": "15b9e41a8605a3d979bb52e27a649b37992a5e6f794bb391a4bbba50e1bed55d",
+    "verifier-report.md": "647c70cced668e2f4ae0f839825205e265352266c5514a134e2ccd4729fbe274"
+  }
+}

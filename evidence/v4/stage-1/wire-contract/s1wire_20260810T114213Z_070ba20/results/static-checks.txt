@@ -1,0 +1,4 @@
+JSON parse: PASS (244 documents)
+YAML safe_load: PASS (5 documents)
+Python compile: PASS (19 documents)
+git diff --check: PASS

@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "run_id": "s1wire_20260810T114213Z_070ba20",
+  "stage": "V4-S1E",
+  "started_at": "2026-08-10T11:42:13Z",
+  "completed_at": "2026-08-10T11:42:37Z",
+  "result": "PASS",
+  "repository": {
+    "branch": "codex/v4-foundation",
+    "base_commit": "c8e4772e662be56396789c6aa955bd7eb127f6eb",
+    "contract_commit": "070ba200acc09dfbcb725cc3466ef3ebd1e4f6fd"
+  },
+  "scope": {
+    "included": [
+      "S1A and S1B public intent wire contracts",
+      "public principal, workspace, scope, error, idempotency and cursor contracts",
+      "truthful no-trace UNKNOWN evidence contract",
+      "QualityCase and SourceSyncRun contract state machines",
+      "cross-controller authority and v4 event-routing invariants"
+    ],
+    "excluded": [
+      "database migrations",
+      "runtime, HTTP server or CLI implementation",
+      "Langfuse, OpenTelemetry or other provider calls",
+      "AgentTeams or Claude Code execution",
+      "repository or release writes",
+      "historical judge-provider and B1 adapter WIP"
+    ]
+  },
+  "evidence_facets": [
+    {"facet": "contract", "status": "PASS"},
+    {"facet": "replay", "status": "NOT_RUN"},
+    {"facet": "domain-provider-live", "status": "NOT_RUN"},
+    {"facet": "agentteams-native", "status": "NOT_RUN"},
+    {"facet": "claude-runtime-live", "status": "NOT_RUN"},
+    {"facet": "agent-causal", "status": "NOT_RUN"},
+    {"facet": "repo-sandbox", "status": "NOT_RUN"},
+    {"facet": "human-authorized-external", "status": "NOT_RUN"},
+    {"facet": "production-canary", "status": "NOT_RUN"}
+  ],
+  "verification": {
+    "v3_v4_tests": 449,
+    "json_documents": 244,
+    "yaml_documents": 5,
+    "python_documents": 19,
+    "independent_verifier": "PASS"
+  },
+  "limitations": [
+    "Only S1A and S1B intents are FROZEN; Stage 2 and Stage 4 intents remain SKELETON and undiscoverable.",
+    "No v4 database, runtime, public API route, CLI, provider or external write path was executed.",
+    "The historical judge-provider and B1 adapter working tree changes are not part of this evidence or contract commit."
+  ]
+}
