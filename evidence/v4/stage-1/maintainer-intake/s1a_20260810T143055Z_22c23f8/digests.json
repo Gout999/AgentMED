@@ -1,0 +1,14 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "artifacts/wip-exclusion.json": "dcb19796f081eaa0ee8079f135ca88b5969657e98e258006d0ccda61163e006b",
+    "commands.jsonl": "10bca3a371cff576ab22f9337505437fad6116c6d111d7f7ab350fb197fdf90e",
+    "environment.json": "6164a1c0f8ee70744f3593bcb91717c9e45088885ba1d0d1b5e99ab633a1021c",
+    "receipts/README.md": "9929df22b92fedf0eebd3c7f3064fa6796338b93af2a041f90f24d079db2ca9e",
+    "results/pytest.txt": "59da8584648f058d392b22e180cfe1808363db0877bf668112039647549e4826",
+    "results/static-checks.txt": "67e9209d80fd1eb81dfba453cb4750d1eca0b8f317fc9a056575091eb377b23a",
+    "results/summary.json": "1ea2ec279011deff4d696534769001a8b27e18521d128a10a027cfd99c399325",
+    "run-manifest.json": "36bff2dd5cd51043a3da67ab86bb875f944c7726c4b1de5aaeb477e9472618c4",
+    "verifier-report.md": "1e36639dae389092832ab704133c916b582a9a97f31f8ed1aa7b5bdb34e7194a"
+  }
+}

@@ -1,24 +1,25 @@
 # Project State
 
-- `repository_snapshot`: `070ba200acc09dfbcb725cc3466ef3ebd1e4f6fd`
-- `last_independently_verified_evidence_subject_commit`: `070ba200acc09dfbcb725cc3466ef3ebd1e4f6fd`
+- `repository_snapshot`: `22c23f89708471e3f1cb8ca893414733a839a1bd`
+- `last_independently_verified_evidence_subject_commit`: `22c23f89708471e3f1cb8ca893414733a839a1bd`
 - `stage0_documentation_commit`: `b7889a7e200f76bd5985188ff6fb7e9e1860fd28`
 - `previous_v3_evidence_commit`: `cef1598b4ac1d42fdd4f206c5747eb89a06f24fc`
 - `active_branch`: `codex/v4-foundation`
 - `origin/main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `local main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `collaborator_sync_merge`: `4b5377dae317eaeadbf23ab85481881096b6d6d2`
-- `working_tree`: after the Stage 1 Entry evidence/context commit, the only intended dirty paths are the two preserved historical WIP groups: six tracked judge/live files plus five untracked tests/adapters. The v4 wire-contract and evidence groups are committed separately and must not be recombined with those historical code changes.
+- `working_tree`: after the Stage 1A implementation and closure commits, the only intended dirty paths are the two preserved historical WIP groups: six tracked judge/live files plus five untracked tests/adapters. Stage 1A implementation/evidence is committed separately and must not be recombined with those historical code changes.
 - `last_updated`: `2026-08-10` (Asia/Shanghai)
 
 ## Current product and requirements state
 
 - User-ratified direction: CaseLoop is a long-term open-source AI Agent quality and change-governance project. Target-user needs decide scope; competition, market gaps and feature overlap do not.
 - Product baseline: `docs/product-principles.md`. The approved `docs/plan-v4.md` is the target architecture, dependency order, and new-development baseline. `docs/plan-v3.md`, `docs/spec.md`, existing contracts, migrations, and executable tests remain the implemented customer-service Scenario Pack compatibility baseline until explicitly migrated.
-- Confirmed new requirement, not implemented: CaseLoop self-observability through Langfuse and a pluggable TraceSource that can retrieve a governed Agent's Langfuse input/output/model/tool evidence with explicit completeness state.
-- The first reference workflow remains customer service. General Signal/Closure/VersionSet contracts, Langfuse as the first TraceSource, coding Agent governance as the second workload, separate real-Agent/exporter acceptance, and the two-Team direction are approved requirements. They remain unimplemented until their v4 contracts, migrations, runtime path, tests, and evidence land.
-- `docs/plan-v4.md`, backed by `docs/research/demand/caseloop-v4-small-team-adoption.md`, is approved for progressive local construction. Stage 0 and Stage 1 Entry are `DONE (contract-only)`. The Stage 1 Entry subject commit passed 449 tests and an independent seven-group attack replay. No migration/runtime/live capability follows from this status; Stage 1A runtime implementation is now active.
-- The Wiki alignment is WIP. It must retain AgentTeams as a versioned internal adapter, Langfuse as a planned dual integration, platform evidence export as distinct from real Agent causal execution, and v3 assets as the current implemented compatibility baseline.
+- Confirmed later requirement, not implemented: CaseLoop self-observability through Langfuse and a pluggable TraceSource that can retrieve a governed Agent's Langfuse input/output/model/tool evidence with explicit completeness state.
+- The first reference workflow remains customer service. The authenticated no-trace Signal intake subset is implemented and locally verified in S1A. Closure/VersionSet generalization, Langfuse as the first TraceSource, coding Agent governance, real-Agent/exporter acceptance and the two-Team direction remain approved targets, not current runtime capabilities.
+- `docs/plan-v4.md`, backed by `docs/research/demand/caseloop-v4-small-team-adoption.md`, is approved. Stage 0 and Stage 1 Entry are `DONE (contract-only)`; Stage 1A is `DONE (local runtime)` at `22c23f8`, with independent evidence. All provider, Agent runtime, repository, human-authorized external and production facets are `NOT_RUN`.
+- The user is now inventorying a possible V5 expansion from Agent governance to AI-system governance. S1B through S7 are frozen until that requirement set is reviewed and a compatibility/supersession decision is recorded; no V5 details are inferred here.
+- The Wiki is aligned to the S1A closure boundary. It retains AgentTeams as a versioned internal adapter, Langfuse as a planned dual integration, platform evidence export as distinct from real Agent causal execution, and v3 assets as the current implemented compatibility baseline.
 - The user authorized local branching, planning, contracts, code, and tests. Push, PR, paid provider calls, human approval, and production or other external writes remain separately gated.
 - The user's earlier live demo and the independently verifiable P0-4 live acceptance are different evidence claims. A prior run does not need to be repeated merely because time passed; rerun only when the acceptance target, code/provider path, evidence contract or reproducibility requirement makes a new run necessary.
 
@@ -26,7 +27,7 @@
 
 - During a read-only Docker Compose inspection on 2026-08-10, a resolved configuration command expanded secret-bearing environment values into the private tool log. No value was copied into repository files, evidence, or this handoff, but the affected credentials must be treated as potentially exposed.
 - Before any subsequent provider/live run, rotate the StepFun credential, Feishu app secret, and internal authority/read/write and role-token material referenced by `deploy/.env` or `.env.b1-live`; update the local secret stores without committing their values, then re-run a redacted credential/preflight check.
-- Rotation has **not** been performed or authorized in this Stage 0 work. Until it is complete, provider/live execution is blocked; offline contracts, documentation, and tests may continue.
+- Rotation has **not** been performed or authorized through the Stage 1A closure. Until it is complete, provider/live execution is blocked; offline contracts, documentation, and tests may continue.
 
 ## Current AgentTeams runtime snapshot
 
@@ -73,6 +74,11 @@ This is the observed 2026-08-10 local platform snapshot and must be rechecked be
 - Replay and live commands are separate. Replay adapters are labelled; the live
   command fails during preflight when genuine inputs are absent and never falls
   back to replay.
+- Stage 1A (`22c23f8`) implements the first public v4 vertical slice: guarded
+  migration 007, strict local bootstrap, five authenticated HTTP/CLI intents,
+  and a transactional no-trace Signal → OPEN QualityCase/Link → `UNKNOWN`
+  Evidence graph with immutable idempotency, audit, outbox and authority
+  validation. Independent local verification passed; no AgentRunRef is invented.
 
 ## Proven gaps at the last independently verified P0 evidence snapshot
 
@@ -102,7 +108,7 @@ This is the observed 2026-08-10 local platform snapshot and must be rechecked be
 - Full acceptance criteria, dependencies, evidence, and commits are in
   `PLANS.md`.
 
-The current active work is v4 Stage 1A in `PLANS.md`: the 007 migration and authenticated no-trace maintainer-report vertical slice. Local implementation is authorized; live-provider calls and external writes remain separately gated.
+Stage 1A is closed. The current product activity is requirements intake for the possible V5 AI-system-governance expansion; S1B through S7 must not start until the scope decision is recorded. Live-provider calls and external writes remain separately gated.
 
 ## Actual runnable commands
 
@@ -117,8 +123,10 @@ make demo-b1-live
 cd control-plane
 AUDIT_JSONL_PATH=/tmp/caseloop-control-plane-audit.jsonl \
 PYTHONPYCACHEPREFIX=/tmp/caseloop-control-plane-pycache \
-DATABASE_URL=postgresql+psycopg://gout@127.0.0.1:5432/control_plane_test \
+DATABASE_URL=postgresql+psycopg://caseloop:caseloop@127.0.0.1:5432/control_plane_test \
 .venv/bin/python -m pytest tests/unit -q
+CASELOOP_ALLOW_INTEGRATION_RESET=true \
+DATABASE_URL=postgresql+psycopg://caseloop:caseloop@127.0.0.1:5432/control_plane_test \
 .venv/bin/python -m pytest tests/integration -q
 .venv/bin/alembic upgrade head
 
@@ -143,6 +151,10 @@ If FileProvider has offloaded an ignored virtual environment, rebuild it under
 | v3 + v4 contract suite | 397 passed, 0 failed, 0 skipped | contract only |
 | v3 compatibility subset | 29 passed | existing schema/Wilson baseline retained |
 | v4 JSON/YAML/Python | 218 JSON, 5 YAML, 15 Python files passed | static contract validation |
+| documentation links/SOUL/diff | 111 local links, SOUL sync and diff-check passed | repository consistency |
+| independent verifier | PASS; 0 remaining P0/P1 | repeated event/audit keys and same `(kind,id,revision)` equivocation attacks rejected |
+
+Evidence: `evidence/v4/stage-0/contracts/s0contracts_20260810T085840Z_6604712/`. Only `contract=PASS`; every runtime/provider/Agent/repository/human/production facet is `NOT_RUN`.
 
 ## Independently verified v4 Stage 1 Entry record
 
@@ -154,10 +166,20 @@ If FileProvider has offloaded an ignored virtual environment, rebuild it under
 | runtime/provider/external facets | all `NOT_RUN` | no capability claim |
 
 Evidence: `evidence/v4/stage-1/wire-contract/s1wire_20260810T114213Z_070ba20/`; subject commit: `070ba200acc09dfbcb725cc3466ef3ebd1e4f6fd`.
-| documentation links/SOUL/diff | 111 local links, SOUL sync and diff-check passed | repository consistency |
-| independent verifier | PASS; 0 remaining P0/P1 | repeated event/audit keys and same `(kind,id,revision)` equivocation attacks rejected |
 
-Evidence: `evidence/v4/stage-0/contracts/s0contracts_20260810T085840Z_6604712/`. Only `contract=PASS`; every runtime/provider/Agent/repository/human/production facet is `NOT_RUN`.
+## Independently verified v4 Stage 1A record
+
+| Scope | Result | Classification |
+|---|---|---|
+| control-plane unit | 691 passed | local deterministic runtime |
+| coordinated authority/auth/idempotency/read attacks | 232 passed | replay; independent verifier |
+| v3 + v4 contracts | 449 passed | contract |
+| CLI | 81 passed; clean wheel install/import/help passed | local client/runtime |
+| disposable PostgreSQL | 4 passed; cleanup left 0 public tables/types and 0 active sessions | local integration, not provider-live |
+| demo/eval/MCP/Console | 40; 85 + 4 live skips; 121 + 1 live skip; build PASS | compatibility regression; live skips remain NOT_RUN |
+| live/Agent/repository/human/production facets | all `NOT_RUN` | no external capability claim |
+
+Evidence: `evidence/v4/stage-1/maintainer-intake/s1a_20260810T143055Z_22c23f8/`; implementation commit: `22c23f89708471e3f1cb8ca893414733a839a1bd`.
 
 ## Last independently verified v3 test baseline
 

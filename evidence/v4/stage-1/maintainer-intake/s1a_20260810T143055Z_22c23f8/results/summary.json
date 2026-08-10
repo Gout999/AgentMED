@@ -1,0 +1,15 @@
+{
+  "result": "PASS",
+  "implementation_commit": "22c23f89708471e3f1cb8ca893414733a839a1bd",
+  "independent_attack_tests": 232,
+  "control_plane_unit_tests": 691,
+  "contract_tests": 449,
+  "cli_tests": 81,
+  "postgresql_integration_tests": 4,
+  "component_tests_passed": 246,
+  "live_only_tests_skipped": 5,
+  "provider_calls": 0,
+  "agent_runtime_calls": 0,
+  "external_writes": 0,
+  "remaining_p0": 0
+}

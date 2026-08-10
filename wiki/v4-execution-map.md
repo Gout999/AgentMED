@@ -2,7 +2,7 @@
 
 [返回 Wiki 索引](INDEX.md)
 
-> 状态：**S1A IMPLEMENTED IN WORKING TREE / VERIFIER PENDING**
+> 状态：**S1A DONE (LOCAL RUNTIME) / V5 REQUIREMENTS INTAKE**
 >
 > 更新：2026-08-10
 >
@@ -19,7 +19,7 @@ CaseLoop v4 要成为**可由人和其他 Agent 调用的开源 Agent 质量维�
 | v4 产品方向与施工路线 | `APPROVED` |
 | Stage 0 文档、ADR 与契约施工 | `DONE (contract-only)` |
 | Stage 1 Entry wire contract | `DONE (contract-only)`；14 个 target intent 中 8 个 S1A/S1B intent 已冻结，后续 6 个仍为 `SKELETON` |
-| S1A · 无 trace 维护报告 | `IMPLEMENTED IN WORKING TREE / VERIFIER PENDING`；007、bootstrap、5 个 HTTP/CLI intent 与 PG 事务链已施工，尚无阶段 evidence/completion commit，不能称 `DONE` 或 live |
+| S1A · 无 trace 维护报告 | `DONE (LOCAL RUNTIME)`；007、bootstrap、5 个 HTTP/CLI intent 与 PG 事务链已在 `22c23f8` 完成，独立 verifier/evidence 通过；不称 provider/Agent/live |
 | S1B · Langfuse 读 + CaseLoop OTel 写回 | `NOT IMPLEMENTED / PROVIDER-LIVE BLOCKED`；当前只有 frozen wire contract，live 前还需轮换隔离凭证并取得单独授权 |
 | 现有 `caseloop-team` | 六个 CoPaw / StepFun `step-3.7-flash` 质量治理 Worker；最近实测均为 `Sleeping`，`leaderReady=false`、`readyWorkers=0` |
 | AgentTeams 中的 Claude Code / GLM Agent | 不存在 |
@@ -151,7 +151,7 @@ Stage 5 前不得生产安装、外部发布或 Policy promote Skill/MCP。阿�
 | Stage | 目标 | 当前状态 | 关键出口 |
 |---|---|---|---|
 | 0 | 正式 PRD v2、ADR、v4 contracts、Intent Registry、迁移语义 | `DONE (contract-only)` | owner/command/event、auth/idempotency/error、双轨 evidence 与 v3 cutover contract review 已通过；不代表 runtime/live |
-| 1A | authenticated maintainer report without trace：Signal + HTTP/CLI | `IMPLEMENTED IN WORKING TREE / VERIFIER PENDING` | 本地无 trace 维护报告必须完成独立 verifier、evidence 与 completion commit 后才能关闭；当前不声明 `DONE`/live |
+| 1A | authenticated maintainer report without trace：Signal + HTTP/CLI | `DONE (LOCAL RUNTIME)` | 691 unit、232 attack replay、449 contract、81 CLI 与 4 个 disposable PostgreSQL integration 通过；所有 live/Agent/external facets 为 `NOT_RUN` |
 | 1B | Langfuse 读取 + CaseLoop OTel 输出/回读 | `NOT IMPLEMENTED / PROVIDER-LIVE BLOCKED` | connector/008/runtime 尚未施工；真实读取和独立 sink 回读还需要轮换凭证、单独 live 授权与 provider receipt |
 | 2A | Durable Work Kernel | `NOT STARTED` | lease/fence/retry/cancel/reconcile 与动作前 Proposal 的 PG 因果语义成立 |
 | 2B | Direct Claude Runtime | `NOT STARTED` | fixture 中 child Attempt 的 claim、runtime/model/tool receipt 和终态语义成立 |
@@ -163,6 +163,8 @@ Stage 5 前不得生产安装、外部发布或 Policy promote Skill/MCP。阿�
 | 7 | 生产与开源成熟 | `NOT STARTED` | 两个非同构真实 workload、灾备、升级回滚、key rotation 和真实 pilot |
 
 每个 Stage 都有自己的 entry/exit、focused tests、verifier、`evidence/v4/stage-<n>/`、rollback 和 semantic commit。只重跑被新代码或新 evidence contract 影响的边界，不因时间经过重跑所有历史 live。
+
+当前施工停在 S1A。用户正在盘点从 Agent 治理升级到 AI-system 治理的 V5 需求；在完成 v4/v5 兼容或替代裁决前，S1B–S7 不开工。
 
 ## 首个真实 Coding 案例的外部动作边界
 

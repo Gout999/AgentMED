@@ -13,7 +13,7 @@
 | P3 | 可以集成、依法复用或兼容性重实现已有能力 | 依据用户价值、可靠性、私有部署、许可证与维护成本做选择 |
 | P4 | 中国用户优先，核心契约保持 provider-neutral | 国内模型、云和协作渠道是一等适配器，但不锁死核心 |
 | P5 | 客服是第一参考 workload，不是最终边界 | 通用 Agent 需求进入新版 PRD / plan / contracts 后，才成为实施基线 |
-| P6 | Langfuse 同时是 CaseLoop 自身可观测后端的首个目标和外部 `TraceSource` 的首个适配器 | Langfuse 不是权威状态库，也不是唯一后端；Stage 0 已落 `AgentRunRef` / `TraceEvidenceReceipt` target schema，runtime、migration 与 live receipt 尚未实现 |
+| P6 | Langfuse 同时是 CaseLoop 自身可观测后端的首个目标和外部 `TraceSource` 的首个适配器 | Langfuse 不是权威状态库，也不是唯一后端；S1A 已实现 no-trace `UNKNOWN` receipt，带 locator 的 connector/008/provider-live 仍未实现 |
 | P7 | 被治理 Agent、内部 LLM Worker、确定性 Controller / Executor 与只读 Exporter 必须分开 | 分别建模身份、权限和验收；平台证据导出不能冒充真实 Agent 因果执行 |
 | P8 | [v4 全盘计划](../docs/plan-v4.md) 的 Signal、Work Kernel、typed Proposal、独立 Evaluator 与分阶段路线获批施工 | Stage 0 立即冻结 contracts/ADR；计划获批不等于功能已实现 |
 | P9 | 保留现有六角色 `caseloop-team` 作为质量治理 Team，另建三角色 `caseloop-coding-team` | 不把客服 Worker 改名成 coding Agent；Coding Team 当前为 `NOT CREATED / NOT RUN` |
@@ -22,6 +22,7 @@
 | P12 | live 使用两条独立验收轴：`domain-provider-live` 与 `agent-causal` | `platform evidence export` 只是只读取证类别，不能单独满足 `agent-causal`；Worker 休眠/移除时后者必须失败 |
 | P13 | 首个第二 workload 是 coding Agent：维护报告/issue → 本地 patch candidate → sandbox/eval → draft PR 候选 | GitHub 留言、认领、fork、push、PR 均为独立外部写动作，执行前逐次授权 |
 | P14 | Skill/MCP 采用候选、隔离、评测、Gate、首次人批、固定版本、canary、rollback/revoke 路线，并接入阿里云要求 | Stage 5 前不生产安装/外部发布；阿里云 Adapter 不取代内部 PostgreSQL Registry 权威 |
+| P15 | S1A 封板后暂停后续 v4 施工，先盘点从 Agent 治理扩展到 AI-system 治理的 V5 需求 | S1B–S7 在 v4/v5 兼容或替代关系正式裁决前不启动；不得自行推断 V5 需求 |
 
 完整上位原则见 [docs/product-principles.md](../docs/product-principles.md)。
 
@@ -29,7 +30,7 @@
 
 | # | v3 决策 | 当前施工影响与边界 |
 |---|---|---|
-| T0 | 治理层与被治理应用通过 Quality API 分离 | 当前只证明小智客服参考纵切；通用 Signal / TraceSource target contracts 已进入 Stage 0，但 migration/runtime 尚未实现，不能据此声称任意 Agent 已可接入 |
+| T0 | 治理层与被治理应用通过 Quality API 分离 | 小智客服仍是 v3 参考纵切；S1A 已实现独立 public HTTP/CLI no-trace intake，但 TraceSource、任意 Agent runtime 与完整治理闭环仍未实现 |
 | T1 | 小智客服 live 路径真实调用 StepFun | live 不得回落到 mock；明确命名的 unit / contract / replay fake 可以存在，但不得充当 live-provider 证据 |
 | T2 | 4 常设 + 2 候选弹性角色；AgentTeams v1.2.1 无原生 autoscaling | 六个 Worker CR 是固定 warm pool 的 desired topology；最近快照六个 CoPaw/StepFun Worker 均为 `Sleeping`，不等于动态伸缩或当前活跃 |
 | T3 | 事件驱动 + 轮询兜底，统一经 inbox 去重立案 | v3 投诉入口必须先过 inbox；通用版需要抽象 Signal Adapter，不能让任何来源绕过幂等立案 |

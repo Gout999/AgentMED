@@ -1,0 +1,62 @@
+{
+  "schema_version": "1.0",
+  "run_id": "s1a_20260810T143055Z_22c23f8",
+  "stage": "V4-S1A",
+  "started_at": "2026-08-10T14:28:19Z",
+  "completed_at": "2026-08-10T14:30:55Z",
+  "result": "PASS",
+  "repository": {
+    "branch": "codex/v4-foundation",
+    "base_commit": "0a2bcca6eb756e3cf53062836aefb378c0ee1b81",
+    "implementation_commit": "22c23f89708471e3f1cb8ca893414733a839a1bd"
+  },
+  "scope": {
+    "included": [
+      "additive Alembic migration 007 and v3/v4 outbox isolation",
+      "strict local Stage 1A bootstrap for manual source, principal, credential and controllers",
+      "authenticated capabilities.get, signals.submit, cases.get, cases.timeline and evidence.get HTTP/CLI intents",
+      "transactional Signal, OPEN QualityCase, SignalCaseLink and UNKNOWN NO_LOCATOR TraceEvidenceReceipt creation",
+      "idempotency, command audit, four-event causal graph, AuthorityReceipt and fail-closed read validation",
+      "real disposable PostgreSQL migration, bootstrap, concurrency and installed CLI-to-HTTP integration"
+    ],
+    "excluded": [
+      "Langfuse, OpenTelemetry or any other provider call",
+      "AgentTeams, Claude Code or model execution",
+      "repository, release, human approval or production writes",
+      "Stage 1B through Stage 7 implementation",
+      "historical judge-provider and B1 live-adapter WIP"
+    ]
+  },
+  "evidence_facets": [
+    {"facet": "contract", "status": "PASS"},
+    {"facet": "replay", "status": "PASS"},
+    {"facet": "domain-provider-live", "status": "NOT_RUN"},
+    {"facet": "agentteams-native", "status": "NOT_RUN"},
+    {"facet": "claude-runtime-live", "status": "NOT_RUN"},
+    {"facet": "agent-causal", "status": "NOT_RUN"},
+    {"facet": "repo-sandbox", "status": "NOT_RUN"},
+    {"facet": "human-authorized-external", "status": "NOT_RUN"},
+    {"facet": "production-canary", "status": "NOT_RUN"}
+  ],
+  "verification": {
+    "control_plane_unit_tests": 691,
+    "coordinated_attack_tests": 232,
+    "contract_tests": 449,
+    "cli_tests": 81,
+    "postgresql_integration_tests": 4,
+    "demo_unit_tests": 40,
+    "eval_harness_tests": 85,
+    "eval_harness_live_skips": 4,
+    "mcp_tests": 121,
+    "mcp_live_skips": 1,
+    "console_build": "PASS",
+    "independent_verifier": "PASS"
+  },
+  "limitations": [
+    "Replay PASS is limited to deterministic local no-trace and idempotency/authority attack replay; it is not provider-live evidence.",
+    "The PostgreSQL and installed CLI-to-loopback HTTP integration is a local runtime proof reported separately from the canonical live facets.",
+    "Migration 007 is additive but requires a maintenance window on large populated tables; this package does not claim zero-downtime migration.",
+    "S1B Langfuse/OTel integration, Agent runtimes, repository execution and all external/live facets remain NOT_RUN.",
+    "The historical judge-provider and B1 live-adapter working tree changes are not part of this evidence or implementation commit."
+  ]
+}

@@ -14,7 +14,7 @@
 | [决策卡](decisions.md) | Reference | v3 的 T0–T10、产品 P 系列与 v4 已批准施工决策 | 写架构、PRD 或对外材料前 |
 | [本机环境](environment.md) | Reference | 可变环境快照、端口、凭证与 live/replay 纪律 | 本地运行或排障前 |
 | [AgentTeams 实测](platform-agentteams.md) | Explanation | v1.2.1 事实、当前六 Worker 快照、双 Team 目标、MCP/Matrix 边界和证据限制 | 碰 `agents/`、AgentTeams、Matrix 或 MCP 时 |
-| [契约地图](contracts-map.md) | Reference | 当前 v3 实施契约与 Stage 0 `contracts/v4/` target contracts；后者尚无 runtime 实现 | 改 API、事件、Schema、Gate 或 evidence 前 |
+| [契约地图](contracts-map.md) | Reference | 当前 v3 实施契约、v4 target contracts 与已完成的 S1A no-trace runtime 子集 | 改 API、事件、Schema、Gate 或 evidence 前 |
 | [施工指南](build-guide.md) | How-to | 分工、Git、安全、验证、live 与历史运维地雷 | 任何代码或运行任务 |
 | [术语表](glossary.md) | Reference | 被治理 Agent、内部 Worker、Controller、TraceSource 等术语 | 名词或角色边界不清时 |
 | [v4 施工路线速查](v4-execution-map.md) | Approved roadmap | 通用 Signal、双 Team、Claude Code 子 Attempt、CLI/MCP、Skill 自进化、阿里云与阶段出口 | 任何 v4 施工任务 |
@@ -31,7 +31,8 @@
 
 ## 当前活动工作
 
-- v4 产品方向和依赖顺序已经批准；当前从 **Stage 0** 的正式 PRD、ADR、contracts、Intent Registry 与迁移语义开始施工。完整计划见 [plan-v4](../docs/plan-v4.md)，状态速查见 [v4 施工路线](v4-execution-map.md)。
+- v4 产品方向和依赖顺序已经批准；Stage 0、Stage 1 Entry 与 S1A 已封板。S1A 只证明本地 authenticated no-trace intake，不证明 provider/Agent/live。完整计划见 [plan-v4](../docs/plan-v4.md)，状态速查见 [v4 施工路线](v4-execution-map.md)。
+- 当前暂停 S1B–S7；用户正在盘点可能将 Agent 治理扩展为 AI-system 治理的 V5 需求，完成 scope 与兼容性裁决前不继续施工。
 - 最近核验的 `caseloop-team` 是六个 CoPaw / StepFun `step-3.7-flash` 质量治理 Worker，全部为 `Sleeping`，`leaderReady=false`、`readyWorkers=0`；运行前须重新查询。AgentTeams 中没有 Claude Code Agent 或 GLM Agent。
 - 新 `caseloop-coding-team` 已进入施工目标，但当前为 `NOT CREATED / NOT RUN`；不能把现有客服质量 Worker 改名成专业 Coding Team。
 - 两条 live 验收轴必须分开：`domain-provider-live` 与 `agent-causal`。`platform evidence export` 是只读取证类别，不能冒充真实 Agent 因果执行。

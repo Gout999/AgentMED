@@ -1,0 +1,14 @@
+Stage 1A independent verification
+
+control-plane unit: 691 passed
+coordinated Stage 1A attacks: 232 passed
+contracts v3+v4: 449 passed
+CLI: 81 passed
+CLI security subset: 50 passed, 31 deselected
+disposable PostgreSQL migration/bootstrap/concurrency/installed-CLI integration: 4 passed
+demo-app unit: 40 passed
+eval-harness: 85 passed, 4 provider-live tests skipped
+MCP: 121 passed, 1 live smoke skipped
+Console production build: PASS
+
+PostgreSQL cleanup after the integration runs: public tables=0, enum types=0, active sessions=0.

@@ -1,0 +1,11 @@
+{"command":"cd control-plane && PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -p no:cacheprovider tests/unit -q","result":"PASS","passed":691}
+{"command":"cd control-plane && PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -p no:cacheprovider tests/unit/test_stage1a_authority_semantics.py tests/unit/test_stage1a_signal_intake.py tests/unit/test_public_read_service.py tests/unit/test_public_credential_resolver.py tests/unit/test_public_v4_api.py tests/unit/test_v3_outbox_v4_isolation.py -q","result":"PASS","passed":232}
+{"command":"cd contracts && PYTHONDONTWRITEBYTECODE=1 ../eval-harness/.venv/bin/python -m pytest -p no:cacheprovider conformance/test_schemas.py conformance/test_wilson.py conformance/test_v4_*.py -q","result":"PASS","passed":449}
+{"command":"cd cli && PYTHONDONTWRITEBYTECODE=1 ../control-plane/.venv/bin/python -m pytest -p no:cacheprovider -q","result":"PASS","passed":81}
+{"command":"cd control-plane && CASELOOP_ALLOW_INTEGRATION_RESET=true DATABASE_URL=postgresql+psycopg://caseloop:caseloop@127.0.0.1:5432/control_plane_test PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -p no:cacheprovider tests/integration/test_stage1_migration_postgres.py tests/integration/test_stage1a_bootstrap_postgres.py tests/integration/test_stage1a_signal_concurrency_postgres.py tests/integration/test_stage1a_public_cli_postgres.py -q","result":"PASS","passed":4,"cleanup":"public tables and enum types 0; active sessions 0"}
+{"command":"cd demo-app && PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -p no:cacheprovider tests/unit -q","result":"PASS","passed":40}
+{"command":"cd eval-harness && PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -p no:cacheprovider -q","result":"PASS","passed":85,"skipped_live":4}
+{"command":"cd mcp-servers && PYTHONDONTWRITEBYTECODE=1 .venv/bin/python -m pytest -p no:cacheprovider -q","result":"PASS","passed":121,"skipped_live":1}
+{"command":"cd console && npm run build","result":"PASS"}
+{"command":"git diff --check","result":"PASS"}
+{"command":"tracked and untracked repository secret-pattern scan","result":"PASS","matches":0}

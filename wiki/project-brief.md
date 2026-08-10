@@ -10,16 +10,16 @@ CaseLoop 是面向 AI Agent / LLM 应用团队的**开源质量与变更治理�
 
 CaseLoop 优先满足国内团队的中文、自托管、私有化、国内模型、云服务与协作渠道需求；核心契约保持 provider-neutral。StepFun、飞书、AgentTeams 和 Langfuse 都是当前或计划中的实现与适配器，不是产品身份。
 
-v4 产品方向和渐进式施工路线已经批准，完整基线见 [CaseLoop v4 全盘计划](../docs/plan-v4.md)。当前处于 Stage 0；计划获批不等于 v4 功能已经实现。
+v4 产品方向和渐进式施工路线已经批准，完整基线见 [CaseLoop v4 全盘计划](../docs/plan-v4.md)。Stage 0、Stage 1 Entry 与 S1A 已封板；S1A 是本地 no-trace intake 子集，不代表完整 v4、provider 或 Agent runtime 已实现。
 
 ## 适用边界
 
 - 当前仓库的第一条参考 workload 是「小智客服」；v3 另选 AgentTeams v1.2.1 作为 CaseLoop 内部协作适配器。两者都用于证明和暴露纵向闭环的工程问题，不等于通用 Agent 接入已经完成。
-- 通用化目标面向能够提供版本、运行证据、评测和发布/回滚接点的 Agent；最小接入合同、迁移语义与 conformance tests 正在 Stage 0 冻结。
+- 通用化目标面向能够提供版本、运行证据、评测和发布/回滚接点的 Agent；最小接入合同已冻结，S1A no-trace intake 已实现，其余证据/评测/发布边界仍待后续阶段或 V5 scope 裁决。
 - CaseLoop 不取代 Agent runtime，也不把 Langfuse 等 trace 系统当生命周期权威数据库。
 - LLM 与 Agent 只给建议、假设和候选工件；PostgreSQL 控制面持有权限、状态、审批、发布和审计事实。
 
-## 通用核心闭环（已批准目标，尚未实现）
+## 通用核心闭环（已批准目标，S1A 子集已实现）
 
 ```text
 质量 Signal → Case → 被治理 Agent Run / Trace 取证 → 归因假设与验证
@@ -109,16 +109,17 @@ Claude Code、父 Worker、模型 provider、Controller 与 Repo Executor 是不
 |---|---|
 | 产品战略与 v4 路线 | `APPROVED`：开源、用户需求驱动、中国优先、provider-neutral、客服为首个参考 workload |
 | Stage 0 | `DONE (contract-only)`：正式 PRD、ADR、v4 contracts、Intent Registry 与迁移语义；无 migration/runtime/live 声明 |
+| Stage 1A | `DONE (local runtime)`：migration 007、strict bootstrap、5 个 authenticated HTTP/CLI intent 和 no-trace Signal/Case/Link/`UNKNOWN` Evidence 事务链；所有 provider/Agent/external/production facets 为 `NOT_RUN` |
 | v3 确定性控制面 | P0-1～P0-3 已验证；P0-4 有 replay 证据，但最后独立证据快照中的 live acceptance 仍为 BLOCKED，详见 [PLANS](../PLANS.md) 与 [PROJECT_STATE](../docs/context/PROJECT_STATE.md) |
 | 历史 live 演示 | 不因时间经过自动失效；它证明什么以当时调用链与证据为准 |
-| 通用 Agent 接入 | 目标与施工顺序已批准；contracts/migrations/runtime 尚未由实现与测试证明 |
+| 通用 Agent 接入 | 最小 S1A no-trace 子集已由本地实现与测试证明；完整 TraceSource、Work Kernel、Agent runtime、Gate/Release 仍未实现 |
 | Langfuse 双向集成 | 已确认需求，仓库尚未实现 |
 | Claude Code Runtime Adapter | 已批准，尚未实现/运行 |
 | `caseloop-coding-team` | `NOT CREATED / NOT RUN` |
 | 真实 GitHub coding case | `NOT RUN`；留言、认领、fork、push、PR 均未授权，执行前逐次询问用户 |
 | 真实 Agent 因果执行 | 在新的 agent-causal 验收口径下，当前快照尚无独立验证的合格证据；更早 live 是否包含真实 Agent 因果参与，只按当时调用链和证据判断，不因本次口径更新被抹除 |
 
-当前活动项是 [plan-v4 Stage 0](../docs/plan-v4.md#stage-0冻结-v4-语言与契约)。每项能力只有在真实调用路径、权威记录、测试与证据齐全后才可标为已实现。
+当前活动项是 V5 AI-system-governance 需求盘点；S1B–S7 暂停。每项能力只有在真实调用路径、权威记录、测试与证据齐全后才可标为已实现。
 
 ## 统计纪律示例
 

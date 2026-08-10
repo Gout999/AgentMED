@@ -17,10 +17,12 @@
 
 | 切片 | 当前状态 | 口径 |
 |---|---|---|
-| S1A · authenticated maintainer report without trace | `IMPLEMENTED IN WORKING TREE / VERIFIER PENDING` | `007`、本地 bootstrap、5 个 HTTP/CLI intent 和 PostgreSQL 事务链已在工作树中；在 verifier、evidence、completion commit 完成前仍是 `IN_PROGRESS`，不能称 `DONE` 或 live |
+| S1A · authenticated maintainer report without trace | `DONE (LOCAL RUNTIME)` | `007`、本地 bootstrap、5 个 HTTP/CLI intent 和 PostgreSQL 事务链已在 `22c23f8` 完成；独立 verifier 与 evidence 通过，但所有 provider/Agent/外部/生产 facet 仍为 `NOT_RUN` |
 | S1B · Langfuse read + CaseLoop OTel write/readback | `NOT IMPLEMENTED / PROVIDER-LIVE BLOCKED` | 当前只有 frozen wire contract；connector、008、真实读取和独立 sink 回读尚未施工，且 live 前必须轮换隔离凭证并取得单独授权 |
 
 Stage 1 只有在 S1A 与 S1B 各自满足测试、证据和验收边界后才能整体关闭；本地 PostgreSQL/loopback 通过不等于 `domain-provider-live`。
+
+S1A 封板后暂停 S1B–S7；用户正在盘点从 Agent 治理扩展到 AI-system 治理的 V5 需求，完成兼容性/替代关系裁决前不继续施工。
 
 ## 工具无关的角色分工
 
@@ -41,7 +43,7 @@ Stage 1 只有在 S1A 与 S1B 各自满足测试、证据和验收边界后才�
 ## Git 规则
 
 - 不直接提交或推送 `main`；不 force-push、不改写公共提交、不删协作者分支。
-- 使用 `codex/*` 或用户指定分支，每个 P0 闭环使用聚焦语义提交；当前用户要求任何 Git 写操作前先询问。
+- 使用 `codex/*` 或用户指定分支，每个 P0/Stage 闭环使用聚焦语义提交；本地 S1A 收尾提交已获授权，push、PR、merge 与外部写仍需单独授权。
 - commit message 建议 `<type>(<scope>): 中文摘要`，其中 type 可为 `feat`、`fix`、`docs`、`test`、`chore`。
 - 密钥永不入库。发现疑似泄漏时停止传播、报告影响范围并轮换；不要把 secret 写进 evidence 或 PR。
 

@@ -1,0 +1,14 @@
+{
+  "captured_at": "2026-08-10T14:30:55Z",
+  "repository": "/Users/xiejiachen/caseloop",
+  "branch": "codex/v4-foundation",
+  "commit": "22c23f89708471e3f1cb8ca893414733a839a1bd",
+  "mode": "local-runtime-and-disposable-postgresql",
+  "system_python": "3.14.4",
+  "control_plane_python": "3.11.15",
+  "node": "v22.0.0",
+  "npm": "10.5.1",
+  "network_used": "loopback-only",
+  "provider_used": false,
+  "external_write_used": false
+}
