@@ -92,6 +92,66 @@ _ROUTES: dict[tuple[str, str], _Route] = {
         subject_digest_field="evidence_digest",
         aggregate_id_field="receipt_id",
     ),
+    # V5-1A application catalog routes.  The business payload mirrors the
+    # catalog events' ``payload_required`` fields from contracts/v5/events.yaml;
+    # the ``exact_*_binding`` is carried by the shared controller fields.
+    ("ai_application", "application.registered"): _Route(
+        owner="application-catalog-controller",
+        subject_kind="AI_APPLICATION",
+        subject_revisioned=True,
+        required=frozenset(
+            {"application_id", "project_id", "slug", "lifecycle_state"}
+        ),
+        subject_id_field="application_id",
+        subject_digest_field=None,
+        aggregate_id_field="application_id",
+    ),
+    ("environment", "environment.registered"): _Route(
+        owner="application-catalog-controller",
+        subject_kind="ENVIRONMENT",
+        subject_revisioned=True,
+        required=frozenset(
+            {"environment_id", "application_id", "logical_name", "lifecycle_state"}
+        ),
+        subject_id_field="environment_id",
+        subject_digest_field=None,
+        aggregate_id_field="environment_id",
+    ),
+    ("system_component", "system_component.registered"): _Route(
+        owner="application-catalog-controller",
+        subject_kind="SYSTEM_COMPONENT",
+        subject_revisioned=True,
+        required=frozenset(
+            {
+                "component_id",
+                "application_id",
+                "component_kind",
+                "logical_name",
+                "lifecycle_state",
+            }
+        ),
+        subject_id_field="component_id",
+        subject_digest_field=None,
+        aggregate_id_field="component_id",
+    ),
+    ("dependency_edge", "dependency_edge.recorded"): _Route(
+        owner="application-catalog-controller",
+        subject_kind="DEPENDENCY_EDGE",
+        subject_revisioned=False,
+        required=frozenset(
+            {
+                "edge_id",
+                "application_id",
+                "from_component_id",
+                "to_component_id",
+                "relation",
+                "edge_digest",
+            }
+        ),
+        subject_id_field="edge_id",
+        subject_digest_field=None,
+        aggregate_id_field="edge_id",
+    ),
 }
 
 _STAGE1_EVENT_TYPES = (

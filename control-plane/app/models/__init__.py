@@ -25,6 +25,12 @@ from app.models.v4_tables import (
     SourceConnection,
     TraceEvidenceReceipt,
 )
+from app.models.v5_tables import (
+    AIApplication,
+    DependencyEdge,
+    Environment,
+    SystemComponent,
+)
 
 __all__ = [
     "Base",
@@ -49,4 +55,8 @@ __all__ = [
     "TraceEvidenceReceipt",
     "ControllerRegistration",
     "AuthorityReceipt",
+    "AIApplication",
+    "Environment",
+    "SystemComponent",
+    "DependencyEdge",
 ]

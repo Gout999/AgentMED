@@ -337,7 +337,7 @@ def test_stage1a_public_installed_cli_real_postgres_loopback(
         with engine.connect() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "007"
+            ).scalar_one() == "008"
 
         bootstrap = _safe_process(
             [sys.executable, "-m", "app.bootstrap.stage1a_local"],

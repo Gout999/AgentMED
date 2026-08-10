@@ -22,6 +22,16 @@ from ._generated.public_v1 import (
     ServerCapabilitiesResponse,
     SignalSubmissionResponse,
 )
+from ._generated.public_v2 import (
+    ApplicationGetResponse,
+    ApplicationRegisterResponse,
+    ComponentGetResponse,
+    ComponentRegisterResponse,
+    DependencyEdgeGetResponse,
+    DependencyEdgeRecordResponse,
+    EnvironmentGetResponse,
+    EnvironmentRegisterResponse,
+)
 from .errors import CliError, ExitFamily
 
 
@@ -32,6 +42,10 @@ _TIMELINE_PATH = re.compile(
     r"^/api/v1/cases/(case_[0-9A-Za-z]{8,64})/timeline$"
 )
 _EVIDENCE_PATH = re.compile(r"^/api/v1/evidence/(ter_[0-9A-Za-z]{8,64})$")
+_APPLICATION_PATH = re.compile(r"^/api/v2/applications/(app_[0-9A-Za-z]{8,64})$")
+_ENVIRONMENT_PATH = re.compile(r"^/api/v2/environments/(env_[0-9A-Za-z]{8,64})$")
+_COMPONENT_PATH = re.compile(r"^/api/v2/system-components/(cmp_[0-9A-Za-z]{8,64})$")
+_EDGE_PATH = re.compile(r"^/api/v2/dependency-edges/(de_[0-9A-Za-z]{8,64})$")
 _MISSING_NO_TRACE = (
     "trace.input",
     "trace.output",
@@ -65,6 +79,7 @@ _ERROR_META: dict[str, tuple[int, bool]] = {
     "IDEMPOTENCY_KEY_REQUIRED": (400, False),
     "RESOURCE_NOT_FOUND": (404, False),
     "IDEMPOTENCY_CONFLICT": (409, False),
+    "CATALOG_CONFLICT": (409, False),
     "CONTRACT_VERSION_UNSUPPORTED": (412, False),
     "CONTENT_TOO_LARGE": (413, False),
     "UNSUPPORTED_MEDIA_TYPE": (415, False),
@@ -160,6 +175,35 @@ def _operation_spec(method: str, path: str) -> _OperationSpec:
             return _OperationSpec(
                 "evidence.get", 200, EvidenceResponse, evidence.group(1)
             )
+    if normalized_method == "POST" and path == "/api/v2/applications":
+        return _OperationSpec("applications.register", 201, ApplicationRegisterResponse)
+    if normalized_method == "POST" and path == "/api/v2/environments":
+        return _OperationSpec("environments.register", 201, EnvironmentRegisterResponse)
+    if normalized_method == "POST" and path == "/api/v2/system-components":
+        return _OperationSpec("system-components.register", 201, ComponentRegisterResponse)
+    if normalized_method == "POST" and path == "/api/v2/dependency-edges":
+        return _OperationSpec("dependency-edges.record", 201, DependencyEdgeRecordResponse)
+    if normalized_method == "GET":
+        application = _APPLICATION_PATH.fullmatch(path)
+        if application:
+            return _OperationSpec(
+                "applications.get", 200, ApplicationGetResponse, application.group(1)
+            )
+        environment = _ENVIRONMENT_PATH.fullmatch(path)
+        if environment:
+            return _OperationSpec(
+                "environments.get", 200, EnvironmentGetResponse, environment.group(1)
+            )
+        component = _COMPONENT_PATH.fullmatch(path)
+        if component:
+            return _OperationSpec(
+                "system-components.get", 200, ComponentGetResponse, component.group(1)
+            )
+        edge = _EDGE_PATH.fullmatch(path)
+        if edge:
+            return _OperationSpec(
+                "dependency-edges.get", 200, DependencyEdgeGetResponse, edge.group(1)
+            )
     raise CliError("CLIENT_OPERATION_UNSUPPORTED", ExitFamily.PROTOCOL)
 
 
@@ -221,13 +265,20 @@ class PublicApiClient:
         body: bytes | None = None,
         idempotency_key: str | None = None,
         request_id: str | None = None,
+        api_major: int = 1,
     ) -> dict[str, Any]:
         spec = _operation_spec(method, path)
         stable_request_id = request_id or f"req_{self._uuid_factory().hex}"
+        if api_major == 2:
+            contract_version = "2.0"
+            idempotency_header = "X-CaseLoop-Idempotency-Key"
+        else:
+            contract_version = "1.0"
+            idempotency_header = "Idempotency-Key"
         headers = {
             "Authorization": f"Bearer {self._config.token}",
             "X-CaseLoop-Workspace-ID": self._config.workspace_id,
-            "X-CaseLoop-Contract-Version": "1.0",
+            "X-CaseLoop-Contract-Version": contract_version,
             "X-CaseLoop-Client-Version": self._config.client_version,
             "X-Request-ID": stable_request_id,
             "Accept": "application/json",
@@ -235,7 +286,7 @@ class PublicApiClient:
         if body is not None:
             headers["Content-Type"] = "application/json"
         if idempotency_key is not None:
-            headers["Idempotency-Key"] = idempotency_key
+            headers[idempotency_header] = idempotency_key
 
         with httpx.Client(
             base_url=self._config.base_url,
@@ -261,7 +312,7 @@ class PublicApiClient:
         assert response is not None
         if 300 <= response.status_code < 400:
             raise CliError("REMOTE_REDIRECT_REFUSED", ExitFamily.PROTOCOL)
-        if response.headers.get("x-caseloop-contract-version") != "1.0":
+        if response.headers.get("x-caseloop-contract-version") != contract_version:
             raise CliError("REMOTE_CONTRACT_INVALID", ExitFamily.PROTOCOL)
         content_type = response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
         if content_type != "application/json":
@@ -329,8 +380,60 @@ class PublicApiClient:
             isinstance(success, SignalSubmissionResponse)
             and success.idempotency.replayed is True
         )
-        if not is_replayed_signal and response_request_id != stable_request_id:
+        is_replayed_v5 = (
+            isinstance(
+                success,
+                (
+                    ApplicationRegisterResponse,
+                    EnvironmentRegisterResponse,
+                    ComponentRegisterResponse,
+                    DependencyEdgeRecordResponse,
+                ),
+            )
+            and success.idempotency.replayed is True
+        )
+        if not is_replayed_signal and not is_replayed_v5 and response_request_id != stable_request_id:
             raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+        if isinstance(success, ApplicationGetResponse):
+            if success.application.application_id != spec.resource_id:
+                raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+            return
+        if isinstance(success, ApplicationRegisterResponse):
+            self._validate_v5_mutation_binding(
+                spec, success, body, idempotency_key, raw_payload,
+                resource_id=success.application.application_id,
+            )
+            return
+        if isinstance(success, EnvironmentGetResponse):
+            if success.environment.environment_id != spec.resource_id:
+                raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+            return
+        if isinstance(success, EnvironmentRegisterResponse):
+            self._validate_v5_mutation_binding(
+                spec, success, body, idempotency_key, raw_payload,
+                resource_id=success.environment.environment_id,
+            )
+            return
+        if isinstance(success, ComponentGetResponse):
+            if success.component.component_id != spec.resource_id:
+                raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+            return
+        if isinstance(success, ComponentRegisterResponse):
+            self._validate_v5_mutation_binding(
+                spec, success, body, idempotency_key, raw_payload,
+                resource_id=success.component.component_id,
+            )
+            return
+        if isinstance(success, DependencyEdgeGetResponse):
+            if success.edge.edge_id != spec.resource_id:
+                raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+            return
+        if isinstance(success, DependencyEdgeRecordResponse):
+            self._validate_v5_mutation_binding(
+                spec, success, body, idempotency_key, raw_payload,
+                resource_id=success.edge.edge_id,
+            )
+            return
         if isinstance(success, CaseResponse):
             if success.data.case_id != spec.resource_id:
                 raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
@@ -415,6 +518,49 @@ class PublicApiClient:
             != _canonical_digest(response_without_idempotency)
             or receipt.receipt_digest
             != _canonical_digest(receipt_without_self_digest)
+        ):
+            raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+
+    def _validate_v5_mutation_binding(
+        self,
+        spec: _OperationSpec,
+        success: BaseModel,
+        body: bytes | None,
+        idempotency_key: str | None,
+        raw_payload: dict[str, Any],
+        *,
+        resource_id: str,
+    ) -> None:
+        if body is None or idempotency_key is None:
+            raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+        try:
+            request_payload = json.loads(body)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL) from None
+        if not isinstance(request_payload, dict):
+            raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+        receipt = success.idempotency.receipt
+        raw_idempotency = raw_payload.get("idempotency")
+        if not isinstance(raw_idempotency, dict):
+            raise CliError("REMOTE_PROTOCOL_ERROR", ExitFamily.PROTOCOL)
+        raw_receipt = raw_idempotency.get("receipt")
+        if not isinstance(raw_receipt, dict):
+            raise CliError("REMOTE_PROTOCOL_ERROR", ExitFamily.PROTOCOL)
+        response_without_idempotency = dict(raw_payload)
+        response_without_idempotency.pop("idempotency", None)
+        receipt_without_self_digest = dict(raw_receipt)
+        receipt_without_self_digest.pop("receipt_digest", None)
+        if (
+            receipt.request_fingerprint != _canonical_digest(request_payload)
+            or receipt.response_digest
+            != _canonical_digest(response_without_idempotency)
+            or receipt.receipt_digest
+            != _canonical_digest(receipt_without_self_digest)
+            or receipt.workspace_id != self._config.workspace_id
+            or receipt.audit_ref != success.audit_ref
+            or receipt.resource.id != resource_id
+            or receipt.status != "COMPLETED"
+            or receipt.operation_id is not None
         ):
             raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
 

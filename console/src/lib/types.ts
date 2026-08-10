@@ -210,3 +210,24 @@ export interface Healthz {
   status: string;
   version: string;
 }
+
+export interface ApplicationView {
+  application_id: string;
+  project_id: string;
+  slug: string | "UNKNOWN";
+  display_name: string | "UNKNOWN";
+  owner_principal_ids: string[];
+  criticality: string | "UNKNOWN";
+  data_classification: string | "UNKNOWN";
+  governance_mode: string | "UNKNOWN";
+  lifecycle_state: string | "UNKNOWN";
+  revision: number;
+  record_digest: string;
+  recorded_by_principal: string;
+  environment_count: number;
+  component_count: number;
+  created_at: string | null;
+  updated_at: string | null;
+  integrity_status: "verified" | "integrity_error" | "unknown";
+  integrity_error: string | null;
+}

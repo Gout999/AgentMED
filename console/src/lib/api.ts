@@ -1,4 +1,5 @@
 import type {
+  ApplicationView,
   CaseDetail,
   CaseEventsView,
   CaseSummary,
@@ -139,4 +140,6 @@ export const api = {
     request<NotificationView>(`/v1/notifications/${encodeURIComponent(id)}`, guards.notification, { signal }),
   listEvidence: (caseId?: string, signal?: AbortSignal) =>
     request<EvidenceResponse>(`/v1/evidence${qs({ case_id: caseId, limit: 100 })}`, guards.evidenceResponse, { signal }),
+  listApplications: (signal?: AbortSignal) =>
+    request<ReadViewList<ApplicationView>>(`/v1/applications${qs({ limit: 100 })}`, guards.applicationList, { signal }),
 };

@@ -17,6 +17,7 @@ from app.api import (
     gates,
     notifications,
     public_v4,
+    public_v5,
     read_views,
     releases,
 )
@@ -90,6 +91,7 @@ def create_app(
     app.include_router(read_views.router)
     app.include_router(evidence_export.router)
     app.include_router(public_v4.router)
+    app.include_router(public_v5.router)
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:

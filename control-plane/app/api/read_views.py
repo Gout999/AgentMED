@@ -69,3 +69,12 @@ def get_evidence(
     session: Session = Depends(get_db_session),
 ) -> dict[str, Any]:
     return read_views.list_evidence_refs(session, case_id=case_id, limit=limit)
+
+
+@router.get("/v1/applications")
+def get_applications(
+    limit: int = Query(default=100, le=500),
+    session: Session = Depends(get_db_session),
+) -> dict[str, Any]:
+    """V5-1A catalog read model for the Console (internal projection, no bearer)."""
+    return read_views.list_applications(session, limit=limit)

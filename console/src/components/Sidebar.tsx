@@ -3,6 +3,7 @@ import { NavLink } from "react-router-dom";
 const NAV_ITEMS = [
   { to: "/", label: "总览", icon: OverviewIcon, end: true },
   { to: "/cases", label: "案例", icon: CasesIcon, end: false },
+  { to: "/applications", label: "应用目录", icon: ApplicationsIcon, end: false },
   { to: "/experiments", label: "实验", icon: ExperimentsIcon, end: false },
   { to: "/approvals", label: "审批", icon: ApprovalsIcon, end: false },
   { to: "/trust", label: "门禁与信任", icon: TrustIcon, end: false },
@@ -70,6 +71,17 @@ function CasesIcon(props: { className?: string }) {
     <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
       <path d="M4 7h16M4 7l1-3h14l1 3M6 7v13a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7" strokeLinecap="round" strokeLinejoin="round" />
       <path d="M9 11h6M9 15h6" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function ApplicationsIcon(props: { className?: string }) {
+  return (
+    <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <rect x="3" y="3" width="8" height="8" rx="1.5" />
+      <rect x="13" y="3" width="8" height="8" rx="1.5" />
+      <rect x="3" y="13" width="8" height="8" rx="1.5" />
+      <rect x="13" y="13" width="8" height="8" rx="1.5" />
     </svg>
   );
 }

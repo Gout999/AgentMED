@@ -93,6 +93,7 @@ ERROR_SPECS: dict[str, ErrorSpec] = {
     "IDEMPOTENCY_KEY_REQUIRED": ErrorSpec(400, "Idempotency-Key is required for this mutation."),
     "RESOURCE_NOT_FOUND": ErrorSpec(404, "The requested resource was not found."),
     "IDEMPOTENCY_CONFLICT": ErrorSpec(409, "The idempotency key is already bound to different request content."),
+    "CATALOG_CONFLICT": ErrorSpec(409, "The catalog resource identity conflicts with an existing record."),
     "CONTRACT_VERSION_UNSUPPORTED": ErrorSpec(412, "The requested public contract version is unsupported."),
     "CONTENT_TOO_LARGE": ErrorSpec(413, "The request content exceeds the accepted limit."),
     "UNSUPPORTED_MEDIA_TYPE": ErrorSpec(415, "The request media type is unsupported."),

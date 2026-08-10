@@ -301,11 +301,11 @@ def test_stage1a_signal_concurrency_real_postgres(
             "create_all",
             side_effect=AssertionError("stage1a.concurrency_must_use_alembic"),
         ):
-            command.upgrade(_alembic_config(root), "007")
+            command.upgrade(_alembic_config(root), "head")
         with factory() as session:
             assert session.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "007"
+            ).scalar_one() == "008"
             execute_stage1a_local_bootstrap(
                 session,
                 _bootstrap_request(),

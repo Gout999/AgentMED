@@ -1,0 +1,807 @@
+"""Fail-closed local bootstrap for the V5-1A application catalog slice.
+
+Additive to ``stage1a_local`` (which keeps its exact behavior): this module
+seeds the ``application-catalog-controller`` trust root against the frozen
+``contracts/v5`` ownership/event catalogs plus an independent catalog-admin
+principal holding ``applications:manage`` / ``applications:read``.  The raw
+bearer and raw jti enter only in the JSON document on stdin; only digests reach
+PostgreSQL.  Alembic must already be at one head containing revision 008.
+"""
+from __future__ import annotations
+
+from collections.abc import Callable, Mapping, Sequence
+from datetime import datetime, timezone
+import hashlib
+import hmac
+import json
+from pathlib import Path
+import re
+import sys
+from typing import Any, Literal, TextIO
+
+from alembic.config import Config as AlembicConfig
+from alembic.script import ScriptDirectory
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    SecretStr,
+    ValidationError,
+    model_validator,
+)
+import sqlalchemy as sa
+from sqlalchemy import select
+from sqlalchemy.orm import Session
+
+from app.config import Settings, get_settings
+from app.db import get_session_factory
+from app.models import Audit
+from app.models.v4_tables import ControllerRegistration, PublicCredential, PublicPrincipal
+from app.public_api.credential_resolver import (
+    digest_public_subject,
+    hash_opaque_bearer,
+)
+from app.services.v4_audit import V4AuditService, V4AuditUnavailable
+from app.services.v5_authority import (
+    V5AuthorityError,
+    V5_CATALOG_OWNER,
+    build_v5_controller_registration_record,
+)
+from app.utils.ids import new_transaction_id
+from app.utils.v4_integrity import canonical_digest
+
+_WORKSPACE_ID = r"^ws_[0-9A-Za-z]{8,64}$"
+_PROJECT_ID = r"^proj_[0-9A-Za-z]{8,64}$"
+_PRINCIPAL_ID = r"^prn_[0-9A-Za-z]{8,64}$"
+_CREDENTIAL_ID = r"^cred_[0-9A-Za-z]{8,64}$"
+_REGISTRATION_ID = r"^creg_[0-9A-Za-z]{8,64}$"
+_DIGEST = r"^sha256:[0-9a-f]{64}$"
+_SECRET_STORAGE_REF = re.compile(r"^(?:keyring|file)://[^\s]{1,512}$")
+_MAX_STDIN_BYTES = 65_536
+
+_AUDIENCE = ["caseloop-public-api"]
+_CATALOG_SCOPES = ["applications:manage", "applications:read"]
+# The full application-catalog-controller command set from
+# contracts/v5/aggregate-ownership.yaml record_authority.
+_CATALOG_COMMANDS = (
+    "applications.register",
+    "applications.activate",
+    "applications.archive",
+    "applications.restore",
+    "environments.register",
+    "environments.retire",
+    "environments.restore",
+    "system-components.register",
+    "system-components.activate",
+    "system-components.deprecate",
+    "system-components.reactivate",
+    "system-components.retire",
+    "dependency-edges.record",
+)
+
+
+class BootstrapError(RuntimeError):
+    """Stable, secret-free local v5 bootstrap failure."""
+
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(code)
+
+
+class _StrictJSONError(ValueError):
+    """Internal parser rejection whose message never includes caller input."""
+
+
+def _strict_json_object(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    value: dict[str, Any] = {}
+    for key, child in pairs:
+        if key in value:
+            raise _StrictJSONError("strict_json_duplicate_key")
+        value[key] = child
+    return value
+
+
+def _reject_json_constant(_constant: str) -> Any:
+    raise _StrictJSONError("strict_json_nonfinite_number")
+
+
+def _load_strict_json(raw: str) -> Any:
+    return json.loads(
+        raw,
+        object_pairs_hook=_strict_json_object,
+        parse_constant=_reject_json_constant,
+    )
+
+
+class _StrictModel(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+
+class ControllerIdentityRequest(_StrictModel):
+    registration_id: str = Field(pattern=_REGISTRATION_ID)
+    principal_id: str = Field(pattern=_PRINCIPAL_ID)
+
+
+class CatalogAdminPrincipalRequest(_StrictModel):
+    principal_id: str = Field(pattern=_PRINCIPAL_ID)
+    subject: str = Field(min_length=1, max_length=256)
+
+
+class OpaqueCredentialRequest(_StrictModel):
+    credential_id: str = Field(pattern=_CREDENTIAL_ID)
+    bearer_token: SecretStr
+    jti: SecretStr
+    issued_at: datetime
+    not_before: datetime
+    expires_at: datetime
+
+    @model_validator(mode="after")
+    def _validate_secret_and_time_bounds(self) -> "OpaqueCredentialRequest":
+        if not 32 <= len(self.bearer_token.get_secret_value()) <= 4096:
+            raise ValueError("opaque bearer length is invalid")
+        if not 16 <= len(self.jti.get_secret_value()) <= 512:
+            raise ValueError("opaque credential jti length is invalid")
+        if any(
+            value.tzinfo is None or value.utcoffset() is None
+            for value in (self.issued_at, self.not_before, self.expires_at)
+        ):
+            raise ValueError("credential times must carry an explicit timezone")
+        issued = _as_utc(self.issued_at)
+        not_before = _as_utc(self.not_before)
+        expires = _as_utc(self.expires_at)
+        if not (issued <= not_before < expires):
+            raise ValueError("credential time order is invalid")
+        return self
+
+
+class V5CatalogLocalBootstrapRequest(_StrictModel):
+    schema_version: Literal["1.0"]
+    workspace_id: str = Field(pattern=_WORKSPACE_ID)
+    project_id: str = Field(pattern=_PROJECT_ID)
+    owner_principal: CatalogAdminPrincipalRequest
+    principal: CatalogAdminPrincipalRequest
+    credential: OpaqueCredentialRequest
+    controller: ControllerIdentityRequest
+    secret_storage_ref: str
+
+    @model_validator(mode="after")
+    def _validate_identity_separation(self) -> "V5CatalogLocalBootstrapRequest":
+        if not _SECRET_STORAGE_REF.fullmatch(self.secret_storage_ref):
+            raise ValueError("secret storage reference is invalid")
+        identities = {
+            self.owner_principal.principal_id,
+            self.principal.principal_id,
+            self.controller.principal_id,
+        }
+        if len(identities) != 3:
+            raise ValueError("owner, catalog-admin and controller identities must be unique")
+        bearer = self.credential.bearer_token.get_secret_value()
+        jti = self.credential.jti.get_secret_value()
+        if bearer in self.secret_storage_ref or jti in self.secret_storage_ref:
+            raise ValueError("secret storage reference cannot contain credential material")
+        return self
+
+
+class ControllerBootstrapReceipt(_StrictModel):
+    owner: str
+    registration_id: str = Field(pattern=_REGISTRATION_ID)
+    controller_principal: str = Field(pattern=_PRINCIPAL_ID)
+    registration_digest: str = Field(pattern=_DIGEST)
+    registration_audit_ref: str
+    created: bool
+
+
+class PrincipalBootstrapReceipt(_StrictModel):
+    principal_id: str = Field(pattern=_PRINCIPAL_ID)
+    claims_digest: str = Field(pattern=_DIGEST)
+    created: bool
+
+
+class OwnerPrincipalBootstrapReceipt(_StrictModel):
+    principal_id: str = Field(pattern=_PRINCIPAL_ID)
+    claims_digest: str = Field(pattern=_DIGEST)
+    created: bool
+
+
+class CredentialBootstrapReceipt(_StrictModel):
+    credential_id: str = Field(pattern=_CREDENTIAL_ID)
+    jti_digest: str = Field(pattern=_DIGEST)
+    claims_digest: str = Field(pattern=_DIGEST)
+    expires_at: datetime
+    created: bool
+
+
+class V5CatalogLocalBootstrapReceipt(_StrictModel):
+    schema_version: Literal["1.0"] = "1.0"
+    status: Literal["CREATED", "REUSED", "MIXED"]
+    workspace_id: str = Field(pattern=_WORKSPACE_ID)
+    project_id: str = Field(pattern=_PROJECT_ID)
+    controller: ControllerBootstrapReceipt
+    owner_principal: OwnerPrincipalBootstrapReceipt
+    principal: PrincipalBootstrapReceipt
+    credential: CredentialBootstrapReceipt
+    transaction_id: str
+    command_audit_ref: str
+    secret_storage_ref: str
+
+
+Clock = Callable[[], datetime]
+
+
+def _as_utc(value: datetime) -> datetime:
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _same_time(left: datetime | None, right: datetime | None) -> bool:
+    if left is None or right is None:
+        return left is right
+    return _as_utc(left) == _as_utc(right)
+
+
+def _secret_text(value: Any) -> str:
+    if isinstance(value, SecretStr):
+        return value.get_secret_value()
+    if isinstance(value, str):
+        return value
+    return ""
+
+
+def _sha256_text(value: SecretStr) -> str:
+    return "sha256:" + hashlib.sha256(value.get_secret_value().encode("utf-8")).hexdigest()
+
+
+def _alembic_script() -> ScriptDirectory:
+    control_plane = Path(__file__).resolve().parents[2]
+    config = AlembicConfig(str(control_plane / "alembic.ini"))
+    config.set_main_option("script_location", str(control_plane / "alembic"))
+    return ScriptDirectory.from_config(config)
+
+
+def verify_v5_catalog_alembic_head(
+    session: Session, *, require_postgresql: bool = True
+) -> None:
+    """Require one DB head, equal to the local head, whose ancestry has 008."""
+
+    try:
+        if require_postgresql and session.get_bind().dialect.name != "postgresql":
+            raise BootstrapError("bootstrap.postgresql_required")
+        versions = list(
+            session.execute(sa.text("SELECT version_num FROM alembic_version")).scalars()
+        )
+        script = _alembic_script()
+        heads = list(script.get_heads())
+        if len(versions) != 1 or len(heads) != 1 or versions[0] != heads[0]:
+            raise BootstrapError("bootstrap.schema_revision_not_ready")
+        ancestry = {
+            revision.revision
+            for revision in script.iterate_revisions(heads[0], "base")
+        }
+        if "008" not in ancestry:
+            raise BootstrapError("bootstrap.schema_revision_not_ready")
+    except BootstrapError:
+        raise
+    except Exception:
+        raise BootstrapError("bootstrap.schema_revision_not_ready") from None
+
+
+def _service_identity_digest(
+    *, workspace_id: str, owner: str, controller_principal: str
+) -> str:
+    return canonical_digest(
+        {
+            "schema_version": "1.0",
+            "workspace_id": workspace_id,
+            "owner": owner,
+            "controller_principal": controller_principal,
+            "principal_type": "CONTROLLER_SERVICE",
+            "service": "caseloop-control-plane",
+        }
+    )
+
+
+def _registration_audit_evidence(
+    *, owner: str, registration_id: str, controller_principal: str
+) -> dict[str, Any]:
+    return {
+        "owner": owner,
+        "controller_registration_id": registration_id,
+        "controller_principal": controller_principal,
+    }
+
+
+def _validate_registration_audit(
+    session: Session,
+    row: ControllerRegistration,
+    *,
+    human_principal: str,
+) -> None:
+    if not row.registration_audit_ref.startswith("audit://aud_"):
+        raise BootstrapError("bootstrap.controller_registration_drift")
+    audit = session.get(Audit, row.registration_audit_ref.removeprefix("audit://"))
+    evidence = _registration_audit_evidence(
+        owner=row.owner,
+        registration_id=row.controller_registration_id,
+        controller_principal=row.controller_principal,
+    )
+    if (
+        audit is None
+        or audit.contract_version != "v4"
+        or audit.workspace_id != row.workspace_id
+        or audit.actor_principal != human_principal
+        or audit.actor != human_principal
+        or audit.action != "controllers.register"
+        or audit.target != row.controller_registration_id
+        or audit.result != "success"
+        or audit.error_code is not None
+        or audit.params_digest
+        != canonical_digest(
+            {
+                "owner": row.owner,
+                "service_identity_digest": row.service_identity_digest,
+            }
+        )
+        or audit.evidence_refs != evidence
+    ):
+        raise BootstrapError("bootstrap.controller_registration_drift")
+
+
+def execute_v5_catalog_local_bootstrap(
+    session: Session,
+    request: V5CatalogLocalBootstrapRequest,
+    *,
+    settings: Settings | None = None,
+    now: datetime | None = None,
+    schema_verifier: Callable[[Session], None] = verify_v5_catalog_alembic_head,
+    audit_service: V4AuditService | None = None,
+    contracts_root: str | Path | None = None,
+) -> V5CatalogLocalBootstrapReceipt:
+    """Flush one exact v5 bootstrap transaction; caller owns commit/rollback."""
+
+    configured = settings or get_settings()
+    current = _as_utc(now or datetime.now(timezone.utc))
+    schema_verifier(session)
+    issued = _as_utc(request.credential.issued_at)
+    not_before = _as_utc(request.credential.not_before)
+    expires = _as_utc(request.credential.expires_at)
+    if issued > current or not_before > current or expires <= current:
+        raise BootstrapError("bootstrap.credential_not_current")
+    if session.get_bind().dialect.name == "postgresql":
+        session.execute(
+            sa.text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
+            {"lock_key": f"caseloop:v5-catalog-local:{request.workspace_id}"},
+        )
+
+    claims = {
+        "schema_version": "1.0",
+        "issuer": configured.public_auth_issuer,
+        "subject": request.principal.subject,
+        "principal_type": "human",
+        "audiences": _AUDIENCE,
+        "workspace_id": request.workspace_id,
+        "project_ids": [request.project_id],
+        "environment_ids": [],
+        "scopes": _CATALOG_SCOPES,
+    }
+    claims_digest = canonical_digest(claims)
+    subject_digest = digest_public_subject(request.principal.subject)
+    credential_hash = hash_opaque_bearer(
+        request.credential.bearer_token, configured.public_credential_hash_pepper
+    )
+    jti_digest = _sha256_text(request.credential.jti)
+
+    principal = session.get(PublicPrincipal, request.principal.principal_id)
+    principal_created = principal is None
+    if principal is not None:
+        expected_principal = {
+            "principal_id": request.principal.principal_id,
+            "workspace_id": request.workspace_id,
+            "principal_type": "human",
+            "state": "ACTIVE",
+            "subject_digest": subject_digest,
+            "audiences": _AUDIENCE,
+            "project_ids": [request.project_id],
+            "environment_ids": [],
+            "scopes": _CATALOG_SCOPES,
+            "claims_digest": claims_digest,
+            "revoked_at": None,
+        }
+        if any(getattr(principal, key) != value for key, value in expected_principal.items()):
+            raise BootstrapError("bootstrap.principal_drift")
+    else:
+        session.add(
+            PublicPrincipal(
+                principal_id=request.principal.principal_id,
+                workspace_id=request.workspace_id,
+                principal_type="human",
+                state="ACTIVE",
+                subject_digest=subject_digest,
+                audiences=list(_AUDIENCE),
+                project_ids=[request.project_id],
+                environment_ids=[],
+                scopes=list(_CATALOG_SCOPES),
+                claims_digest=claims_digest,
+                revoked_at=None,
+            )
+        )
+        session.flush()
+
+    # Owner principal: a human who may own catalog records.  Its scope set is
+    # deliberately minimal; it is not a catalog writer by default.
+    owner_scopes = ["cases:read"]
+    owner_claims_digest = canonical_digest(
+        {
+            "schema_version": "1.0",
+            "issuer": configured.public_auth_issuer,
+            "subject": request.owner_principal.subject,
+            "principal_type": "human",
+            "audiences": _AUDIENCE,
+            "workspace_id": request.workspace_id,
+            "project_ids": [request.project_id],
+            "environment_ids": [],
+            "scopes": owner_scopes,
+        }
+    )
+    owner_subject_digest = digest_public_subject(request.owner_principal.subject)
+    owner_principal = session.get(PublicPrincipal, request.owner_principal.principal_id)
+    owner_created = owner_principal is None
+    if owner_principal is not None:
+        expected_owner = {
+            "principal_id": request.owner_principal.principal_id,
+            "workspace_id": request.workspace_id,
+            "principal_type": "human",
+            "state": "ACTIVE",
+            "subject_digest": owner_subject_digest,
+            "audiences": _AUDIENCE,
+            "project_ids": [request.project_id],
+            "environment_ids": [],
+            "scopes": owner_scopes,
+            "claims_digest": owner_claims_digest,
+            "revoked_at": None,
+        }
+        if any(getattr(owner_principal, key) != value for key, value in expected_owner.items()):
+            raise BootstrapError("bootstrap.principal_drift")
+    else:
+        session.add(
+            PublicPrincipal(
+                principal_id=request.owner_principal.principal_id,
+                workspace_id=request.workspace_id,
+                principal_type="human",
+                state="ACTIVE",
+                subject_digest=owner_subject_digest,
+                audiences=list(_AUDIENCE),
+                project_ids=[request.project_id],
+                environment_ids=[],
+                scopes=list(owner_scopes),
+                claims_digest=owner_claims_digest,
+                revoked_at=None,
+            )
+        )
+        session.flush()
+
+    credential = session.get(PublicCredential, request.credential.credential_id)
+    credential_created = credential is None
+    if credential is not None:
+        expected_credential = {
+            "credential_id": request.credential.credential_id,
+            "workspace_id": request.workspace_id,
+            "principal_id": request.principal.principal_id,
+            "issuer": configured.public_auth_issuer,
+            "subject": request.principal.subject,
+            "hash_algorithm": "hmac-sha256-v1",
+            "jti_digest": jti_digest,
+            "claims_digest": claims_digest,
+            "audiences": _AUDIENCE,
+            "project_ids": [request.project_id],
+            "environment_ids": [],
+            "scopes": _CATALOG_SCOPES,
+            "state": "ACTIVE",
+            "revoked_at": None,
+        }
+        if any(
+            getattr(credential, key) != value for key, value in expected_credential.items()
+        ):
+            raise BootstrapError("bootstrap.credential_drift")
+        if not hmac.compare_digest(credential.credential_hash, credential_hash):
+            raise BootstrapError("bootstrap.credential_drift")
+        if not all(
+            (
+                _same_time(credential.issued_at, request.credential.issued_at),
+                _same_time(credential.not_before, request.credential.not_before),
+                _same_time(credential.expires_at, request.credential.expires_at),
+            )
+        ):
+            raise BootstrapError("bootstrap.credential_drift")
+    else:
+        session.add(
+            PublicCredential(
+                credential_id=request.credential.credential_id,
+                workspace_id=request.workspace_id,
+                principal_id=request.principal.principal_id,
+                issuer=configured.public_auth_issuer,
+                subject=request.principal.subject,
+                credential_hash=credential_hash,
+                hash_algorithm="hmac-sha256-v1",
+                jti_digest=jti_digest,
+                claims_digest=claims_digest,
+                audiences=list(_AUDIENCE),
+                project_ids=[request.project_id],
+                environment_ids=[],
+                scopes=list(_CATALOG_SCOPES),
+                state="ACTIVE",
+                issued_at=issued,
+                not_before=not_before,
+                expires_at=expires,
+                revoked_at=None,
+            )
+        )
+        session.flush()
+
+    active = list(
+        session.scalars(
+            select(ControllerRegistration)
+            .where(
+                ControllerRegistration.workspace_id == request.workspace_id,
+                ControllerRegistration.owner == V5_CATALOG_OWNER,
+                ControllerRegistration.state == "ACTIVE",
+            )
+            .with_for_update()
+        ).all()
+    )
+    if len(active) > 1:
+        raise BootstrapError("bootstrap.multiple_active_controller_registrations")
+    registration_created = not active
+    service_identity_digest = _service_identity_digest(
+        workspace_id=request.workspace_id,
+        owner=V5_CATALOG_OWNER,
+        controller_principal=request.controller.principal_id,
+    )
+    registration: ControllerRegistration
+    registration_audit_ref: str
+    transaction_id = new_transaction_id()
+    audit = audit_service or V4AuditService(session, clock=lambda: current)
+
+    if active:
+        row = active[0]
+        if (
+            row.controller_registration_id != request.controller.registration_id
+            or row.revision != 1
+            or row.state != "ACTIVE"
+            or row.workspace_id != request.workspace_id
+            or row.owner != V5_CATALOG_OWNER
+            or row.controller_principal != request.controller.principal_id
+            or row.allowed_commands != list(_CATALOG_COMMANDS)
+            or row.previous_snapshot is not None
+            or row.expires_at is not None
+        ):
+            raise BootstrapError("bootstrap.controller_registration_drift")
+        _validate_registration_audit(
+            session, row, human_principal=request.principal.principal_id
+        )
+        try:
+            expected = build_v5_controller_registration_record(
+                controller_registration_id=row.controller_registration_id,
+                workspace_id=request.workspace_id,
+                owner=V5_CATALOG_OWNER,
+                controller_principal=row.controller_principal,
+                allowed_commands=list(_CATALOG_COMMANDS),
+                service_identity_digest=row.service_identity_digest,
+                registered_by_human_principal=row.registered_by_human_principal,
+                registration_audit_ref=row.registration_audit_ref,
+                valid_from=row.valid_from,
+                registered_at=row.registered_at,
+                expires_at=None,
+                revision=1,
+                previous_snapshot=None,
+                contracts_root=contracts_root,
+            )
+        except V5AuthorityError:
+            raise BootstrapError("bootstrap.controller_registration_drift") from None
+        if row.registration_digest != expected.registration_digest:
+            raise BootstrapError("bootstrap.controller_registration_drift")
+        registration = row
+        registration_audit_ref = row.registration_audit_ref
+    else:
+        evidence = _registration_audit_evidence(
+            owner=V5_CATALOG_OWNER,
+            registration_id=request.controller.registration_id,
+            controller_principal=request.controller.principal_id,
+        )
+        recorded_audit = audit.record(
+            workspace_id=request.workspace_id,
+            actor_principal=request.principal.principal_id,
+            action="controllers.register",
+            target=request.controller.registration_id,
+            params={
+                "owner": V5_CATALOG_OWNER,
+                "service_identity_digest": service_identity_digest,
+            },
+            transaction_id=transaction_id,
+            evidence_refs=evidence,
+            occurred_at=current,
+        )
+        try:
+            built = build_v5_controller_registration_record(
+                controller_registration_id=request.controller.registration_id,
+                workspace_id=request.workspace_id,
+                owner=V5_CATALOG_OWNER,
+                controller_principal=request.controller.principal_id,
+                allowed_commands=list(_CATALOG_COMMANDS),
+                service_identity_digest=service_identity_digest,
+                registered_by_human_principal=request.principal.principal_id,
+                registration_audit_ref=recorded_audit.audit_ref,
+                valid_from=current,
+                registered_at=current,
+                contracts_root=contracts_root,
+            )
+        except V5AuthorityError as exc:
+            raise BootstrapError("bootstrap.authority_dependency_invalid") from exc
+        registration = ControllerRegistration(**built.row_values)
+        session.add(registration)
+        session.flush()
+        registration_audit_ref = recorded_audit.audit_ref
+
+    created_flags = [
+        principal_created,
+        owner_created,
+        credential_created,
+        registration_created,
+    ]
+    if all(created_flags):
+        status: Literal["CREATED", "REUSED", "MIXED"] = "CREATED"
+    elif not any(created_flags):
+        status = "REUSED"
+    else:
+        status = "MIXED"
+
+    command_audit = audit.record(
+        workspace_id=request.workspace_id,
+        actor_principal=request.principal.principal_id,
+        action="v5_catalog_local.bootstrap",
+        target=f"workspace:{request.workspace_id}",
+        params={
+            "workspace_id": request.workspace_id,
+            "project_id": request.project_id,
+            "principal_id": request.principal.principal_id,
+            "credential_id": request.credential.credential_id,
+            "jti_digest": jti_digest,
+            "claims_digest": claims_digest,
+            "owner_principal_id": request.owner_principal.principal_id,
+            "controller_registration_digest": registration.registration_digest,
+            "result": status,
+        },
+        transaction_id=transaction_id,
+        evidence_refs={
+            "owner_principal_id": request.owner_principal.principal_id,
+            "principal_id": request.principal.principal_id,
+            "credential_id": request.credential.credential_id,
+            "controller_registration_id": registration.controller_registration_id,
+        },
+        occurred_at=current,
+    )
+    try:
+        session.flush()
+    except Exception as exc:
+        raise BootstrapError("bootstrap.persistence_failed") from exc
+
+    return V5CatalogLocalBootstrapReceipt(
+        status=status,
+        workspace_id=request.workspace_id,
+        project_id=request.project_id,
+        controller=ControllerBootstrapReceipt(
+            owner=V5_CATALOG_OWNER,
+            registration_id=registration.controller_registration_id,
+            controller_principal=registration.controller_principal,
+            registration_digest=registration.registration_digest,
+            registration_audit_ref=registration_audit_ref,
+            created=registration_created,
+        ),
+        owner_principal=OwnerPrincipalBootstrapReceipt(
+            principal_id=request.owner_principal.principal_id,
+            claims_digest=owner_claims_digest,
+            created=owner_created,
+        ),
+        principal=PrincipalBootstrapReceipt(
+            principal_id=request.principal.principal_id,
+            claims_digest=claims_digest,
+            created=principal_created,
+        ),
+        credential=CredentialBootstrapReceipt(
+            credential_id=request.credential.credential_id,
+            jti_digest=jti_digest,
+            claims_digest=claims_digest,
+            expires_at=expires,
+            created=credential_created,
+        ),
+        transaction_id=transaction_id,
+        command_audit_ref=command_audit.audit_ref,
+        secret_storage_ref=request.secret_storage_ref,
+    )
+
+
+def _default_executor(
+    request: V5CatalogLocalBootstrapRequest,
+) -> V5CatalogLocalBootstrapReceipt:
+    session = get_session_factory()()
+    try:
+        receipt = execute_v5_catalog_local_bootstrap(session, request)
+        session.commit()
+        return receipt
+    except Exception:
+        session.rollback()
+        raise
+    finally:
+        session.close()
+
+
+def _write_json(stream: TextIO, value: dict[str, Any]) -> None:
+    stream.write(json.dumps(value, sort_keys=True, separators=(",", ":")))
+    stream.write("\n")
+    stream.flush()
+
+
+def main(
+    *,
+    stdin: TextIO | None = None,
+    stdout: TextIO | None = None,
+    stderr: TextIO | None = None,
+    executor: Callable[
+        [V5CatalogLocalBootstrapRequest], V5CatalogLocalBootstrapReceipt
+    ]
+    | None = None,
+) -> int:
+    """Read exactly one bounded JSON request and emit one secret-free JSON result."""
+
+    input_stream = stdin or sys.stdin
+    output_stream = stdout or sys.stdout
+    _ = stderr or sys.stderr
+    try:
+        raw = input_stream.read(_MAX_STDIN_BYTES + 1)
+        if len(raw.encode("utf-8")) > _MAX_STDIN_BYTES:
+            raise BootstrapError("bootstrap.request_too_large")
+        try:
+            payload = _load_strict_json(raw)
+            request = V5CatalogLocalBootstrapRequest.model_validate(payload)
+        except (
+            json.JSONDecodeError,
+            UnicodeError,
+            ValidationError,
+            TypeError,
+            _StrictJSONError,
+        ):
+            raise BootstrapError("bootstrap.request_invalid") from None
+        receipt = (executor or _default_executor)(request)
+        if not isinstance(receipt, V5CatalogLocalBootstrapReceipt):
+            receipt = V5CatalogLocalBootstrapReceipt.model_validate(receipt)
+        _write_json(output_stream, receipt.model_dump(mode="json"))
+        return 0
+    except BootstrapError as exc:
+        code = exc.code
+    except V4AuditUnavailable:
+        code = "bootstrap.audit_unavailable"
+    except Exception:
+        code = "bootstrap.internal_error"
+    _write_json(
+        output_stream,
+        {
+            "schema_version": "1.0",
+            "status": "ERROR",
+            "error": {"code": code},
+        },
+    )
+    return 1
+
+
+if __name__ == "__main__":  # pragma: no cover - exercised through ``main``.
+    raise SystemExit(main())
+
+
+__all__ = [
+    "BootstrapError",
+    "V5CatalogLocalBootstrapReceipt",
+    "V5CatalogLocalBootstrapRequest",
+    "execute_v5_catalog_local_bootstrap",
+    "main",
+    "verify_v5_catalog_alembic_head",
+]

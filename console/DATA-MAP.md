@@ -24,6 +24,7 @@
 | Release | `GET /api/v1/releases[/{id}]` | Release aggregate | ✅；`UNKNOWN` 保持 fail-closed 语义 |
 | Notification | `GET /api/v1/notifications[/{id}]` | Notification aggregate | ✅；receipt 缺失显示 `UNKNOWN` |
 | Evidence bindings | `GET /api/v1/evidence?case_id=` | events、不可变 WorkOrder、完整性通过的 GateReport | ⚠️ 只证明 ref/digest 已记录；artifact 内容仍不可读取/验证 |
+| AI 应用目录（V5-1A） | `GET /api/v1/applications` | control-plane V5 catalog（`ai_applications` 等，每次读取重验 `record_envelope` digest） | ✅；任何行完整性重验失败即行级 `integrity_error`/`UNKNOWN` 并置 partial 警示，绝不作为可信数据 |
 
 ## 页面映射
 
@@ -35,6 +36,7 @@
 | `/approvals` | WorkOrders + ChangeSet lifecycle + Gate binding | 显示 exact hash、nonce、expiry、target revision、binding digest；任一完整性错误阻断可信展示 |
 | `/trust` | Gates、Trust ledger、Trust denials 三个独立请求 | `failed/error/skipped/integrity_error/UNBOUND/UNKNOWN` 不会被映射成整体 PASS |
 | `/operations` | Releases、Notifications、Evidence | 每个来源独立 loading/empty/error/retry；artifact 内容保持 `UNKNOWN` |
+| `/applications` | V5 catalog Applications read model | loading/empty/error/retry/stale；行级 integrity 重验失败置 `integrity_error`/`UNKNOWN` 并显示 partial 警示 |
 
 ## 验证
 

@@ -7,7 +7,7 @@ from collections.abc import Iterable
 from datetime import datetime, timezone
 from typing import Any, Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models.tables import (
@@ -784,3 +784,94 @@ def list_evidence_refs(
         "artifact_store": "unavailable",
         "warning": "artifact_content_unavailable",
     }
+
+
+# ------------------------------------------------------- 8. V5 AI application catalog
+
+
+def list_applications(
+    session: Session, *, limit: int = 500
+) -> dict[str, Any]:
+    """Read-only V5 catalog projection for the Console Applications page.
+
+    Revalidates every envelope digest on read.  A row whose digest or envelope
+    is invalid is projected as ``integrity_error``/``unknown`` — never as a
+    trusted application — and the response carries a partial warning.
+    """
+
+    from app.models.v5_tables import AIApplication, Environment, SystemComponent
+    from app.utils.v5_integrity import assert_v5_record_digest
+
+    rows = session.scalars(
+        select(AIApplication)
+        .order_by(AIApplication.created_at.desc(), AIApplication.application_id)
+        .limit(limit)
+    ).all()
+    items = []
+    partial = False
+    for row in rows:
+        envelope = row.envelope_payload
+        integrity_status = "verified"
+        integrity_error = None
+        trusted = None
+        try:
+            verified_digest = assert_v5_record_digest(envelope)
+            if verified_digest != row.record_digest:
+                raise ValueError("projected record_digest mismatch")
+            trusted = envelope
+        except Exception as exc:  # noqa: BLE001 - fail-closed projection
+            partial = True
+            integrity_error = (
+                f"v5.application_record_integrity_error:{type(exc).__name__}"
+            )
+            integrity_status = "integrity_error"
+        environment_count = int(
+            session.scalar(
+                select(func.count()).select_from(Environment).where(
+                    Environment.workspace_id == row.workspace_id,
+                    Environment.application_id == row.application_id,
+                )
+            )
+            or 0
+        )
+        component_count = int(
+            session.scalar(
+                select(func.count()).select_from(SystemComponent).where(
+                    SystemComponent.workspace_id == row.workspace_id,
+                    SystemComponent.application_id == row.application_id,
+                )
+            )
+            or 0
+        )
+        items.append(
+            {
+                "application_id": row.application_id,
+                "project_id": row.project_id,
+                "slug": row.slug if trusted is not None else "UNKNOWN",
+                "display_name": row.display_name if trusted is not None else "UNKNOWN",
+                "owner_principal_ids": (
+                    list(trusted.get("owner_principal_ids", []))
+                    if trusted is not None
+                    else []
+                ),
+                "criticality": row.criticality if trusted is not None else "UNKNOWN",
+                "data_classification": (
+                    row.data_classification if trusted is not None else "UNKNOWN"
+                ),
+                "governance_mode": row.governance_mode if trusted is not None else "UNKNOWN",
+                "lifecycle_state": row.lifecycle_state if trusted is not None else "UNKNOWN",
+                "revision": row.revision,
+                "record_digest": row.record_digest,
+                "recorded_by_principal": row.recorded_by_principal,
+                "environment_count": environment_count,
+                "component_count": component_count,
+                "created_at": _iso(row.created_at),
+                "updated_at": _iso(row.updated_at),
+                "integrity_status": integrity_status,
+                "integrity_error": integrity_error,
+            }
+        )
+    result: dict[str, Any] = {"items": items}
+    if partial:
+        result["warning"] = "partial_integrity_errors"
+    return result

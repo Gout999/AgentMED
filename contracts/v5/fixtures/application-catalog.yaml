@@ -1,0 +1,88 @@
+version: "0.2-draft"
+status: draft_contract_fixture
+runtime_status: NOT_RUN
+fixture_id: v5-1a-application-catalog
+
+# Seeds for the V5-1A application catalog vertical slice.  The register requests
+# are the exact wire payloads the runtime slice accepts; invariants encode the
+# fail-closed checks the service must enforce.
+
+seed_workspace_id: "ws_01J0000000000001"
+seed_project_id: "proj_01J0000000000001"
+seed_owner_principal_id: "prn_01J0000000000001"
+seed_catalog_principal_id: "prn_01J000000000000A"
+seed_controller_principal_id: "prn_01J000000000000B"
+
+applications:
+  - name: main_app
+    register_request:
+      schema_version: "2.0"
+      project_id: "proj_01J0000000000001"
+      slug: "case-review-assistant"
+      display_name: "Case Review Assistant"
+      owner_principal_ids: ["prn_01J0000000000001"]
+      criticality: "P1"
+      data_classification: "INTERNAL"
+      governance_mode: "MANAGED"
+  - name: other_project_app
+    register_request:
+      schema_version: "2.0"
+      project_id: "proj_01J0000000000002"
+      slug: "other-project-app"
+      display_name: "Other Project App"
+      owner_principal_ids: ["prn_01J0000000000001"]
+      criticality: "P2"
+      data_classification: "INTERNAL"
+      governance_mode: "MANAGED"
+
+environments:
+  - name: main_env
+    register_request:
+      schema_version: "2.0"
+      application_id: "app_01J0000000000001"
+      logical_name: "production"
+      risk_classification: "HIGH"
+
+components:
+  - name: agent_comp
+    register_request:
+      schema_version: "2.0"
+      application_id: "app_01J0000000000001"
+      component_kind: "AGENT"
+      logical_name: "triage-agent"
+      owner_principal_ids: ["prn_01J0000000000001"]
+      criticality: "P1"
+      data_classification: "INTERNAL"
+      permission_classification: "READ_WRITE"
+      effect_classification: "LOCAL"
+  - name: skill_comp
+    register_request:
+      schema_version: "2.0"
+      application_id: "app_01J0000000000001"
+      component_kind: "SKILL"
+      logical_name: "triage-skill"
+      owner_principal_ids: ["prn_01J0000000000001"]
+      criticality: "P2"
+      data_classification: "INTERNAL"
+      permission_classification: "READ_ONLY"
+      effect_classification: "NONE"
+
+dependency_edges:
+  - name: agent_to_skill
+    record_request:
+      schema_version: "2.0"
+      application_id: "app_01J0000000000001"
+      from_component_id: "cmp_01J0000000000001"
+      to_component_id: "cmp_01J0000000000002"
+      relation: "INVOKES"
+      required: true
+
+invariants:
+  duplicate_slug_same_project: CATALOG_CONFLICT
+  duplicate_environment_name_same_application: CATALOG_CONFLICT
+  duplicate_component_identity_same_application: CATALOG_CONFLICT
+  edge_self_reference: VALIDATION_FAILED
+  edge_cycle: VALIDATION_FAILED
+  cross_workspace_reference: RESOURCE_NOT_FOUND
+  unknown_owner_principal: VALIDATION_FAILED
+  missing_application_reference: RESOURCE_NOT_FOUND

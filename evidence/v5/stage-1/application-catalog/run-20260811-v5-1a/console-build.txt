@@ -1,0 +1,13 @@
+
+> caseloop-console@0.1.0 build
+> tsc -b && vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 57 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.47 kB │ gzip:  0.32 kB
+dist/assets/index-Ca6OQl9X.css   20.50 kB │ gzip:  4.52 kB
+dist/assets/index-CwBWV0Fz.js   232.28 kB │ gzip: 70.21 kB
+✓ built in 398ms

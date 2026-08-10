@@ -1,4 +1,5 @@
 import type {
+  ApplicationView,
   CaseDetail,
   CaseEvent,
   CaseEventsView,
@@ -276,6 +277,32 @@ const health: Guard<Healthz> = (value): value is Healthz => record(value)
   && nonEmptyString(value.status)
   && nonEmptyString(value.version);
 
+const application: Guard<ApplicationView> = (value): value is ApplicationView => record(value)
+  && nonEmptyString(value.application_id)
+  && nonEmptyString(value.project_id)
+  && (value.slug === "UNKNOWN" || nonEmptyString(value.slug))
+  && (value.display_name === "UNKNOWN" || nonEmptyString(value.display_name))
+  && Array.isArray(value.owner_principal_ids)
+  && value.owner_principal_ids.every((item) => typeof item === "string")
+  && (value.criticality === "UNKNOWN" || nonEmptyString(value.criticality))
+  && (value.data_classification === "UNKNOWN" || nonEmptyString(value.data_classification))
+  && (value.governance_mode === "UNKNOWN" || nonEmptyString(value.governance_mode))
+  && (value.lifecycle_state === "UNKNOWN" || nonEmptyString(value.lifecycle_state))
+  && integer(value.revision)
+  && typeof value.record_digest === "string"
+  && SHA256_DIGEST.test(value.record_digest)
+  && nonEmptyString(value.recorded_by_principal)
+  && integer(value.environment_count)
+  && integer(value.component_count)
+  && nullableString(value.created_at)
+  && nullableString(value.updated_at)
+  && (value.integrity_status === "verified"
+    || value.integrity_status === "integrity_error"
+    || value.integrity_status === "unknown")
+  && nullableString(value.integrity_error);
+
+const applicationList: Guard<ReadViewList<ApplicationView>> = readListGuard(application);
+
 export const guards = {
   health,
   environment,
@@ -295,4 +322,5 @@ export const guards = {
   notificationList: listGuard(notification),
   notification,
   evidenceResponse,
+  applicationList,
 };

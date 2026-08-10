@@ -26,7 +26,14 @@ _IDS = {
     "case": re.compile(r"^case_[0-9A-Za-z]{8,64}$"),
     "receipt": re.compile(r"^ter_[0-9A-Za-z]{8,64}$"),
     "cursor": re.compile(r"^cur_[0-9A-Za-z_-]{8,512}$"),
+    "application": re.compile(r"^app_[0-9A-Za-z]{8,64}$"),
+    "component": re.compile(r"^cmp_[0-9A-Za-z]{8,64}$"),
+    "edge": re.compile(r"^de_[0-9A-Za-z]{8,64}$"),
+    "principal": re.compile(r"^prn_[0-9A-Za-z]{8,64}$"),
 }
+
+_V1_COMMANDS = frozenset({"capabilities", "signal", "report", "case", "evidence"})
+_V2_COMMANDS = frozenset({"application", "environment", "system-component", "dependency-edge"})
 
 
 class SafeArgumentParser(argparse.ArgumentParser):
@@ -48,6 +55,88 @@ def _signal_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--idempotency-key")
 
 
+def _application_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--project-id", required=True)
+    parser.add_argument("--slug", required=True)
+    parser.add_argument("--display-name", required=True)
+    parser.add_argument("--owner-principal-id", action="append", required=True)
+    parser.add_argument("--criticality", choices=("P0", "P1", "P2", "P3"), required=True)
+    parser.add_argument(
+        "--data-classification",
+        choices=("PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"),
+        required=True,
+    )
+    parser.add_argument("--governance-mode", choices=("MANAGED", "OBSERVED"), required=True)
+    parser.add_argument("--idempotency-key")
+
+
+def _environment_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--application-id", required=True)
+    parser.add_argument("--logical-name", required=True)
+    parser.add_argument(
+        "--risk-classification", choices=("LOW", "MEDIUM", "HIGH", "CRITICAL"), required=True
+    )
+    parser.add_argument("--idempotency-key")
+
+
+def _component_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--application-id", required=True)
+    parser.add_argument(
+        "--component-kind",
+        choices=(
+            "APPLICATION_CODE",
+            "AGENT",
+            "MODEL_BINDING",
+            "PROMPT",
+            "DATASET",
+            "INDEX",
+            "EMBEDDING",
+            "RETRIEVER",
+            "SKILL",
+            "MCP_SERVER",
+            "TOOL_SCHEMA",
+            "POLICY",
+            "MEMORY_POLICY",
+            "RUNTIME_PROFILE",
+            "CONNECTOR",
+        ),
+        required=True,
+    )
+    parser.add_argument("--logical-name", required=True)
+    parser.add_argument("--owner-principal-id", action="append", required=True)
+    parser.add_argument("--criticality", choices=("P0", "P1", "P2", "P3"), required=True)
+    parser.add_argument(
+        "--data-classification",
+        choices=("PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"),
+        required=True,
+    )
+    parser.add_argument(
+        "--permission-classification",
+        choices=("READ_ONLY", "READ_WRITE", "ELEVATED"),
+        required=True,
+    )
+    parser.add_argument(
+        "--effect-classification", choices=("NONE", "LOCAL", "EXTERNAL"), required=True
+    )
+    parser.add_argument(
+        "--dataset-role", choices=("RUNTIME_DATA", "EVALUATION_DATA", "SEALED_HOLDOUT")
+    )
+    parser.add_argument("--idempotency-key")
+
+
+def _edge_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--application-id", required=True)
+    parser.add_argument("--from-component-id", required=True)
+    parser.add_argument("--to-component-id", required=True)
+    parser.add_argument(
+        "--relation",
+        choices=("DEPENDS_ON", "INVOKES", "DATA_FLOW", "CONTAINS", "REFERENCES"),
+        required=True,
+    )
+    parser.add_argument("--required", action="store_true")
+    parser.add_argument("--idempotency-key")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = SafeArgumentParser(prog="caseloop")
     parser.add_argument("--profile")
@@ -56,6 +145,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--token-env")
     parser.add_argument("--token-file")
     parser.add_argument("--token-stdin", action="store_true")
+    parser.add_argument(
+        "--api-version",
+        choices=("1", "2"),
+        default="1",
+        help="Explicit public API major; v2 commands require --api-version 2.",
+    )
     commands = parser.add_subparsers(dest="command", required=True, parser_class=SafeArgumentParser)
 
     capabilities = commands.add_parser("capabilities")
@@ -79,6 +174,42 @@ def build_parser() -> argparse.ArgumentParser:
     evidence = commands.add_parser("evidence")
     evidence_get = evidence.add_subparsers(dest="action", required=True, parser_class=SafeArgumentParser).add_parser("get")
     evidence_get.add_argument("receipt_id")
+
+    application = commands.add_parser("application")
+    application_actions = application.add_subparsers(
+        dest="action", required=True, parser_class=SafeArgumentParser
+    )
+    application_register = application_actions.add_parser("register")
+    _application_options(application_register)
+    application_get = application_actions.add_parser("get")
+    application_get.add_argument("application_id")
+
+    environment = commands.add_parser("environment")
+    environment_actions = environment.add_subparsers(
+        dest="action", required=True, parser_class=SafeArgumentParser
+    )
+    environment_register = environment_actions.add_parser("register")
+    _environment_options(environment_register)
+    environment_get = environment_actions.add_parser("get")
+    environment_get.add_argument("environment_id")
+
+    component = commands.add_parser("system-component")
+    component_actions = component.add_subparsers(
+        dest="action", required=True, parser_class=SafeArgumentParser
+    )
+    component_register = component_actions.add_parser("register")
+    _component_options(component_register)
+    component_get = component_actions.add_parser("get")
+    component_get.add_argument("component_id")
+
+    edge = commands.add_parser("dependency-edge")
+    edge_actions = edge.add_subparsers(
+        dest="action", required=True, parser_class=SafeArgumentParser
+    )
+    edge_record = edge_actions.add_parser("record")
+    _edge_options(edge_record)
+    edge_get = edge_actions.add_parser("get")
+    edge_get.add_argument("edge_id")
     return parser
 
 
@@ -132,6 +263,11 @@ def run(
     clock = now or (lambda: datetime.now(timezone.utc))
     try:
         args = build_parser().parse_args(argv)
+        api_major = args.api_version
+        if api_major == "2" and args.command in _V1_COMMANDS:
+            raise CliError("API_MAJOR_MISMATCH", ExitFamily.INPUT)
+        if api_major == "1" and args.command in _V2_COMMANDS:
+            raise CliError("API_VERSION_REQUIRED", ExitFamily.INPUT)
         profile_path = args.profile or actual_env.get("CASELOOP_PROFILE")
         profile = load_profile(profile_path) if profile_path else {}
         api_url = _required(
@@ -160,6 +296,130 @@ def run(
 
         if args.command == "capabilities":
             result = client.request("GET", "/api/v1/capabilities")
+        elif args.command == "application" and args.action == "register":
+            idem = args.idempotency_key or f"application-register-{uuid_factory().hex}"
+            if not 8 <= len(idem) <= 128:
+                raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+            if len(args.slug) > 64 or len(args.display_name) > 256:
+                raise CliError("APPLICATION_INPUT_INVALID", ExitFamily.INPUT)
+            payload = {
+                "schema_version": "2.0",
+                "project_id": _valid_id(args.project_id, "project", required=True),
+                "slug": args.slug,
+                "display_name": args.display_name,
+                "owner_principal_ids": [
+                    _valid_id(item, "principal", required=True)
+                    for item in args.owner_principal_id
+                ],
+                "criticality": args.criticality,
+                "data_classification": args.data_classification,
+                "governance_mode": args.governance_mode,
+            }
+            result = client.request(
+                "POST",
+                "/api/v2/applications",
+                body=json.dumps(
+                    payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                ).encode("utf-8"),
+                idempotency_key=idem,
+                api_major=2,
+            )
+        elif args.command == "application" and args.action == "get":
+            application_id = _valid_id(args.application_id, "application", required=True)
+            result = client.request(
+                "GET", f"/api/v2/applications/{application_id}", api_major=2
+            )
+        elif args.command == "environment" and args.action == "register":
+            idem = args.idempotency_key or f"environment-register-{uuid_factory().hex}"
+            if not 8 <= len(idem) <= 128:
+                raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+            if len(args.logical_name) > 128:
+                raise CliError("ENVIRONMENT_INPUT_INVALID", ExitFamily.INPUT)
+            payload = {
+                "schema_version": "2.0",
+                "application_id": _valid_id(args.application_id, "application", required=True),
+                "logical_name": args.logical_name,
+                "risk_classification": args.risk_classification,
+            }
+            result = client.request(
+                "POST",
+                "/api/v2/environments",
+                body=json.dumps(
+                    payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                ).encode("utf-8"),
+                idempotency_key=idem,
+                api_major=2,
+            )
+        elif args.command == "environment" and args.action == "get":
+            environment_id = _valid_id(args.environment_id, "environment", required=True)
+            result = client.request(
+                "GET", f"/api/v2/environments/{environment_id}", api_major=2
+            )
+        elif args.command == "system-component" and args.action == "register":
+            idem = args.idempotency_key or f"component-register-{uuid_factory().hex}"
+            if not 8 <= len(idem) <= 128:
+                raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+            if len(args.logical_name) > 128:
+                raise CliError("COMPONENT_INPUT_INVALID", ExitFamily.INPUT)
+            payload = {
+                "schema_version": "2.0",
+                "application_id": _valid_id(args.application_id, "application", required=True),
+                "component_kind": args.component_kind,
+                "logical_name": args.logical_name,
+                "owner_principal_ids": [
+                    _valid_id(item, "principal", required=True)
+                    for item in args.owner_principal_id
+                ],
+                "criticality": args.criticality,
+                "data_classification": args.data_classification,
+                "permission_classification": args.permission_classification,
+                "effect_classification": args.effect_classification,
+                # Always present so the request fingerprint covers the same
+                # canonical fields as the server-side model dump.
+                "dataset_role": args.dataset_role,
+            }
+            result = client.request(
+                "POST",
+                "/api/v2/system-components",
+                body=json.dumps(
+                    payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                ).encode("utf-8"),
+                idempotency_key=idem,
+                api_major=2,
+            )
+        elif args.command == "system-component" and args.action == "get":
+            component_id = _valid_id(args.component_id, "component", required=True)
+            result = client.request(
+                "GET", f"/api/v2/system-components/{component_id}", api_major=2
+            )
+        elif args.command == "dependency-edge" and args.action == "record":
+            idem = args.idempotency_key or f"edge-record-{uuid_factory().hex}"
+            if not 8 <= len(idem) <= 128:
+                raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+            payload = {
+                "schema_version": "2.0",
+                "application_id": _valid_id(args.application_id, "application", required=True),
+                "from_component_id": _valid_id(
+                    args.from_component_id, "component", required=True
+                ),
+                "to_component_id": _valid_id(args.to_component_id, "component", required=True),
+                "relation": args.relation,
+                "required": args.required,
+            }
+            result = client.request(
+                "POST",
+                "/api/v2/dependency-edges",
+                body=json.dumps(
+                    payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                ).encode("utf-8"),
+                idempotency_key=idem,
+                api_major=2,
+            )
+        elif args.command == "dependency-edge" and args.action == "get":
+            edge_id = _valid_id(args.edge_id, "edge", required=True)
+            result = client.request(
+                "GET", f"/api/v2/dependency-edges/{edge_id}", api_major=2
+            )
         elif args.command == "case" and args.action == "get":
             case_id = _valid_id(args.case_id, "case", required=True)
             result = client.request("GET", f"/api/v1/cases/{case_id}")

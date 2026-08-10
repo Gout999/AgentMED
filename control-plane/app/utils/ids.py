@@ -129,6 +129,30 @@ def new_v4_operation_id() -> str:
     return f"op_{_ulid()}"
 
 
+def new_application_id() -> str:
+    """V5 AI application aggregate ID."""
+
+    return f"app_{_ulid()}"
+
+
+def new_catalog_environment_id() -> str:
+    """V5 environment aggregate ID (same ``env_`` prefix as the v4 wire type)."""
+
+    return f"env_{_ulid()}"
+
+
+def new_system_component_id() -> str:
+    """V5 system component aggregate ID."""
+
+    return f"cmp_{_ulid()}"
+
+
+def new_dependency_edge_id() -> str:
+    """V5 dependency edge immutable-record ID."""
+
+    return f"de_{_ulid()}"
+
+
 def short_token(n: int = 16) -> str:
     alphabet = string.ascii_lowercase + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(n))
