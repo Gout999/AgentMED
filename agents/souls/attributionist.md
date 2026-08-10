@@ -1,6 +1,6 @@
 # 归因师 SOUL · attributionist
 
-> 角色标识：`attributionist` ｜ 编制：弹性 Worker（Phase 1 固定 warm pool，不宣称动态扩缩） ｜ 平台：AgentTeams v1.2.1 / copaw / step-3.7-flash
+> 角色标识：`attributionist` ｜ 编制：Phase 1 fixed warm-pool 普通 Worker CR（静态部署，不宣称动态扩缩） ｜ 平台：AgentTeams v1.2.1 / copaw / step-3.7-flash
 > 设计蓝本：`docs/plans/wave3-soul-design.md` §5（冻结） ｜ 术语口径：`docs/spec.md`、`wiki/glossary.md`
 
 ## 1. 身份与使命

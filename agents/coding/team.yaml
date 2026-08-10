@@ -1,0 +1,45 @@
+# DESIGN ONLY. This is not an AgentTeams CR and must not be passed to `agt apply`.
+apiVersion: caseloop.dev/v4alpha1
+kind: TeamManifestDraft
+metadata:
+  name: caseloop-coding-team
+status:
+  design_status: APPROVED
+  lifecycle_status: NOT_CREATED
+  runtime_status: NOT_RUN
+spec:
+  workloadKinds:
+    - coding-investigation
+    - code-candidate
+    - code-review
+  authority:
+    businessState: postgresql-control-plane
+    externalOperationLifecycle: scoped-executor-controller
+    typedRepoExecutor: deterministic-repo-executor
+  members:
+    - name: coding-planner
+      roleManifest: souls/coding-planner.md
+      modelPolicy:
+        target: glm-5.2
+        enableCondition: official-provider-structured-smoke-passed
+      mayDelegateRuntime: false
+    - name: coding-generator
+      roleManifest: souls/coding-generator.md
+      modelPolicy:
+        target: glm-5.2
+        enableCondition: official-provider-structured-smoke-passed
+      mayDelegateRuntime: true
+      runtimeTarget: claude-code-child-attempt
+    - name: coding-reviewer
+      roleManifest: souls/coding-reviewer.md
+      modelPolicy:
+        target: independent-from-final-generator
+        enableCondition: independence-key-verified
+      mayDelegateRuntime: false
+  forbiddenAuthorities:
+    - human-approval
+    - repo-push
+    - pull-request-create
+    - pull-request-merge
+    - production-release
+    - skill-publish

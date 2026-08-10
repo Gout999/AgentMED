@@ -1,28 +1,30 @@
 # agents/ —— CaseLoop Agent 团队定义
 
-> T5 成稿，钉 AgentTeams **v1.2.1**。团队名：`caseloop-team`。
-> 设计蓝本（冻结）：`docs/plans/wave3-soul-design.md`。组织与仲裁：`docs/spec.md` §8。
+> 当前可部署基线是 v3 `caseloop-team`，钉 AgentTeams **v1.2.1**；v4 不把这六个质量治理 Worker 重命名成 coding Agent。
+> 新 `caseloop-coding-team` 仍是 **APPROVED DESIGN / NOT CREATED / NOT RUN**。组织与仲裁的当前兼容基线见 `docs/spec.md` §8，v4 目标见 `docs/plan-v4.md` §6。
 
 ## 目录
 
 | 文件 | 内容 |
 |------|------|
-| `team.yaml` | 6 Worker CR（4 常设 + 2 弹性 warm pool）+ Team CR + Human CR（审批人），`soul` 内联 |
+| `team.yaml` | 6 个静态普通 Worker CR（4 个常设职责 + 2 个 Phase 1 fixed warm-pool）+ Team CR + Human CR（审批人），`soul` 内联；不含动态模板/扩缩能力 |
 | `souls/quality-officer.md` | 质量官（Team Leader，常设）：分诊/领单/升级/扩缩容申请 |
 | `souls/collector.md` | 采集员（常设）：投诉取证 → badcase + 候选探针 |
 | `souls/gatekeeper.md` | 守门员（常设）：门禁主持 + 放行一票否决 |
 | `souls/case-officer.md` | 案例官（常设）：沉淀/案例库唯一写权/周报 |
-| `souls/attributionist.md` | 归因师（弹性）：实验计划建议 + 报告解读 |
-| `souls/repairer.md` | 修复师（弹性）：自由起草修复 → 不可变 WorkOrder |
+| `souls/attributionist.md` | 归因师（Phase 1 fixed warm-pool 普通 Worker CR）：实验计划建议 + 报告解读 |
+| `souls/repairer.md` | 修复师（Phase 1 fixed warm-pool 普通 Worker CR）：自由起草修复 → 不可变 WorkOrder |
 | `skills/caseloop-b1-loop/SKILL.md` | 六角色共用的 B1 taskflow/MCP/证据纪律；live evidence 绑定此文件 digest |
 | `RUNBOOK.md` | 从零到团队可领单的安装 runbook（16 步，Step 0–15） |
 | `scripts/verify-soul-sync.py` | 校验 `team.yaml` 内联 soul 与 `souls/*.md` 逐字一致（防漂移） |
 | `OPEN-ISSUES.md` | 成稿对冻结设计的异议与解释（待主控裁决） |
 | `spike/` | Phase 0A 平台验证用的最小团队（非最终定义，勿部署为正式团队） |
+| `coding/` | v4 三角色 Coding Team 的 design-only manifest/SOUL；不是 AgentTeams CR，Stage 2C 前禁止 `agt apply` |
 
 ## 关键事实
 
 - **编制**：6 Worker 全部在 Team 内，`quality-officer` 为唯一 `team_leader`；审批人 Human 为 `caseloop-approver`（Team admin）。
+- **双 Team 边界**：现有六人 Team 负责质量调查与 v3 客服 Scenario；未来 Coding Team 另含 `coding-planner`、`coding-generator`、`coding-reviewer`。Claude Code 是受控 child runtime，不是当前第七个 Worker，也不能在 Manager 身份下代跑后冒充 Agent。
 - **MCP 挂载**：`spec.mcpServers` 指向 Higress 网关 `/mcp-servers/<name>/mcp`；Authorization 由 controller 从 `/data/worker-creds/<name>.env` 自动注入。
 - **交接**：产物一律落 `shared/tasks/{task-id}/`，经 taskflow ack/submit 自动同步（S0-003）。
 - **B1 Skill**：六个 Worker 的 `spec.skills` 都固定为 `caseloop-b1-loop`；未取得 taskflow、Matrix 及该 Skill digest 回执时，live B1 不得通过。

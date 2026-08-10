@@ -1,8 +1,6 @@
- item="赛道2：Agent 可观测与治理的商业版图。调研对象：LangSmith、Langfuse、Braintrust、AgentOps、Helicone、Arize Phoenix、Weights&amp;Biases Weave、Patronus AI、Galileo、Freeplay、Vellum、LangWatch、Keywords AI、Traceloop/OpenLLMetry。逐个回答：①它属于'看'(观测/trace)、'考'(离线评测)、'修'(自动修复/优化)、'管'(权限/审批/发布治理)哪几类 ②定价与免费额度 ③最新融资轮次与金额(2024-2026) ④客户案例类型。重点回答：'从发现 badcase 到修复上线'的闭环有没有商业产品在做？prompt/配置的版本管理与发布审批(prompt CMS、Humanloop、PromptLayer、Agenta、Pezzo)有没有跟评测门禁和灰度发布打通？缺口在哪一层" outcome="completed">调研完成，共执行 30+ 次有效搜索与 2 次官网抓取，关键事实均双源交叉。以下为赛道 2 报告。
-
----
-
 # 赛道 2 调研报告：Agent 可观测与治理的商业版图
+
+> **阅读口径更新（2026-08-10）**：本文是 2026-08-09 的商业能力快照，不是需求、PMF 或完整市场证明。融资、并购、红海、空白和窗口期只提供环境信号，不拥有产品裁决权；“没有产品/无人做”仅表示当次公开样本未发现。已有项目首先是参考、兼容和依法复用对象，是否集成或自行实现以 `docs/product-principles.md` 与目标用户需求为准。
 
 调研时间：2026-08；来源以 2025–2026 年官方公告/权威媒体为主。标注约定：【事实】=有来源，【推断】=我的判断。
 
@@ -57,15 +55,15 @@
 
 **Statsig / Adaline（补充）** — Statsig（实验/灰度平台）2025-05 融 $100M @ $1.1B，**2025-09-02 被 OpenAI 以 $1.1B 全股票收购**（[OpenAI 官方](https://openai.com/index/vijaye-raji-to-become-cto-of-applications-with-acquisition-of-statsig/)；[GeekWire](https://www.geekwire.com/2025/openai-acquires-statsig-for-1-1b-names-ceo-to-key-exec-role-in-surprise-exit-for-seattle-area-unicorn/)）。Adaline 是新出现的 **prompt 发布治理**产品：environments、approvals、promotion、rollback、**eval gates 可阻断 promotion**（[官网对比文 2026-04](https://www.adaline.ai/blog/promptlayer-alternative)，厂商自述，成熟度待验证）。
 
-## 3. 与 CaseLoop 的对照表
+## 3. 与 CaseLoop 的能力参考表
 
-| 直接可用（平移） | 需改造可用 | 确认是缺口 |
+| 可优先评估复用 | 需适配或补充 | 本轮样本未见相同组合 |
 |---|---|---|
-| OTel/GenAI trace 管道作取证数据源（OpenLLMetry 已成事实标准，Langfuse/Phoenix 可自托管） | 用户反馈收集（Langfuse/LangSmith feedback）→ 接立案去重幂等才是投诉入口 | **归因层**：双臂对照实验+Δ效应量+95%CI+三态裁决——无任何商业产品（现有全部是对比打分，无统计推断） |
+| OTel/GenAI trace 管道作取证数据源（OpenLLMetry、Langfuse/Phoenix 等可评估） | 用户反馈收集（Langfuse/LangSmith feedback）→ 接立案去重幂等成为一种 Signal 入口 | **归因层**：本轮样本未见双臂对照实验+Δ效应量+95%CI+三态裁决的完全相同产品组合 |
 | LLM-as-judge 做双轨评测第二轨（Langfuse/Braintrust/Patronus 裁判能力成熟） | AI debugger（Percival/Polly/Loop）→ 降级为"假设生成器"，其建议必须进工单过门禁，不能直接生效 | **不可变 WorkOrder（hash 绑定、"批的是 hash"）**——Adaline/LaunchDarkly 有审批流但无不可变工件 |
-| CI 评测门禁模式（Braintrust eval-action、Langfuse CI/CD gates 2026-05）——市场已接受"考不过不上线" | 在线评测（Weave Online Evals、Langfuse 生产打分）→ 改造成灰度期质量哨兵 | **信任账本（Wilson 下界放权计量）**——全市场无人做 |
+| CI 评测门禁模式（Braintrust eval-action、Langfuse CI/CD gates 2026-05） | 在线评测（Weave Online Evals、Langfuse 生产打分）→ 作为灰度期质量哨兵 | **信任账本（Wilson 下界放权计量）**——本轮样本未见相同实现，阈值仍需验证 |
 | prompt 版本管理+label 发布（Langfuse/PromptLayer）做版本集的 prompt 分量 | LaunchDarkly 式 progressive rollout → 借鉴其灰度编排，但绑回 CaseLoop 门禁与裁判 | **agent 配置快照整体版本化**（prompt+skills+工具 schema+模型+harness）——prompt CMS 全是 prompt 粒度 |
-| 事故转回归数据集（Braintrust trace→dataset 一键转化已验证此模式） | | **投诉→回复原处的业务闭环**（立案-处置-回复-记账全链）——无人做 |
+| 事故转回归数据集（Braintrust trace→dataset） | | **Signal→Case→Closure 业务闭环**——本轮样本未见相同整链；投诉/回复原处只是客服适配器 |
 
 ## 4. 关键事实清单（10 条）
 
@@ -78,17 +76,17 @@
 7. CoreWeave 2025-05-05 完成 $1.7B 收购 W&B（Weave 母公司） — [CoreWeave](https://www.coreweave.com/blog/coreweave-completes-acquisition-of-weights-biases)
 8. ServiceNow 2026-03 收购 Traceloop（据报道 $60–80M）并入 AI Control Tower 治理面 — [Traceloop](https://traceloop.com/blog/traceloop-is-joining-servicenow)、[ServiceNow](https://newsroom.servicenow.com/press-releases/details/2026/ServiceNow-expands-AI-Control-Tower-to-discover-observe-govern-secure-and-measure-AI-deployed-across-any-system-in-the-enterprise/default.aspx)
 9. Arize 2025-02-20 融 $70M Series C（累计 ~$135M）主打 agentic evaluation — [PR Newswire](https://www.prnewswire.com/news-releases/arize-ai-secures-70m-series-c-to-fix-ais-biggest-problem-making-llms-and-ai-agents-work-in-the-real-world-302381601.html)
-10. LaunchDarkly AI Configs 2025-09 上线 approvals，是市场唯一原生"prompt 渐进放量+审批"产品 — [官方](https://launchdarkly.com/blog/introducing-agents-trends-approvals-ai-configs/)
+10. LaunchDarkly AI Configs 2025-09 上线 approvals；在本轮样本中，它是少数把 prompt 渐进放量与审批放在一起的产品之一 — [官方](https://launchdarkly.com/blog/introducing-agents-trends-approvals-ai-configs/)
 
 ## 5. 对 CaseLoop-for-Agents 的设计启示
 
-1. **端到端闭环主线必须保留，它是空位**："考→CI 门禁"已被 Braintrust/Langfuse 验证、"管→灰度→审批"已被 LaunchDarkly 验证，但没人把"发现→归因→修复→门禁→审批→灰度"串成一条流水线。单点功能我们都不该重造，价值在串联与状态机权威（确定性控制面）。
-2. **归因（双臂对照实验）是全市场真空，可做核心差异**：Percival/Polly/Loop 证明了"AI 给修复建议"的市场需求成立，但它们都是黑盒建议、无统计归因、无三态裁决，且建议可直接被人随手采纳——无工件约束。我们的 Δ+CI+裁决+不可变工单应正面打这个差异，而非和他们比"建议质量"。
-3. **取证层不自建，站在 OTel/Langfuse/Phoenix 之上**：OpenLLMetry 已是插桩事实标准（被 IBM/Dynatrace 采用），trace 存储和可视化是红海，重造毫无价值；CaseLoop 的 Quality API 契约应规定"给日志"= 标准 OTel GenAI span。
-4. **版本集定义要扩到 agent 配置快照，这是 prompt CMS 的教训**：所有 prompt CMS（含已死的 Humanloop）只版本化 prompt 文本+模型参数；skills、工具 schema、harness 的版本化无人做。agent 场景下"改工具 schema"和"改 prompt"同等地改变行为，快照必须整体 hash。
-5. **"修"保持自由起草+建议级定位，不追自动优化**：市场上所有自动优化（Loop、Percival 建议、LangWatch DSPy 优化）都只优化 prompt 一个变量；CaseLoop 的三层归因（prompt/知识库/模型）+ 工单约束本身就是更严的框架，不要被"auto-optimize"叙事带偏。
-6. **窗口期有限，警惕平台方内置**：LangChain（Polly+Insights Agent+Deployment）、ClickHouse/Langfuse（CI gates 刚上线）、ServiceNow（Control Tower+Traceloop+Veza 权限图）都在向闭环方向移动，OpenAI 直接买走了灰度层（Statsig）。"治理闭环"的认知会在 12–24 个月内被这些平台教育，先发叙事要抢"归因+信任账本"这两个他们架构里最难补的部分。
+1. **把端到端闭环作为待验证用户工作**：Braintrust/Langfuse 的门禁和 LaunchDarkly 的发布治理可直接参考。CaseLoop 是否持有整链，以目标用户是否需要跨系统 Case、证据与发布仲裁为准；单点能力默认先做复用评估。
+2. **把实验归因作为需要实证的机制**：Percival/Polly/Loop 可作为假设生成器参考。CaseLoop 的 Δ+CI+三态裁决和不可变工单要在真实 workload 上证明决策价值，不以市场空位作为依据。
+3. **TraceSource 采用 adapter-first，但保留实现权**：优先兼容 OTel/Langfuse/Phoenix；若数据完整性、国内私有部署、权限、可靠性或退出机制不满足，可实现必要的采集、查询和证据固化能力。
+4. **VersionSet 应覆盖影响行为的 Agent 配置**：prompt、skill、tool schema、model、harness 以及可能的 memory/policy 都会改变行为。最小集合和 hash 规则要从重现与审批需求推导，不能只因本轮样本未见就直接定稿。
+5. **候选修复保持可插拔**：既支持人工/Agent 自由起草，也允许接入自动优化器；所有候选受同一 WorkOrder、Gate 和 Approval 约束，是否内置优化能力由用户需求与维护成本决定。
+6. **平台演进只作为兼容性输入**：持续跟踪 LangChain、Langfuse、ServiceNow、OpenAI 等接口与能力，用于减少重复工程和设计迁移路径，不用窗口期或先发叙事决定优先级。
 
-## 6. 一句话结论
+## 6. 当前综合结论
 
-商业版图上"看"和"考"已是红海并正被巨头并购整合，"修"全部停留在 AI 建议级，"管"的灰度与审批只在 feature-flag 公司手里且与评测门禁互不相通——**从 badcase 到修复上线的端到端闭环没有商业产品在做，其中归因实验、不可变工单、信任账本三层是彻底空白，但这个空白正被 LangChain、ClickHouse、ServiceNow、OpenAI 从两端快速蚕食**。</subagent>
+本轮样本显示 trace、eval、候选优化、版本与发布治理已有大量可参考组件，但没有在同一产品中看到完全相同的 CaseLoop 精确链路。这个观察用于设计集成与验证清单，不证明全球空白，也不决定 CaseLoop 的范围；端到端能力是否由项目持有，取决于目标用户的闭环、数据和控制需求。

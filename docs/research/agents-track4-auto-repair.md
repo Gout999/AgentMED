@@ -1,8 +1,6 @@
- item="赛道4：Agent 自动修复与自我改进机制。调研对象：DSPy/MIPRO、TextGrad、APE/OPRO/EvoPrompt 等 prompt 自动优化器；Reflexion、Self-Refine、CRITIC 等自我修正；Voyager 式 skill 库自增长、ACE(Agentic Context Engineering)式上下文演化；OpenAI 的自动化 prompt 优化、Anthropic 的 prompt improver；工业界有没有'人类审批在环'的 agent 配置修复流水线先例。重点回答：①自动优化器在真实生产环境的采用度与效果数据（不是论文数字）②skill/工具的自动创建与版本管理有没有成型的工程模式（候选→回放验证→上架）③全自动修复 vs 人工审批修复的边界业界怎么划——我们'修复自由起草但 WorkOrder 必须人批'的立场是主流还是异类" outcome="completed">调研完成，共 13 次搜索 + 4 次全文抓取，关键声明均有双源交叉验证。以下是赛道 4 的报告。
-
----
-
 # 赛道 4 调研报告：Agent 自动修复与自我改进机制
+
+> **阅读口径更新（2026-08-10）**：本文是 2026-08-09 的研究快照。供应商生产数字与 ROI 多为项目方自述；“成熟/无人占据/不要自研”不再直接决定 CaseLoop 的产品范围。应先定义可插拔 Repair Proposer 契约，再按真实 workload 的质量、成本、许可证、数据边界与可控性选择 GEPA 等现有实现、依法复用或自行实现。
 
 ## 1. 全景地图
 
@@ -49,10 +47,10 @@
 | DGM 式自改 agent 配置/代码 | **需改造可用** | 论文自证必须沙箱+人监督+lineage；其 reward hacking 记录是 CaseLoop 控制面铁律的最佳反面教材 |
 | TextGrad / 云厂商 prompt optimizer | **需改造可用** | 前者需自建反馈工程；后者是人工辅助工具，可作起草环节的人机界面 |
 | Reflexion/Self-Refine 内在自我批评 | **不建议采用** | 无外部信号时不可靠，只能作为运行时技巧，不能当质量改进机制 |
-| 全配置快照（prompt+skill 清单+工具 schema+模型+harness）统一版本化 + hash 绑定 | **确认是缺口** | registry 只管 prompt 单维；Skills 无 SemVer/回滚；无人做跨层快照与内容 hash 审批 |
-| 修复前的归因实验（判定故障在 prompt/知识/模型哪一层） | **确认是缺口** | GEPA/MIPRO 全局优化但不归因此次失败；ACE/DGM 亦不区分故障层 |
-| 演化产物的回放/conformance 验证 | **确认是缺口** | 《Beyond Task Completion》(2026) 明确指出 tool-evolving agent 的 verification-vs-conformance gap 是未解问题（[arXiv:2604.00392](https://arxiv.org/html/2604.00392v2)） |
-| 案例库→回归考题→信任账本（Wilson 下界放权） | **确认是缺口** | 无任何产品/论文做治理化的案例复用与信任量化晋升 |
+| 全配置快照（prompt+skill 清单+工具 schema+模型+harness）统一版本化 + hash 绑定 | **本轮样本未见相同组合** | registry 多聚焦 prompt；通用组件集合与审批语义仍需需求验证 |
+| 修复前的归因实验（判定故障组件） | **本轮样本未见相同组合** | GEPA/MIPRO 优化全局指标，不直接归因单次失败；CaseLoop 机制仍需实证 |
+| 演化产物的回放/conformance 验证 | **研究明确提出缺口** | 《Beyond Task Completion》(2026) 指出 tool-evolving agent 的 verification-vs-conformance gap（[arXiv:2604.00392](https://arxiv.org/html/2604.00392v2)） |
+| 案例库→回归考题→信任账本 | **本轮样本未见相同治理组合** | 阈值、样本独立性与用户价值仍需验证 |
 
 ## 4. 关键事实清单（10 条）
 
@@ -69,13 +67,13 @@
 
 ## 5. 对 CaseLoop-for-Agents 的设计启示
 
-1. **"修复自由起草、WorkOrder 必须人批"是主流立场，且可以更强硬地营销。** 证据链：前沿实验室自己的优化器（OpenAI/Anthropic）全部是人采纳的辅助工具；prompt registry 品类把"审批流"做成标准功能；AgentOps 部署指南标配 sandbox→shadow→canary+审批（如 [Teradata AgentOps](https://www.teradata.com/insights/ai-and-machine-learning/agentops-how-to-run-ai-agents)，2025-11）；EU AI Act Art.14 把有效人监写成法规。全自动派只活在研究沙箱（DGM）或离线 compile（DSPy/GEPA 编译完由人部署）。CaseLoop 的差异化不在"有人批"，而在"批的是 hash"——registry 批的是 label/版本指针，内容可被改指；**hash 绑定是比业界现有审批更强的保证，应作为卖点**。
-2. **修复起草层直接接入 GEPA 系引擎，不要自研优化算法。** GEPA 已证明"几次 rollout 反思即可产出修复"且有 MLflow 生产集成；CaseLoop 的价值在其上游（归因实验判定修哪一层）和下游（门禁/审批/灰度），这正是 GEPA 没有的两端——GEPA 全局优化指标但**不归因单次故障**，与 CaseLoop 互补而非竞争。
+1. **保留“候选自由起草、确切内容受控发布”的边界。** 现有优化器、registry 和 AgentOps 流程可作为参考。WorkOrder 是否必须逐次人批应按风险等级决定，但审批对象必须绑定不可变内容与证据，不能只批准可变 label。
+2. **先定义可插拔 Repair Proposer 契约。** GEPA/DSPy 可作为首个候选，用真实 workload 的质量、成本、许可证、数据边界和可控性验收；如果现有实现不能满足目标用户，不排除内置或独立实现。
 3. **门禁必须坚持"外部可验证信号 + 裁判≠运动员"，并新增"防 reward hacking"显式设计。** Reflexion 系的失败实证（Huang et al.）+ DGM 自曝的两次作弊（伪造测试日志、破坏检测函数）共同证明：被优化对象与评判信号同源必被钻空子。CaseLoop 的不可变 WorkOrder（防止优化过程顺手改考题）恰好是这个问题的工程解——建议把 DGM 案例写进文档作为设计依据。
-4. **skill 生命周期采用"Voyager 验证入库 + skill-creator 评测回路 + SKILL.md 打包"作底，补上业界全缺的治理层。** 即：候选 skill → 冻结任务集回放（不只验证"这次任务完成"，还验证"没破坏旧能力"——conformance gap 是 2026 年论文点名的未解问题）→ hash 上架 → 可回滚。Anthropic Skills 至今无 SemVer/回滚，这里可以直接做出差异化。
-5. **案例库→回归考题的定位可以借 ACE/ReasoningBank 的叙事但划清界限。** 它们做"无人监管的在线经验自策展"，CaseLoop 做"治理化的经验固化"（事故立案→人审入库→变回归考题）。前者已证明经验复用的收益（+10.6%/+8.3%），CaseLoop 补上的是去重幂等、审批与回滚——叙事上是"ACE 的治理版"，技术上是互补壳层。
+4. **skill 生命周期可参考 Voyager、skill-creator 与 SKILL.md。** 候选 skill → 冻结任务回放 → 旧能力 conformance → hash 上架 → 可回滚是一项待验证方案；优先复用成熟格式和工具，必要时实现缺失的治理绑定。
+5. **案例到回归资产可借鉴 ACE/ReasoningBank。** 论文收益不能直接外推到 CaseLoop；去重、人工确认、回滚和回归转化的具体价值要在目标用户流程中验证。
 6. **需要如实承认的一点**：DSPy 系的生产数字全部来自项目方自述，无独立审计；"prompt 优化器在生产的真实渗透率"没有任何权威第三方数据（Chris Potts 2025-11 在 DSPy Meetup 的演讲标题就叫"Why Are Prompt Optimizers Still So Underrated?"——侧面说明采用度仍低于热度）。【推断】这意味着 CaseLoop-for-Agents 不应假设客户已在用自动优化器，而应把"起草引擎"做成可插拔。
 
-## 6. 一句话结论
+## 6. 当前综合结论
 
-自动修复的"起草"环节（GEPA 系反思式优化）已达到生产可用并被 Databricks 产品化，"发布治理"环节（版本/审批/灰度）在 prompt 单维已是成熟商品，但**跨层归因、全配置快照 hash 绑定、演化产物回放验证这三者叠加的闭环无人占据**——CaseLoop"人批 hash 工单"的立场恰是业界主流与监管要求的交汇点，其真正的差异化在门禁与归因，而不是人批本身。</subagent>
+候选起草和 prompt 版本/审批已有可参考实现，CaseLoop 应把生成器做成可插拔能力，并用独立门禁、不可变工单和真实工作负载决定是否采用候选。跨层归因、全配置绑定和演化产物回放是待验证的用户需求与工程组合，不用“无人占据”来证明其优先级。

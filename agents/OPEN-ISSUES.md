@@ -52,10 +52,10 @@
 - **成稿做法**：`agents/team.yaml` Team 仅用 `description`（目标并入），不写 `goal`。
 - **建议**：**采纳**；团队目标若需结构化，Phase 2 由控制面维护。
 
-## 7. 弹性模板的 Phase 1 口径
+## 7. Phase 1 fixed warm-pool 普通 Worker CR 口径
 
-- **冻结设计**：wave3 §7「attributionist / repairer 以 worker 模板形式定义；Phase 1 固定 warm pool，不宣称动态扩缩」。
-- **成稿做法**：二者以普通 Worker CR 部署（与常设一致），SOUL 头部标注"弹性 Worker（Phase 1 固定 warm pool，不宣称动态扩缩）"；扩缩容统一口径"Agent 申请、控制面决策执行"（spec §8.3）。
+- **历史设计措辞**：wave3 §7 曾称 attributionist / repairer 为 “worker 模板”；Phase 1 实际没有动态模板实例化或扩缩能力。
+- **当前准确做法**：二者与其他角色一样以静态普通 Worker CR 部署，标注为 “Phase 1 fixed warm-pool 普通 Worker CR（静态部署，不宣称动态扩缩）”；扩缩容统一口径仍是 “Agent 申请、控制面决策执行”（spec §8.3），但这不证明控制器或动态扩缩已经实现。
 - **建议**：**采纳**；Phase 2 再由 Caseload Controller 对这两类 Worker 做 create/drain/remove。
 
 ## 8. Worker 空闲休眠默认行为
@@ -71,4 +71,4 @@
 1. **Issue 1（approval.request ACL）→ 裁决：归守门员**（spec §9.4 + 职责分离）。设计稿 §6 笔误已修正。成稿做法生效。
 2. **Issue 2（case.escalate/timeline）→ 裁决：采纳成稿做法**。spec §9.3 已补 `case.timeline` / `case.escalate` 两行（commit f815734）。
 3. **Issue 3（trust-ledger 可达性）→ 裁决：维持内嵌库口径**。守门员账本核对经 release-admin/eval-runner 服务端内嵌完成，不得静默跳过；Phase 2 补只读透出工具。
-4. Issue 4–8（弹性模板部署形态、空闲休眠等）→ 采纳成稿做法，Phase 2 再议。
+4. Issue 4–8（fixed warm-pool 普通 Worker CR、空闲休眠等）→ 采纳成稿做法，动态扩缩留待 Phase 2 再议。

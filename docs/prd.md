@@ -1,8 +1,9 @@
 # CaseLoop 产品需求文档（PRD）
 
 > 版本：v1.0 ｜ 日期：2026-08-07 ｜ 状态：草案待评审
-> 上位文档：`docs/plan-v3.md`（终态蓝图，唯一事实源）。本文档不引入 plan-v3 之外的架构决策；歧义处以【待定】标注并汇总于文末「开放问题」。
-> 读者：评委与队友。技术实现细节见 `docs/spec.md`。
+> 适用范围：当前“小智客服纵切”参考工作负载的 v1 PRD，不是通用 Agent 产品 PRD。产品战略与范围取舍以 `docs/product-principles.md` 为准；当前实现约束以 `docs/plan-v3.md`、`contracts/` 和可执行测试为准。
+> 本文档不引入 plan-v3 之外的架构决策。通用 Agent、Langfuse/TraceSource、Signal/Closure 适配器和第二工作负载已经由 `docs/prd-v2.md` / `docs/plan-v4.md` 批准并进入 Stage 0 target contracts，但尚无相应 migration/runtime/live 证明；不能从本 v1 文档或 target contract 推断为已实现。
+> 读者：目标用户、产品、工程、安全与运营协作者。比赛评委材料单列在 `docs/competition/`；技术实现细节见 `docs/spec.md`。
 
 ---
 

@@ -2,9 +2,9 @@
 # caseloop-team — CaseLoop Agent 团队定义（T5 成稿）
 #
 # 钉版：AgentTeams v1.2.1（apiVersion: agentteams.io/v1beta1）
-# 编制：4 常设 Worker（quality-officer / collector / gatekeeper / case-officer）
-#      + 2 弹性模板 Worker（attributionist / repairer，Phase 1 固定 warm pool，
-#        不宣称动态扩缩，以普通 Worker CR 形式部署）
+# 编制：4 常设职责 Worker（quality-officer / collector / gatekeeper / case-officer）
+#      + 2 Phase 1 fixed warm-pool 普通 Worker CR（attributionist / repairer；
+#        与其他 Worker CR 同样静态部署，不是模板，不宣称动态扩缩）
 #      + Team CR（caseloop-team）+ Human CR（caseloop-approver，审批人）
 #
 # 设计蓝本：docs/plans/wave3-soul-design.md §7（冻结）
@@ -307,7 +307,7 @@ spec:
   soul: |
     # 归因师 SOUL · attributionist
 
-    > 角色标识：`attributionist` ｜ 编制：弹性 Worker（Phase 1 固定 warm pool，不宣称动态扩缩） ｜ 平台：AgentTeams v1.2.1 / copaw / step-3.7-flash
+    > 角色标识：`attributionist` ｜ 编制：Phase 1 fixed warm-pool 普通 Worker CR（静态部署，不宣称动态扩缩） ｜ 平台：AgentTeams v1.2.1 / copaw / step-3.7-flash
     > 设计蓝本：`docs/plans/wave3-soul-design.md` §5（冻结） ｜ 术语口径：`docs/spec.md`、`wiki/glossary.md`
 
     ## 1. 身份与使命
@@ -378,7 +378,7 @@ spec:
   soul: |
     # 修复师 SOUL · repairer
 
-    > 角色标识：`repairer` ｜ 编制：弹性 Worker（Phase 1 固定 warm pool，不宣称动态扩缩） ｜ 平台：AgentTeams v1.2.1 / copaw / step-3.7-flash
+    > 角色标识：`repairer` ｜ 编制：Phase 1 fixed warm-pool 普通 Worker CR（静态部署，不宣称动态扩缩） ｜ 平台：AgentTeams v1.2.1 / copaw / step-3.7-flash
     > 设计蓝本：`docs/plans/wave3-soul-design.md` §6（冻结） ｜ 术语口径：`docs/spec.md`、`wiki/glossary.md`
 
     ## 1. 身份与使命
@@ -430,7 +430,7 @@ metadata:
   name: caseloop-team
 spec:
   description: |
-    CaseLoop 质量闭环 Agent 团队（4 常设 + 2 弹性 warm pool；Team Leader 为 quality-officer）。
+    CaseLoop 质量闭环 Agent 团队（4 个常设职责 Worker + 2 个 Phase 1 fixed warm-pool 普通 Worker CR；Team Leader 为 quality-officer）。
     团队目标：对投诉做 取证 → 归因 → 修复起草 → 门禁 → 审批 → 发布 → 回复 → 沉淀 的质量闭环处理。
     （注：v1beta1 TeamSpec 无 goal 字段，目标并入 description。）
   workerMembers:

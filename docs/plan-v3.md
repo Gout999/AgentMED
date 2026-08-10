@@ -1,5 +1,7 @@
 # CaseLoop —— 最终目标完整实现方案（终态蓝图 + 分阶段推进）v3
 
+> **适用范围更新（2026-08-10）**：本文件是当前“小智客服纵切 + AgentTeams 执行层”的 v3 实现蓝图和 T0–T10 施工基线，不再代表 CaseLoop 面向通用 AI Agent 的最终产品范围。产品定位与取舍以 `docs/product-principles.md` 为准；通用 Agent、Langfuse/TraceSource 与第二工作负载已在 `docs/prd-v2.md`、`docs/plan-v4.md` 和 `contracts/v4/` 作为批准目标进入 Stage 0，但 migration/runtime 尚未实现，不能从本文件或 target contract 推断为已实现。
+>
 > 本版已吸收外部技术审查 F1–F8 全部修订（审查裁决：T0–T10 保留，补齐控制面/统计协议/真实 Spike 后 Conditional Build GO）。
 > 核心架构原则：**确定性控制面 + 概率性执行面**——AI 负责动脑子，系统负责管规矩。
 > 过程性材料（初赛简介/PPT、演示脚本）单独放 `docs/competition/`。
@@ -46,13 +48,13 @@
   [Trust/Audit/Evidence] ← 全程事件回流
 ```
 
-**叙事纪律（比赛策略，书面与口头统一执行）**：所有对外材料前半场统一口径为"以 AgentTeams 为协同设计基点深度映射（Team CR/SOUL/声明式 MCP/Matrix 留痕/动态 Worker 管理），契约化集成使替换仅作灾备设计"——"可替换适配层"字样不出现在任何材料的前半场，仅作为工程成熟度的后段加分点。PPT 必须先充分展示 AgentTeams 逐项映射，再讲架构解耦。
+**历史比赛叙事说明**：比赛材料曾要求优先展示 AgentTeams 的逐项映射。该要求只保留在 `docs/competition/`，不拥有产品或架构裁决权；长期产品文档必须如实说明依赖、适配器边界与可替换性。
 
 ### 2.2 Agent 组织
 
 常设 4（质量官/采集员/守门员/案例官）+ 弹性 2 类（归因师/修复师）。**质量官不再"维护状态机"**——它是 Case Controller 的领单 Worker：控制面持有全部权威状态，Agent 只产出建议与产物。扩缩容统一口径为"**Agent 申请、控制面决策执行**"：质量官根据 caseload 向 Caseload Controller 申请扩缩容，Controller 按 `desired=clamp(minWarm, budgetCap, ⌈active_leases/concurrency⌉+⌈ready_cases·p95/drain_horizon⌉)` 决策并执行（对外材料禁用"质量官现场创建"的简化说法）。缩容必须经 `DRAINING→停止新 claim→lease=0→outbox 清空→摘出 Team→Sleep/Delete→资源凭证对账`（AgentTeams v1.2.1 删除失败部分 non-fatal，不能以 CR 消失为成功依据）。
 
-**Agent 冲突仲裁规则**（评委追问点）：Agent 之间结论冲突时不靠投票不靠资历——①守门员对"是否放行"有一票否决权，优先于任何其他 Agent 的结论；②归因置信不足（INCONCLUSIVE/CONFOUNDED）时不得进入修复阶段，补实验或升级人工；③一切分歧以 Case Controller 的权威状态与实验数据为最终裁决依据，LLM 结论永远只是"建议"。
+**Agent 冲突仲裁规则**（用户安全与失败闭锁要求）：Agent 之间结论冲突时不靠投票不靠资历——①守门员对"是否放行"有一票否决权，优先于任何其他 Agent 的结论；②归因置信不足（INCONCLUSIVE/CONFOUNDED）时不得进入修复阶段，补实验或升级人工；③一切分歧以 Case Controller 的权威状态与实验数据为最终裁决依据，LLM 结论永远只是"建议"。
 
 ### 2.3 核心机制
 

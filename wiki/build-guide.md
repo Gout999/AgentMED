@@ -1,49 +1,94 @@
-# 施工指南（所有施工 agent 必读）
+# 施工指南
 
-## 角色分工
-- **Kimi（主控）**：规划、拆任务、契约冻结把关、验收、e2e、视觉/前端验证、证据归档
-- **Claude Code（coder subagent）**：仓库内中等粒度实现 + 自测
-- **Grok 4.5（grok_run）**：成块后端基建，session 续接做修订
+[返回 Wiki 索引](INDEX.md)
 
-## 并行纪律
-- 按文件 scope 切分，互不相交：`demo-app/` `control-plane/` `eval-harness/` `mcp-servers/` `contracts/` `agents/` `console/` 各归一家
-- `contracts/` 冻结前不开工任何实现；契约变更必须主控批准并同步全部相关方
-- 委派任务必须自包含：目标、精确文件路径、上下文、可碰/不可碰边界、验收标准
+> 适用范围：当前 v3 客服参考实现及其向通用 Agent 产品演进的工作。产品范围、当前实施基线和运行事实必须分层；本页不自行创造需求。
 
-## 验证标准（不接受"我觉得好了"）
-- 代码：测试实跑通过（贴结果摘要）；契约级变更必须跑 conformance suite
-- 平台行为：实机验证 + 证据落 `evidence/`（日志/截图/导出物）
-- 文档：中文、表格优先、字段英文；与 plan-v3 冲突时以 plan-v3 为准并标【待定】
+## 开工前的权威顺序
 
-## 仓库纪律
-- 已授权自主 commit + push main；关键节点（契约冻结、Phase 出口）由主控打 tag
-- commit message：`<type>(<scope>): 中文摘要`，type ∈ feat/fix/docs/chore/test
-- **密钥永不入库**；`.env*` 已 gitignore；发现误提交立即报告主控
-- 不做 git rebase/reset/force-push 等破坏性操作
+1. 产品范围与口径：[产品原则](../docs/product-principles.md)。
+2. 当前 v3 实施：[AGENTS.md](../AGENTS.md)、[plan-v3](../docs/plan-v3.md)、版本化 [`contracts/`](../contracts/) 与可执行测试。
+3. 当前任务和事实：[PLANS](../PLANS.md)、[PROJECT_STATE](../docs/context/PROJECT_STATE.md)、Git 状态与真实 evidence。
+4. 研究、比赛、Wiki 与交接只提供参考；冲突必须显式提出，不能让 Agent 猜成权威决定。
+
+通用 Agent 新能力必须先进入新版 PRD / plan / contracts。Langfuse 或第二 workload 的需求已被确认，不等于可以跳过契约阶段直接施工。
+
+## 工具无关的角色分工
+
+- **任务控制者**：确认目标和权限，拆分无重叠 scope，维护决策与验收口径。
+- **实现者**：在指定文件范围内实现并运行 focused tests，不触碰无关工作树改动。
+- **独立验证者**：只读复核代码、契约、失败路径与 evidence；不能把实现者自述当结果。
+- **运行操作者**：只在获得相应授权和真实前置后执行迁移、容器、provider 或 live 流程。
+
+所用模型或工具可以替换，不属于项目架构。
+
+## 并行与文件纪律
+
+- 按不相交的文件或组件 scope 委派；任务必须写明目标、可碰/不可碰边界、验收标准和输出位置。
+- 共享工作树先看 `git status --short --branch`。已有改动属于用户或其他任务，禁止 reset、清理、覆盖或混入本次提交。
+- 契约变化必须同步 schema / OpenAPI、conformance、迁移、上下游实现和 context；不能只改一侧“先跑起来”。
+- 持久化 schema 变化必须用 migration；不以开发态 `create_all` 充当部署方案。
+
+## Git 规则
+
+- 不直接提交或推送 `main`；不 force-push、不改写公共提交、不删协作者分支。
+- 使用 `codex/*` 或用户指定分支，每个 P0 闭环使用聚焦语义提交；当前用户要求任何 Git 写操作前先询问。
+- commit message 建议 `<type>(<scope>): 中文摘要`，其中 type 可为 `feat`、`fix`、`docs`、`test`、`chore`。
+- 密钥永不入库。发现疑似泄漏时停止传播、报告影响范围并轮换；不要把 secret 写进 evidence 或 PR。
+
+## 验证与证据分级
+
+| 轨道 | 可以使用 | 能证明什么 |
+|---|---|---|
+| unit | mock / fake | 局部逻辑与失败语义 |
+| contract | schema fixture、stub server | 接口和资产一致性 |
+| replay | 录制 provider、确定性 judge、fixture | 在已标明替身下的可重复闭环 |
+| domain-provider-live | 真实 provider、数据库、Quality API、通知与 receipt | 真实外部调用和确定性控制面链路 |
+| agent-causal | 真实内部 Worker、模型/Skill/MCP receipt、pre-action proposal 和 causation binding | Agent 对后续动作有可验证的因果贡献 |
+
+- 连接失败、skip、空结果、未知状态、缺失 receipt、digest 不匹配都不能记作 pass。
+- Matrix event、MinIO object、CR、截图或 exporter 签名只能证明对应平台行为，不能单独证明 Agent 阅读、推理、创作或因果参与。
+- P0 证据放在 `evidence/p0/`，绑定精确 commit、契约版本、命令、外部 provider identity 与 artifact digest。
+- 发布必须逐项验证不可变 WorkOrder、ApprovalGrant、GateReport/evidence、revision、nonce 和 expiry；任一失败或 UNKNOWN 都 fail closed。
+
+## live 与重跑纪律
+
+- 历史 live 不因为时间经过就自动无效。仅在代码/契约/provider 路径改变、原证据无法复验、或新验收目标要求时重跑。
+- `make demo-b1-replay` 与 `make demo-b1-live` 是不同证据轨，不能互相顶替。
+- live 前置缺失时停在 preflight；不得用 replay、机器人自发消息、自动批准或 exporter 造同形回执绕过。
+- 完整 v3 栈包含固定 `outbox-dispatcher`。只启动 API 而不消费事务 outbox，不能宣称通知、archive 或 Trust 闭环完成。
+- live 前先取得干净、可追溯的提交快照；不要用 `--allow-dirty` 把测试开关变成验收捷径。
+
+## 环境与凭证安全
+
+- 每个进程只注入各自 `.env.example` 所需的最小变量；不要 `source` 其他仓库或未知整份 `.env`。
+- 测试数据库必须显式指定 disposable URL。若 shell 已有生产/演示 `DATABASE_URL`，测试可能沿用它。
+- `docker compose config` 可能展开 secret 并打印到日志；共享会话不要运行未脱敏的完整输出。
+- CaseLoop 原生 control-plane 默认宿主 `8090`；Compose profile 是宿主 `18090 → 容器 8090`；AgentTeams controller 的容器内 `8090` 属于另一个地址空间。
+- MCP 隔离测试使用 [mcp-servers/README.md](../mcp-servers/README.md) 中的完整受信 backend smoke，包含所需 token 和 consumer 约束；不要复制过期裸命令。
+- `demo-app/scripts/reset_state.sh` 会改变或删除演示数据，只能用于明确 disposable 环境；记录运行前后 VersionSet，不把“保持故障注入”当通用收尾规则。
+
+## AgentTeams v1.2.1 历史运维地雷
+
+以下来自 2026-08-08 的特定本机 profile，执行前必须在当前版本复验。通用产品不依赖这些内部技巧；详情和证据边界见 [platform-agentteams.md](platform-agentteams.md)。
+
+1. 宿主长驻 MCP server 不应从会被清理的临时 worktree 启动；control-plane 容器重建后，旧 httpx 连接池可能仍指向死连接。
+2. AgentTeams 内部 Worker 的单线程 ReAct loop 可能延迟新消息；重启窗口存在消息已推进 sync token 但未处理的风险。
+3. Matrix `m.mentions` 必须指向真实 Worker MXID；管理侧代发只允许平台诊断，不能充当 Agent 执行 evidence。
+4. 对“工具不可用”先做受信 MCP 隔离测试，区分 Agent 参数构造错误与服务缺陷。
+5. macOS 系统代理可能让 httpx loopback 请求走代理而返回 502；`curl` 通不代表应用连接通。仓库内部客户端按代码要求禁用环境代理，并显式配置 `NO_PROXY`。
 
 ## 发现即回写
-- 平台新行为/新坑 → `wiki/platform-agentteams.md`（重大缺陷另存 `evidence/spike/`）
-- 契约歧义 → `contracts/OPEN-QUESTIONS.md`
-- 环境变化 → `wiki/environment.md`
 
-## 禁止事项
-- 不发明 plan-v3 没有的架构决策；不引入仓库没有的依赖（先查再报主控）
-- 不 mock LLM 调用（demo-app 全真实 StepFun）；不把 audit.jsonl 当权威源
-- 不做"置信≥0.8"式未定义指标；归因输出必须 Δ+95%CI+三态
+- 产品或范围决策 → `docs/product-principles.md` / 新版 PRD，经用户确认后更新 [decisions.md](decisions.md)。
+- AgentTeams 版本化平台事实 → [platform-agentteams.md](platform-agentteams.md)。
+- 契约歧义 → [contracts/OPEN-QUESTIONS.md](../contracts/OPEN-QUESTIONS.md)。
+- 环境变化 → [environment.md](environment.md)。
+- 当前工作、阻塞、测试与 evidence → [PLANS](../PLANS.md) 和 `docs/context/`。
 
-## 运维地雷补充（2026-08-08 e2e 实战）
+## 历史平台改进审计（2026-08-08 至 2026-08-09）
 
-1. **MCP server 必须从主仓启动**：它们是宿主长驻进程，从 worktree 启动会因 worktree 清理而变成"目录已删的孤儿"；且启动 env 必须显式 `CONTROL_PLANE_BASE_URL=http://127.0.0.1:18090`（默认 8090 是 AgentTeams controller，不是 CaseLoop 控制面）。
-2. **control-plane 容器重建后重启 MCP server**：server 的 httpx 连接池持有旧容器死连接，表现为 `case controller unreachable` 但宿主 curl 正常。
-3. **integration 测试默认指 scratch 库**（S0-005）：`DATABASE_URL` 不设时是 `control_plane_test`，指活库必须显式覆盖。
-4. **demo-app compose up 必须带 env**：`set -a && source ~/Documents/kimi/workspace/ACL-team/.env && set +a`，否则 `STEPFUN_API_KEY` 被空值覆盖，chat 静默回兜底文案。
-5. **Matrix 房间代发三件套**：容器内 `docker exec agentteams-controller`，URL 用 `$AGENTTEAMS_MATRIX_URL`，token 用 `$AGENTTEAMS_MATRIX_APPSERVICE_AS_TOKEN`，`?user_id=` 指定代发身份；**m.mentions 的 MXID 必须与真实 sender 一致**（工人是 `@quality-officer:…` 不是 `@caseloop-quality-officer:…`，写错 mentions=工人收不到）；payload 先写 /tmp/*.json 再 `docker cp` 进容器，避免引号地狱。
-6. **worker 单线程 ReAct 循环**：工人在 loop 里时新消息只排队不消费；`docker restart` 会打断 loop 但**恰在消费瞬间重启=消息丢失**（sync token 已推进，新进程视其为已读）——重启前先确认 worker 空闲，丢了就用新 txn id 重发。
-7. **agent 报"工具没有/行为不对"时先做隔离测试**：用 `mcp-servers/scripts/mcp_client.py <port> <tool> '<json>'` 以正确参数直调，平台正常=agent 参数构造错，平台异常=平台缺陷；S0-006 即靠此把"空实验"精确定位到 agent 传错 probe_set 键名 + probe.freeze 零校验。
-8. **e2e 期间 demo-app 故障态是前提资产**：归因执行机（DemoAppB1Driver）会 inject/reset 切换故障臂，跑完务必确认 B1 仍注入（`curl :8080/chat` 问退货，漂移应答+prompt_digest=81122ca0… 为正常）；恢复基线用 `demo-app/scripts/reset_state.sh`。
-9. **macOS 系统代理会劫持 httpx 的 localhost 调用（S0-007）**：httpx 默认 `trust_env=True` → `urllib.getproxies()` 在 macOS 回退读系统偏好代理；本机代理（Clash 类 127.0.0.1:7892）对 loopback 一律回 502，MCP→控制面请求根本没到控制面（容器日志无记录）。表象 `DEPENDENCY_UNAVAILABLE 502` 与根因严重脱节。判据：**curl 通 ≠ httpx 通**；修复=内部调用 `trust_env=False`（common/http.py 已改），跑 mcp_client.py 前缀 `NO_PROXY='*'`。
-
-## 平台改进候选（2026-08-08 e2e 实战发现，按发现序）
+> G1–G17 是当时 e2e / PR #1 的审计快照，保留作溯源，不是当前任务队列。当前优先级、完成状态与复验结果以 `PLANS.md`、模块 issue 和最新代码/测试为准。
 
 | # | 缺口 | 实战证据 | 建议 |
 |---|------|---------|------|

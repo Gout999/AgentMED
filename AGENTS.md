@@ -2,20 +2,21 @@
 
 ## Authority and safety
 
-- `docs/plan-v3.md`, `contracts/`, and executable tests are the requirements baseline. Resolve real conflicts explicitly; do not let an LLM invent authoritative state.
+- `docs/product-principles.md` is the product-strategy and scope baseline. `docs/plan-v4.md` is the approved target architecture, dependency order, and new-development baseline. `docs/plan-v3.md`, `docs/spec.md`, existing `contracts/`, migrations, and executable tests remain the implemented v3 customer-service Scenario Pack compatibility baseline until each boundary is replaced by an explicit v4 migration, contract, and test. A plan does not prove a capability is implemented or live. Research reports, competition material, and handoff snapshots do not override these layers. Resolve real conflicts explicitly; do not let an LLM invent authoritative state.
+- Product scope is driven by target-user needs. Existing open-source or commercial implementations are references, integration candidates, or lawful reuse candidates; overlap and market competition are not reasons to omit a needed capability. Preserve license notices and use an independent implementation when reuse is not license-compatible.
 - PostgreSQL control-plane state is authoritative for lifecycle, permissions, idempotency, approvals, release decisions, and audit. LLM output is limited to suggestions, hypotheses, and candidate artifacts.
 - Only Release Controller may call Quality API write endpoints.
 - A release must validate the exact immutable WorkOrder, ApprovalGrant, GateReport/evidence binding, target revision, nonce, and expiry. Missing, mismatched, `FAILED`, `INCONCLUSIVE`, `ERROR`, or `UNKNOWN` evidence fails closed.
 - Audit failure fails the enclosing business transaction. Never turn exceptions, empty results, skipped live checks, or unknown state into success.
-- Phase 1 uses the fixed warm pool. Do not claim dynamic autoscaling.
+- The v3 Phase 1 reference implementation uses the fixed warm pool. Do not claim dynamic autoscaling.
 - Mocks/fakes are allowed only in clearly named unit, contract, or replay tests. Never present them as live-provider or production evidence.
-- Report contract/replay and live-provider E2E separately.
+- Use one canonical evidence-facet vocabulary and report each facet separately: `contract`, `replay`, `domain-provider-live`, `agentteams-native`, `claude-runtime-live`, `agent-causal`, `repo-sandbox`, `human-authorized-external`, and `production-canary`. Platform evidence export is a read-only evidence category, not a success facet and never a substitute for `agent-causal`.
 
 ## Repository workflow
 
 - Do not force-push, rewrite public commits, delete collaborators' branches, or commit directly on `main`.
 - Preserve unrelated local changes. Never weaken assertions or delete tests to make a build pass.
-- Each P0 closure gets focused tests, a verifier pass, evidence under `evidence/p0/`, updated context files, and its own semantic commit.
+- Each P0 or v4 Stage closure gets focused tests, a verifier pass, evidence under `evidence/p0/` or `evidence/v4/stage-<n>/`, updated context files, and its own semantic commit.
 - Use migrations for persistent schema changes. Do not rely on development-only `create_all` as the deployment path.
 
 ## Local setup and commands
@@ -35,7 +36,7 @@
   - `cd demo-app && .venv/bin/python -m pytest tests/unit -q`
   - `cd eval-harness && .venv/bin/python -m pytest -q`
   - `cd mcp-servers && .venv/bin/python -m pytest -q`
-  - `cd contracts && ../eval-harness/.venv/bin/python -m pytest conformance/test_schemas.py conformance/test_wilson.py -q`
+  - `cd contracts && ../eval-harness/.venv/bin/python -m pytest conformance/test_schemas.py conformance/test_wilson.py conformance/test_v4_*.py -q`
   - `cd demo-app && DEMO_TEST_DATABASE_URL=postgresql+psycopg://gout@127.0.0.1:5432/control_plane_test .venv/bin/python -m pytest tests/integration/test_quality_concurrency.py -q`
   - `cd console && npm run build`
 - Exact live candidate gate:

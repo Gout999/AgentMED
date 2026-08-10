@@ -1,48 +1,125 @@
 # 一页看懂 CaseLoop
 
-## 定位
-**AI 应用质量自治底座**（治理 meta 层，不是客服工单系统，不是又一个 Agent 框架）。
-任何 LLM 应用实现 **Quality API 契约** 即可被纳管；多 Agent 团队（AgentTeams 平台编排）
-自动完成 badcase 全生命周期闭环。
+[返回 Wiki 索引](INDEX.md)
 
-## 核心闭环（运行时那条龙）
+## 产品定位
+
+CaseLoop 是面向 AI Agent / LLM 应用团队的**开源质量与变更治理控制面**。它帮助团队把坏结果转成可追踪案件，取得运行证据，验证归因和候选修复，并在确定性门禁、审批、发布、回滚与审计约束下完成闭环。
+
+目标用户的真实治理任务决定产品范围。已有 trace、eval、runtime、sandbox 和身份系统可以被参考、复用或适配；功能重叠不是删除需求的理由。完整原则见 [CaseLoop 产品原则](../docs/product-principles.md)。
+
+CaseLoop 优先满足国内团队的中文、自托管、私有化、国内模型、云服务与协作渠道需求；核心契约保持 provider-neutral。StepFun、飞书、AgentTeams 和 Langfuse 都是当前或计划中的实现与适配器，不是产品身份。
+
+v4 产品方向和渐进式施工路线已经批准，完整基线见 [CaseLoop v4 全盘计划](../docs/plan-v4.md)。当前处于 Stage 0；计划获批不等于 v4 功能已经实现。
+
+## 适用边界
+
+- 当前仓库的第一条参考 workload 是「小智客服」；v3 另选 AgentTeams v1.2.1 作为 CaseLoop 内部协作适配器。两者都用于证明和暴露纵向闭环的工程问题，不等于通用 Agent 接入已经完成。
+- 通用化目标面向能够提供版本、运行证据、评测和发布/回滚接点的 Agent；最小接入合同、迁移语义与 conformance tests 正在 Stage 0 冻结。
+- CaseLoop 不取代 Agent runtime，也不把 Langfuse 等 trace 系统当生命周期权威数据库。
+- LLM 与 Agent 只给建议、假设和候选工件；PostgreSQL 控制面持有权限、状态、审批、发布和审计事实。
+
+## 通用核心闭环（已批准目标，尚未实现）
+
+```text
+质量 Signal → Case → 被治理 Agent Run / Trace 取证 → 归因假设与验证
+  → 候选变更 → Gate → Approval → Release / Rollback
+  → Closure → 回归资产与信任证据
 ```
-投诉/反馈进来（飞书→先 mock）
- → Case Controller 立案（非LLM：inbox 去重、租约、幂等、outbox；PG 是唯一事实源）
- → 质量官领单 → 采集员取证（GET /logs、GET /feedback）
- → 归因师跑 5-cell 对照实验（Δ效应量+95%CI → ATTRIBUTED/INCONCLUSIVE/CONFOUNDED）
- → ATTRIBUTED 才放行 → 修复师自由起草（prompt git化 / KB修订 / 模型参数）
- → 产出不可变 WorkOrder（hash 绑定目标/输入版本/diff/门禁报告/expiry/nonce）
- → 守门员双轨评测门禁（规则轨 + LLM 裁判轨；裁判模型≠运动员模型）
- → 人工审批（批的是 WorkOrder hash，防掉包防重放）
- → Release Controller 灰度→验证→全量/回滚（唯一可调 Quality API 写面，CAS）
- → 回复投诉原群 → 案例官归档 pgvector 案例库
- → 信任账本记账（risk_class × autonomy_state；MVP 只演示"记账但拒绝晋升"）
- → 变异巡检器周期攻击 + 质量周报
+
+投诉与回复原群分别只是客服场景的 `Signal Adapter` 和 `Closure Adapter`。通用 Agent 的 Signal 也可能来自评分下降、运行错误、安全策略命中或人工立案；Closure 也可能是回滚、issue、告警处置或变更记录。
+
+## Langfuse 的两个角色（已确认需求，尚未实现）
+
+| 方向 | 用途 | 必须遵守的边界 |
+|---|---|---|
+| CaseLoop → Langfuse | 把 CaseLoop 自身 LLM / Agent 调用 trace 发到 Langfuse，支持自身可观测与排障 | 使用标准 OTel/trace 传播；不能把 trace 后端写成控制面权威源 |
+| Langfuse → CaseLoop | `TraceSource` 从被治理 Agent 的 Langfuse project 读取输入、输出、模型调用、工具调用和上下文 | 查询窗口、水位、去重、来源和 digest 必须固化；Stage 0 target schema 已落盘，Connector/migration/live receipt 尚未实现 |
+
+不能默认 Langfuse 一定拥有“全部输入输出”。脱敏、采样、丢失、留存、权限与 instrumentation 都可能造成缺口；接入结果必须报告 completeness，证据不足时为 `UNKNOWN` 并 fail closed。Langfuse 是首个适配器，不是唯一后端。
+
+## 四类身份必须分开
+
+| 身份 | 职责 | 不能做什么 |
+|---|---|---|
+| 被治理 Agent | 产生需要治理的业务运行与 trace | 不能被写成 CaseLoop 内部 Worker |
+| CaseLoop 内部 Worker | 采集、分析、归因、起草修复或验证，产出非权威建议与工件 | 不能直接改权威状态、批准自己或发布 |
+| Runtime child Attempt | 在受控 runtime 中执行一次确切模型/Skill/MCP/tool 工作，例如 Claude Code child Attempt | 不能冒充发起委托的 AgentTeams Worker，也不能继承其长期凭据或身份 |
+| Controller / Executor | 确定性地校验、持久化、调度和执行获批动作 | 不能伪装成“Agent 做了判断” |
+| Evidence Exporter | 只读收集来源记录、保留 provenance，并区分 PostgreSQL 权威事实与 Matrix/MinIO 等平台证据 | 不能创建任务、ack/submit、审批或补造因果关系 |
+
+下文的质量官、采集员、归因师等均指 CaseLoop 内部 Worker，不是被治理 Agent。AgentTeams 父 Worker 与 Claude Code 子 Attempt 必须分别记录 `requested_by`、`executor`、父子 task/attempt 和 capability grant。
+
+## 当前 v3 客服参考纵切
+
+```text
+live：真实飞书输入 ─┐
+replay：具名 fixture ─┴→ Case Controller 去重立案、租约、幂等与 outbox
+  → 采集 Quality API 的 logs / feedback
+  → 冻结探针和版本，运行 5-cell 对照实验，计算 Δ + 95% CI
+  → ATTRIBUTED 才允许自由起草候选修复
+  → 不可变 WorkOrder 绑定目标、版本、diff、Gate、expiry 与 nonce
+  → 规则轨 + 独立 LLM 裁判轨 + contract/replay/live 分类门禁
+  → 人工审批确切 WorkOrder hash
+  → Release Controller 以 CAS 执行 stage / canary / promote / rollback
+  → 通知原处、归档、Trust Ledger 记账
 ```
 
-## 两条铁律
-1. **确定性控制面 + 概率性执行面**：AI 负责动脑子，系统负责管规矩。
-2. **LLM 永远不是状态与权限的权威源**——一切分歧以 Case Controller 权威状态与实验数据裁决。
+这里的确定性控制面、不可变证据绑定、fail-closed 和唯一写面是应保留的安全边界。客服特有的投诉、飞书回复、固定六角色、三元 VersionSet 与 5-cell 变量，则需要在通用需求中抽象，不能直接套给所有 Agent。
 
-## Agent 组织
-4 常设：质量官（领单协调）、采集员、守门员、案例官；
-2 类弹性：归因师、修复师（Caseload Controller 管扩缩，Phase 2 才真做动态）。
-冲突仲裁：守门员一票否决放行 ＞ 一切；归因置信不足不得进修复。
+## 当前 AgentTeams 里到底是什么
 
-## 演示应用
-「小智客服」：3C 数码电商客服，FastAPI RAG，prompt git 版本化，pgvector 知识库
-（售后政策/产品参数/物流规则种子数据），LLM 真实调用 StepFun `step-3.7-flash`，
-Quality API v2 实现，B1–B4 故障注入端点。
-B1=prompt 回归（Phase 1）｜B2=KB 过时｜B3=模型参数漂移｜B4=多因素交互（Phase 2）。
+最近一次 2026-08-10 本地快照中，`caseloop-team` 的 Team CR 为 `Active`，但 `leaderReady=false`、`readyWorkers=0`，六个 Worker 均为 `Sleeping`。仓库 desired spec 中的 `state: Running` 和 Team CR 的 `Active` 都不等于 Agent 正在执行；运行前必须重新查询。
 
-## 阶段
-- 0A Spike：平台行为验证（3A+1S+1MCP+交接+sleep/wake+重启）
-- 0B 契约冻结：contracts/ 全量 + conformance suite 对空实现跑红
-- Phase 1：B1 单场景纵切全闭环（固定 warm pool）
-- Phase 2：B2–B4 + 真扩缩 + Skill 演化到"候选+holdout回放+人工批准"
-- Phase 3：硬化（不宣称生产完成）
+| Worker | v3 职责 | Runtime / model | 当前快照 |
+|---|---|---|---|
+| `quality-officer` | Team Leader、分诊、协调、升级 | CoPaw / StepFun `step-3.7-flash` | `Sleeping` |
+| `collector` | 日志/反馈取证、badcase 与候选探针 | CoPaw / StepFun `step-3.7-flash` | `Sleeping` |
+| `attributionist` | 实验计划与归因报告建议 | CoPaw / StepFun `step-3.7-flash` | `Sleeping` |
+| `repairer` | 起草候选修复与 WorkOrder | CoPaw / StepFun `step-3.7-flash` | `Sleeping` |
+| `gatekeeper` | 评测与放行建议 | CoPaw / StepFun `step-3.7-flash` | `Sleeping` |
+| `case-officer` | 归档、回归资产与通知 | CoPaw / StepFun `step-3.7-flash` | `Sleeping` |
 
-## 信任账本 MVP 口径
-只演示「记账但拒绝晋升」：3/3 成功时 Wilson 双侧 95% 下界 ≈0.44 < 0.9 → 拒绝晋升。
-拒绝是统计纪律的证据，不是功能缺失。
+`caseloop-approver` 是 Human，不是第七个 Agent。AgentTeams 中当前没有 Claude Code Agent 或 GLM Agent。平台房间、Matrix 消息和 MinIO 工件只能证明相应记录存在；若 Worker 没有真实领取任务、调用模型/Skill/MCP 并在动作前提交可追溯 Proposal，就不能宣称 `agent-causal`。
+
+## 新 Coding Team（批准目标，尚未创建）
+
+v4 保留上述质量治理 Team，另外新增 `caseloop-coding-team`，而不是把客服角色硬改名：
+
+| 角色 | 目标职责与执行方式 | 当前状态 |
+|---|---|---|
+| `coding-planner` | 形成可测的修复计划；GLM-5.2 是目标模型，真实 provider 以 smoke/receipt 为准 | `NOT CREATED` |
+| `coding-generator` | 提交委托 Proposal，由宿主 `ClaudeCodeRuntimeAdapter` 在隔离 worktree 启动 Claude Code child Attempt | `NOT CREATED` |
+| `coding-reviewer` | 使用独立模型轨操作 sandbox、找反例并提交 Finding；确定性 Gate 决定硬结果 | `NOT CREATED` |
+
+Claude Code、父 Worker、模型 provider、Controller 与 Repo Executor 是不同身份。Claude Code 不能取得 human approval、push/merge、Release Controller 或生产凭据。
+
+## 两条 live 验收轴
+
+| 验收轴 | 证明什么 |
+|---|---|
+| `domain-provider-live` | 本次声明的 StepFun、Langfuse、飞书、GitHub 等外部边界确实被真实调用 |
+| `agent-causal` | task/outbox、真唤醒、Worker 原生 claim、模型/Skill/MCP receipt、动作前 Proposal 与 Controller causation 连成可信链 |
+
+`platform evidence export` 是只读取证类别，不是第三条成功轨；它不能替代 `agent-causal`。六个 Worker 全部休眠时，`agent-causal` 验收必须失败或 `BLOCKED`。
+
+## 当前状态
+
+| 分类 | 状态 |
+|---|---|
+| 产品战略与 v4 路线 | `APPROVED`：开源、用户需求驱动、中国优先、provider-neutral、客服为首个参考 workload |
+| Stage 0 | `DONE (contract-only)`：正式 PRD、ADR、v4 contracts、Intent Registry 与迁移语义；无 migration/runtime/live 声明 |
+| v3 确定性控制面 | P0-1～P0-3 已验证；P0-4 有 replay 证据，但最后独立证据快照中的 live acceptance 仍为 BLOCKED，详见 [PLANS](../PLANS.md) 与 [PROJECT_STATE](../docs/context/PROJECT_STATE.md) |
+| 历史 live 演示 | 不因时间经过自动失效；它证明什么以当时调用链与证据为准 |
+| 通用 Agent 接入 | 目标与施工顺序已批准；contracts/migrations/runtime 尚未由实现与测试证明 |
+| Langfuse 双向集成 | 已确认需求，仓库尚未实现 |
+| Claude Code Runtime Adapter | 已批准，尚未实现/运行 |
+| `caseloop-coding-team` | `NOT CREATED / NOT RUN` |
+| 真实 GitHub coding case | `NOT RUN`；留言、认领、fork、push、PR 均未授权，执行前逐次询问用户 |
+| 真实 Agent 因果执行 | 在新的 agent-causal 验收口径下，当前快照尚无独立验证的合格证据；更早 live 是否包含真实 Agent 因果参与，只按当时调用链和证据判断，不因本次口径更新被抹除 |
+
+当前活动项是 [plan-v4 Stage 0](../docs/plan-v4.md#stage-0冻结-v4-语言与契约)。每项能力只有在真实调用路径、权威记录、测试与证据齐全后才可标为已实现。
+
+## 统计纪律示例
+
+Trust Ledger 的 v3 MVP 只演示「记账但拒绝晋升」：3/3 成功时 Wilson 双侧 95% 下界约为 `0.438`，仍小于 `0.9`，因此拒绝晋升。拒绝是证据不足时的正确行为，不是把 UNKNOWN 包装成成功。
