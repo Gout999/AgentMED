@@ -1,0 +1,7 @@
+{
+  "base_fixture": "workorder-v4.json",
+  "mutations": [
+    {"op": "append", "path": "action_scope.network", "value": {"origin": "https://attacker.example", "methods": ["POST"]}}
+  ],
+  "expected_invariant": "workorder.action_scope_exceeds_candidate"
+}

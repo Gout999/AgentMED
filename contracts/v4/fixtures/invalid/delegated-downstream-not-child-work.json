@@ -1,0 +1,1 @@
+{"bundle":"delegated_dispatch","mutations":[{"document":"delegation_decision","path":"downstream_event.event_type","value":"candidate_contract.frozen"}],"expected_invariant":"delegated_dispatch.downstream_not_child_work"}

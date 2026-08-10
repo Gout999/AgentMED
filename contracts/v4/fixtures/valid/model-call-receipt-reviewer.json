@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "model_call_receipt_id": "mcr_reviewer0001",
+  "workspace_id": "ws_stage0001",
+  "case_id": "case_stage0001",
+  "attempt_snapshot": {
+    "kind": "ATTEMPT",
+    "id": "att_reviewer001",
+    "revision": 1,
+    "digest": "sha256:af1a8a3c0c4a590232bf2319f7a54da11421b61b63273b80c35f6a445120c0a3"
+  },
+  "executor_principal": "prn_reviewer001",
+  "agent_manifest": {
+    "kind": "AGENT_MANIFEST",
+    "id": "aman_reviewer01",
+    "revision": 1,
+    "digest": "sha256:471c638b9d70b03aba41163b55ef7051fc76d3b35875d02b18d4f25565f08a43"
+  },
+  "runtime_session_id": "claude-session-reviewer",
+  "requested_model": "glm-5.2",
+  "resolved_provider": "zhipu",
+  "resolved_model": "glm-5.2",
+  "model_resolution_receipt_digest": "sha256:c608e91c2e101c7c751651f279afa6efa40ae20fbc8628ad001a84e744e81cd0",
+  "provider_provenance": {
+    "protocol": "GLM_NATIVE",
+    "provider_org": "zhipu-ai",
+    "endpoint_origin": "https://open.bigmodel.cn",
+    "account_project": {
+      "account_ref": "provider-account://zhipu/caseloop",
+      "project_ref": "provider-project://zhipu/stage0"
+    },
+    "credential_ref": "credential://zhipu/stage0/replay",
+    "model_family": "glm-5",
+    "provider_request_id": "req-reviewer-0001",
+    "returned_model": "glm-5.2",
+    "http_status": 200,
+    "finish_reason": "stop",
+    "token_usage": {
+      "input_tokens": 100,
+      "output_tokens": 50,
+      "total_tokens": 150
+    },
+    "raw_retained": false,
+    "call_mode": "REPLAY"
+  },
+  "independence_basis": {
+    "provider_org": "zhipu-ai",
+    "endpoint_origin": "https://open.bigmodel.cn",
+    "account_project": {
+      "account_ref": "provider-account://zhipu/caseloop",
+      "project_ref": "provider-project://zhipu/stage0"
+    },
+    "credential_ref": "credential://zhipu/stage0/replay",
+    "model_family": "glm-5"
+  },
+  "independence_key": "sha256:a137a8c2920bba78d50dde172125a9393fc62e2a4cb04a7bc052b0bcd1570972",
+  "request_digest": "sha256:630dc5cd3e58ff91d27d89203e7fffebc387e2c673a94a039323222e4f34db97",
+  "response_digest": "sha256:7ed54c4602b065f6c19c986db023a41ad17cde1a3b0a61ec1d6b7876a9a83450",
+  "usage_digest": "sha256:0e63335f73be3fdbe9a106896545d4e5605c91631ddb386b3e1020a3e27c2db2",
+  "outcome": "SUCCEEDED",
+  "started_at": "2026-08-10T00:55:00Z",
+  "completed_at": "2026-08-10T00:58:00Z",
+  "recorded_at": "2026-08-10T00:58:00Z",
+  "authority_receipt_id": "arec_modelcallreviewer00000000",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/model_call_receipt_digest)",
+  "model_call_receipt_digest": "sha256:54198149b3899529e210065006dcc314938a3643073cf31ee3f4d6cffdbbdb68"
+}

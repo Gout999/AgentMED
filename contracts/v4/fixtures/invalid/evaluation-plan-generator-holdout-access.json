@@ -1,0 +1,1 @@
+{"base_fixture":"evaluation-plan.json","mutations":[{"op":"set","path":"holdout_binding.generator_access","value":true}],"expected_invariant":"generator_cannot_access_holdout"}

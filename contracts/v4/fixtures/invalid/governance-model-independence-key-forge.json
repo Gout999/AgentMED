@@ -1,0 +1,1 @@
+{"attack":"model_independence_key_forge","expected_invariants":["model_call_receipt.independence_key_mismatch"]}

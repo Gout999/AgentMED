@@ -1,0 +1,1 @@
+{"attack":"decision_agent_self_approve","expected_invariants":["authority.proposal_decision_actor_mismatch"]}

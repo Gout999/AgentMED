@@ -1,0 +1,93 @@
+{
+  "schema_version": "1.0",
+  "attempt_id": "att_judge000001",
+  "worker_task_id": "wt_stage0001",
+  "workspace_id": "ws_stage0001",
+  "attempt_kind": "PRIMARY",
+  "state": "SUCCEEDED",
+  "parent_attempt_id": null,
+  "fallback_of_attempt_id": null,
+  "delegation_proposal_id": null,
+  "requested_by_principal": "prn_workcontrol1",
+  "executor_principal": "prn_judge000001",
+  "assigned_team_id": "team_coding_stage0",
+  "agent_manifest": {
+    "kind": "AGENT_MANIFEST",
+    "id": "aman_judge0001",
+    "revision": 1,
+    "digest": "sha256:48d9f457541bc7c5b1fd376fd74275606af5fb4729457e00edb123e6af6d81f2"
+  },
+  "input_snapshot_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "claim_binding": {
+    "claim_event_id": "evt_claimjudge01",
+    "lease_id": "lease_judge0001",
+    "worker_principal": "prn_judge000001",
+    "runtime_session_id": "claude-session-judge",
+    "fencing_token": 1,
+    "claimed_at": "2026-08-10T01:53:00Z"
+  },
+  "runtime": {
+    "runtime_kind": "CLAUDE_CODE",
+    "runtime_session_id": "claude-session-judge",
+    "runtime_adapter_digest": "sha256:1919191919191919191919191919191919191919191919191919191919191919",
+    "runtime_version": "1.0.0"
+  },
+  "model": {
+    "requested_model": "glm-5.2",
+    "resolved_provider": "zhipu",
+    "resolved_model": "glm-5.2",
+    "resolution_kind": "EXACT",
+    "model_resolution_receipt_digest": "sha256:ff0b72259bcf30eabfaf9c52dde0c922286cc40f171bec12f7db1952ffe43d6b",
+    "model_call_receipt_digest": "sha256:39ca6fa4b66824b5ba439113f70361e880dfd5810802e1caf1080c0625de1299",
+    "model_call_receipt": {
+      "kind": "MODEL_CALL_RECEIPT",
+      "id": "mcr_judge0001",
+      "revision": null,
+      "digest": "sha256:39ca6fa4b66824b5ba439113f70361e880dfd5810802e1caf1080c0625de1299"
+    }
+  },
+  "capability_grant_id": "cap_judge0001",
+  "repo_context": {
+    "repository_ref": "repo://example/project",
+    "base_revision": "0123456789abcdef",
+    "base_digest": "sha256:d840a63471158568673a79aae198e57d457f84249d3a8d6d386996b755455379",
+    "worktree_ref": "worktree://stage0/judge",
+    "worktree_digest": "sha256:9052f46abd127247e86b0195b083f3ecdbf3be6dddf71fd838b7efce4fd40158"
+  },
+  "skill_usage": [],
+  "mcp_usage": [],
+  "tool_receipts": [],
+  "output_artifact": {
+    "uri": "artifact://stage0/judge-output.json",
+    "digest": "sha256:0b599d0dea3bd498e8331a2308e2f8d023945342d2f284fed848042f159536f7",
+    "media_type": "application/json"
+  },
+  "terminal_receipt": {
+    "process_exit_code": 0,
+    "stream_complete": true,
+    "structured_output_valid": true,
+    "receipt_digest": "sha256:ab3eb376f0da73063b291272ffead714c97cb10d6d2d7834adca717f2582a0e1"
+  },
+  "failure": null,
+  "started_at": "2026-08-10T01:53:00Z",
+  "completed_at": "2026-08-10T01:57:00Z",
+  "attempt_digest": "sha256:c131e6570b1c2ac9a7af7b1115fb20f1d7ed7af7c3af44c8b9eb4299131bb52f",
+  "revision": 2,
+  "worker_task_snapshot": {
+    "kind": "WORKER_TASK",
+    "id": "wt_stage0001",
+    "revision": 2,
+    "digest": "sha256:f8c0e6000c40c984ee8eb6c6b82b9633a01dead6ecd8ac46d2e25f26fa28755e"
+  },
+  "previous_snapshot": {
+    "kind": "ATTEMPT",
+    "id": "att_judge000001",
+    "revision": 1,
+    "digest": "sha256:760134007c4db7449fc59696ad08b5a906f2bed59912545ae099e82d2ae870d0"
+  },
+  "runtime_capability": null,
+  "authority_receipt_id": "arec_attemptjudgeterm0000000",
+  "pre_controlled_action": null,
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/attempt_digest)"
+}

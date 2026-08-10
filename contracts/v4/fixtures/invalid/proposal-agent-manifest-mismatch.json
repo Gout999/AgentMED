@@ -1,0 +1,1 @@
+{"base_fixture":"proposal.json","mutations":[{"op":"set","path":"agent_manifest.digest","value":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}],"expected_invariant":"proposal.agent_manifest_mismatch"}

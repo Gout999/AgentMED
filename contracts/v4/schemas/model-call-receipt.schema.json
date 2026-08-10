@@ -1,0 +1,192 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/model-call-receipt.schema.json",
+  "title": "CaseLoop ModelCallReceipt",
+  "description": "Immutable receipt for one real model call. It binds a call-time Attempt snapshot recorded before output/terminal state and therefore never points at a future Attempt digest.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "model_call_receipt_id",
+    "workspace_id",
+    "case_id",
+    "attempt_snapshot",
+    "executor_principal",
+    "agent_manifest",
+    "runtime_session_id",
+    "requested_model",
+    "resolved_provider",
+    "resolved_model",
+    "model_resolution_receipt_digest",
+    "provider_provenance",
+    "independence_basis",
+    "independence_key",
+    "request_digest",
+    "response_digest",
+    "usage_digest",
+    "outcome",
+    "started_at",
+    "completed_at",
+    "recorded_at",
+    "authority_receipt_id",
+    "immutable",
+    "hash_rule",
+    "model_call_receipt_digest"
+  ],
+  "properties": {
+    "schema_version": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"},
+    "model_call_receipt_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/model_call_receipt_id"},
+    "workspace_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"},
+    "case_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/case_id"},
+    "attempt_snapshot": {
+      "allOf": [
+        {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"},
+        {"properties": {"kind": {"const": "ATTEMPT"}}}
+      ]
+    },
+    "executor_principal": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"},
+    "agent_manifest": {
+      "allOf": [
+        {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"},
+        {"properties": {"kind": {"const": "AGENT_MANIFEST"}}}
+      ]
+    },
+    "runtime_session_id": {"type": "string", "minLength": 1, "maxLength": 256},
+    "requested_model": {"type": "string", "minLength": 1},
+    "resolved_provider": {"type": "string", "minLength": 1},
+    "resolved_model": {"type": "string", "minLength": 1},
+    "model_resolution_receipt_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+    "provider_provenance": {
+      "type": "object",
+      "required": [
+        "protocol",
+        "provider_org",
+        "endpoint_origin",
+        "account_project",
+        "credential_ref",
+        "model_family",
+        "provider_request_id",
+        "returned_model",
+        "http_status",
+        "finish_reason",
+        "token_usage",
+        "raw_retained",
+        "call_mode"
+      ],
+      "properties": {
+        "protocol": {
+          "enum": [
+            "OPENAI_COMPATIBLE",
+            "ANTHROPIC_MESSAGES",
+            "STEPFUN_NATIVE",
+            "GLM_NATIVE",
+            "CUSTOM"
+          ]
+        },
+        "provider_org": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"},
+        "endpoint_origin": {"type": "string", "format": "uri", "pattern": "^https?://[^/?#]+$"},
+        "account_project": {
+          "type": "object",
+          "required": ["account_ref", "project_ref"],
+          "properties": {
+            "account_ref": {"type": "string", "pattern": "^provider-account://[A-Za-z0-9._/-]+$"},
+            "project_ref": {
+              "oneOf": [
+                {"type": "string", "pattern": "^provider-project://[A-Za-z0-9._/-]+$"},
+                {"type": "null"}
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "credential_ref": {"type": "string", "pattern": "^credential://[A-Za-z0-9._/-]+$"},
+        "model_family": {"type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"},
+        "provider_request_id": {
+          "oneOf": [
+            {"type": "string", "minLength": 1, "maxLength": 256},
+            {"type": "null"}
+          ]
+        },
+        "returned_model": {
+          "oneOf": [
+            {"type": "string", "minLength": 1},
+            {"type": "null"}
+          ]
+        },
+        "http_status": {
+          "oneOf": [
+            {"type": "integer", "minimum": 100, "maximum": 599},
+            {"type": "null"}
+          ]
+        },
+        "finish_reason": {
+          "oneOf": [
+            {"type": "string", "minLength": 1, "maxLength": 128},
+            {"type": "null"}
+          ]
+        },
+        "token_usage": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": ["input_tokens", "output_tokens", "total_tokens"],
+              "properties": {
+                "input_tokens": {"type": "integer", "minimum": 0},
+                "output_tokens": {"type": "integer", "minimum": 0},
+                "total_tokens": {"type": "integer", "minimum": 0}
+              },
+              "additionalProperties": false
+            },
+            {"type": "null"}
+          ]
+        },
+        "raw_retained": {"const": false},
+        "call_mode": {"enum": ["LIVE", "REPLAY"]}
+      },
+      "additionalProperties": false
+    },
+    "independence_basis": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/model_independence_basis"},
+    "independence_key": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+    "request_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+    "response_digest": {
+      "oneOf": [
+        {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+        {"type": "null"}
+      ]
+    },
+    "usage_digest": {
+      "oneOf": [
+        {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+        {"type": "null"}
+      ]
+    },
+    "outcome": {"enum": ["SUCCEEDED", "FAILED", "UNKNOWN"]},
+    "started_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
+    "completed_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
+    "recorded_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
+    "authority_receipt_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"},
+    "immutable": {"const": true},
+    "hash_rule": {"const": "jcs-rfc8785-v1+sha256(excluding:/model_call_receipt_digest)"},
+    "model_call_receipt_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"outcome": {"const": "SUCCEEDED"}}, "required": ["outcome"]},
+      "then": {
+        "properties": {
+          "response_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+          "usage_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+          "provider_provenance": {
+            "properties": {
+              "provider_request_id": {"type": "string", "minLength": 1},
+              "returned_model": {"type": "string", "minLength": 1},
+              "http_status": {"type": "integer", "minimum": 200, "maximum": 299},
+              "finish_reason": {"type": "string", "minLength": 1},
+              "token_usage": {"type": "object"}
+            }
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

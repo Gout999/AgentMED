@@ -1,0 +1,60 @@
+{
+  "schema_version": "1.0",
+  "gate_track_receipt_id": "gtr_errordet0001",
+  "workspace_id": "ws_stage0001",
+  "case_id": "case_stage0001",
+  "gate_execution_id": "gexec_error0001",
+  "resolution_contract": {
+    "kind": "RESOLUTION_CONTRACT",
+    "id": "rc_stage0001",
+    "revision": 1,
+    "digest": "sha256:cc97aa93105ee1337bcdb5ae708c77c1c35be887bdc67aac270692b5e9883d83"
+  },
+  "candidate_contract": {
+    "kind": "CANDIDATE_CONTRACT",
+    "id": "cc_stage0001",
+    "revision": null,
+    "digest": "sha256:68c1db5e06b8af0343e2e83b3f7abbbc5ddbd9ceebc67435d6734fa19986039b"
+  },
+  "candidate_revision": {
+    "kind": "CANDIDATE_REVISION",
+    "id": "crev_stage0001",
+    "revision": 1,
+    "digest": "sha256:6ac8562ff1059fd102ef1e2362c2f3cd0ee6575d6a51ba6bd431d73996fefc8a"
+  },
+  "evaluation_plan": {
+    "kind": "EVALUATION_PLAN",
+    "id": "eplan_stage0001",
+    "revision": null,
+    "digest": "sha256:c4dc6a5c6ebbfd68d9f1335470f222ef7d6060bdeb3d134f43d4ec7343136db9"
+  },
+  "track": "DETERMINISTIC_TEST",
+  "status": "ERROR",
+  "completeness": "UNKNOWN",
+  "executor": {
+    "kind": "DETERMINISTIC_RUNNER",
+    "principal_id": "prn_testrunner1",
+    "runner_digest": "sha256:ef01161fa9a4556a945c93e6ad4962a8dfd663718c98c03ff786af6a0efd35cf",
+    "run_receipt": {
+      "id": "testrcpt_errordet001",
+      "digest": "sha256:e2070d99f028b7cf7ec3d941303d8dd8cf43c74709df9d58c3c4393a8aa86817"
+    }
+  },
+  "evidence_receipts": [
+    {
+      "id": "testrcpt_errordet001",
+      "digest": "sha256:e2070d99f028b7cf7ec3d941303d8dd8cf43c74709df9d58c3c4393a8aa86817"
+    }
+  ],
+  "evidence_facets": [
+    "contract",
+    "repo-sandbox"
+  ],
+  "terminal_reason_digest": "sha256:30d3bef696eda87dc30d15bf6e13081bec31b7bd1a9155a5b983834936175834",
+  "started_at": "2026-08-10T01:53:00Z",
+  "completed_at": "2026-08-10T01:55:00Z",
+  "authority_receipt_id": "arec_gatetrackerrordet000000",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/gate_track_receipt_digest)",
+  "gate_track_receipt_digest": "sha256:871c02e3737ddcf99b1ccad28940804d8754520b63236a6272e5bcf94697f2eb"
+}

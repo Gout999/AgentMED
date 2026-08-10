@@ -1,0 +1,1 @@
+{"bundle":"identity","mutations":[{"document":"attempt","path":"capability_grant_id","value":"cap_rebound001"}],"expected_invariant":"identity_chain.attempt_capability_id_mismatch"}

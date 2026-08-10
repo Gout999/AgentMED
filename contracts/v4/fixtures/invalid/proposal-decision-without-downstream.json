@@ -1,0 +1,1 @@
+{"base_fixture":"proposal-decision.json","mutations":[{"op":"set","path":"downstream_event","value":null}],"expected_invariant":"accepted_decision_requires_atomic_downstream"}

@@ -1,0 +1,7 @@
+{
+  "base_fixture": "candidate-revision.json",
+  "mutations": [
+    {"op": "set", "path": "recorded_at", "value": "2026-08-10T01:49:00Z"}
+  ],
+  "expected_invariant": "candidate_revision.invalid_build_timeline"
+}

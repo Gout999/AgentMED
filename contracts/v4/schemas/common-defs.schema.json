@@ -1,0 +1,525 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json",
+  "title": "CaseLoop v4 common definitions",
+  "type": "object",
+  "$defs": {
+    "schema_version": {
+      "type": "string",
+      "const": "1.0"
+    },
+    "digest": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "workspace_id": {
+      "type": "string",
+      "pattern": "^ws_[0-9A-Za-z]{8,64}$"
+    },
+    "project_id": {
+      "type": "string",
+      "pattern": "^proj_[0-9A-Za-z]{8,64}$"
+    },
+    "environment_id": {
+      "type": "string",
+      "pattern": "^env_[0-9A-Za-z]{8,64}$"
+    },
+    "governed_agent_id": {
+      "type": "string",
+      "pattern": "^ga_[0-9A-Za-z]{8,64}$"
+    },
+    "source_id": {
+      "type": "string",
+      "pattern": "^src_[0-9A-Za-z]{8,64}$"
+    },
+    "signal_id": {
+      "type": "string",
+      "pattern": "^sig_[0-9A-Za-z]{8,64}$"
+    },
+    "case_id": {
+      "type": "string",
+      "pattern": "^case_[0-9A-Za-z]{8,64}$"
+    },
+    "principal_id": {
+      "type": "string",
+      "pattern": "^prn_[0-9A-Za-z]{8,64}$"
+    },
+    "request_id": {
+      "type": "string",
+      "pattern": "^req_[0-9A-Za-z]{8,64}$"
+    },
+    "agent_run_ref_id": {
+      "type": "string",
+      "pattern": "^arr_[0-9A-Za-z]{8,64}$"
+    },
+    "trace_evidence_receipt_id": {
+      "type": "string",
+      "pattern": "^ter_[0-9A-Za-z]{8,64}$"
+    },
+    "resolution_contract_id": {
+      "type": "string",
+      "pattern": "^rc_[0-9A-Za-z]{8,64}$"
+    },
+    "candidate_contract_id": {
+      "type": "string",
+      "pattern": "^cc_[0-9A-Za-z]{8,64}$"
+    },
+    "candidate_id": {
+      "type": "string",
+      "pattern": "^cand_[0-9A-Za-z]{8,64}$"
+    },
+    "candidate_revision_id": {
+      "type": "string",
+      "pattern": "^crev_[0-9A-Za-z]{8,64}$"
+    },
+    "evaluation_plan_id": {
+      "type": "string",
+      "pattern": "^eplan_[0-9A-Za-z]{8,64}$"
+    },
+    "gate_report_id": {
+      "type": "string",
+      "pattern": "^gate_[0-9A-Za-z]{8,64}$"
+    },
+    "gate_execution_id": {
+      "type": "string",
+      "pattern": "^gexec_[0-9A-Za-z]{8,64}$"
+    },
+    "worker_task_id": {
+      "type": "string",
+      "pattern": "^wt_[0-9A-Za-z]{8,64}$"
+    },
+    "attempt_id": {
+      "type": "string",
+      "pattern": "^att_[0-9A-Za-z]{8,64}$"
+    },
+    "model_call_receipt_id": {
+      "type": "string",
+      "pattern": "^mcr_[0-9A-Za-z]{8,64}$"
+    },
+    "resolution_review_receipt_id": {
+      "type": "string",
+      "pattern": "^rrr_[0-9A-Za-z]{8,64}$"
+    },
+    "gate_track_receipt_id": {
+      "type": "string",
+      "pattern": "^gtr_[0-9A-Za-z]{8,64}$"
+    },
+    "agent_intent_id": {
+      "type": "string",
+      "pattern": "^aint_[0-9A-Za-z]{8,64}$"
+    },
+    "proposal_id": {
+      "type": "string",
+      "pattern": "^prop_[0-9A-Za-z]{8,64}$"
+    },
+    "proposal_decision_id": {
+      "type": "string",
+      "pattern": "^pdec_[0-9A-Za-z]{8,64}$"
+    },
+    "agent_manifest_id": {
+      "type": "string",
+      "pattern": "^aman_[0-9A-Za-z]{8,64}$"
+    },
+    "participation_manifest_id": {
+      "type": "string",
+      "pattern": "^pman_[0-9A-Za-z]{8,64}$"
+    },
+    "capability_grant_id": {
+      "type": "string",
+      "pattern": "^cap_[0-9A-Za-z]{8,64}$"
+    },
+    "workorder_id": {
+      "type": "string",
+      "pattern": "^wo_[0-9A-Za-z]{8,64}$"
+    },
+    "skill_manifest_id": {
+      "type": "string",
+      "pattern": "^skillm_[0-9A-Za-z]{8,64}$"
+    },
+    "mcp_manifest_id": {
+      "type": "string",
+      "pattern": "^mcpm_[0-9A-Za-z]{8,64}$"
+    },
+    "controller_registration_id": {
+      "type": "string",
+      "pattern": "^creg_[0-9A-Za-z]{8,64}$"
+    },
+    "authority_receipt_id": {
+      "type": "string",
+      "pattern": "^arec_[0-9A-Za-z]{8,64}$"
+    },
+    "idempotency_receipt_id": {
+      "type": "string",
+      "pattern": "^idemr_[0-9A-Za-z]{8,64}$"
+    },
+    "date_time": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "completeness": {
+      "type": "string",
+      "enum": [
+        "COMPLETE",
+        "PARTIAL",
+        "UNKNOWN"
+      ]
+    },
+    "evidence_facet": {
+      "type": "string",
+      "enum": [
+        "contract",
+        "replay",
+        "domain-provider-live",
+        "agentteams-native",
+        "claude-runtime-live",
+        "agent-causal",
+        "repo-sandbox",
+        "human-authorized-external",
+        "production-canary"
+      ]
+    },
+    "artifact_ref": {
+      "type": "object",
+      "required": [
+        "uri",
+        "digest",
+        "media_type"
+      ],
+      "properties": {
+        "uri": {
+          "type": "string",
+          "format": "uri",
+          "minLength": 1
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        },
+        "media_type": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9!#$&^_.+-]+/[A-Za-z0-9!#$&^_.+-]+$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "resource_binding": {
+      "type": "object",
+      "required": [
+        "id",
+        "digest"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*_[0-9A-Za-z]{8,64}$"
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "exact_record_binding": {
+      "description": "Exact immutable snapshot binding. revision is the record revision when the subject is revisioned and null only for singleton immutable records.",
+      "type": "object",
+      "required": [
+        "kind",
+        "id",
+        "revision",
+        "digest"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "RESOLUTION_CONTRACT",
+            "CANDIDATE_CONTRACT",
+            "CANDIDATE_REVISION",
+            "EVALUATION_PLAN",
+            "PROPOSAL",
+            "PROPOSAL_DECISION",
+            "GATE_REPORT",
+            "WORKORDER",
+            "AGENT_MANIFEST",
+            "PARTICIPATION_MANIFEST",
+            "WORKER_TASK",
+            "ATTEMPT",
+            "CAPABILITY_LEASE",
+            "AGENT_INTENT",
+            "SKILL_MANIFEST",
+            "MCP_MANIFEST",
+            "SIGNAL_ENVELOPE",
+            "TRACE_EVIDENCE_RECEIPT",
+            "AGENT_RUN_REF",
+            "IDEMPOTENCY_RECEIPT",
+            "CONTROLLER_REGISTRATION",
+            "AUTHORITY_RECEIPT",
+            "MODEL_CALL_RECEIPT",
+            "RESOLUTION_REVIEW_RECEIPT",
+            "GATE_TRACK_RECEIPT"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*_[0-9A-Za-z]{8,64}$"
+        },
+        "revision": {
+          "oneOf": [
+            {"type": "integer", "minimum": 1},
+            {"type": "null"}
+          ]
+        },
+        "digest": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "model_independence_dimension": {
+      "enum": [
+        "provider_org",
+        "endpoint_origin",
+        "account_project",
+        "credential_ref",
+        "model_family"
+      ]
+    },
+    "model_independence_basis": {
+      "type": "object",
+      "required": [
+        "provider_org",
+        "endpoint_origin",
+        "account_project",
+        "credential_ref",
+        "model_family"
+      ],
+      "properties": {
+        "provider_org": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+        },
+        "endpoint_origin": {
+          "type": "string",
+          "format": "uri",
+          "pattern": "^https?://[^/?#]+$"
+        },
+        "account_project": {
+          "type": "object",
+          "required": ["account_ref", "project_ref"],
+          "properties": {
+            "account_ref": {
+              "type": "string",
+              "pattern": "^provider-account://[A-Za-z0-9._/-]+$"
+            },
+            "project_ref": {
+              "oneOf": [
+                {
+                  "type": "string",
+                  "pattern": "^provider-project://[A-Za-z0-9._/-]+$"
+                },
+                {"type": "null"}
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        "credential_ref": {
+          "type": "string",
+          "pattern": "^credential://[A-Za-z0-9._/-]+$"
+        },
+        "model_family": {
+          "type": "string",
+          "pattern": "^[a-z0-9][a-z0-9._-]{1,127}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "agent_execution_identity": {
+      "type": "object",
+      "required": [
+        "principal_id",
+        "attempt",
+        "agent_manifest",
+        "model_call_receipt"
+      ],
+      "properties": {
+        "principal_id": {"$ref": "#/$defs/principal_id"},
+        "attempt": {
+          "allOf": [
+            {"$ref": "#/$defs/exact_record_binding"},
+            {"properties": {"kind": {"const": "ATTEMPT"}}}
+          ]
+        },
+        "agent_manifest": {
+          "allOf": [
+            {"$ref": "#/$defs/exact_record_binding"},
+            {"properties": {"kind": {"const": "AGENT_MANIFEST"}}}
+          ]
+        },
+        "model_call_receipt": {
+          "allOf": [
+            {"$ref": "#/$defs/exact_record_binding"},
+            {"properties": {"kind": {"const": "MODEL_CALL_RECEIPT"}}}
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "target_revision": {
+      "type": "object",
+      "required": [
+        "target_ref",
+        "revision",
+        "content_digest"
+      ],
+      "properties": {
+        "target_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "content_digest": {
+          "$ref": "#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "budget": {
+      "type": "object",
+      "required": [
+        "max_attempts",
+        "max_wall_seconds",
+        "max_tokens",
+        "max_cost_microunits"
+      ],
+      "properties": {
+        "max_attempts": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_wall_seconds": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_tokens": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "max_cost_microunits": {
+          "type": "integer",
+          "minimum": 0
+        }
+      },
+      "additionalProperties": false
+    },
+    "permission_surface": {
+      "type": "object",
+      "required": [
+        "files",
+        "processes",
+        "network",
+        "mcp_tools",
+        "cloud_actions",
+        "secret_refs"
+      ],
+      "properties": {
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "access"],
+            "properties": {
+              "path": {"type": "string", "minLength": 1},
+              "access": {"enum": ["READ", "WRITE"]}
+            },
+            "additionalProperties": false
+          },
+          "uniqueItems": true
+        },
+        "processes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["executable", "arguments_digest"],
+            "properties": {
+              "executable": {"type": "string", "minLength": 1},
+              "arguments_digest": {"$ref": "#/$defs/digest"}
+            },
+            "additionalProperties": false
+          },
+          "uniqueItems": true
+        },
+        "network": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["origin", "methods"],
+            "properties": {
+              "origin": {"type": "string", "format": "uri"},
+              "methods": {
+                "type": "array",
+                "items": {"enum": ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"]},
+                "minItems": 1,
+                "uniqueItems": true
+              }
+            },
+            "additionalProperties": false
+          },
+          "uniqueItems": true
+        },
+        "mcp_tools": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["server", "tool", "schema_digest"],
+            "properties": {
+              "server": {"type": "string", "minLength": 1},
+              "tool": {"type": "string", "minLength": 1},
+              "schema_digest": {"$ref": "#/$defs/digest"}
+            },
+            "additionalProperties": false
+          },
+          "uniqueItems": true
+        },
+        "cloud_actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["provider", "action", "resource"],
+            "properties": {
+              "provider": {"type": "string", "minLength": 1},
+              "action": {"type": "string", "minLength": 1},
+              "resource": {"type": "string", "minLength": 1}
+            },
+            "additionalProperties": false
+          },
+          "uniqueItems": true
+        },
+        "secret_refs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "credential_ref"],
+            "properties": {
+              "name": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,63}$"},
+              "credential_ref": {"type": "string", "pattern": "^credential://[A-Za-z0-9._/-]+$"}
+            },
+            "additionalProperties": false
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "audit_ref": {
+      "type": "string",
+      "pattern": "^audit://aud_[0-9A-Za-z]{8,64}$"
+    },
+    "intent_name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]*(?:\\.[a-z][a-z0-9-]*)+$"
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,1 @@
+{"bundle":"identity","mutations":[{"document":"proposal_decision","path":"decided_at","value":"2026-08-10T01:39:59Z"}],"expected_invariant":"identity_chain.decision_before_submission"}

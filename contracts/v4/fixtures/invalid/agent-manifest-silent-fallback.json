@@ -1,0 +1,1 @@
+{"base_fixture":"agent-manifest.json","mutations":[{"op":"set","path":"model_policy.fallback_creates_new_attempt","value":false}],"expected_invariant":"fallback_creates_new_attempt"}

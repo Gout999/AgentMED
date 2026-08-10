@@ -1,0 +1,1 @@
+{"bundle":"identity","mutations":[{"document":"capability_lease","path":"source_permissions.principal_ceiling.files.0.path","value":"src/rebound.py"}],"expected_invariant":"identity_chain.permission_ceiling_mismatch"}

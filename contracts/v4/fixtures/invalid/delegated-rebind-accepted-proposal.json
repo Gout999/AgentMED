@@ -1,0 +1,1 @@
+{"bundle":"delegated_dispatch","mutations":[{"document":"capability_lease","path":"accepted_proposal","value":{"kind":"PROPOSAL","id":"prop_rebound001","revision":null,"digest":"sha256:c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0c0"}}],"expected_invariant":"delegated_dispatch.capability_proposal_mismatch"}

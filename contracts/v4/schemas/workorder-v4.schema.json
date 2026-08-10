@@ -1,0 +1,157 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/workorder-v4.schema.json",
+  "title": "CaseLoop v4 post-Gate WorkOrder",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "workorder_id",
+    "revision",
+    "workspace_id",
+    "case_id",
+    "semantic",
+    "resolution_contract",
+    "candidate_contract",
+    "candidate_revision",
+    "evaluation_plan",
+    "candidate_id",
+    "candidate_artifact",
+    "gate_report",
+    "gate_status",
+    "target",
+    "diff_artifact",
+    "action_scope",
+    "risk_class",
+    "required_authorization",
+    "nonce",
+    "expires_at",
+    "created_by_principal",
+    "created_at",
+    "immutable",
+    "hash_rule",
+    "workorder_hash",
+    "authority_receipt_id"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+    },
+    "workorder_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workorder_id"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "workspace_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+    },
+    "case_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/case_id"
+    },
+    "semantic": {
+      "const": "V4_POST_GATE_EXECUTION"
+    },
+    "resolution_contract": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+    },
+    "candidate_contract": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+    },
+    "candidate_revision": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+    },
+    "evaluation_plan": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+    },
+    "candidate_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/candidate_id"
+    },
+    "candidate_artifact": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+    },
+    "gate_report": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+    },
+    "gate_status": {
+      "const": "PASS"
+    },
+    "target": {
+      "type": "object",
+      "required": [
+        "repository_ref",
+        "base_revision",
+        "base_digest",
+        "target_revision",
+        "target_digest"
+      ],
+      "properties": {
+        "repository_ref": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "base_digest": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+        },
+        "target_revision": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target_digest": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "diff_artifact": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+    },
+    "action_scope": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
+    },
+    "risk_class": {
+      "enum": [
+        "R0_READ_ONLY",
+        "R1_REVERSIBLE",
+        "R2_HIGH_IMPACT",
+        "R3_IRREVERSIBLE"
+      ]
+    },
+    "required_authorization": {
+      "enum": [
+        "HUMAN_APPROVAL",
+        "POLICY_GRANT"
+      ]
+    },
+    "nonce": {
+      "type": "string",
+      "pattern": "^nonce_[0-9A-Za-z]{16,96}$"
+    },
+    "expires_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "created_by_principal": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+    },
+    "created_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "immutable": {
+      "const": true
+    },
+    "hash_rule": {
+      "const": "jcs-rfc8785-v1+sha256(excluding:/workorder_hash)"
+    },
+    "workorder_hash": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "authority_receipt_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
+    }
+  },
+  "additionalProperties": false
+}

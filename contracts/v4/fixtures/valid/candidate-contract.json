@@ -1,0 +1,59 @@
+{
+  "schema_version": "1.0",
+  "candidate_contract_id": "cc_stage0001",
+  "candidate_id": "cand_stage0001",
+  "planned_revision": 1,
+  "workspace_id": "ws_stage0001",
+  "case_id": "case_stage0001",
+  "resolution_contract": {
+    "id": "rc_stage0001",
+    "digest": "sha256:cc97aa93105ee1337bcdb5ae708c77c1c35be887bdc67aac270692b5e9883d83"
+  },
+  "state": "FROZEN",
+  "candidate_kind": "CODE_PATCH",
+  "base": {
+    "target_ref": "repo://example/project",
+    "revision": "0123456789abcdef",
+    "content_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+  },
+  "allowed_action_scope": {
+    "files": [
+      {
+        "path": "src/handler.py",
+        "access": "WRITE"
+      },
+      {
+        "path": "tests/test_handler.py",
+        "access": "WRITE"
+      }
+    ],
+    "processes": [],
+    "network": [],
+    "mcp_tools": [],
+    "cloud_actions": [],
+    "secret_refs": []
+  },
+  "forbidden_paths": [
+    ".github/",
+    "tests/fixtures/hidden/"
+  ],
+  "public_validation": [
+    {
+      "check_id": "focused-tests",
+      "command_digest": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+      "expected_exit_code": 0
+    }
+  ],
+  "budget": {
+    "max_attempts": 2,
+    "max_wall_seconds": 1200,
+    "max_tokens": 120000,
+    "max_cost_microunits": 0
+  },
+  "frozen_by_principal": "prn_proposalctl",
+  "frozen_at": "2026-08-10T01:10:00Z",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/contract_digest)",
+  "contract_digest": "sha256:68c1db5e06b8af0343e2e83b3f7abbbc5ddbd9ceebc67435d6734fa19986039b",
+  "authority_receipt_id": "arec_candidatecontract00000000"
+}

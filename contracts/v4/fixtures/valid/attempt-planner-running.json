@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "attempt_id": "att_planner0001",
+  "worker_task_id": "wt_stage0001",
+  "workspace_id": "ws_stage0001",
+  "attempt_kind": "PRIMARY",
+  "state": "RUNNING",
+  "parent_attempt_id": null,
+  "fallback_of_attempt_id": null,
+  "delegation_proposal_id": null,
+  "requested_by_principal": "prn_workcontrol1",
+  "executor_principal": "prn_planner0001",
+  "assigned_team_id": "team_coding_stage0",
+  "agent_manifest": {
+    "kind": "AGENT_MANIFEST",
+    "id": "aman_planner001",
+    "revision": 1,
+    "digest": "sha256:7e9929e0c3cc77658d513326e7fbc3fd4420eeeeb186430d885c4f5e5e24b0f9"
+  },
+  "input_snapshot_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "claim_binding": {
+    "claim_event_id": "evt_claimplanner01",
+    "lease_id": "lease_planner0001",
+    "worker_principal": "prn_planner0001",
+    "runtime_session_id": "claude-session-planner",
+    "fencing_token": 1,
+    "claimed_at": "2026-08-10T00:51:00Z"
+  },
+  "runtime": {
+    "runtime_kind": "CLAUDE_CODE",
+    "runtime_session_id": "claude-session-planner",
+    "runtime_adapter_digest": "sha256:1919191919191919191919191919191919191919191919191919191919191919",
+    "runtime_version": "1.0.0"
+  },
+  "model": {
+    "requested_model": "glm-5.2",
+    "resolved_provider": "zhipu",
+    "resolved_model": "glm-5.2",
+    "resolution_kind": "EXACT",
+    "model_resolution_receipt_digest": "sha256:7663c2a13920493a5087da13c136863d3fe39d6346408a723d9b570e6bdbce08",
+    "model_call_receipt_digest": null,
+    "model_call_receipt": null
+  },
+  "capability_grant_id": "cap_planner0001",
+  "repo_context": null,
+  "skill_usage": [],
+  "mcp_usage": [],
+  "tool_receipts": [],
+  "output_artifact": null,
+  "terminal_receipt": null,
+  "failure": null,
+  "started_at": "2026-08-10T00:51:00Z",
+  "completed_at": null,
+  "attempt_digest": "sha256:c3a240100d282b75c3158522a65dd7dfa94346b7d449d671e876cacfc2bd5b5b",
+  "revision": 1,
+  "worker_task_snapshot": {
+    "kind": "WORKER_TASK",
+    "id": "wt_stage0001",
+    "revision": 2,
+    "digest": "sha256:f8c0e6000c40c984ee8eb6c6b82b9633a01dead6ecd8ac46d2e25f26fa28755e"
+  },
+  "previous_snapshot": null,
+  "runtime_capability": null,
+  "authority_receipt_id": "arec_attemptplannerrun0000000",
+  "pre_controlled_action": null,
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/attempt_digest)"
+}

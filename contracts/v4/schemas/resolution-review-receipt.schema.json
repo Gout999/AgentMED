@@ -1,0 +1,117 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/resolution-review-receipt.schema.json",
+  "title": "CaseLoop ResolutionReviewReceipt",
+  "description": "Controller-recorded proof that a proposed Resolution draft received the review required by its frozen policy. Human and deterministic review are explicit receipt branches and never masquerade as model independence.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "resolution_review_receipt_id",
+    "workspace_id",
+    "case_id",
+    "resolution_contract_id",
+    "reviewed_content_digest",
+    "review_policy",
+    "proposer",
+    "reviewer",
+    "verdict",
+    "findings_digest",
+    "reviewed_at",
+    "authority_receipt_id",
+    "immutable",
+    "hash_rule",
+    "review_receipt_digest"
+  ],
+  "$defs": {
+    "review_policy": {
+      "type": "object",
+      "required": ["mode", "required_distinct_dimensions"],
+      "properties": {
+        "mode": {"enum": ["AGENT_SEPARATE", "AGENT_INDEPENDENT", "HUMAN", "DETERMINISTIC"]},
+        "required_distinct_dimensions": {
+          "type": "array",
+          "items": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/model_independence_dimension"},
+          "uniqueItems": true
+        }
+      },
+      "allOf": [
+        {
+          "if": {"properties": {"mode": {"const": "AGENT_INDEPENDENT"}}, "required": ["mode"]},
+          "then": {"properties": {"required_distinct_dimensions": {"minItems": 1}}},
+          "else": {"properties": {"required_distinct_dimensions": {"maxItems": 0}}}
+        }
+      ],
+      "additionalProperties": false
+    },
+    "agent_reviewer": {
+      "type": "object",
+      "required": ["kind", "execution"],
+      "properties": {
+        "kind": {"const": "AGENT"},
+        "execution": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/agent_execution_identity"}
+      },
+      "additionalProperties": false
+    },
+    "human_reviewer": {
+      "type": "object",
+      "required": ["kind", "principal_id", "authentication_audit_ref", "attestation_digest"],
+      "properties": {
+        "kind": {"const": "HUMAN"},
+        "principal_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"},
+        "authentication_audit_ref": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"},
+        "attestation_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"}
+      },
+      "additionalProperties": false
+    },
+    "deterministic_reviewer": {
+      "type": "object",
+      "required": ["kind", "principal_id", "runner_digest", "run_receipt"],
+      "properties": {
+        "kind": {"const": "DETERMINISTIC"},
+        "principal_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"},
+        "runner_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+        "run_receipt": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"}
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "schema_version": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"},
+    "resolution_review_receipt_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resolution_review_receipt_id"},
+    "workspace_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"},
+    "case_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/case_id"},
+    "resolution_contract_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resolution_contract_id"},
+    "reviewed_content_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+    "review_policy": {"$ref": "#/$defs/review_policy"},
+    "proposer": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/agent_execution_identity"},
+    "reviewer": {
+      "oneOf": [
+        {"$ref": "#/$defs/agent_reviewer"},
+        {"$ref": "#/$defs/human_reviewer"},
+        {"$ref": "#/$defs/deterministic_reviewer"}
+      ]
+    },
+    "verdict": {"enum": ["APPROVED", "CHANGES_REQUIRED", "INCONCLUSIVE"]},
+    "findings_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+    "reviewed_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
+    "authority_receipt_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"},
+    "immutable": {"const": true},
+    "hash_rule": {"const": "jcs-rfc8785-v1+sha256(excluding:/review_receipt_digest)"},
+    "review_receipt_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"}
+  },
+  "allOf": [
+    {
+      "if": {"properties": {"review_policy": {"properties": {"mode": {"enum": ["AGENT_SEPARATE", "AGENT_INDEPENDENT"]}}, "required": ["mode"]}}, "required": ["review_policy"]},
+      "then": {"properties": {"reviewer": {"$ref": "#/$defs/agent_reviewer"}}}
+    },
+    {
+      "if": {"properties": {"review_policy": {"properties": {"mode": {"const": "HUMAN"}}, "required": ["mode"]}}, "required": ["review_policy"]},
+      "then": {"properties": {"reviewer": {"$ref": "#/$defs/human_reviewer"}}}
+    },
+    {
+      "if": {"properties": {"review_policy": {"properties": {"mode": {"const": "DETERMINISTIC"}}, "required": ["mode"]}}, "required": ["review_policy"]},
+      "then": {"properties": {"reviewer": {"$ref": "#/$defs/deterministic_reviewer"}}}
+    }
+  ],
+  "additionalProperties": false
+}

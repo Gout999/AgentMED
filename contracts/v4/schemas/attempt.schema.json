@@ -1,0 +1,1183 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/attempt.schema.json",
+  "title": "CaseLoop Attempt",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "attempt_id",
+    "worker_task_id",
+    "workspace_id",
+    "attempt_kind",
+    "state",
+    "parent_attempt_id",
+    "fallback_of_attempt_id",
+    "delegation_proposal_id",
+    "requested_by_principal",
+    "executor_principal",
+    "assigned_team_id",
+    "agent_manifest",
+    "input_snapshot_digest",
+    "claim_binding",
+    "runtime",
+    "model",
+    "capability_grant_id",
+    "repo_context",
+    "skill_usage",
+    "mcp_usage",
+    "tool_receipts",
+    "output_artifact",
+    "pre_controlled_action",
+    "terminal_receipt",
+    "failure",
+    "started_at",
+    "completed_at",
+    "attempt_digest",
+    "revision",
+    "worker_task_snapshot",
+    "runtime_capability",
+    "previous_snapshot",
+    "authority_receipt_id",
+    "immutable",
+    "hash_rule"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+    },
+    "attempt_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+    },
+    "worker_task_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/worker_task_id"
+    },
+    "workspace_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+    },
+    "attempt_kind": {
+      "enum": [
+        "PRIMARY",
+        "DELEGATED",
+        "FALLBACK",
+        "RETRY",
+        "RECONCILIATION"
+      ]
+    },
+    "state": {
+      "enum": [
+        "CREATED",
+        "STARTING",
+        "RUNNING",
+        "OUTPUT_RECORDED",
+        "CANCEL_REQUESTED",
+        "SUCCEEDED",
+        "FAILED",
+        "TIMED_OUT",
+        "CANCELLED",
+        "UNKNOWN"
+      ]
+    },
+    "parent_attempt_id": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "fallback_of_attempt_id": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "delegation_proposal_id": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/proposal_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "requested_by_principal": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+    },
+    "executor_principal": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+    },
+    "assigned_team_id": {
+      "type": "string",
+      "pattern": "^team_[0-9A-Za-z_-]{4,64}$"
+    },
+    "agent_manifest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+    },
+    "input_snapshot_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "claim_binding": {
+      "type": "object",
+      "required": [
+        "claim_event_id",
+        "lease_id",
+        "worker_principal",
+        "runtime_session_id",
+        "fencing_token",
+        "claimed_at"
+      ],
+      "properties": {
+        "claim_event_id": {
+          "type": "string",
+          "pattern": "^evt_[0-9A-Za-z]{8,64}$"
+        },
+        "lease_id": {
+          "type": "string",
+          "pattern": "^lease_[0-9A-Za-z]{8,64}$"
+        },
+        "worker_principal": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+        },
+        "runtime_session_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "fencing_token": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "claimed_at": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+        }
+      },
+      "additionalProperties": false
+    },
+    "runtime": {
+      "type": "object",
+      "required": [
+        "runtime_kind",
+        "runtime_session_id",
+        "runtime_adapter_digest",
+        "runtime_version"
+      ],
+      "properties": {
+        "runtime_kind": {
+          "enum": [
+            "AGENTTEAMS",
+            "CLAUDE_CODE",
+            "CODEX",
+            "QWEN_CODE",
+            "CUSTOM"
+          ]
+        },
+        "runtime_session_id": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "runtime_adapter_digest": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+        },
+        "runtime_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        }
+      },
+      "additionalProperties": false
+    },
+    "model": {
+      "type": "object",
+      "required": [
+        "requested_model",
+        "resolved_provider",
+        "resolved_model",
+        "resolution_kind",
+        "model_resolution_receipt_digest",
+        "model_call_receipt_digest",
+        "model_call_receipt"
+      ],
+      "properties": {
+        "requested_model": {
+          "type": "string",
+          "minLength": 1
+        },
+        "resolved_provider": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolved_model": {
+          "oneOf": [
+            {
+              "type": "string",
+              "minLength": 1
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "resolution_kind": {
+          "oneOf": [
+            {
+              "enum": [
+                "EXACT",
+                "FALLBACK"
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model_resolution_receipt_digest": {
+          "oneOf": [
+            {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model_call_receipt_digest": {
+          "oneOf": [
+            {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "model_call_receipt": {
+          "oneOf": [
+            {
+              "allOf": [
+                {
+                  "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "MODEL_CALL_RECEIPT"
+                    }
+                  }
+                }
+              ]
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "capability_grant_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/capability_grant_id"
+    },
+    "repo_context": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "repository_ref",
+            "base_revision",
+            "base_digest",
+            "worktree_ref",
+            "worktree_digest"
+          ],
+          "properties": {
+            "repository_ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "base_revision": {
+              "type": "string",
+              "minLength": 1
+            },
+            "base_digest": {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+            },
+            "worktree_ref": {
+              "type": "string",
+              "minLength": 1
+            },
+            "worktree_digest": {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "skill_usage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "skill_manifest_digest",
+          "discovered",
+          "loaded",
+          "selected",
+          "called",
+          "call_receipt_digest"
+        ],
+        "properties": {
+          "skill_manifest_digest": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+          },
+          "discovered": {
+            "const": true
+          },
+          "loaded": {
+            "const": true
+          },
+          "selected": {
+            "const": true
+          },
+          "called": {
+            "const": true
+          },
+          "call_receipt_digest": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+          }
+        },
+        "additionalProperties": false
+      },
+      "uniqueItems": true
+    },
+    "mcp_usage": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "server",
+          "tool",
+          "catalog_digest",
+          "schema_digest",
+          "called",
+          "call_receipt_digest"
+        ],
+        "properties": {
+          "server": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tool": {
+            "type": "string",
+            "minLength": 1
+          },
+          "catalog_digest": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+          },
+          "schema_digest": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+          },
+          "called": {
+            "const": true
+          },
+          "call_receipt_digest": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+          }
+        },
+        "additionalProperties": false
+      },
+      "uniqueItems": true
+    },
+    "tool_receipts": {
+      "type": "array",
+      "items": {
+        "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+      },
+      "uniqueItems": true
+    },
+    "output_artifact": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "pre_controlled_action": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "proposal_id",
+            "proposal_digest",
+            "submitted_at",
+        "controlled_action_started_at"
+          ],
+          "properties": {
+            "proposal_id": {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/proposal_id"
+            },
+            "proposal_digest": {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+            },
+            "submitted_at": {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+            },
+        "controlled_action_started_at": {
+              "oneOf": [
+                {
+                  "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "terminal_receipt": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "process_exit_code",
+            "stream_complete",
+            "structured_output_valid",
+            "receipt_digest"
+          ],
+          "properties": {
+            "process_exit_code": {
+              "type": "integer"
+            },
+            "stream_complete": {
+              "type": "boolean"
+            },
+            "structured_output_valid": {
+              "type": "boolean"
+            },
+            "receipt_digest": {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "failure": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "code",
+            "retryable",
+            "reconciliation_required"
+          ],
+          "properties": {
+            "code": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "reconciliation_required": {
+              "type": "boolean"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "started_at": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "completed_at": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "attempt_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "worker_task_snapshot": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+    },
+    "runtime_capability": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "previous_snapshot": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "authority_receipt_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
+    },
+    "immutable": {
+      "const": true
+    },
+    "hash_rule": {
+      "const": "jcs-rfc8785-v1+sha256(excluding:/attempt_digest)"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "attempt_kind": {
+            "const": "DELEGATED"
+          }
+        },
+        "required": [
+          "attempt_kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "parent_attempt_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+          },
+          "delegation_proposal_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/proposal_id"
+          },
+          "repo_context": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "attempt_kind": {
+            "const": "FALLBACK"
+          }
+        },
+        "required": [
+          "attempt_kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "fallback_of_attempt_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+          },
+          "model": {
+            "type": "object",
+            "properties": {
+              "resolution_kind": {
+                "oneOf": [
+                  {
+                    "const": "FALLBACK"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "attempt_kind": {
+            "enum": [
+              "PRIMARY",
+              "DELEGATED",
+              "RETRY",
+              "RECONCILIATION"
+            ]
+          }
+        },
+        "required": [
+          "attempt_kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "model": {
+            "type": "object",
+            "properties": {
+              "resolution_kind": {
+                "oneOf": [
+                  {
+                    "const": "EXACT"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "CREATED"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "runtime": {
+            "type": "object",
+            "properties": {
+              "runtime_session_id": {
+                "type": "null"
+              }
+            }
+          },
+          "model": {
+            "type": "object",
+            "properties": {
+              "resolved_provider": {
+                "type": "null"
+              },
+              "resolved_model": {
+                "type": "null"
+              },
+              "resolution_kind": {
+                "type": "null"
+              },
+              "model_resolution_receipt_digest": {
+                "type": "null"
+              },
+              "model_call_receipt_digest": {
+                "type": "null"
+              },
+              "model_call_receipt": {
+                "type": "null"
+              }
+            }
+          },
+          "skill_usage": {
+            "maxItems": 0
+          },
+          "mcp_usage": {
+            "maxItems": 0
+          },
+          "tool_receipts": {
+            "maxItems": 0
+          },
+          "output_artifact": {
+            "type": "null"
+          },
+          "pre_controlled_action": {
+            "type": "null"
+          },
+          "terminal_receipt": {
+            "type": "null"
+          },
+          "failure": {
+            "type": "null"
+          },
+          "started_at": {
+            "type": "null"
+          },
+          "completed_at": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "STARTING"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "runtime": {
+            "type": "object",
+            "properties": {
+              "runtime_session_id": {
+                "type": "null"
+              }
+            }
+          },
+          "model": {
+            "type": "object",
+            "properties": {
+              "resolved_provider": {
+                "type": "null"
+              },
+              "resolved_model": {
+                "type": "null"
+              },
+              "resolution_kind": {
+                "type": "null"
+              },
+              "model_resolution_receipt_digest": {
+                "type": "null"
+              },
+              "model_call_receipt_digest": {
+                "type": "null"
+              },
+              "model_call_receipt": {
+                "type": "null"
+              }
+            }
+          },
+          "skill_usage": {
+            "maxItems": 0
+          },
+          "mcp_usage": {
+            "maxItems": 0
+          },
+          "tool_receipts": {
+            "maxItems": 0
+          },
+          "output_artifact": {
+            "type": "null"
+          },
+          "pre_controlled_action": {
+            "type": "null"
+          },
+          "terminal_receipt": {
+            "type": "null"
+          },
+          "failure": {
+            "type": "null"
+          },
+          "started_at": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+          },
+          "completed_at": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "enum": [
+              "RUNNING",
+              "OUTPUT_RECORDED",
+              "SUCCEEDED"
+            ]
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "runtime": {
+            "type": "object",
+            "properties": {
+              "runtime_session_id": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 256
+              }
+            }
+          },
+          "model": {
+            "type": "object",
+            "properties": {
+              "resolved_provider": {
+                "type": "string",
+                "minLength": 1
+              },
+              "resolved_model": {
+                "type": "string",
+                "minLength": 1
+              },
+              "resolution_kind": {
+                "enum": [
+                  "EXACT",
+                  "FALLBACK"
+                ]
+              },
+              "model_resolution_receipt_digest": {
+                "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+              }
+            }
+          },
+          "started_at": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "RUNNING"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "output_artifact": {
+            "type": "null"
+          },
+          "model": {
+            "type": "object",
+            "properties": {
+              "model_call_receipt_digest": {
+                "type": "null"
+              },
+              "model_call_receipt": {
+                "type": "null"
+              }
+            }
+          },
+          "terminal_receipt": {
+            "type": "null"
+          },
+          "failure": {
+            "type": "null"
+          },
+          "completed_at": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "OUTPUT_RECORDED"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "output_artifact": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+          },
+          "model": {
+            "type": "object",
+            "properties": {
+            "model_call_receipt_digest": {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+            },
+            "model_call_receipt": {
+              "allOf": [
+                {
+                  "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "MODEL_CALL_RECEIPT"
+                    }
+                  }
+                }
+              ]
+            }
+            }
+          },
+          "terminal_receipt": {
+            "type": "null"
+          },
+          "failure": {
+            "type": "null"
+          },
+          "completed_at": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "SUCCEEDED"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "output_artifact": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+          },
+          "model": {
+            "type": "object",
+            "properties": {
+            "model_call_receipt_digest": {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+            },
+            "model_call_receipt": {
+              "allOf": [
+                {
+                  "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+                },
+                {
+                  "properties": {
+                    "kind": {
+                      "const": "MODEL_CALL_RECEIPT"
+                    }
+                  }
+                }
+              ]
+            }
+            }
+          },
+          "terminal_receipt": {
+            "type": "object",
+            "properties": {
+              "process_exit_code": {
+                "const": 0
+              },
+              "stream_complete": {
+                "const": true
+              },
+              "structured_output_valid": {
+                "const": true
+              }
+            }
+          },
+          "failure": {
+            "type": "null"
+          },
+          "completed_at": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "CANCEL_REQUESTED"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "terminal_receipt": {
+            "type": "null"
+          },
+          "failure": {
+            "type": "null"
+          },
+          "completed_at": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "enum": [
+              "FAILED",
+              "TIMED_OUT"
+            ]
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "failure": {
+            "type": "object"
+          },
+          "completed_at": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "CANCELLED"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "failure": {
+            "type": "null"
+          },
+          "completed_at": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "UNKNOWN"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "failure": {
+            "type": "object",
+            "properties": {
+              "reconciliation_required": {
+                "const": true
+              }
+            }
+          },
+          "completed_at": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "revision": {
+            "const": 1
+          }
+        },
+        "required": [
+          "revision"
+        ]
+      },
+      "then": {
+        "properties": {
+          "previous_snapshot": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "previous_snapshot": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "CREATED"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "runtime_capability": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

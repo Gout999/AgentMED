@@ -1,0 +1,1 @@
+{"base_fixture":"proposal.json","mutations":[{"op":"set","path":"case_id","value":"case_replaced001"}],"expected_invariant":"proposal.case_mismatch"}

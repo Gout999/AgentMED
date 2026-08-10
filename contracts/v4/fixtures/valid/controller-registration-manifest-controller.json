@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "controller_registration_id": "creg_manifestcontroller",
+  "revision": 1,
+  "previous_snapshot": null,
+  "state": "ACTIVE",
+  "workspace_id": "ws_stage0001",
+  "owner": "manifest-controller",
+  "controller_principal": "prn_manifestctl1",
+  "principal_type": "CONTROLLER_SERVICE",
+  "allowed_commands": [
+    "agent-manifests.register"
+  ],
+  "ownership_contract": {
+    "version": "1.0",
+    "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+  },
+  "event_catalog": {
+    "version": "1.0",
+    "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+  },
+  "valid_from": "2026-08-10T00:00:00Z",
+  "expires_at": null,
+  "service_identity_digest": "sha256:b8a82ddd16a828a49971ebd62ec89e095d9901b124a4e49bfcabb285cc9dd97d",
+  "registered_by_human_principal": "prn_platformadmin",
+  "registration_audit_ref": "audit://aud_manifestcontroller",
+  "registered_at": "2026-08-10T00:00:00Z",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
+  "registration_digest": "sha256:4988ad6bd5061156ae9167dc4ddeff6f6154a7d1ebc78261a9c646c42f31e0a2"
+}

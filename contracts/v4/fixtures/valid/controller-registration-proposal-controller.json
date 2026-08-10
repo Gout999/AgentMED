@@ -1,0 +1,35 @@
+{
+  "schema_version": "1.0",
+  "controller_registration_id": "creg_proposalcontroller",
+  "revision": 1,
+  "previous_snapshot": null,
+  "state": "ACTIVE",
+  "workspace_id": "ws_stage0001",
+  "owner": "proposal-controller",
+  "controller_principal": "prn_proposalctl",
+  "principal_type": "CONTROLLER_SERVICE",
+  "allowed_commands": [
+    "candidate-contracts.freeze",
+    "candidate-revisions.record",
+    "intents.submit",
+    "proposals.decide",
+    "proposals.submit"
+  ],
+  "ownership_contract": {
+    "version": "1.0",
+    "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+  },
+  "event_catalog": {
+    "version": "1.0",
+    "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+  },
+  "valid_from": "2026-08-10T00:00:00Z",
+  "expires_at": null,
+  "service_identity_digest": "sha256:bd9cb133e1af9abe575c817e626bff94a61d2a3c8dfaecf04f408e35bae34f35",
+  "registered_by_human_principal": "prn_platformadmin",
+  "registration_audit_ref": "audit://aud_proposalcontroller",
+  "registered_at": "2026-08-10T00:00:00Z",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
+  "registration_digest": "sha256:18d25dd10b8e1bbb3eb84a22b44212ae1c67dee5f8cd1978d1f7e8095730773f"
+}

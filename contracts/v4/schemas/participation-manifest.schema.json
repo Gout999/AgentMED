@@ -1,0 +1,185 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/participation-manifest.schema.json",
+  "title": "CaseLoop ParticipationManifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "participation_manifest_id",
+    "revision",
+    "previous_snapshot",
+    "workspace_id",
+    "case_id",
+    "resolution_contract",
+    "mode",
+    "selection_reason",
+    "team_manifest_digest",
+    "participants",
+    "dependencies",
+    "not_participating_roles",
+    "frozen_by_principal",
+    "frozen_at",
+    "manifest_digest",
+    "state",
+    "authority_receipt_id",
+    "immutable",
+    "hash_rule"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+    },
+    "participation_manifest_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/participation_manifest_id"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "previous_snapshot": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "workspace_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+    },
+    "case_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/case_id"
+    },
+    "resolution_contract": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+    },
+    "mode": {
+      "enum": [
+        "SINGLE_AGENT",
+        "FULL_TEAM",
+        "CUSTOM"
+      ]
+    },
+    "selection_reason": {
+      "type": "string",
+      "minLength": 1
+    },
+    "team_manifest_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "participants": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "principal_id",
+          "role",
+          "agent_manifest",
+          "worker_task_id",
+          "enabled"
+        ],
+        "properties": {
+          "principal_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+          },
+          "role": {
+            "type": "string",
+            "minLength": 1
+          },
+          "agent_manifest": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+          },
+          "worker_task_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/worker_task_id"
+          },
+          "enabled": {
+            "const": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "upstream_worker_task_id",
+          "downstream_worker_task_id"
+        ],
+        "properties": {
+          "upstream_worker_task_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/worker_task_id"
+          },
+          "downstream_worker_task_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/worker_task_id"
+          }
+        },
+        "additionalProperties": false
+      },
+      "uniqueItems": true
+    },
+    "not_participating_roles": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "frozen_by_principal": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+    },
+    "frozen_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "manifest_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "state": {
+      "const": "FROZEN"
+    },
+    "authority_receipt_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
+    },
+    "immutable": {
+      "const": true
+    },
+    "hash_rule": {
+      "const": "jcs-rfc8785-v1+sha256(excluding:/manifest_digest)"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "revision": {
+            "const": 1
+          }
+        },
+        "required": [
+          "revision"
+        ]
+      },
+      "then": {
+        "properties": {
+          "previous_snapshot": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "previous_snapshot": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,121 @@
+{
+  "schema_version": "1.0",
+  "capability_grant_id": "cap_rootdisp001",
+  "revision": 1,
+  "workspace_id": "ws_stage0001",
+  "grant_kind": "DISPATCH_CLAIM",
+  "issuance_basis": "ROOT_CONTROLLER",
+  "status": "ACTIVE",
+  "principal_id": "prn_generator01",
+  "audience": "agent-runtime",
+  "bound_worker_task_id": "wt_stage0001",
+  "bound_attempt_id": null,
+  "claim_binding": null,
+  "dispatch_causation": null,
+  "accepted_proposal": null,
+  "resolution_contract": {
+    "id": "rc_stage0001",
+    "digest": "sha256:cc97aa93105ee1337bcdb5ae708c77c1c35be887bdc67aac270692b5e9883d83"
+  },
+  "bound_agent_intent": null,
+  "bound_workorder": null,
+  "authorization_grant": null,
+  "source_permissions": {
+    "package_request": {
+      "files": [
+        {
+          "path": "src/handler.py",
+          "access": "READ"
+        }
+      ],
+      "processes": [],
+      "network": [],
+      "mcp_tools": [],
+      "cloud_actions": [],
+      "secret_refs": []
+    },
+    "principal_ceiling": {
+      "files": [
+        {
+          "path": "src/handler.py",
+          "access": "READ"
+        }
+      ],
+      "processes": [],
+      "network": [],
+      "mcp_tools": [
+        {
+          "server": "repo-reader",
+          "tool": "read_file",
+          "schema_digest": "sha256:2626262626262626262626262626262626262626262626262626262626262626"
+        }
+      ],
+      "cloud_actions": [],
+      "secret_refs": []
+    },
+    "workspace_policy": {
+      "files": [
+        {
+          "path": "src/handler.py",
+          "access": "READ"
+        }
+      ],
+      "processes": [],
+      "network": [],
+      "mcp_tools": [],
+      "cloud_actions": [],
+      "secret_refs": []
+    },
+    "task_or_action_scope": {
+      "files": [
+        {
+          "path": "src/handler.py",
+          "access": "READ"
+        }
+      ],
+      "processes": [],
+      "network": [],
+      "mcp_tools": [],
+      "cloud_actions": [],
+      "secret_refs": []
+    }
+  },
+  "effective_permissions": {
+    "files": [
+      {
+        "path": "src/handler.py",
+        "access": "READ"
+      }
+    ],
+    "processes": [],
+    "network": [],
+    "mcp_tools": [],
+    "cloud_actions": [],
+    "secret_refs": []
+  },
+  "effective_permissions_digest": "sha256:0cc29a7c6db7a32bac8e34f487cbc03b05b7a72f3a7445c2e18c8394cf0887b4",
+  "allowed_effect_class": "READ_ONLY",
+  "budget": {
+    "max_attempts": 1,
+    "max_wall_seconds": 600,
+    "max_tokens": 50000,
+    "max_cost_microunits": 0
+  },
+  "nonce": "nonce_rootdisp00000001",
+  "one_time": true,
+  "issued_by_principal": "prn_capability1",
+  "issued_at": "2026-08-10T01:31:00Z",
+  "expires_at": "2026-08-10T01:41:00Z",
+  "consumed_at": null,
+  "immutable": true,
+  "grant_digest": "sha256:bf78afd50332015ca7d0830f37d2bfe22e92317e7304a62a07dbe6ab4e966f4c",
+  "previous_snapshot": null,
+  "authority_receipt_id": "arec_capabilityrootdispatch00000000",
+  "bound_resource": {
+    "kind": "WORKER_TASK",
+    "id": "wt_stage0001",
+    "revision": 1,
+    "digest": "sha256:13b7637de9f37b79961c09e1a419712ee066686b0decbcc79a288805f17a2930"
+  },
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/grant_digest)"
+}

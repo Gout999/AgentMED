@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "controller_registration_id": "creg_casecontroller",
+  "revision": 1,
+  "previous_snapshot": null,
+  "state": "ACTIVE",
+  "workspace_id": "ws_stage0001",
+  "owner": "case-controller",
+  "controller_principal": "prn_casecontrol1",
+  "principal_type": "CONTROLLER_SERVICE",
+  "allowed_commands": [
+    "resolution-contracts.freeze",
+    "resolution-reviews.record"
+  ],
+  "ownership_contract": {
+    "version": "1.0",
+    "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+  },
+  "event_catalog": {
+    "version": "1.0",
+    "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+  },
+  "valid_from": "2026-08-10T00:00:00Z",
+  "expires_at": null,
+  "service_identity_digest": "sha256:47af9251ed32d4c1baa9ec311da61fd15822fd198e53fc29b8e46866e1e15792",
+  "registered_by_human_principal": "prn_platformadmin",
+  "registration_audit_ref": "audit://aud_casecontroller",
+  "registered_at": "2026-08-10T00:00:00Z",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
+  "registration_digest": "sha256:cc37a5523a6421a45144aacc9d0c49b0b18f0f5c759db23050c984c36f2d5238"
+}

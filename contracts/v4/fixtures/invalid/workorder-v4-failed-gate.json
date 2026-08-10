@@ -1,0 +1,1 @@
+{"base_fixture":"workorder-v4.json","mutations":[{"op":"set","path":"gate_status","value":"FAILED"}],"expected_invariant":"workorder_requires_exact_terminal_pass"}

@@ -1,0 +1,1 @@
+{"base_fixture":"workorder-v4.json","mutations":[{"op":"set","path":"candidate_contract.digest","value":"sha256:abababababababababababababababababababababababababababababababab"}],"expected_invariant":"workorder.candidate_contract_mismatch"}

@@ -1,0 +1,1 @@
+{"attack":"judge_generator_rebind","expected_invariants":["gate_report.generator_judge_attempt_not_independent","gate_report.generator_judge_principal_not_independent","gate_report.generator_judge_manifest_not_independent","gate_report.generator_judge_independence_key_reused"]}

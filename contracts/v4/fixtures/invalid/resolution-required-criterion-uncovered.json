@@ -1,0 +1,7 @@
+{
+  "base_fixture": "resolution-contract.json",
+  "mutations": [
+    {"op": "append", "path": "acceptance_criteria", "value": {"criterion_id": "criterion_rules", "description": "Required policy rule passes", "verifier_kind": "RULE", "required": true}}
+  ],
+  "expected_invariant": "evaluation_plan.required_criterion_unmapped"
+}

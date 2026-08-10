@@ -1,0 +1,106 @@
+{
+  "schema_version": "1.0",
+  "resolution_contract_id": "rc_stage0001",
+  "workspace_id": "ws_stage0001",
+  "case_id": "case_stage0001",
+  "revision": 1,
+  "state": "FROZEN",
+  "problem": {
+    "uri": "artifact://stage0/problem.json",
+    "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "media_type": "application/json"
+  },
+  "objective": "Produce a minimal governed repair candidate.",
+  "agent_version_set": {
+    "id": "avs_stage0001",
+    "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "allowed_change_surface": [
+    "CODE",
+    "TEST"
+  ],
+  "allowed_action_scope": {
+    "files": [
+      {
+        "path": "src/handler.py",
+        "access": "WRITE"
+      },
+      {
+        "path": "tests/test_handler.py",
+        "access": "WRITE"
+      }
+    ],
+    "processes": [],
+    "network": [],
+    "mcp_tools": [],
+    "cloud_actions": [],
+    "secret_refs": []
+  },
+  "forbidden_actions": [
+    "PROCESS_EXECUTION",
+    "NETWORK_ACCESS",
+    "MCP_TOOL_CALL",
+    "CLOUD_ACTION",
+    "SECRET_ACCESS",
+    "REPOSITORY_PUSH",
+    "PULL_REQUEST_OPEN",
+    "MERGE"
+  ],
+  "acceptance_criteria": [
+    {
+      "criterion_id": "criterion_tests",
+      "description": "Focused regression test passes",
+      "verifier_kind": "DETERMINISTIC_TEST",
+      "required": true
+    }
+  ],
+  "budget": {
+    "max_attempts": 3,
+    "max_wall_seconds": 1800,
+    "max_tokens": 200000,
+    "max_cost_microunits": 0
+  },
+  "risk_class": "R1_REVERSIBLE",
+  "stop_conditions": [
+    "budget exhausted",
+    "unknown outcome requires reconciliation"
+  ],
+  "frozen_by_principal": "prn_casecontrol1",
+  "frozen_at": "2026-08-10T01:00:00Z",
+  "input_snapshot_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/contract_digest)",
+  "contract_digest": "sha256:cc97aa93105ee1337bcdb5ae708c77c1c35be887bdc67aac270692b5e9883d83",
+  "authority_receipt_id": "arec_resolutioncontract00000000",
+  "immutable": true,
+  "proposer": {
+    "principal_id": "prn_planner0001",
+    "attempt": {
+      "kind": "ATTEMPT",
+      "id": "att_planner0001",
+      "revision": 2,
+      "digest": "sha256:a9619151bbba9d54db749865a3441f26a4905d4a39c681a561a860beffa07909"
+    },
+    "agent_manifest": {
+      "kind": "AGENT_MANIFEST",
+      "id": "aman_planner001",
+      "revision": 1,
+      "digest": "sha256:7e9929e0c3cc77658d513326e7fbc3fd4420eeeeb186430d885c4f5e5e24b0f9"
+    },
+    "model_call_receipt": {
+      "kind": "MODEL_CALL_RECEIPT",
+      "id": "mcr_planner0001",
+      "revision": null,
+      "digest": "sha256:c4ad3336b3a9e04f26f48cee98ccc04a61cf2fc278d2e9c1424683cb460f75dc"
+    }
+  },
+  "review_policy": {
+    "mode": "AGENT_SEPARATE",
+    "required_distinct_dimensions": []
+  },
+  "review_receipt": {
+    "kind": "RESOLUTION_REVIEW_RECEIPT",
+    "id": "rrr_stage0001",
+    "revision": null,
+    "digest": "sha256:263c16f4a531879858edcb2ace4ad7701fcbafb64ca46b2658fcea8cc2aa5fd5"
+  }
+}

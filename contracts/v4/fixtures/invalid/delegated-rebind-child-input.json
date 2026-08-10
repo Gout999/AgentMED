@@ -1,0 +1,1 @@
+{"bundle":"delegated_dispatch","mutations":[{"document":"worker_task","path":"input_snapshot_digest","value":"sha256:c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1c1"}],"expected_invariant":"delegated_dispatch.child_input_mismatch"}

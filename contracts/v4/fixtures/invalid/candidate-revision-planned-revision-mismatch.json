@@ -1,0 +1,7 @@
+{
+  "base_fixture": "candidate-revision.json",
+  "mutations": [
+    {"op": "set", "path": "revision", "value": 2}
+  ],
+  "expected_invariant": "candidate_revision.planned_revision_mismatch"
+}

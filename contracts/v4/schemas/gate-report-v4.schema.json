@@ -1,0 +1,287 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/gate-report-v4.schema.json",
+  "title": "CaseLoop v4 terminal GateReport",
+  "description": "Immutable result of evaluating one exact CandidateRevision. PASS is valid only when every required track is present, COMPLETE, PASS, and receipt-backed.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "gate_report_id",
+    "gate_execution_id",
+    "workspace_id",
+    "case_id",
+    "resolution_contract",
+    "candidate_contract",
+    "candidate_revision",
+    "evaluation_plan",
+    "base",
+    "target",
+    "diff_artifact",
+    "required_tracks",
+    "track_receipts",
+    "evidence_facets",
+    "completeness",
+    "status",
+    "decision_rule",
+    "terminal",
+    "terminal_reason_digest",
+    "started_at",
+    "completed_at",
+    "created_by_principal",
+    "immutable",
+    "hash_rule",
+    "gate_report_digest",
+    "authority_receipt_id"
+  ],
+  "$defs": {
+    "track": {
+      "enum": [
+        "RULE",
+        "DETERMINISTIC_TEST",
+        "INDEPENDENT_JUDGE",
+        "SANDBOX_SIDE_EFFECT"
+      ]
+    },
+    "terminal_status": {
+      "enum": [
+        "PASS",
+        "FAILED",
+        "INCONCLUSIVE",
+        "ERROR",
+        "UNKNOWN"
+      ]
+    },
+    "track_receipt": {
+      "type": "object",
+      "required": [
+        "track",
+        "receipt"
+      ],
+      "properties": {
+        "track": {
+          "$ref": "#/$defs/track"
+        },
+        "receipt": {
+          "allOf": [
+            {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+            },
+            {
+              "properties": {
+                "kind": {
+                  "const": "GATE_TRACK_RECEIPT"
+                }
+              }
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "schema_version": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+    },
+    "gate_report_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/gate_report_id"
+    },
+    "gate_execution_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/gate_execution_id"
+    },
+    "workspace_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+    },
+    "case_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/case_id"
+    },
+    "resolution_contract": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+    },
+    "candidate_contract": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+    },
+    "candidate_revision": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+    },
+    "evaluation_plan": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+    },
+    "base": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/target_revision"
+    },
+    "target": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/target_revision"
+    },
+    "diff_artifact": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+    },
+    "required_tracks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/track"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "track_receipts": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/track_receipt"
+      },
+      "minItems": 1
+    },
+    "evidence_facets": {
+      "type": "array",
+      "items": {
+        "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/evidence_facet"
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "completeness": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/completeness"
+    },
+    "status": {
+      "$ref": "#/$defs/terminal_status"
+    },
+    "decision_rule": {
+      "const": "PASS_IFF_ALL_REQUIRED_TRACKS_COMPLETE_PASS"
+    },
+    "terminal": {
+      "const": true
+    },
+    "terminal_reason_digest": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "started_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "completed_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "created_by_principal": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+    },
+    "immutable": {
+      "const": true
+    },
+    "hash_rule": {
+      "const": "jcs-rfc8785-v1+sha256(excluding:/gate_report_digest)"
+    },
+    "gate_report_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "authority_receipt_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "PASS"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "completeness": {
+            "const": "COMPLETE"
+          },
+        "terminal_reason_digest": {
+          "type": "null"
+        }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "FAILED"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+        "terminal_reason_digest": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+        }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "INCONCLUSIVE"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+        "terminal_reason_digest": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+        }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "ERROR"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+        "terminal_reason_digest": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+        }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "UNKNOWN"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+        "terminal_reason_digest": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+        }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,1 @@
+{"bundle":"identity","mutations":[{"document":"agent_manifest","path":"role","value":"coding-reviewer"},{"document":"participation_manifest","path":"participants.0.role","value":"coding-reviewer"}],"expected_invariant":"identity_chain.role_mismatch"}

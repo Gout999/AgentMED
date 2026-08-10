@@ -1,0 +1,1 @@
+{"base_fixture":"proposal.json","mutations":[{"op":"set","path":"worker_task_id","value":"wt_replaced001"}],"expected_invariant":"proposal.worker_task_mismatch"}

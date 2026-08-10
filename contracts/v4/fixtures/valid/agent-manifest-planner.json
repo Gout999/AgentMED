@@ -1,0 +1,77 @@
+{
+  "schema_version": "1.0",
+  "agent_manifest_id": "aman_planner001",
+  "revision": 1,
+  "state": "FROZEN",
+  "immutable": true,
+  "workspace_id": "ws_stage0001",
+  "principal_id": "prn_planner0001",
+  "team_id": "team_coding_stage0",
+  "role": "coding-planner",
+  "agent_version_set": {
+    "id": "avs_stage0001",
+    "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "soul_digest": "sha256:fef91867358475890cffd2c31dfb824064019ea0e14980ca6f75d884a9f4b020",
+  "role_manifest_digest": "sha256:5b4612358fa2311bb4461ff870279bb014d21dd34dd513cd63e33b9e209b6a93",
+  "runtime_policy": {
+    "allowed_runtime_kinds": [
+      "CLAUDE_CODE"
+    ],
+    "isolated_worktree_required": true,
+    "personal_config_mount_allowed": false
+  },
+  "model_policy": {
+    "primary_model": "glm-5.2",
+    "primary_model_digest": "sha256:e98e0a4525faca36a76fbfa50590193c98c12f87c5793df5d430d83fa0c1bcc2",
+    "allowed_fallback_models": [
+      {
+        "model": "stepfun-3.7-flash",
+        "model_digest": "sha256:53510308e077c135078c56b7f54eac386a0d07bd67c13e2ad4a89bd7b22f66bf"
+      }
+    ],
+    "fallback_creates_new_attempt": true
+  },
+  "skills": [
+    {
+      "skill_manifest_id": "skillm_stage0001",
+      "version": "1.0.0",
+      "manifest_digest": "sha256:6189d8a10df5be1bbf4eb044f7427626172be883ec25cea9986bfe01cb179b6f",
+      "required_for_success": true,
+      "revision": 1
+    }
+  ],
+  "mcp_servers": [
+    {
+      "mcp_manifest_id": "mcpm_stage0001",
+      "manifest_digest": "sha256:02df34c7aa1172e18d55dcc84ebdd528d21687d36c3c5bd2889cb23f5b0573e9",
+      "tool_catalog_digest": "sha256:bee0c3f66462acc0e8815f7f992928bb0d4b367c5b2d8ae7d731d8f6cf813740",
+      "revision": 1
+    }
+  ],
+  "harness_digest": "sha256:17fd5c63dd43c2b36e8653168342424d3a2448cacf58507ff413161f35d48012",
+  "permission_ceiling": {
+    "files": [
+      {
+        "path": "src/handler.py",
+        "access": "READ"
+      }
+    ],
+    "processes": [],
+    "network": [],
+    "mcp_tools": [
+      {
+        "server": "repo-reader",
+        "tool": "read_file",
+        "schema_digest": "sha256:2626262626262626262626262626262626262626262626262626262626262626"
+      }
+    ],
+    "cloud_actions": [],
+    "secret_refs": []
+  },
+  "registered_at": "2026-08-10T00:45:00Z",
+  "manifest_digest": "sha256:7e9929e0c3cc77658d513326e7fbc3fd4420eeeeb186430d885c4f5e5e24b0f9",
+  "previous_snapshot": null,
+  "authority_receipt_id": "arec_manifestplanner00000000",
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/manifest_digest)"
+}

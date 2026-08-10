@@ -1,0 +1,1 @@
+{"base_fixture":"attempt.json","mutations":[{"op":"set","path":"pre_controlled_action.controlled_action_started_at","value":"2026-08-10T01:39:00Z"}],"expected_invariant":"attempt.action_before_proposal"}

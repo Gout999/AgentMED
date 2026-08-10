@@ -1,0 +1,1 @@
+{"base_fixture":"worker-task.json","mutations":[{"op":"set","path":"task_kind","value":"DELEGATED_RUNTIME"}],"expected_invariant":"delegated_task_requires_parent_and_proposal"}

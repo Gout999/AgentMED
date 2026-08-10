@@ -1,0 +1,201 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/resolution-contract.schema.json",
+  "title": "CaseLoop ResolutionContract",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "resolution_contract_id",
+    "workspace_id",
+    "case_id",
+    "revision",
+    "state",
+    "problem",
+    "objective",
+    "agent_version_set",
+    "allowed_change_surface",
+    "allowed_action_scope",
+    "forbidden_actions",
+    "acceptance_criteria",
+    "budget",
+    "risk_class",
+    "stop_conditions",
+    "proposer",
+    "review_policy",
+    "review_receipt",
+    "frozen_by_principal",
+    "frozen_at",
+    "input_snapshot_digest",
+    "hash_rule",
+    "contract_digest",
+    "authority_receipt_id",
+    "immutable"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+    },
+    "resolution_contract_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resolution_contract_id"
+    },
+    "workspace_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+    },
+    "case_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/case_id"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "state": {
+      "const": "FROZEN"
+    },
+    "problem": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+    },
+    "objective": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000
+    },
+    "agent_version_set": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+    },
+    "allowed_change_surface": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "PROMPT",
+          "KNOWLEDGE",
+          "MODEL_CONFIG",
+          "SKILL",
+          "MCP",
+          "CODE",
+          "HARNESS",
+          "POLICY",
+          "TEST"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "allowed_action_scope": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
+    },
+    "forbidden_actions": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "PROCESS_EXECUTION",
+          "NETWORK_ACCESS",
+          "MCP_TOOL_CALL",
+          "CLOUD_ACTION",
+          "SECRET_ACCESS",
+          "REPOSITORY_PUSH",
+          "PULL_REQUEST_OPEN",
+          "MERGE"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "acceptance_criteria": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "criterion_id",
+          "description",
+          "verifier_kind",
+          "required"
+        ],
+        "properties": {
+          "criterion_id": {
+            "type": "string",
+            "pattern": "^criterion_[A-Za-z0-9_-]{4,64}$"
+          },
+          "description": {
+            "type": "string",
+            "minLength": 1
+          },
+          "verifier_kind": {
+            "enum": [
+              "DETERMINISTIC_TEST",
+              "RULE",
+              "INDEPENDENT_JUDGE",
+              "HUMAN"
+            ]
+          },
+          "required": {
+            "type": "boolean"
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "budget": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/budget"
+    },
+    "risk_class": {
+      "enum": [
+        "R0_READ_ONLY",
+        "R1_REVERSIBLE",
+        "R2_HIGH_IMPACT",
+        "R3_IRREVERSIBLE"
+      ]
+    },
+    "stop_conditions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "proposer": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/agent_execution_identity"
+    },
+    "review_policy": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/resolution-review-receipt.schema.json#/$defs/review_policy"
+    },
+    "review_receipt": {
+      "allOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+        },
+        {
+          "properties": {
+            "kind": {
+              "const": "RESOLUTION_REVIEW_RECEIPT"
+            }
+          }
+        }
+      ]
+    },
+    "frozen_by_principal": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+    },
+    "frozen_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "input_snapshot_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "hash_rule": {
+      "const": "jcs-rfc8785-v1+sha256(excluding:/contract_digest)"
+    },
+    "contract_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "authority_receipt_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
+    },
+    "immutable": {
+      "const": true
+    }
+  },
+  "additionalProperties": false
+}

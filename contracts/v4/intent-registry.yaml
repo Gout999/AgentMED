@@ -1,0 +1,281 @@
+version: "1.0"
+status: target_contract
+public_api_prefix: /api/v1
+
+principal_types:
+  - human
+  - external_agent
+  - service
+  - connector
+  - internal_controller
+  - internal_worker
+
+non_principal_resource_types:
+  - governed_agent
+
+forbidden_public_scopes:
+  external_agent:
+    - approvals:decide:human
+    - external_operations:execute:internal
+  service:
+    - approvals:decide:human
+    - external_operations:execute:internal
+  connector:
+    - approvals:decide:human
+    - external_operations:execute:internal
+
+intents:
+  - name: signals.submit
+    first_stage: 1
+    kind: mutation
+    execution_mode: synchronous
+    scope: signals:write
+    idempotency: required
+    transport_stages:
+      http: 1
+      cli: 1
+      mcp: 6
+      a2a: null
+    command_target:
+      resource: signal
+      command: signals.submit
+    http:
+      method: POST
+      path: /api/v1/signals
+      operation_id: submitSignal
+    cli: signal submit
+    cli_aliases:
+      - report
+    mcp: signals.submit
+    a2a: null
+
+  - name: cases.get
+    first_stage: 1
+    kind: query
+    execution_mode: synchronous
+    scope: cases:read
+    idempotency: none
+    transport_stages:
+      http: 1
+      cli: 1
+      mcp: 6
+      a2a: null
+    http:
+      method: GET
+      path: /api/v1/cases/{case_id}
+      operation_id: getCase
+    cli: case get
+    cli_aliases: []
+    mcp: cases.get
+    a2a: null
+
+  - name: cases.timeline
+    first_stage: 1
+    kind: query
+    execution_mode: synchronous
+    scope: cases:read
+    idempotency: none
+    transport_stages:
+      http: 1
+      cli: 1
+      mcp: 6
+      a2a: null
+    http:
+      method: GET
+      path: /api/v1/cases/{case_id}/timeline
+      operation_id: getCaseTimeline
+    cli: case timeline
+    cli_aliases: []
+    mcp: cases.timeline
+    a2a: null
+
+  - name: evidence.get
+    first_stage: 1
+    kind: query
+    execution_mode: synchronous
+    scope: artifacts:read
+    idempotency: none
+    transport_stages:
+      http: 1
+      cli: 1
+      mcp: 6
+      a2a: null
+    http:
+      method: GET
+      path: /api/v1/evidence/{receipt_id}
+      operation_id: getEvidence
+    cli: evidence get
+    cli_aliases: []
+    mcp: evidence.get
+    a2a: null
+
+  - name: sources.capabilities
+    first_stage: 1
+    kind: query
+    execution_mode: synchronous
+    scope: sources:read
+    idempotency: none
+    transport_stages:
+      http: 1
+      cli: 1
+      mcp: 6
+      a2a: null
+    http:
+      method: GET
+      path: /api/v1/sources/{source_id}/capabilities
+      operation_id: getSourceCapabilities
+    cli: source capabilities
+    cli_aliases: []
+    mcp: sources.capabilities
+    a2a: null
+
+  - name: sources.doctor
+    first_stage: 1
+    kind: mutation
+    execution_mode: asynchronous
+    scope: sources:manage
+    idempotency: required
+    transport_stages:
+      http: 1
+      cli: 1
+      mcp: 6
+      a2a: null
+    command_target:
+      resource: source_sync_run
+      command: source-sync-runs.request-doctor
+    http:
+      method: POST
+      path: /api/v1/sources/{source_id}:doctor
+      operation_id: doctorSource
+    cli: source doctor
+    cli_aliases: []
+    mcp: sources.doctor
+    a2a: null
+
+  - name: investigations.start
+    first_stage: 2
+    kind: mutation
+    execution_mode: asynchronous
+    scope: runs:start
+    idempotency: required
+    transport_stages:
+      http: 2
+      cli: 2
+      mcp: 6
+      a2a: 6
+    command_target:
+      resource: automation_request
+      command: automation-requests.start-investigation
+    http:
+      method: POST
+      path: /api/v1/cases/{case_id}/investigations
+      operation_id: startInvestigation
+    cli: run start
+    cli_aliases: []
+    mcp: runs.start
+    a2a: tasks.create
+
+  - name: runviews.get
+    first_stage: 2
+    kind: query
+    execution_mode: synchronous
+    scope: runs:read
+    idempotency: none
+    transport_stages:
+      http: 2
+      cli: 2
+      mcp: 6
+      a2a: 6
+    http:
+      method: GET
+      path: /api/v1/run-views/{run_id}
+      operation_id: getRunView
+    cli: run get
+    cli_aliases: []
+    mcp: runs.get
+    a2a: tasks.get
+
+  - name: work.stop-request
+    first_stage: 2
+    kind: mutation
+    execution_mode: asynchronous
+    scope: runs:cancel
+    idempotency: required
+    transport_stages:
+      http: 2
+      cli: 2
+      mcp: 6
+      a2a: 6
+    command_target:
+      resource: automation_request
+      command: automation-requests.request-stop
+    http:
+      method: POST
+      path: /api/v1/run-views/{run_id}:stop
+      operation_id: requestRunStop
+    cli: run cancel
+    cli_aliases: []
+    mcp: runs.cancel
+    a2a: tasks.cancel
+
+  - name: approvals.decide
+    first_stage: 4
+    kind: mutation
+    execution_mode: synchronous
+    scope: approvals:decide:human
+    idempotency: required
+    transport_stages:
+      http: 4
+      cli: 4
+      mcp: null
+      a2a: null
+    command_target:
+      resource: approval_grant
+      command: approvals.decide
+    allowed_principal_types:
+      - human
+    http:
+      method: POST
+      path: /api/v1/approvals/{approval_id}:decide
+      operation_id: decideApproval
+    cli: approval decide
+    cli_aliases: []
+    mcp: null
+    a2a: null
+
+  - name: releases.rollback-request
+    first_stage: 4
+    kind: mutation
+    execution_mode: asynchronous
+    scope: releases:request
+    idempotency: required
+    transport_stages:
+      http: 4
+      cli: 4
+      mcp: 6
+      a2a: null
+    command_target:
+      resource: external_operation
+      command: external-operations.request-rollback
+    http:
+      method: POST
+      path: /api/v1/releases/{release_id}:rollback-request
+      operation_id: requestReleaseRollback
+    cli: release rollback-request
+    cli_aliases: []
+    mcp: releases.rollback-request
+    a2a: null
+
+local_only_commands:
+  - quickstart
+  - project init
+  - up
+  - mcp serve --stdio
+
+internal_only_intents:
+  - work.claim
+  - work.heartbeat
+  - proposals.decide
+  - gates.record-result
+  - approvals.record-human-decision
+  - releases.execute

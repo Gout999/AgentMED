@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0",
+  "error": {
+    "code": "DEPENDENCY_UNAVAILABLE",
+    "message": "The trace source is unreachable.",
+    "retry_after_ms": 1000,
+    "request_id": "req_01J0000000000001",
+    "operation_id": null,
+    "audit_ref": "audit://aud_01J0000000000001",
+    "details": {},
+    "help_url": null
+  }
+}

@@ -1,0 +1,1 @@
+{"bundle":"identity","mutations":[{"document":"agent_manifest","path":"runtime_policy.allowed_runtime_kinds","value":["CODEX"]}],"expected_invariant":"identity_chain.runtime_policy_mismatch"}

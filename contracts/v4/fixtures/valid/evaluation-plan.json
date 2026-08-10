@@ -1,0 +1,61 @@
+{
+  "schema_version": "1.0",
+  "evaluation_plan_id": "eplan_stage0001",
+  "workspace_id": "ws_stage0001",
+  "case_id": "case_stage0001",
+  "resolution_contract": {
+    "id": "rc_stage0001",
+    "digest": "sha256:cc97aa93105ee1337bcdb5ae708c77c1c35be887bdc67aac270692b5e9883d83"
+  },
+  "candidate_contract": {
+    "id": "cc_stage0001",
+    "digest": "sha256:68c1db5e06b8af0343e2e83b3f7abbbc5ddbd9ceebc67435d6734fa19986039b"
+  },
+  "candidate_planned_revision": 1,
+  "state": "FROZEN",
+  "visible_suite": {
+    "dataset_id": "coding-public-v1",
+    "dataset_version": "1.0.0",
+    "dataset_digest": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+    "criteria_digest": "sha256:455afa0f7c8973ebe3e922b3c7938b25ff24489255bb1eab8ec8beba9290b2ee"
+  },
+  "holdout_binding": {
+    "sealed_ref": "sealed://stage0/coding-holdout-v1",
+    "dataset_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "labels_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "generator_access": false,
+    "authorized_principal_types": [
+      "EVAL_CONTROLLER",
+      "DETERMINISTIC_RUNNER",
+      "INDEPENDENT_JUDGE"
+    ]
+  },
+  "required_tracks": [
+    "DETERMINISTIC_TEST",
+    "INDEPENDENT_JUDGE"
+  ],
+  "hard_failure_statuses": [
+    "FAILED",
+    "INCONCLUSIVE",
+    "ERROR",
+    "UNKNOWN"
+  ],
+  "frozen_by_principal": "prn_gatecontrol1",
+  "frozen_at": "2026-08-10T01:20:00Z",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/plan_digest)",
+  "plan_digest": "sha256:c4dc6a5c6ebbfd68d9f1335470f222ef7d6060bdeb3d134f43d4ec7343136db9",
+  "authority_receipt_id": "arec_evaluationplan00000000",
+  "judge_policy": {
+    "evaluator_version_digest": "sha256:b661435bfb23d267394dc2487e4539871dcdb5b9899a71675e02b9c0f53f67a1",
+    "judge_model_policy_digest": "sha256:d28b4834be14985c1c1aa0e96b44c14e28bd22d0e2351c808e4d968a425d7888",
+    "key_rule": "sha256-jcs-rfc8785-v1(independence_basis)",
+    "policy_mode": "CODING_DEFAULT",
+    "required_distinct_dimensions": [
+      "provider_org",
+      "model_family"
+    ],
+    "relaxation_reason_digest": null,
+    "threshold_digest": "sha256:f96a4f61580b8a8e0cef1ec1462dd3733f1d94bae9b11cd2ade82660503d114f"
+  }
+}

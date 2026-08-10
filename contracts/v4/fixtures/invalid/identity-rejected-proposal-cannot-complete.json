@@ -1,0 +1,1 @@
+{"bundle":"identity","mutations":[{"document":"proposal_decision","path":"decision","value":"REJECTED"},{"document":"proposal_decision","path":"accepted_proposal_id","value":null},{"document":"proposal_decision","path":"downstream_event","value":null}],"expected_invariant":"identity_chain.proposal_not_accepted"}

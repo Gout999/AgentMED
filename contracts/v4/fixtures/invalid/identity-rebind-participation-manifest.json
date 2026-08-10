@@ -1,0 +1,1 @@
+{"bundle":"identity","mutations":[{"document":"worker_task","path":"participation_manifest.digest","value":"sha256:aeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeaeae"}],"expected_invariant":"identity_chain.participation_manifest_mismatch"}

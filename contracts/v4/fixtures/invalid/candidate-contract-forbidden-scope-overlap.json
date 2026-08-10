@@ -1,0 +1,7 @@
+{
+  "base_fixture": "candidate-contract.json",
+  "mutations": [
+    {"op": "append", "path": "allowed_action_scope.files", "value": {"path": ".github/workflows/release.yml", "access": "WRITE"}}
+  ],
+  "expected_invariant": "candidate_contract.forbidden_scope_overlap"
+}

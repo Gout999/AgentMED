@@ -1,0 +1,1 @@
+{"base_fixture":"proposal-decision.json","mutations":[{"op":"set","path":"downstream_event.transaction_id","value":"txn_wrongtx0001"}],"expected_invariant":"proposal_decision.transaction_mismatch"}

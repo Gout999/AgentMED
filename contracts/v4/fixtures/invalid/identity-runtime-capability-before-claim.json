@@ -1,0 +1,1 @@
+{"bundle":"identity","mutations":[{"document":"capability_lease","path":"issued_at","value":"2026-08-10T01:33:59Z"}],"expected_invariant":"identity_chain.capability_issued_before_claim"}

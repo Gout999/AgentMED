@@ -1,0 +1,1 @@
+{"bundle":"identity","base_fixture":"capability-lease.json","mutations":[{"document":"capability_lease","op":"append","path":"effective_permissions.files","value":{"path":".github/workflows/release.yml","access":"WRITE"}}],"expected_invariant":"capability_lease.effective_permissions_not_intersection"}

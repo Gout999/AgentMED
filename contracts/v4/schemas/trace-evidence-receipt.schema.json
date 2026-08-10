@@ -1,0 +1,349 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/trace-evidence-receipt.schema.json",
+  "title": "CaseLoop TraceEvidenceReceipt",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "receipt_id",
+    "workspace_id",
+    "source_id",
+    "agent_run_ref_id",
+    "query",
+    "field_results",
+    "completeness",
+    "artifact_ref",
+    "source_payload_digest",
+    "collected_at",
+    "retention_expires_at",
+    "failure",
+    "authority_receipt_id",
+    "immutable",
+    "hash_rule",
+    "receipt_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+    },
+    "receipt_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/trace_evidence_receipt_id"
+    },
+    "workspace_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+    },
+    "source_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/source_id"
+    },
+    "signal_id": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/signal_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "agent_run_ref_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/agent_run_ref_id"
+    },
+    "query": {
+      "type": "object",
+      "required": [
+        "adapter_kind",
+        "endpoint_origin",
+        "source_version",
+        "requested_at",
+        "window_start",
+        "window_end",
+        "filters_digest"
+      ],
+      "properties": {
+        "adapter_kind": {
+          "type": "string",
+          "enum": [
+            "langfuse",
+            "otel",
+            "phoenix",
+            "custom"
+          ]
+        },
+        "endpoint_origin": {
+          "type": "string",
+          "format": "uri"
+        },
+        "source_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "requested_at": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+        },
+        "window_start": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+        },
+        "window_end": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+        },
+        "filters_digest": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "field_results": {
+      "type": "array",
+      "x-caseloop-unique-by": "name",
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "status"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "OBSERVED",
+              "MISSING"
+            ]
+          },
+          "reason_digest": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+          }
+        },
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "status": {
+                  "const": "MISSING"
+                }
+              },
+              "required": [
+                "status"
+              ]
+            },
+            "then": {
+              "required": [
+                "reason_digest"
+              ]
+            },
+            "else": {
+              "not": {
+                "required": [
+                  "reason_digest"
+                ]
+              }
+            }
+          }
+        ],
+        "additionalProperties": false
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "completeness": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/completeness"
+    },
+    "artifact_ref": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source_payload_digest": {
+      "description": "Digest of the separately referenced provider response payload, not the receipt self-hash.",
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "collected_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "retention_expires_at": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "deep_link": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uri"
+    },
+    "failure": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "code",
+            "retryable",
+            "message_digest"
+          ],
+          "properties": {
+            "code": {
+              "type": "string",
+              "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+            },
+            "retryable": {
+              "type": "boolean"
+            },
+            "message_digest": {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "authority_receipt_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
+    },
+    "immutable": {
+      "const": true
+    },
+    "hash_rule": {
+      "const": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)"
+    },
+    "receipt_digest": {
+      "description": "Whole TraceEvidenceReceipt self-hash excluding only this top-level field.",
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "completeness": {
+            "const": "COMPLETE"
+          }
+        },
+        "required": [
+          "completeness"
+        ]
+      },
+      "then": {
+        "properties": {
+          "field_results": {
+            "items": {
+              "properties": {
+                "status": {
+                  "const": "OBSERVED"
+                }
+              }
+            }
+          },
+          "artifact_ref": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+          },
+          "failure": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "completeness": {
+            "const": "PARTIAL"
+          }
+        },
+        "required": [
+          "completeness"
+        ]
+      },
+      "then": {
+        "properties": {
+          "field_results": {
+            "allOf": [
+              {
+                "contains": {
+                  "properties": {
+                    "status": {
+                      "const": "OBSERVED"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                },
+                "minContains": 1
+              },
+              {
+                "contains": {
+                  "properties": {
+                    "status": {
+                      "const": "MISSING"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                },
+                "minContains": 1
+              }
+            ]
+          },
+          "artifact_ref": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+          },
+          "failure": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "completeness": {
+            "const": "UNKNOWN"
+          }
+        },
+        "required": [
+          "completeness"
+        ]
+      },
+      "then": {
+        "properties": {
+          "field_results": {
+            "contains": {
+              "properties": {
+                "status": {
+                  "const": "MISSING"
+                }
+              },
+              "required": [
+                "status"
+              ]
+            },
+            "minContains": 1
+          },
+          "failure": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

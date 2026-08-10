@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "attempt_id": "att_reviewer001",
+  "worker_task_id": "wt_stage0001",
+  "workspace_id": "ws_stage0001",
+  "attempt_kind": "PRIMARY",
+  "state": "RUNNING",
+  "parent_attempt_id": null,
+  "fallback_of_attempt_id": null,
+  "delegation_proposal_id": null,
+  "requested_by_principal": "prn_workcontrol1",
+  "executor_principal": "prn_reviewer001",
+  "assigned_team_id": "team_coding_stage0",
+  "agent_manifest": {
+    "kind": "AGENT_MANIFEST",
+    "id": "aman_reviewer01",
+    "revision": 1,
+    "digest": "sha256:471c638b9d70b03aba41163b55ef7051fc76d3b35875d02b18d4f25565f08a43"
+  },
+  "input_snapshot_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "claim_binding": {
+    "claim_event_id": "evt_claimreviewer01",
+    "lease_id": "lease_reviewer0001",
+    "worker_principal": "prn_reviewer001",
+    "runtime_session_id": "claude-session-reviewer",
+    "fencing_token": 1,
+    "claimed_at": "2026-08-10T00:55:00Z"
+  },
+  "runtime": {
+    "runtime_kind": "CLAUDE_CODE",
+    "runtime_session_id": "claude-session-reviewer",
+    "runtime_adapter_digest": "sha256:1919191919191919191919191919191919191919191919191919191919191919",
+    "runtime_version": "1.0.0"
+  },
+  "model": {
+    "requested_model": "glm-5.2",
+    "resolved_provider": "zhipu",
+    "resolved_model": "glm-5.2",
+    "resolution_kind": "EXACT",
+    "model_resolution_receipt_digest": "sha256:c608e91c2e101c7c751651f279afa6efa40ae20fbc8628ad001a84e744e81cd0",
+    "model_call_receipt_digest": null,
+    "model_call_receipt": null
+  },
+  "capability_grant_id": "cap_reviewer0001",
+  "repo_context": null,
+  "skill_usage": [],
+  "mcp_usage": [],
+  "tool_receipts": [],
+  "output_artifact": null,
+  "terminal_receipt": null,
+  "failure": null,
+  "started_at": "2026-08-10T00:55:00Z",
+  "completed_at": null,
+  "attempt_digest": "sha256:af1a8a3c0c4a590232bf2319f7a54da11421b61b63273b80c35f6a445120c0a3",
+  "revision": 1,
+  "worker_task_snapshot": {
+    "kind": "WORKER_TASK",
+    "id": "wt_stage0001",
+    "revision": 2,
+    "digest": "sha256:f8c0e6000c40c984ee8eb6c6b82b9633a01dead6ecd8ac46d2e25f26fa28755e"
+  },
+  "previous_snapshot": null,
+  "runtime_capability": null,
+  "authority_receipt_id": "arec_attemptreviewerrun000000",
+  "pre_controlled_action": null,
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/attempt_digest)"
+}

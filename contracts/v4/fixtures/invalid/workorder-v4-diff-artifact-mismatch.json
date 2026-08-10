@@ -1,0 +1,1 @@
+{"base_fixture":"workorder-v4.json","mutations":[{"op":"set","path":"diff_artifact.digest","value":"sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}],"expected_invariant":"workorder.diff_artifact_mismatch"}

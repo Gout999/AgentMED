@@ -1,0 +1,7 @@
+{
+  "base_fixture": "gate-report-v4-pass.json",
+  "mutations": [
+    {"op": "set", "path": "track_receipts.0.status", "value": "FAILED"}
+  ],
+  "expected_invariant": "gate_report.pass_iff_complete"
+}

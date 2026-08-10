@@ -1,0 +1,89 @@
+{
+  "schema_version": "1.0",
+  "skill_manifest_id": "skillm_stage0001",
+  "revision": 1,
+  "state": "FROZEN",
+  "immutable": true,
+  "name": "bounded-code-repair",
+  "version": "1.0.0",
+  "source": {
+    "repository_uri": "https://example.com/caseloop/skills.git",
+    "commit": "0123456789abcdef0123456789abcdef01234567",
+    "license_spdx": "Apache-2.0",
+    "content_digest": "sha256:4646464646464646464646464646464646464646464646464646464646464646"
+  },
+  "package": {
+    "uri": "artifact://stage0/skill-1.0.0.tar.zst",
+    "digest": "sha256:4747474747474747474747474747474747474747474747474747474747474747",
+    "media_type": "application/zstd"
+  },
+  "supply_chain": {
+    "dependency_lock_digest": "sha256:4848484848484848484848484848484848484848484848484848484848484848",
+    "sbom": {
+      "uri": "artifact://stage0/skill-sbom.spdx.json",
+      "digest": "sha256:4949494949494949494949494949494949494949494949494949494949494949",
+      "media_type": "application/json"
+    },
+    "provenance": {
+      "uri": "artifact://stage0/skill-provenance.json",
+      "digest": "sha256:5050505050505050505050505050505050505050505050505050505050505050",
+      "media_type": "application/json"
+    },
+    "builder_digest": "sha256:5151515151515151515151515151515151515151515151515151515151515151"
+  },
+  "compatibility": {
+    "runtime_kinds": [
+      "CLAUDE_CODE",
+      "AGENTTEAMS"
+    ],
+    "model_families": [
+      "glm-5"
+    ],
+    "minimum_harness_version": "1.0.0"
+  },
+  "distribution_targets": [
+    "LOCAL_REGISTRY",
+    "ALIYUN_SKILLS"
+  ],
+  "requested_permissions": {
+    "files": [
+      {
+        "path": "src/handler.py",
+        "access": "READ"
+      }
+    ],
+    "processes": [],
+    "network": [],
+    "mcp_tools": [],
+    "cloud_actions": [],
+    "secret_refs": []
+  },
+  "permission_change": {
+    "change_kind": "NONE",
+    "previous_manifest": null,
+    "risk_escalation_required": false,
+    "human_approval_required": false
+  },
+  "sandbox_profile": "NETWORK_DENIED",
+  "risk_class": "R0_READ_ONLY",
+  "declared_effect_class": "READ_ONLY",
+  "budget_ceiling": {
+    "max_attempts": 1,
+    "max_wall_seconds": 600,
+    "max_tokens": 50000,
+    "max_cost_microunits": 0
+  },
+  "declarative_tool_hints": {
+    "authoritative": false,
+    "tools": [
+      "repo-reader.read_file"
+    ]
+  },
+  "registered_by_principal": "prn_skillregistry",
+  "registered_at": "2026-08-10T00:40:00Z",
+  "manifest_digest": "sha256:6189d8a10df5be1bbf4eb044f7427626172be883ec25cea9986bfe01cb179b6f",
+  "workspace_id": "ws_stage0001",
+  "previous_snapshot": null,
+  "authority_receipt_id": "arec_skillmanifest00000000",
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/manifest_digest)"
+}

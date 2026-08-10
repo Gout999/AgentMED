@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "signal_id": "sig_01J0000000000001",
+  "workspace_id": "ws_01J0000000000001",
+  "project_id": "proj_01J0000000000001",
+  "environment_id": "env_01J0000000000001",
+  "governed_agent_id": "ga_01J0000000000001",
+  "source": {
+    "source_id": "src_01J0000000000001",
+    "adapter_kind": "langfuse",
+    "source_event_id": "score-01J0000000000001",
+    "source_event_version": "1",
+    "provider_origin": "https://cloud.langfuse.com",
+    "payload_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  },
+  "signal_kind": "external_feedback",
+  "reporter": {
+    "kind": "external_user",
+    "ref": "pseudonym:user-0042"
+  },
+  "occurred_at": "2026-08-10T08:58:00Z",
+  "observed_at": "2026-08-10T09:00:00Z",
+  "content_ref": {
+    "uri": "caseloop-artifact://signal/sig_01J0000000000001/content",
+    "digest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+    "media_type": "application/json"
+  },
+  "agent_run_ref_id": "arr_01J0000000000001",
+  "privacy": {
+    "classification": "CONFIDENTIAL",
+    "redaction_status": "REDACTED",
+    "raw_content_persisted": false,
+    "retention_expires_at": "2026-09-09T09:00:00Z"
+  },
+  "completeness": "COMPLETE",
+  "missing_fields": [],
+  "untrusted_content": true,
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/signal_digest)",
+  "signal_digest": "sha256:8cd547e1df9992d4d5eabb8000c9a0634b59c7885f93632d255eb0b931f3e3da"
+}

@@ -1,0 +1,1 @@
+{"attack":"planner_generator_rebind","expected_invariants":["planner_generator.attempt_not_separated","planner_generator.role_not_separated"]}

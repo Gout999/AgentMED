@@ -1,0 +1,1 @@
+{"bundle":"identity","mutations":[{"document":"attempt","path":"assigned_team_id","value":"team_rebound001"},{"document":"agent_manifest","path":"team_id","value":"team_rebound001"}],"expected_invariant":"identity_chain.team_mismatch"}

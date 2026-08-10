@@ -1,0 +1,1 @@
+{"attack":"model_manifest_policy_rebind","expected_invariants":["model_call_receipt.manifest_model_policy_mismatch"]}

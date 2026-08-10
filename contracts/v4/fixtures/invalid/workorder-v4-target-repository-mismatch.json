@@ -1,0 +1,1 @@
+{"base_fixture":"workorder-v4.json","mutations":[{"op":"set","path":"target.repository_ref","value":"repo://attacker/substitution"}],"expected_invariant":"workorder.target_chain_mismatch"}

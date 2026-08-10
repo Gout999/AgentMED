@@ -1,0 +1,1 @@
+{"bundle":"identity","mutations":[{"document":"capability_lease","path":"bound_resource.digest","value":"sha256:afafafafafafafafafafafafafafafafafafafafafafafafafafafafafafafaf"}],"expected_invariant":"identity_chain.capability_resource_digest_mismatch"}

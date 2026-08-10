@@ -1,0 +1,7 @@
+{
+  "base_fixture": "evaluation-plan.json",
+  "mutations": [
+    {"op": "set", "path": "visible_suite.criteria_digest", "value": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"}
+  ],
+  "expected_invariant": "evaluation_plan.criteria_digest_mismatch"
+}

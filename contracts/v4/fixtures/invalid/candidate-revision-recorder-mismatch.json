@@ -1,0 +1,7 @@
+{
+  "base_fixture": "candidate-revision.json",
+  "mutations": [
+    {"op": "set", "path": "recorded_by_principal", "value": "prn_generator01"}
+  ],
+  "expected_invariant": "candidate_revision.recorder_not_proposal_controller"
+}

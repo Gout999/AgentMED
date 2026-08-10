@@ -1,0 +1,1 @@
+{"attack":"resolution_independent_same_key","expected_invariants":["resolution_contract.review_independence_key_reused","resolution_contract.review.dimension_not_distinct.provider_org"]}

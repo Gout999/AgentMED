@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "controller_registration_id": "creg_mcpregistrycontroller",
+  "revision": 1,
+  "previous_snapshot": null,
+  "state": "ACTIVE",
+  "workspace_id": "ws_stage0001",
+  "owner": "mcp-registry-controller",
+  "controller_principal": "prn_mcpregistry01",
+  "principal_type": "CONTROLLER_SERVICE",
+  "allowed_commands": [
+    "mcp-manifests.register"
+  ],
+  "ownership_contract": {
+    "version": "1.0",
+    "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+  },
+  "event_catalog": {
+    "version": "1.0",
+    "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+  },
+  "valid_from": "2026-08-10T00:00:00Z",
+  "expires_at": null,
+  "service_identity_digest": "sha256:00cd30bfb3183589b9be93604da8e4ba18b6afd1a829980581933751ad5e8117",
+  "registered_by_human_principal": "prn_platformadmin",
+  "registration_audit_ref": "audit://aud_mcpregistrycontroller",
+  "registered_at": "2026-08-10T00:00:00Z",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
+  "registration_digest": "sha256:f01ad47dd8b73dabc0f5b6677f0c628f7a8dafa732b19cc19cc7907616838fc4"
+}

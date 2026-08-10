@@ -1,0 +1,344 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/skill-manifest.schema.json",
+  "title": "CaseLoop governed SkillManifest",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "skill_manifest_id",
+    "revision",
+    "state",
+    "immutable",
+    "name",
+    "version",
+    "source",
+    "package",
+    "supply_chain",
+    "compatibility",
+    "distribution_targets",
+    "requested_permissions",
+    "permission_change",
+    "sandbox_profile",
+    "risk_class",
+    "declared_effect_class",
+    "budget_ceiling",
+    "declarative_tool_hints",
+    "registered_by_principal",
+    "registered_at",
+    "manifest_digest",
+    "workspace_id",
+    "previous_snapshot",
+    "authority_receipt_id",
+    "hash_rule"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+    },
+    "skill_manifest_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/skill_manifest_id"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "state": {
+      "const": "FROZEN"
+    },
+    "immutable": {
+      "const": true
+    },
+    "name": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{2,63}$"
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(?:-[0-9A-Za-z.-]+)?$"
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "repository_uri",
+        "commit",
+        "license_spdx",
+        "content_digest"
+      ],
+      "properties": {
+        "repository_uri": {
+          "type": "string",
+          "format": "uri"
+        },
+        "commit": {
+          "type": "string",
+          "pattern": "^[0-9a-f]{40,64}$"
+        },
+        "license_spdx": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9-.+() ]{2,128}$"
+        },
+        "content_digest": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "package": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+    },
+    "supply_chain": {
+      "type": "object",
+      "required": [
+        "dependency_lock_digest",
+        "sbom",
+        "provenance",
+        "builder_digest"
+      ],
+      "properties": {
+        "dependency_lock_digest": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+        },
+        "sbom": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+        },
+        "provenance": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+        },
+        "builder_digest": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "compatibility": {
+      "type": "object",
+      "required": [
+        "runtime_kinds",
+        "model_families",
+        "minimum_harness_version"
+      ],
+      "properties": {
+        "runtime_kinds": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "AGENTTEAMS",
+              "CLAUDE_CODE",
+              "CODEX",
+              "QWEN_CODE",
+              "CUSTOM"
+            ]
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "model_families": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "minItems": 1,
+          "uniqueItems": true
+        },
+        "minimum_harness_version": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": false
+    },
+    "distribution_targets": {
+      "type": "array",
+      "items": {
+        "enum": [
+          "LOCAL_REGISTRY",
+          "ALIYUN_SKILLS",
+          "ALIYUN_MSE"
+        ]
+      },
+      "minItems": 1,
+      "uniqueItems": true
+    },
+    "requested_permissions": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
+    },
+    "permission_change": {
+      "type": "object",
+      "required": [
+        "change_kind",
+        "previous_manifest",
+        "risk_escalation_required",
+        "human_approval_required"
+      ],
+      "properties": {
+        "change_kind": {
+          "enum": [
+            "NONE",
+            "REDUCED",
+            "EXPANDED"
+          ]
+        },
+        "previous_manifest": {
+          "oneOf": [
+            {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "risk_escalation_required": {
+          "type": "boolean"
+        },
+        "human_approval_required": {
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    },
+    "sandbox_profile": {
+      "enum": [
+        "READ_ONLY",
+        "NETWORK_DENIED",
+        "STRICT_EGRESS",
+        "SCOPED_WRITE"
+      ]
+    },
+    "risk_class": {
+      "enum": [
+        "R0_READ_ONLY",
+        "R1_REVERSIBLE",
+        "R2_HIGH_IMPACT",
+        "R3_IRREVERSIBLE"
+      ]
+    },
+    "declared_effect_class": {
+      "enum": [
+        "READ_ONLY",
+        "IDEMPOTENT",
+        "REVERSIBLE",
+        "COMPENSATABLE",
+        "IRREVERSIBLE"
+      ]
+    },
+    "budget_ceiling": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/budget"
+    },
+    "declarative_tool_hints": {
+      "type": "object",
+      "required": [
+        "authoritative",
+        "tools"
+      ],
+      "properties": {
+        "authoritative": {
+          "const": false
+        },
+        "tools": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1
+          },
+          "uniqueItems": true
+        }
+      },
+      "additionalProperties": false
+    },
+    "registered_by_principal": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+    },
+    "registered_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "manifest_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "workspace_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+    },
+    "previous_snapshot": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "authority_receipt_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
+    },
+    "hash_rule": {
+      "const": "jcs-rfc8785-v1+sha256(excluding:/manifest_digest)"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "permission_change": {
+            "properties": {
+              "change_kind": {
+                "const": "EXPANDED"
+              }
+            },
+            "required": [
+              "change_kind"
+            ]
+          }
+        },
+        "required": [
+          "permission_change"
+        ]
+      },
+      "then": {
+        "properties": {
+          "permission_change": {
+            "properties": {
+              "previous_manifest": {
+                "type": "object"
+              },
+              "risk_escalation_required": {
+                "const": true
+              },
+              "human_approval_required": {
+                "const": true
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "revision": {
+            "const": 1
+          }
+        },
+        "required": [
+          "revision"
+        ]
+      },
+      "then": {
+        "properties": {
+          "previous_snapshot": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "previous_snapshot": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

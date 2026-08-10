@@ -1,0 +1,1 @@
+{"base_fixture":"attempt.json","mutations":[{"op":"set","path":"attempt_kind","value":"FALLBACK"},{"op":"set","path":"model.resolution_kind","value":"FALLBACK"}],"expected_invariant":"fallback_requires_prior_attempt"}

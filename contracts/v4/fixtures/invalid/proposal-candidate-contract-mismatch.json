@@ -1,0 +1,1 @@
+{"base_fixture":"proposal.json","mutations":[{"op":"set","path":"candidate_contract.digest","value":"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}],"expected_invariant":"proposal.candidate_contract_mismatch"}

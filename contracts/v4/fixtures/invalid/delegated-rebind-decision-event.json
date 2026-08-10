@@ -1,0 +1,1 @@
+{"bundle":"delegated_dispatch","mutations":[{"document":"capability_lease","path":"dispatch_causation.decision_event_id","value":"evt_rebound001"}],"expected_invariant":"delegated_dispatch.causation_binding_mismatch"}

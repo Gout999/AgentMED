@@ -1,0 +1,1 @@
+{"base_fixture":"skill-manifest.json","mutations":[{"op":"set","path":"permission_change.change_kind","value":"EXPANDED"}],"expected_invariant":"permission_expansion_requires_escalation_and_human_approval"}

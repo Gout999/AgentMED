@@ -1,0 +1,7 @@
+{
+  "base_fixture": "candidate-contract.json",
+  "mutations": [
+    {"op": "append", "path": "allowed_action_scope.network", "value": {"origin": "https://example.invalid", "methods": ["POST"]}}
+  ],
+  "expected_invariant": "candidate_contract.action_scope_exceeds_resolution"
+}

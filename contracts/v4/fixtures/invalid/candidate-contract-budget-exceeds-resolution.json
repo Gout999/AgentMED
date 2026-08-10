@@ -1,0 +1,7 @@
+{
+  "base_fixture": "candidate-contract.json",
+  "mutations": [
+    {"op": "set", "path": "budget.max_attempts", "value": 4}
+  ],
+  "expected_invariant": "candidate_contract.budget_exceeds_resolution"
+}

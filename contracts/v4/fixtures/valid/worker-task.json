@@ -1,0 +1,57 @@
+{
+  "schema_version": "1.0",
+  "worker_task_id": "wt_stage0001",
+  "workspace_id": "ws_stage0001",
+  "case_id": "case_stage0001",
+  "task_kind": "GENERATION",
+  "state": "COMPLETED",
+  "assigned_team_id": "team_coding_stage0",
+  "team_manifest_digest": "sha256:1313131313131313131313131313131313131313131313131313131313131313",
+  "assigned_role": "coding-generator",
+  "role_manifest_digest": "sha256:12436856375d8ba501a9023bb08553d4267b75aa38f894917903db0cd84da3fb",
+  "parent_worker_task_id": null,
+  "parent_attempt_id": null,
+  "delegation_proposal_id": null,
+  "requested_by_principal": "prn_workcontrol1",
+  "input_snapshot_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "resolution_contract": {
+    "id": "rc_stage0001",
+    "digest": "sha256:cc97aa93105ee1337bcdb5ae708c77c1c35be887bdc67aac270692b5e9883d83"
+  },
+  "participation_manifest": {
+    "kind": "PARTICIPATION_MANIFEST",
+    "id": "pman_stage0001",
+    "revision": 1,
+    "digest": "sha256:f06c957c2add870bb4eb08ae68bb73a6619d84c584095db075fb5ec16f0845d3"
+  },
+  "capability_requirements_digest": "sha256:1616161616161616161616161616161616161616161616161616161616161616",
+  "budget": {
+    "max_attempts": 3,
+    "max_wall_seconds": 1800,
+    "max_tokens": 200000,
+    "max_cost_microunits": 0
+  },
+  "attempts_used": 1,
+  "current_lease": null,
+  "terminal_attempt_id": "att_generator01",
+  "accepted_proposal_id": "prop_stage0001",
+  "domain_success_owned": false,
+  "created_at": "2026-08-10T01:30:00Z",
+  "revision": 3,
+  "task_digest": "sha256:47965799747ce48dafb28006ebd6b42889549069a46ef73ffbf2880829fa34e0",
+  "terminal_attempt": {
+    "kind": "ATTEMPT",
+    "id": "att_generator01",
+    "revision": 5,
+    "digest": "sha256:56db1721d1645106e2fa2d6e43185c8d096d5cfc519f3dda8908e25d2260c0f8"
+  },
+  "previous_snapshot": {
+    "kind": "WORKER_TASK",
+    "id": "wt_stage0001",
+    "revision": 2,
+    "digest": "sha256:6be9901c5f7aaa26b7fa5a0746ce95c2be31bdba2eb2b407a619fb19c596fe69"
+  },
+  "authority_receipt_id": "arec_workertaskcompleted00000000",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/task_digest)"
+}

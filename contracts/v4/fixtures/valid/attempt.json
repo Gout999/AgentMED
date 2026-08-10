@@ -1,0 +1,123 @@
+{
+  "schema_version": "1.0",
+  "attempt_id": "att_generator01",
+  "worker_task_id": "wt_stage0001",
+  "workspace_id": "ws_stage0001",
+  "attempt_kind": "PRIMARY",
+  "state": "SUCCEEDED",
+  "parent_attempt_id": null,
+  "fallback_of_attempt_id": null,
+  "delegation_proposal_id": null,
+  "requested_by_principal": "prn_workcontrol1",
+  "executor_principal": "prn_generator01",
+  "assigned_team_id": "team_coding_stage0",
+  "agent_manifest": {
+    "kind": "AGENT_MANIFEST",
+    "id": "aman_stage0001",
+    "revision": 1,
+    "digest": "sha256:aa7ab3b9e0068f4d572ce4ac5e04fe39c3d923d8cfeed9df65e999bb2ea94fab"
+  },
+  "input_snapshot_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "claim_binding": {
+    "claim_event_id": "evt_claim000001",
+    "lease_id": "lease_stage0001",
+    "worker_principal": "prn_generator01",
+    "runtime_session_id": "claude-session-stage0",
+    "fencing_token": 1,
+    "claimed_at": "2026-08-10T01:34:00Z"
+  },
+  "runtime": {
+    "runtime_kind": "CLAUDE_CODE",
+    "runtime_session_id": "claude-session-stage0",
+    "runtime_adapter_digest": "sha256:1919191919191919191919191919191919191919191919191919191919191919",
+    "runtime_version": "1.0.0"
+  },
+  "model": {
+    "requested_model": "stepfun-3.7-flash",
+    "resolved_provider": "stepfun",
+    "resolved_model": "stepfun-3.7-flash",
+    "resolution_kind": "EXACT",
+    "model_resolution_receipt_digest": "sha256:4af53139a539610c6a3708bc0a5dc9e1b4468f102b4b6ddc4e293e17e83f905a",
+    "model_call_receipt_digest": "sha256:fea9d64bb26f9ff79a1c1a505411445c40d5568bedb2a5949f3cd1fb9b76515e",
+    "model_call_receipt": {
+      "kind": "MODEL_CALL_RECEIPT",
+      "id": "mcr_generator01",
+      "revision": null,
+      "digest": "sha256:fea9d64bb26f9ff79a1c1a505411445c40d5568bedb2a5949f3cd1fb9b76515e"
+    }
+  },
+  "capability_grant_id": "cap_stage0001",
+  "repo_context": {
+    "repository_ref": "repo://example/project",
+    "base_revision": "0123456789abcdef",
+    "base_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "worktree_ref": "worktree://stage0/generator",
+    "worktree_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "skill_usage": [
+    {
+      "skill_manifest_digest": "sha256:6189d8a10df5be1bbf4eb044f7427626172be883ec25cea9986bfe01cb179b6f",
+      "discovered": true,
+      "loaded": true,
+      "selected": true,
+      "called": true,
+      "call_receipt_digest": "sha256:2424242424242424242424242424242424242424242424242424242424242424"
+    }
+  ],
+  "mcp_usage": [
+    {
+      "server": "repo-reader",
+      "tool": "read_file",
+      "catalog_digest": "sha256:bee0c3f66462acc0e8815f7f992928bb0d4b367c5b2d8ae7d731d8f6cf813740",
+      "schema_digest": "sha256:2626262626262626262626262626262626262626262626262626262626262626",
+      "called": true,
+      "call_receipt_digest": "sha256:2727272727272727272727272727272727272727272727272727272727272727"
+    }
+  ],
+  "tool_receipts": [
+    "sha256:2828282828282828282828282828282828282828282828282828282828282828"
+  ],
+  "output_artifact": {
+    "uri": "artifact://stage0/candidate.patch",
+    "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "media_type": "text/plain"
+  },
+  "terminal_receipt": {
+    "process_exit_code": 0,
+    "stream_complete": true,
+    "structured_output_valid": true,
+    "receipt_digest": "sha256:3030303030303030303030303030303030303030303030303030303030303030"
+  },
+  "failure": null,
+  "started_at": "2026-08-10T01:35:00Z",
+  "completed_at": "2026-08-10T01:50:00Z",
+  "attempt_digest": "sha256:56db1721d1645106e2fa2d6e43185c8d096d5cfc519f3dda8908e25d2260c0f8",
+  "revision": 5,
+  "worker_task_snapshot": {
+    "kind": "WORKER_TASK",
+    "id": "wt_stage0001",
+    "revision": 2,
+    "digest": "sha256:6be9901c5f7aaa26b7fa5a0746ce95c2be31bdba2eb2b407a619fb19c596fe69"
+  },
+  "previous_snapshot": {
+    "kind": "ATTEMPT",
+    "id": "att_generator01",
+    "revision": 4,
+    "digest": "sha256:6e7a24a8169d20750c9f631ff5d8133676661003a7565eb74d84048abb3ec17c"
+  },
+  "runtime_capability": {
+    "kind": "CAPABILITY_LEASE",
+    "id": "cap_stage0001",
+    "revision": 1,
+    "digest": "sha256:3f206cd20d67ab25a5bac23592775cb0501ac9d3f1a0d0aaed1e7e56ee4fe200"
+  },
+  "authority_receipt_id": "arec_attemptsucceeded00000000",
+  "pre_controlled_action": {
+    "proposal_id": "prop_stage0001",
+    "proposal_digest": "sha256:87e937dc93e36294569996ed4c5a24baacf98fda34d2ffabdad50b4e5b2de3db",
+    "submitted_at": "2026-08-10T01:40:00Z",
+    "controlled_action_started_at": "2026-08-10T01:41:00Z"
+  },
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/attempt_digest)"
+}

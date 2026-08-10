@@ -1,0 +1,1 @@
+{"attack":"candidate_event_rebind","expected_invariants":["authority.candidate_revision_causation_mismatch"]}

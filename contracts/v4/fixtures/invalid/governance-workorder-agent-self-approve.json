@@ -1,0 +1,1 @@
+{"attack":"workorder_agent_self_approve","expected_invariants":["authority.workorder_actor_mismatch"]}

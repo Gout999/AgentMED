@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0",
+  "candidate_revision_id": "crev_stage0001",
+  "candidate_id": "cand_stage0001",
+  "revision": 1,
+  "workspace_id": "ws_stage0001",
+  "case_id": "case_stage0001",
+  "resolution_contract": {
+    "id": "rc_stage0001",
+    "digest": "sha256:cc97aa93105ee1337bcdb5ae708c77c1c35be887bdc67aac270692b5e9883d83"
+  },
+  "candidate_contract": {
+    "id": "cc_stage0001",
+    "digest": "sha256:68c1db5e06b8af0343e2e83b3f7abbbc5ddbd9ceebc67435d6734fa19986039b"
+  },
+  "accepted_proposal": {
+    "kind": "PROPOSAL",
+    "id": "prop_stage0001",
+    "revision": null,
+    "digest": "sha256:87e937dc93e36294569996ed4c5a24baacf98fda34d2ffabdad50b4e5b2de3db"
+  },
+  "candidate_kind": "CODE_PATCH",
+  "input_snapshot_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "base": {
+    "target_ref": "repo://example/project",
+    "revision": "0123456789abcdef",
+    "content_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+  },
+  "target": {
+    "target_ref": "repo://example/project",
+    "revision": "candidate-stage0001",
+    "content_digest": "sha256:4141414141414141414141414141414141414141414141414141414141414141"
+  },
+  "candidate_artifact": {
+    "uri": "artifact://stage0/candidate.patch",
+    "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "media_type": "text/plain"
+  },
+  "diff_artifact": {
+    "uri": "artifact://stage0/candidate.patch",
+    "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "media_type": "text/plain"
+  },
+  "receipt_set_digest": "sha256:3434343434343434343434343434343434343434343434343434343434343434",
+  "state": "RECORDED",
+  "recorded_by_principal": "prn_proposalctl",
+  "recorded_at": "2026-08-10T01:51:00Z",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/revision_digest)",
+  "revision_digest": "sha256:6ac8562ff1059fd102ef1e2362c2f3cd0ee6575d6a51ba6bd431d73996fefc8a",
+  "producer_attempt": {
+    "kind": "ATTEMPT",
+    "id": "att_generator01",
+    "revision": 5,
+    "digest": "sha256:56db1721d1645106e2fa2d6e43185c8d096d5cfc519f3dda8908e25d2260c0f8"
+  },
+  "authority_receipt_id": "arec_candidaterevision00000000"
+}

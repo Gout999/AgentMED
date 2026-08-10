@@ -1,0 +1,321 @@
+version: "1.0"
+status: target_contract
+
+envelope:
+  required:
+    - event_id
+    - event_type
+    - event_version
+    - aggregate_type
+    - aggregate_id
+    - occurred_at
+    - causation_id
+    - correlation_id
+    - actor_principal
+    - transaction_id
+    - payload
+    - payload_digest
+  rules:
+    event_id: globally_prefixed
+    event_version: additive_within_major
+    causation_id: immediate_command_or_event
+    correlation_id: stable_case_or_run_correlation
+    payload_digest: jcs-rfc8785+sha256
+    append_only: true
+    controller_record_event_requires: [subject_kind, subject_id, subject_revision, subject_digest, authority_receipt_id]
+    authority_receipt_and_subject_share_transaction: true
+
+aggregates:
+  signal:
+    owner: signal-controller
+    events:
+      - {event_type: signal.received, event_version: "1.0", payload_required: [signal_id, signal_digest, source_id, source_event_id]}
+      - {event_type: signal.acknowledged, event_version: "1.0", payload_required: [signal_id, acknowledged_by_principal, acknowledgement_digest]}
+      - {event_type: signal_case_link.linked, event_version: "1.0", payload_required: [signal_id, case_id, link_digest]}
+      - {event_type: signal_case_link.split, event_version: "1.0", payload_required: [signal_id, prior_case_id, replacement_case_ids, link_digest]}
+      - {event_type: signal.superseded, event_version: "1.0", payload_required: [signal_id, superseding_signal_id, reason]}
+      - {event_type: signal.closed, event_version: "1.0", payload_required: [signal_id, reason, closed_by_principal]}
+      - {event_type: signal.reopened, event_version: "1.0", payload_required: [signal_id, reason, reopened_by_principal]}
+
+  source_connection:
+    owner: source-controller
+    events:
+      - {event_type: source_connection.registered, event_version: "1.0", payload_required: [source_connection_id, connection_digest, connector_kind, credential_ref]}
+      - {event_type: source_connection.updated, event_version: "1.0", payload_required: [source_connection_id, prior_connection_digest, connection_digest]}
+      - {event_type: source_connection.disabled, event_version: "1.0", payload_required: [source_connection_id, reason, disabled_by_principal]}
+
+  source_sync_run:
+    owner: source-controller
+    events:
+      - {event_type: source_sync_run.doctor_requested, event_version: "1.0", payload_required: [source_sync_run_id, source_connection_id, request_digest]}
+      - {event_type: source_sync_run.started, event_version: "1.0", payload_required: [source_sync_run_id, connector_identity, started_at]}
+      - {event_type: source_sync_run.completed, event_version: "1.0", payload_required: [source_sync_run_id, capability_snapshot_digest, evidence_receipt_id]}
+      - {event_type: source_sync_run.failed, event_version: "1.0", payload_required: [source_sync_run_id, error_code, retryable]}
+      - {event_type: source_sync_run.unknown, event_version: "1.0", payload_required: [source_sync_run_id, ambiguity_reason, reconciliation_required]}
+      - {event_type: source_sync_run.reconciled, event_version: "1.0", payload_required: [source_sync_run_id, reconciliation_receipt_digest, reconciled_status]}
+
+  quality_case:
+    owner: case-controller
+    events:
+      - {event_type: case.opened, event_version: "1.0", payload_required: [case_id, opening_signal_id]}
+      - {event_type: case.triaged, event_version: "1.0", payload_required: [case_id, triage_digest]}
+      - {event_type: case.finding_accepted, event_version: "1.0", payload_required: [case_id, finding_proposal_id, proposal_decision_id]}
+      - {event_type: case.resolution_recorded, event_version: "1.0", payload_required: [case_id, decision_id, accepted_proposal_id]}
+      - {event_type: case.reopened, event_version: "1.0", payload_required: [case_id, reopening_signal_id, reason]}
+
+  automation_request:
+    owner: automation-request-controller
+    events:
+      - {event_type: automation_request.submitted, event_version: "1.0", payload_required: [automation_request_id, case_id, request_digest, budget_digest]}
+      - {event_type: automation_request.admitted, event_version: "1.0", payload_required: [automation_request_id, admission_decision_digest]}
+      - {event_type: automation_request.rejected, event_version: "1.0", payload_required: [automation_request_id, reason_code]}
+      - {event_type: automation_request.budget_updated, event_version: "1.0", payload_required: [automation_request_id, budget_digest, updated_by_principal]}
+      - {event_type: automation_request.stop_requested, event_version: "1.0", payload_required: [automation_request_id, reason, requested_by_principal]}
+
+  resolution_contract:
+    owner: case-controller
+    events:
+      - {event_type: resolution_review.recorded, event_version: "1.0", payload_required: [resolution_review_receipt_id, review_receipt_digest, resolution_contract_id, reviewed_content_digest, review_mode, reviewer_principal]}
+      - {event_type: resolution_contract.frozen, event_version: "1.0", payload_required: [resolution_contract_id, contract_digest, case_id]}
+
+  candidate_contract:
+    owner: proposal-controller
+    events:
+      - {event_type: candidate_contract.frozen, event_version: "1.0", payload_required: [candidate_contract_id, contract_digest, resolution_contract_id]}
+
+  candidate_revision:
+    owner: proposal-controller
+    events:
+      - event_type: candidate_revision.recorded
+        event_version: "1.0"
+        payload_required: [candidate_revision_id, revision_digest, candidate_contract_id, accepted_proposal_id, producer_attempt_id, recorded_by_principal]
+
+  worker_task:
+    owner: work-controller
+    state_machine: worker_task
+    events:
+      - event_type: work.requested
+        event_version: "1.0"
+        payload_required: [worker_task_id, worker_task_digest, assigned_team_id, assigned_role, input_snapshot_digest]
+        outbox_event: WORK_REQUESTED
+      - event_type: work.claimed
+        event_version: "1.0"
+        payload_required: [worker_task_id, attempt_id, worker_principal, lease_id, fencing_token, expires_at]
+        creates_attempt: true
+      - {event_type: work.heartbeat_recorded, event_version: "1.0", payload_required: [worker_task_id, attempt_id, lease_id, fencing_token, expires_at]}
+      - {event_type: work.retry_scheduled, event_version: "1.0", payload_required: [worker_task_id, failed_attempt_id, retry_after, reason]}
+      - {event_type: work.cancel_requested, event_version: "1.0", payload_required: [worker_task_id, reason, requested_by_principal]}
+      - {event_type: work.cancelled, event_version: "1.0", payload_required: [worker_task_id, terminal_attempt_id, cancellation_receipt_digest]}
+      - {event_type: work.completed, event_version: "1.0", payload_required: [worker_task_id, terminal_attempt_id, accepted_proposal_id]}
+      - {event_type: work.exhausted, event_version: "1.0", payload_required: [worker_task_id, terminal_attempt_id, attempts_used, reason]}
+      - {event_type: work.blocked_unknown, event_version: "1.0", payload_required: [worker_task_id, unknown_attempt_id, reconciliation_required]}
+      - {event_type: work.unknown_reconciled_retry, event_version: "1.0", payload_required: [worker_task_id, unknown_attempt_id, reconciliation_receipt_digest]}
+      - {event_type: work.unknown_reconciled_completed, event_version: "1.0", payload_required: [worker_task_id, unknown_attempt_id, reconciliation_receipt_digest, accepted_proposal_id]}
+
+  attempt:
+    owner: work-controller
+    state_machine: attempt
+    events:
+      - event_type: attempt.created
+        event_version: "1.0"
+        payload_required: [attempt_id, worker_task_id, attempt_kind, parent_attempt_id, fallback_of_attempt_id, executor_principal, requested_model, claim_event_id]
+      - {event_type: attempt.starting, event_version: "1.0", payload_required: [attempt_id, capability_grant_id, runtime_adapter_digest]}
+      - {event_type: attempt.started, event_version: "1.0", payload_required: [attempt_id, runtime_session_id, resolved_provider, resolved_model, model_resolution_receipt_digest]}
+      - {event_type: attempt.receipt_recorded, event_version: "1.0", payload_required: [attempt_id, attempt_revision, attempt_digest, receipt_kind, receipt_id, receipt_digest, issuer]}
+      - {event_type: attempt.output_recorded, event_version: "1.0", payload_required: [attempt_id, output_artifact_digest, structured_output_valid, stream_complete]}
+      - {event_type: attempt.succeeded, event_version: "1.0", payload_required: [attempt_id, output_artifact_digest, pre_controlled_action_proposal_id, terminal_receipt_digest]}
+      - {event_type: attempt.failed, event_version: "1.0", payload_required: [attempt_id, failure_code, terminal_receipt_digest]}
+      - {event_type: attempt.timed_out, event_version: "1.0", payload_required: [attempt_id, timeout_kind, process_group_terminated]}
+      - {event_type: attempt.cancel_requested, event_version: "1.0", payload_required: [attempt_id, reason]}
+      - {event_type: attempt.cancelled, event_version: "1.0", payload_required: [attempt_id, cancellation_receipt_digest]}
+      - {event_type: attempt.unknown, event_version: "1.0", payload_required: [attempt_id, ambiguity_reason, reconciliation_required]}
+      - {event_type: attempt.reconciled_succeeded, event_version: "1.0", payload_required: [attempt_id, reconciliation_receipt_digest, output_artifact_digest, pre_controlled_action_proposal_id]}
+      - {event_type: attempt.reconciled_failed, event_version: "1.0", payload_required: [attempt_id, reconciliation_receipt_digest, failure_code]}
+
+  proposal:
+    owner: proposal-controller
+    events:
+      - event_type: proposal.submitted
+        event_version: "1.0"
+        payload_required: [proposal_id, proposal_type, proposal_digest, worker_task_id, authored_by_attempt_id, authored_by_principal, submitted_by_principal, submitted_at, controlled_action_not_started]
+
+  agent_intent:
+    owner: proposal-controller
+    events:
+      - event_type: agent_intent.submitted
+        event_version: "1.0"
+        payload_required: [agent_intent_id, intent_digest, proposal_id, attempt_id, submitted_at, external_effect_class]
+
+  proposal_decision:
+    owner: proposal-controller
+    events:
+      - event_type: proposal.accepted
+        event_version: "1.0"
+        payload_required: [proposal_decision_id, proposal_id, proposal_digest, accepted_proposal_id, downstream_event_id, downstream_event_type]
+        transactional_with_first_downstream_event: true
+      - {event_type: proposal.rejected, event_version: "1.0", payload_required: [proposal_decision_id, proposal_id, proposal_digest, reason_code]}
+
+  evidence_receipt:
+    owner: evidence-controller
+    events:
+      - {event_type: evidence.recorded, event_version: "1.0", payload_required: [receipt_id, evidence_digest, completeness]}
+      - {event_type: evidence.verified, event_version: "1.0", payload_required: [receipt_id, evidence_digest, verification_receipt_digest]}
+      - {event_type: evidence.superseded, event_version: "1.0", payload_required: [receipt_id, superseding_receipt_id, reason]}
+
+  evaluation_plan:
+    owner: gate-controller
+    events:
+      - {event_type: evaluation.plan_frozen, event_version: "1.0", payload_required: [evaluation_plan_id, plan_digest, candidate_contract_id, holdout_binding_digest]}
+
+  gate_execution:
+    owner: gate-controller
+    state_machine: gate_execution
+    events:
+      - {event_type: gate.started, event_version: "1.0", payload_required: [gate_execution_id, evaluation_plan_id, candidate_revision_id, candidate_revision_digest]}
+      - {event_type: gate.track_receipt_recorded, event_version: "1.0", payload_required: [gate_execution_id, gate_track_receipt_id, gate_track_receipt_digest, track, candidate_revision_id, candidate_revision_digest, status, completeness]}
+      - {event_type: gate.completed, event_version: "1.0", payload_required: [gate_execution_id, gate_report_id, gate_report_digest, status]}
+      - {event_type: gate.failed, event_version: "1.0", payload_required: [gate_execution_id, gate_report_id, gate_report_digest, failed_dimensions]}
+      - {event_type: gate.inconclusive, event_version: "1.0", payload_required: [gate_execution_id, gate_report_id, gate_report_digest, missing_dimensions]}
+      - {event_type: gate.error, event_version: "1.0", payload_required: [gate_execution_id, error_code, retryable]}
+      - {event_type: gate.unknown, event_version: "1.0", payload_required: [gate_execution_id, ambiguity_reason, reconciliation_required]}
+      - {event_type: gate.reconciled_pass, event_version: "1.0", payload_required: [gate_execution_id, reconciliation_receipt_digest, gate_report_id, gate_report_digest, status]}
+      - {event_type: gate.reconciled_failed, event_version: "1.0", payload_required: [gate_execution_id, reconciliation_receipt_digest, gate_report_id, gate_report_digest]}
+      - {event_type: gate.reconciled_inconclusive, event_version: "1.0", payload_required: [gate_execution_id, reconciliation_receipt_digest, gate_report_id, gate_report_digest]}
+      - {event_type: gate.reconciled_error, event_version: "1.0", payload_required: [gate_execution_id, reconciliation_receipt_digest, error_code]}
+
+  workorder:
+    owner: gate-controller
+    events:
+      - event_type: workorder.created
+        event_version: "1.0"
+        payload_required: [workorder_id, workorder_hash, candidate_revision_id, candidate_revision_digest, gate_report_id, gate_report_digest, gate_status]
+        guards:
+          gate_status: PASS
+
+  capability_lease:
+    owner: capability-controller
+    state_machine: capability_lease
+    events:
+      - {event_type: capability.issued, event_version: "1.0", payload_required: [capability_grant_id, grant_kind, principal_id, effective_permissions_digest, expiry]}
+      - {event_type: capability.revoked, event_version: "1.0", payload_required: [capability_grant_id, reason, revoked_by]}
+      - {event_type: capability.consumed, event_version: "1.0", payload_required: [capability_grant_id, consumed_by_operation_id]}
+      - {event_type: capability.expired, event_version: "1.0", payload_required: [capability_grant_id, expiry]}
+
+  approval_grant:
+    owner: approval-controller
+    events:
+      - {event_type: approval.requested, event_version: "1.0", payload_required: [approval_grant_id, target_ref, target_digest, expires_at]}
+      - {event_type: approval.decided, event_version: "1.0", payload_required: [approval_grant_id, decision, decided_by_human_principal]}
+      - {event_type: approval.revoked, event_version: "1.0", payload_required: [approval_grant_id, reason, revoked_by_human_principal]}
+      - {event_type: approval.expired, event_version: "1.0", payload_required: [approval_grant_id, expires_at]}
+
+  agent_manifest:
+    owner: manifest-controller
+    events:
+      - {event_type: agent_manifest.registered, event_version: "1.0", payload_required: [agent_manifest_id, manifest_digest, principal_id]}
+
+  participation_manifest:
+    owner: work-controller
+    events:
+      - {event_type: participation_manifest.frozen, event_version: "1.0", payload_required: [participation_manifest_id, manifest_digest, case_id, mode]}
+
+  skill_manifest:
+    owner: skill-registry-controller
+    events:
+      - {event_type: skill_manifest.registered, event_version: "1.0", payload_required: [skill_manifest_id, manifest_digest, version]}
+
+  mcp_manifest:
+    owner: mcp-registry-controller
+    events:
+      - {event_type: mcp_manifest.registered, event_version: "1.0", payload_required: [mcp_manifest_id, manifest_digest, version, tool_catalog_digest]}
+
+  controller_registration:
+    owner: control-plane-authority
+    events:
+      - {event_type: controller.registered, event_version: "1.0", payload_required: [controller_registration_id, revision, registration_digest, owner, controller_principal]}
+      - {event_type: controller.revoked, event_version: "1.0", payload_required: [controller_registration_id, revision, registration_digest, revoked_by_principal]}
+      - {event_type: controller.expired, event_version: "1.0", payload_required: [controller_registration_id, revision, registration_digest]}
+
+  authority_receipt:
+    owner: control-plane-authority
+    events:
+      - {event_type: authority.receipt_recorded, event_version: "1.0", payload_required: [authority_receipt_id, authority_receipt_digest, subject_kind, subject_id, subject_revision, subject_digest, controller_registration_id, command, source_event_id, transaction_id, audit_ref]}
+
+  external_operation:
+    owner: scoped-executor-controller
+    state_machine: external_operation
+    events:
+      - {event_type: external_operation.requested, event_version: "1.0", payload_required: [operation_id, workorder_id, capability_grant_id, idempotency_key]}
+      - {event_type: external_operation.started, event_version: "1.0", payload_required: [operation_id, executor_principal, request_digest]}
+      - {event_type: external_operation.succeeded, event_version: "1.0", payload_required: [operation_id, provider_receipt_digest]}
+      - {event_type: external_operation.failed, event_version: "1.0", payload_required: [operation_id, error_code, retryable]}
+      - {event_type: external_operation.unknown, event_version: "1.0", payload_required: [operation_id, ambiguity_reason, reconciliation_required]}
+      - {event_type: external_operation.reconciled, event_version: "1.0", payload_required: [operation_id, reconciliation_receipt_digest, reconciled_status]}
+
+  case_resolution_decision:
+    owner: case-controller
+    events:
+      - {event_type: case_resolution.decided, event_version: "1.0", payload_required: [decision_id, case_id, resolution, causative_operation_id]}
+
+  closure_delivery:
+    owner: closure-controller
+    state_machine: closure_delivery
+    events:
+      - {event_type: closure.requested, event_version: "1.0", payload_required: [closure_id, case_id, target_ref]}
+      - {event_type: closure.delivered, event_version: "1.0", payload_required: [closure_id, provider_receipt_digest]}
+      - {event_type: closure.failed, event_version: "1.0", payload_required: [closure_id, error_code, retryable]}
+      - {event_type: closure.unknown, event_version: "1.0", payload_required: [closure_id, ambiguity_reason, reconciliation_required]}
+      - {event_type: closure.reconciled, event_version: "1.0", payload_required: [closure_id, reconciliation_receipt_digest, reconciled_status]}
+
+  coordinator_reaction_ledger:
+    owner: durable-work-coordinator
+    events:
+      - {event_type: reaction.recorded, event_version: "1.0", payload_required: [reaction_id, source_event_id, requested_command_id]}
+      - {event_type: reaction.retry_scheduled, event_version: "1.0", payload_required: [reaction_id, source_event_id, retry_after]}
+
+transactional_invariants:
+  resolution_review_recording:
+    required_records: [resolution_review_receipt, resolution_review_authority_receipt, resolution_review.recorded, outbox, audit]
+    same_transaction: true
+    review_receipt_cannot_bind_future_resolution_digest: true
+  model_call_receipt_recording:
+    required_records: [model_call_receipt, model_call_authority_receipt, attempt.receipt_recorded, outbox, audit]
+    same_transaction: true
+    binds_call_time_nonterminal_attempt_snapshot: true
+    terminal_attempt_digest_cannot_be_prebound: true
+  gate_track_receipt_recording:
+    required_records: [gate_track_receipt, gate_track_authority_receipt, gate.track_receipt_recorded, outbox, audit]
+    same_transaction: true
+    gate_report_digest_cannot_be_prebound: true
+  gate_report_finalization:
+    required_records: [gate_report, gate_report_authority_receipt, terminal_gate_event, exact_gate_track_receipt_set, outbox, audit]
+    same_transaction: true
+    exact_required_track_set: true
+  work_claim:
+    required_records: [worker_task_claim_snapshot, worker_task_authority_receipt, attempt_created_snapshot, attempt_authority_receipt, capability_issuance_snapshot, capability_authority_receipt, work.claimed, attempt.created, capability.issued, outbox, audit]
+    same_transaction: true
+    shared_attempt_id: true
+    attempt_created_causation_id: work.claimed.event_id
+    runtime_adapter_cannot_create_attempt: true
+  proposal_acceptance:
+    required_records: [proposal_decision, proposal_decision_authority_receipt, proposal.accepted, first_downstream_event, outbox, audit]
+    same_transaction: true
+    downstream_causation_id: proposal.accepted.event_id
+    downstream_accepted_proposal_id: proposal.accepted.accepted_proposal_id
+  accepted_change_candidate_recording:
+    applies_when: proposal_type.CHANGE
+    required_records: [proposal_decision, proposal_decision_authority_receipt, candidate_revision, candidate_revision_authority_receipt, proposal.accepted, candidate_revision.recorded, outbox, audit]
+    same_transaction: true
+    candidate_event_id: proposal_decision.downstream_event.event_id
+    candidate_event_causation_id: proposal_decision.decision_event_id
+    candidate_event_accepted_proposal_id: proposal_decision.accepted_proposal_id
+    candidate_authority_event_id: candidate_revision.recorded.event_id
+  work_request:
+    required_records: [worker_task_queued_snapshot, worker_task_authority_receipt, work.requested, outbox.WORK_REQUESTED, audit]
+    same_transaction: true
+  workorder_creation:
+    required_records: [workorder, workorder_authority_receipt, workorder.created, outbox, audit]
+    same_transaction: true
+    requires_gate_status: PASS
+    gate_completed_status: PASS
+    binds_exact_candidate_and_gate_digests: true

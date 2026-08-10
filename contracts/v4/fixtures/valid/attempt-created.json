@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "attempt_id": "att_generator01",
+  "worker_task_id": "wt_stage0001",
+  "workspace_id": "ws_stage0001",
+  "attempt_kind": "PRIMARY",
+  "state": "CREATED",
+  "parent_attempt_id": null,
+  "fallback_of_attempt_id": null,
+  "delegation_proposal_id": null,
+  "requested_by_principal": "prn_workcontrol1",
+  "executor_principal": "prn_generator01",
+  "assigned_team_id": "team_coding_stage0",
+  "agent_manifest": {
+    "kind": "AGENT_MANIFEST",
+    "id": "aman_stage0001",
+    "revision": 1,
+    "digest": "sha256:aa7ab3b9e0068f4d572ce4ac5e04fe39c3d923d8cfeed9df65e999bb2ea94fab"
+  },
+  "input_snapshot_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "claim_binding": {
+    "claim_event_id": "evt_claim000001",
+    "lease_id": "lease_stage0001",
+    "worker_principal": "prn_generator01",
+    "runtime_session_id": "claude-session-stage0",
+    "fencing_token": 1,
+    "claimed_at": "2026-08-10T01:34:00Z"
+  },
+  "runtime": {
+    "runtime_kind": "CLAUDE_CODE",
+    "runtime_session_id": null,
+    "runtime_adapter_digest": "sha256:1919191919191919191919191919191919191919191919191919191919191919",
+    "runtime_version": "1.0.0"
+  },
+  "model": {
+    "requested_model": "stepfun-3.7-flash",
+    "resolved_provider": null,
+    "resolved_model": null,
+    "resolution_kind": null,
+    "model_resolution_receipt_digest": null,
+    "model_call_receipt_digest": null,
+    "model_call_receipt": null
+  },
+  "capability_grant_id": "cap_stage0001",
+  "repo_context": null,
+  "skill_usage": [],
+  "mcp_usage": [],
+  "tool_receipts": [],
+  "output_artifact": null,
+  "terminal_receipt": null,
+  "failure": null,
+  "started_at": null,
+  "completed_at": null,
+  "attempt_digest": "sha256:23d45960f29e21b6a0a77f08134f43d9a7d1b16204945494cf496873b5a7c175",
+  "revision": 1,
+  "worker_task_snapshot": {
+    "kind": "WORKER_TASK",
+    "id": "wt_stage0001",
+    "revision": 2,
+    "digest": "sha256:6be9901c5f7aaa26b7fa5a0746ce95c2be31bdba2eb2b407a619fb19c596fe69"
+  },
+  "previous_snapshot": null,
+  "runtime_capability": null,
+  "authority_receipt_id": "arec_attemptcreated00000000",
+  "pre_controlled_action": null,
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/attempt_digest)"
+}

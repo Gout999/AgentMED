@@ -1,0 +1,77 @@
+{
+  "schema_version": "1.0",
+  "agent_manifest_id": "aman_stage0001",
+  "revision": 1,
+  "state": "FROZEN",
+  "immutable": true,
+  "workspace_id": "ws_stage0001",
+  "principal_id": "prn_generator01",
+  "team_id": "team_coding_stage0",
+  "role": "coding-generator",
+  "agent_version_set": {
+    "id": "avs_stage0001",
+    "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "soul_digest": "sha256:f5b46c55a2fe82cbd421b13f534113e09fc2eb4e34b119c1a677096a85ef66c9",
+  "role_manifest_digest": "sha256:12436856375d8ba501a9023bb08553d4267b75aa38f894917903db0cd84da3fb",
+  "runtime_policy": {
+    "allowed_runtime_kinds": [
+      "CLAUDE_CODE"
+    ],
+    "isolated_worktree_required": true,
+    "personal_config_mount_allowed": false
+  },
+  "model_policy": {
+    "primary_model": "stepfun-3.7-flash",
+    "primary_model_digest": "sha256:53510308e077c135078c56b7f54eac386a0d07bd67c13e2ad4a89bd7b22f66bf",
+    "allowed_fallback_models": [
+      {
+        "model": "glm-5.2",
+        "model_digest": "sha256:e98e0a4525faca36a76fbfa50590193c98c12f87c5793df5d430d83fa0c1bcc2"
+      }
+    ],
+    "fallback_creates_new_attempt": true
+  },
+  "skills": [
+    {
+      "skill_manifest_id": "skillm_stage0001",
+      "version": "1.0.0",
+      "manifest_digest": "sha256:6189d8a10df5be1bbf4eb044f7427626172be883ec25cea9986bfe01cb179b6f",
+      "required_for_success": true,
+      "revision": 1
+    }
+  ],
+  "mcp_servers": [
+    {
+      "mcp_manifest_id": "mcpm_stage0001",
+      "manifest_digest": "sha256:02df34c7aa1172e18d55dcc84ebdd528d21687d36c3c5bd2889cb23f5b0573e9",
+      "tool_catalog_digest": "sha256:bee0c3f66462acc0e8815f7f992928bb0d4b367c5b2d8ae7d731d8f6cf813740",
+      "revision": 1
+    }
+  ],
+  "harness_digest": "sha256:595a8ff527684852ac345cbeb43723c18912d35ba2296a382beedbdd1543f304",
+  "permission_ceiling": {
+    "files": [
+      {
+        "path": "src/handler.py",
+        "access": "READ"
+      }
+    ],
+    "processes": [],
+    "network": [],
+    "mcp_tools": [
+      {
+        "server": "repo-reader",
+        "tool": "read_file",
+        "schema_digest": "sha256:2626262626262626262626262626262626262626262626262626262626262626"
+      }
+    ],
+    "cloud_actions": [],
+    "secret_refs": []
+  },
+  "registered_at": "2026-08-10T00:45:00Z",
+  "manifest_digest": "sha256:aa7ab3b9e0068f4d572ce4ac5e04fe39c3d923d8cfeed9df65e999bb2ea94fab",
+  "previous_snapshot": null,
+  "authority_receipt_id": "arec_agentmanifest00000000",
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/manifest_digest)"
+}

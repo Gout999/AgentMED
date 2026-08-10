@@ -1,0 +1,1 @@
+{"bundle":"identity","mutations":[{"document":"attempt","path":"skill_usage","value":[]}],"expected_invariant":"identity_chain.required_skill_not_called"}

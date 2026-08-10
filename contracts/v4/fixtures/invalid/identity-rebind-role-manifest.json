@@ -1,0 +1,1 @@
+{"bundle":"identity","mutations":[{"document":"agent_manifest","path":"role_manifest_digest","value":"sha256:acacacacacacacacacacacacacacacacacacacacacacacacacacacacacacacac"}],"expected_invariant":"identity_chain.role_manifest_mismatch"}

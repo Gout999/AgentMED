@@ -1,0 +1,434 @@
+openapi: 3.1.0
+info:
+  title: CaseLoop Public API
+  version: 1.0.0
+  description: >-
+    Target v4 public intent surface. This contract is versioned separately from
+    the current implementation routes and does not prove runtime availability.
+servers:
+  - url: /
+security:
+  - BearerAuth: []
+
+paths:
+  /api/v1/signals:
+    post:
+      operationId: submitSignal
+      x-caseloop-intent: signals.submit
+      x-caseloop-scope: signals:write
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignalSubmission'
+      responses:
+        '201':
+          description: Signal accepted and normalized.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/signal-envelope.schema.json'
+        '409':
+          $ref: '#/components/responses/PublicError'
+        default:
+          $ref: '#/components/responses/PublicError'
+
+  /api/v1/cases/{case_id}:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+    get:
+      operationId: getCase
+      x-caseloop-intent: cases.get
+      x-caseloop-scope: cases:read
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          $ref: '#/components/responses/ResourceEnvelope'
+        default:
+          $ref: '#/components/responses/PublicError'
+
+  /api/v1/cases/{case_id}/timeline:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+    get:
+      operationId: getCaseTimeline
+      x-caseloop-intent: cases.timeline
+      x-caseloop-scope: cases:read
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          $ref: '#/components/responses/ResourceEnvelope'
+        default:
+          $ref: '#/components/responses/PublicError'
+
+  /api/v1/evidence/{receipt_id}:
+    parameters:
+      - $ref: '#/components/parameters/ReceiptId'
+    get:
+      operationId: getEvidence
+      x-caseloop-intent: evidence.get
+      x-caseloop-scope: artifacts:read
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          description: Immutable trace evidence receipt.
+          content:
+            application/json:
+              schema:
+                $ref: '../schemas/trace-evidence-receipt.schema.json'
+        default:
+          $ref: '#/components/responses/PublicError'
+
+  /api/v1/sources/{source_id}/capabilities:
+    parameters:
+      - $ref: '#/components/parameters/SourceId'
+    get:
+      operationId: getSourceCapabilities
+      x-caseloop-intent: sources.capabilities
+      x-caseloop-scope: sources:read
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          $ref: '#/components/responses/ResourceEnvelope'
+        default:
+          $ref: '#/components/responses/PublicError'
+
+  /api/v1/sources/{source_id}:doctor:
+    parameters:
+      - $ref: '#/components/parameters/SourceId'
+    post:
+      operationId: doctorSource
+      x-caseloop-intent: sources.doctor
+      x-caseloop-scope: sources:manage
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmptyCommand'
+      responses:
+        '202':
+          $ref: '#/components/responses/IdempotencyReceipt'
+        default:
+          $ref: '#/components/responses/PublicError'
+
+  /api/v1/cases/{case_id}/investigations:
+    parameters:
+      - $ref: '#/components/parameters/CaseId'
+    post:
+      operationId: startInvestigation
+      x-caseloop-intent: investigations.start
+      x-caseloop-scope: runs:start
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InvestigationRequest'
+      responses:
+        '202':
+          $ref: '#/components/responses/IdempotencyReceipt'
+        default:
+          $ref: '#/components/responses/PublicError'
+
+  /api/v1/run-views/{run_id}:
+    parameters:
+      - $ref: '#/components/parameters/RunId'
+    get:
+      operationId: getRunView
+      x-caseloop-intent: runviews.get
+      x-caseloop-scope: runs:read
+      parameters:
+        - $ref: '#/components/parameters/RequestId'
+      responses:
+        '200':
+          $ref: '#/components/responses/ResourceEnvelope'
+        default:
+          $ref: '#/components/responses/PublicError'
+
+  /api/v1/run-views/{run_id}:stop:
+    parameters:
+      - $ref: '#/components/parameters/RunId'
+    post:
+      operationId: requestRunStop
+      x-caseloop-intent: work.stop-request
+      x-caseloop-scope: runs:cancel
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StopRequest'
+      responses:
+        '202':
+          $ref: '#/components/responses/IdempotencyReceipt'
+        default:
+          $ref: '#/components/responses/PublicError'
+
+  /api/v1/approvals/{approval_id}:decide:
+    parameters:
+      - $ref: '#/components/parameters/ApprovalId'
+    post:
+      operationId: decideApproval
+      x-caseloop-intent: approvals.decide
+      x-caseloop-scope: approvals:decide:human
+      x-caseloop-human-only: true
+      x-caseloop-mcp-exposed: false
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ApprovalDecision'
+      responses:
+        '200':
+          $ref: '#/components/responses/IdempotencyReceipt'
+        default:
+          $ref: '#/components/responses/PublicError'
+
+  /api/v1/releases/{release_id}:rollback-request:
+    parameters:
+      - $ref: '#/components/parameters/ReleaseId'
+    post:
+      operationId: requestReleaseRollback
+      x-caseloop-intent: releases.rollback-request
+      x-caseloop-scope: releases:request
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+        - $ref: '#/components/parameters/RequestId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RollbackRequest'
+      responses:
+        '202':
+          $ref: '#/components/responses/IdempotencyReceipt'
+        default:
+          $ref: '#/components/responses/PublicError'
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque
+
+  parameters:
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 128
+    RequestId:
+      name: X-Request-ID
+      in: header
+      required: false
+      schema:
+        type: string
+        pattern: '^req_[0-9A-Za-z]{8,64}$'
+    CaseId:
+      name: case_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^case_[0-9A-Za-z]{8,64}$'
+    ReceiptId:
+      name: receipt_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^ter_[0-9A-Za-z]{8,64}$'
+    SourceId:
+      name: source_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^src_[0-9A-Za-z]{8,64}$'
+    RunId:
+      name: run_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^run_[0-9A-Za-z]{8,64}$'
+    ApprovalId:
+      name: approval_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^appr_[0-9A-Za-z]{8,64}$'
+    ReleaseId:
+      name: release_id
+      in: path
+      required: true
+      schema:
+        type: string
+        pattern: '^rel_[0-9A-Za-z]{8,64}$'
+
+  schemas:
+    SignalSubmission:
+      type: object
+      required:
+        - schema_version
+        - workspace_id
+        - source_id
+        - source_event_id
+        - signal_kind
+        - reporter_kind
+        - content_ref
+      properties:
+        schema_version:
+          type: string
+          const: '1.0'
+        workspace_id:
+          type: string
+          pattern: '^ws_[0-9A-Za-z]{8,64}$'
+        source_id:
+          type: string
+          pattern: '^src_[0-9A-Za-z]{8,64}$'
+        source_event_id:
+          type: string
+          minLength: 1
+          maxLength: 512
+        signal_kind:
+          type: string
+        reporter_kind:
+          type: string
+        content_ref:
+          $ref: '../schemas/common-defs.schema.json#/$defs/artifact_ref'
+      additionalProperties: false
+    EmptyCommand:
+      type: object
+      required:
+        - schema_version
+      properties:
+        schema_version:
+          type: string
+          const: '1.0'
+      additionalProperties: false
+    InvestigationRequest:
+      type: object
+      required:
+        - schema_version
+        - budget
+      properties:
+        schema_version:
+          type: string
+          const: '1.0'
+        budget:
+          type: object
+      additionalProperties: false
+    StopRequest:
+      type: object
+      required:
+        - schema_version
+        - reason
+      properties:
+        schema_version:
+          type: string
+          const: '1.0'
+        reason:
+          type: string
+          minLength: 1
+      additionalProperties: false
+    ApprovalDecision:
+      type: object
+      required:
+        - schema_version
+        - workorder_hash
+        - decision
+        - nonce
+      properties:
+        schema_version:
+          type: string
+          const: '1.0'
+        workorder_hash:
+          type: string
+          pattern: '^sha256:[0-9a-f]{64}$'
+        decision:
+          type: string
+          enum: [approve, reject]
+        nonce:
+          type: string
+          minLength: 16
+      additionalProperties: false
+    RollbackRequest:
+      type: object
+      required:
+        - schema_version
+        - reason
+      properties:
+        schema_version:
+          type: string
+          const: '1.0'
+        reason:
+          type: string
+          minLength: 1
+      additionalProperties: false
+    ResourceEnvelope:
+      type: object
+      required:
+        - schema_version
+        - request_id
+        - audit_ref
+        - data
+      properties:
+        schema_version:
+          type: string
+          const: '1.0'
+        request_id:
+          type: string
+        audit_ref:
+          type: string
+        data:
+          type: object
+      additionalProperties: false
+
+  responses:
+    PublicError:
+      description: Public machine-readable failure.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/public-error.schema.json'
+    IdempotencyReceipt:
+      description: Durable command identity and replay result.
+      content:
+        application/json:
+          schema:
+            $ref: '../schemas/idempotency-receipt.schema.json'
+    ResourceEnvelope:
+      description: Read-only resource response.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ResourceEnvelope'

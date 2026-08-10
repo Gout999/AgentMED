@@ -1,0 +1,58 @@
+{
+  "schema_version": "1.0",
+  "mcp_manifest_id": "mcpm_stage0001",
+  "revision": 1,
+  "state": "FROZEN",
+  "immutable": true,
+  "server_name": "repo-reader",
+  "version": "1.0.0",
+  "source": {
+    "repository_uri": "https://example.com/caseloop/mcp.git",
+    "commit": "89abcdef0123456789abcdef0123456789abcdef",
+    "license_spdx": "Apache-2.0",
+    "content_digest": "sha256:5252525252525252525252525252525252525252525252525252525252525252"
+  },
+  "package": {
+    "uri": "artifact://stage0/repo-reader-1.0.0.tar.zst",
+    "digest": "sha256:5353535353535353535353535353535353535353535353535353535353535353",
+    "media_type": "application/zstd"
+  },
+  "transport": {
+    "kind": "STDIO",
+    "command_digest": "sha256:5454545454545454545454545454545454545454545454545454545454545454",
+    "endpoint_origin": null
+  },
+  "tools": [
+    {
+      "name": "read_file",
+      "input_schema_digest": "sha256:2626262626262626262626262626262626262626262626262626262626262626",
+      "output_schema_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+      "declared_effect_class": "READ_ONLY",
+      "idempotent": true,
+      "permission_requirement_digest": "sha256:5656565656565656565656565656565656565656565656565656565656565656",
+      "annotations_authoritative": false
+    }
+  ],
+  "tool_catalog_digest": "sha256:bee0c3f66462acc0e8815f7f992928bb0d4b367c5b2d8ae7d731d8f6cf813740",
+  "requested_permissions": {
+    "files": [
+      {
+        "path": "src/handler.py",
+        "access": "READ"
+      }
+    ],
+    "processes": [],
+    "network": [],
+    "mcp_tools": [],
+    "cloud_actions": [],
+    "secret_refs": []
+  },
+  "remote_schema_pinning_required": true,
+  "registered_by_principal": "prn_mcpregistry01",
+  "registered_at": "2026-08-10T00:45:00Z",
+  "manifest_digest": "sha256:02df34c7aa1172e18d55dcc84ebdd528d21687d36c3c5bd2889cb23f5b0573e9",
+  "workspace_id": "ws_stage0001",
+  "previous_snapshot": null,
+  "authority_receipt_id": "arec_mcpmanifest00000000",
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/manifest_digest)"
+}

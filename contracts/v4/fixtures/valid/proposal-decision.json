@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "proposal_decision_id": "pdec_stage0001",
+  "decision_event_id": "evt_accept0001",
+  "workspace_id": "ws_stage0001",
+  "proposal_id": "prop_stage0001",
+  "proposal_digest": "sha256:87e937dc93e36294569996ed4c5a24baacf98fda34d2ffabdad50b4e5b2de3db",
+  "decision": "ACCEPTED",
+  "reason_code": "VALIDATED",
+  "decided_by_principal": "prn_proposalctl",
+  "decided_at": "2026-08-10T01:40:30Z",
+  "accepted_proposal_id": "prop_stage0001",
+  "downstream_event": {
+    "event_id": "evt_candidate001",
+    "event_type": "candidate_revision.recorded",
+    "causation_id": "evt_accept0001",
+    "accepted_proposal_id": "prop_stage0001",
+    "transaction_id": "txn_stage0001"
+  },
+  "transaction_id": "txn_stage0001",
+  "audit_ref": "audit://aud_stage0001",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/decision_digest)",
+  "decision_digest": "sha256:719bbdbeb56e9750dc399c07561c3033799027ed71346a429c1e69ae060e5a60",
+  "authority_receipt_id": "arec_proposaldecision00000000"
+}

@@ -1,0 +1,1 @@
+{"attack":"resolution_review_self_rebind","expected_invariants":["resolution_contract.review_attempt_not_independent","resolution_contract.review_principal_not_independent","resolution_contract.review_manifest_not_independent"]}

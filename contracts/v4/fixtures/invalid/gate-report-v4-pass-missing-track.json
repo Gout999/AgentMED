@@ -1,0 +1,7 @@
+{
+  "base_fixture": "gate-report-v4-pass.json",
+  "mutations": [
+    {"op": "remove", "path": "track_receipts.1"}
+  ],
+  "expected_invariant": "gate_report.required_track_missing"
+}

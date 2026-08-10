@@ -1,0 +1,1 @@
+{"base_fixture":"mcp-manifest.json","mutations":[{"op":"remove","path":"tools.0.output_schema_digest"}],"expected_invariant":"every_tool_has_pinned_input_and_output_schemas"}

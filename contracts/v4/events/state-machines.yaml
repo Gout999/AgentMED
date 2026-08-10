@@ -1,0 +1,120 @@
+version: "1.0"
+status: target_contract
+
+machines:
+  worker_task:
+    initial: QUEUED
+    terminal: [COMPLETED, CANCELLED, EXHAUSTED]
+    states: [QUEUED, LEASED, WAITING_RETRY, CANCEL_REQUESTED, COMPLETED, CANCELLED, EXHAUSTED, BLOCKED_UNKNOWN]
+    transitions:
+      - {from: QUEUED, 'on': work.claimed, to: LEASED}
+      - {from: WAITING_RETRY, 'on': work.claimed, to: LEASED}
+      - {from: LEASED, 'on': work.heartbeat_recorded, to: LEASED}
+      - {from: LEASED, 'on': work.retry_scheduled, to: WAITING_RETRY}
+      - {from: LEASED, 'on': work.cancel_requested, to: CANCEL_REQUESTED}
+      - {from: WAITING_RETRY, 'on': work.cancel_requested, to: CANCEL_REQUESTED}
+      - {from: CANCEL_REQUESTED, 'on': work.cancelled, to: CANCELLED}
+      - {from: LEASED, 'on': work.completed, to: COMPLETED}
+      - {from: LEASED, 'on': work.exhausted, to: EXHAUSTED}
+      - {from: WAITING_RETRY, 'on': work.exhausted, to: EXHAUSTED}
+      - {from: LEASED, 'on': work.blocked_unknown, to: BLOCKED_UNKNOWN}
+      - {from: BLOCKED_UNKNOWN, 'on': work.unknown_reconciled_retry, to: WAITING_RETRY}
+      - {from: BLOCKED_UNKNOWN, 'on': work.unknown_reconciled_completed, to: COMPLETED}
+    failure_semantics:
+      lease_lost: WAITING_RETRY
+      max_attempts: EXHAUSTED
+      ambiguous_attempt: BLOCKED_UNKNOWN
+      cancellation_is_best_effort: true
+
+  attempt:
+    initial: CREATED
+    terminal: [SUCCEEDED, FAILED, TIMED_OUT, CANCELLED]
+    states: [CREATED, STARTING, RUNNING, OUTPUT_RECORDED, CANCEL_REQUESTED, SUCCEEDED, FAILED, TIMED_OUT, CANCELLED, UNKNOWN]
+    transitions:
+      - {from: CREATED, 'on': attempt.starting, to: STARTING}
+      - {from: STARTING, 'on': attempt.started, to: RUNNING}
+      - {from: RUNNING, 'on': attempt.receipt_recorded, to: RUNNING}
+      - {from: RUNNING, 'on': attempt.output_recorded, to: OUTPUT_RECORDED}
+      - {from: OUTPUT_RECORDED, 'on': attempt.succeeded, to: SUCCEEDED}
+      - {from: STARTING, 'on': attempt.failed, to: FAILED}
+      - {from: RUNNING, 'on': attempt.failed, to: FAILED}
+      - {from: OUTPUT_RECORDED, 'on': attempt.failed, to: FAILED}
+      - {from: STARTING, 'on': attempt.timed_out, to: TIMED_OUT}
+      - {from: RUNNING, 'on': attempt.timed_out, to: TIMED_OUT}
+      - {from: CREATED, 'on': attempt.cancel_requested, to: CANCEL_REQUESTED}
+      - {from: STARTING, 'on': attempt.cancel_requested, to: CANCEL_REQUESTED}
+      - {from: RUNNING, 'on': attempt.cancel_requested, to: CANCEL_REQUESTED}
+      - {from: CANCEL_REQUESTED, 'on': attempt.cancelled, to: CANCELLED}
+      - {from: STARTING, 'on': attempt.unknown, to: UNKNOWN}
+      - {from: RUNNING, 'on': attempt.unknown, to: UNKNOWN}
+      - {from: OUTPUT_RECORDED, 'on': attempt.unknown, to: UNKNOWN}
+      - {from: UNKNOWN, 'on': attempt.reconciled_succeeded, to: SUCCEEDED, guard: trustworthy_terminal_receipt}
+      - {from: UNKNOWN, 'on': attempt.reconciled_failed, to: FAILED, guard: trustworthy_terminal_receipt}
+    failure_semantics:
+      fallback: new_attempt_with_fallback_of_attempt_id
+      silent_model_switch: forbidden
+      wrapper_success_without_valid_output: FAILED
+      ambiguous_process_or_provider_outcome: UNKNOWN
+      unknown_before_retry: reconcile_required
+
+  gate_execution:
+    initial: CREATED
+    terminal: [PASS, FAILED, INCONCLUSIVE, ERROR]
+    states: [CREATED, RUNNING, PASS, FAILED, INCONCLUSIVE, ERROR, UNKNOWN]
+    transitions:
+      - {from: CREATED, 'on': gate.started, to: RUNNING}
+      - {from: RUNNING, 'on': gate.track_receipt_recorded, to: RUNNING}
+      - {from: RUNNING, 'on': gate.completed, to: PASS, guard: status_PASS_and_every_required_track_passed}
+      - {from: RUNNING, 'on': gate.failed, to: FAILED}
+      - {from: RUNNING, 'on': gate.inconclusive, to: INCONCLUSIVE}
+      - {from: RUNNING, 'on': gate.error, to: ERROR}
+      - {from: RUNNING, 'on': gate.unknown, to: UNKNOWN}
+      - {from: UNKNOWN, 'on': gate.reconciled_pass, to: PASS, guard: trustworthy_exact_PASS_gate_report}
+      - {from: UNKNOWN, 'on': gate.reconciled_failed, to: FAILED, guard: trustworthy_terminal_receipt}
+      - {from: UNKNOWN, 'on': gate.reconciled_inconclusive, to: INCONCLUSIVE, guard: trustworthy_terminal_receipt}
+      - {from: UNKNOWN, 'on': gate.reconciled_error, to: ERROR, guard: trustworthy_terminal_receipt}
+    failure_semantics:
+      hard_failure_cannot_be_averaged_away: true
+      unknown_cannot_create_workorder: true
+      missing_judge_independence: ERROR
+
+  capability_lease:
+    initial: ACTIVE
+    terminal: [REVOKED, CONSUMED, EXPIRED]
+    states: [ACTIVE, REVOKED, CONSUMED, EXPIRED]
+    transitions:
+      - {from: ACTIVE, 'on': capability.revoked, to: REVOKED}
+      - {from: ACTIVE, 'on': capability.consumed, to: CONSUMED}
+      - {from: ACTIVE, 'on': capability.expired, to: EXPIRED}
+    failure_semantics:
+      undeclared_access: DENY_AND_AUDIT
+      revoked_or_expired: FAIL_CLOSED
+
+  external_operation:
+    initial: PENDING
+    terminal: [SUCCEEDED, FAILED]
+    states: [PENDING, RUNNING, SUCCEEDED, FAILED, UNKNOWN]
+    transitions:
+      - {from: PENDING, 'on': external_operation.started, to: RUNNING}
+      - {from: RUNNING, 'on': external_operation.succeeded, to: SUCCEEDED}
+      - {from: RUNNING, 'on': external_operation.failed, to: FAILED}
+      - {from: RUNNING, 'on': external_operation.unknown, to: UNKNOWN}
+      - {from: UNKNOWN, 'on': external_operation.reconciled, to: SUCCEEDED, guard: verified_success_receipt}
+      - {from: UNKNOWN, 'on': external_operation.reconciled, to: FAILED, guard: verified_failure_receipt}
+    failure_semantics:
+      ambiguous_external_outcome: UNKNOWN
+      unknown_before_retry: reconcile_required
+
+  closure_delivery:
+    initial: PENDING
+    terminal: [DELIVERED, FAILED]
+    states: [PENDING, DELIVERED, FAILED, UNKNOWN]
+    transitions:
+      - {from: PENDING, 'on': closure.delivered, to: DELIVERED}
+      - {from: PENDING, 'on': closure.failed, to: FAILED}
+      - {from: PENDING, 'on': closure.unknown, to: UNKNOWN}
+      - {from: UNKNOWN, 'on': closure.reconciled, to: DELIVERED, guard: verified_delivery_receipt}
+      - {from: UNKNOWN, 'on': closure.reconciled, to: FAILED, guard: verified_failure_receipt}
+    failure_semantics:
+      ambiguous_delivery_outcome: UNKNOWN
+      unknown_before_retry: reconcile_required

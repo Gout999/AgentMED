@@ -1,0 +1,1 @@
+{"base_fixture":"workorder-v4.json","mutations":[{"op":"set","path":"gate_report.digest","value":"sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}],"expected_invariant":"workorder.gate_report_mismatch"}

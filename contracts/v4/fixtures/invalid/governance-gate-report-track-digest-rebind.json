@@ -1,0 +1,1 @@
+{"attack":"gate_report_track_digest_rebind","expected_invariants":["gate_report.track_receipt_binding_mismatch"]}

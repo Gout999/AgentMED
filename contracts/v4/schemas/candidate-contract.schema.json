@@ -1,0 +1,130 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/candidate-contract.schema.json",
+  "title": "CaseLoop pre-build CandidateContract",
+  "description": "Frozen build scope and public validation contract. It contains no post-build artifact or producer Attempt fact.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "candidate_contract_id",
+    "candidate_id",
+    "planned_revision",
+    "workspace_id",
+    "case_id",
+    "resolution_contract",
+    "state",
+    "candidate_kind",
+    "base",
+    "allowed_action_scope",
+    "forbidden_paths",
+    "public_validation",
+    "budget",
+    "frozen_by_principal",
+    "frozen_at",
+    "immutable",
+    "hash_rule",
+    "contract_digest",
+    "authority_receipt_id"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+    },
+    "candidate_contract_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/candidate_contract_id"
+    },
+    "candidate_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/candidate_id"
+    },
+    "planned_revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "workspace_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+    },
+    "case_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/case_id"
+    },
+    "resolution_contract": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+    },
+    "state": {
+      "const": "FROZEN"
+    },
+    "candidate_kind": {
+      "enum": [
+        "PROMPT",
+        "KNOWLEDGE",
+        "MODEL_CONFIG",
+        "SKILL",
+        "MCP",
+        "CODE_PATCH",
+        "HARNESS",
+        "POLICY",
+        "EVALUATOR_ASSET"
+      ]
+    },
+    "base": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/target_revision"
+    },
+    "allowed_action_scope": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
+    },
+    "forbidden_paths": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "public_validation": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "check_id",
+          "command_digest",
+          "expected_exit_code"
+        ],
+        "properties": {
+          "check_id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "command_digest": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+          },
+          "expected_exit_code": {
+            "type": "integer"
+          }
+        },
+        "additionalProperties": false
+      },
+      "minItems": 1
+    },
+    "budget": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/budget"
+    },
+    "frozen_by_principal": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+    },
+    "frozen_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "immutable": {
+      "const": true
+    },
+    "hash_rule": {
+      "const": "jcs-rfc8785-v1+sha256(excluding:/contract_digest)"
+    },
+    "contract_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "authority_receipt_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
+    }
+  },
+  "additionalProperties": false
+}

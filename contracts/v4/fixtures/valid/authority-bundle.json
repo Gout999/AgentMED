@@ -1,0 +1,3175 @@
+{
+  "evidence_facet": "contract",
+  "registrations": [
+    {
+      "schema_version": "1.0",
+      "controller_registration_id": "creg_skillregistrycontroller",
+      "revision": 1,
+      "previous_snapshot": null,
+      "state": "ACTIVE",
+      "workspace_id": "ws_stage0001",
+      "owner": "skill-registry-controller",
+      "controller_principal": "prn_skillregistry",
+      "principal_type": "CONTROLLER_SERVICE",
+      "allowed_commands": [
+        "skill-manifests.register"
+      ],
+      "ownership_contract": {
+        "version": "1.0",
+        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+      },
+      "event_catalog": {
+        "version": "1.0",
+        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+      },
+      "valid_from": "2026-08-10T00:00:00Z",
+      "expires_at": null,
+      "service_identity_digest": "sha256:178dc45dc5b048902a236bb68b30de93e0f90637059d1a1eea02efeb2b15edbf",
+      "registered_by_human_principal": "prn_platformadmin",
+      "registration_audit_ref": "audit://aud_skillregistrycontroller",
+      "registered_at": "2026-08-10T00:00:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
+      "registration_digest": "sha256:c5efeb5a070a39d1cda4a9b021ef8b08df1d60449a4d09de91305c1cb9555261"
+    },
+    {
+      "schema_version": "1.0",
+      "controller_registration_id": "creg_mcpregistrycontroller",
+      "revision": 1,
+      "previous_snapshot": null,
+      "state": "ACTIVE",
+      "workspace_id": "ws_stage0001",
+      "owner": "mcp-registry-controller",
+      "controller_principal": "prn_mcpregistry01",
+      "principal_type": "CONTROLLER_SERVICE",
+      "allowed_commands": [
+        "mcp-manifests.register"
+      ],
+      "ownership_contract": {
+        "version": "1.0",
+        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+      },
+      "event_catalog": {
+        "version": "1.0",
+        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+      },
+      "valid_from": "2026-08-10T00:00:00Z",
+      "expires_at": null,
+      "service_identity_digest": "sha256:00cd30bfb3183589b9be93604da8e4ba18b6afd1a829980581933751ad5e8117",
+      "registered_by_human_principal": "prn_platformadmin",
+      "registration_audit_ref": "audit://aud_mcpregistrycontroller",
+      "registered_at": "2026-08-10T00:00:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
+      "registration_digest": "sha256:f01ad47dd8b73dabc0f5b6677f0c628f7a8dafa732b19cc19cc7907616838fc4"
+    },
+    {
+      "schema_version": "1.0",
+      "controller_registration_id": "creg_manifestcontroller",
+      "revision": 1,
+      "previous_snapshot": null,
+      "state": "ACTIVE",
+      "workspace_id": "ws_stage0001",
+      "owner": "manifest-controller",
+      "controller_principal": "prn_manifestctl1",
+      "principal_type": "CONTROLLER_SERVICE",
+      "allowed_commands": [
+        "agent-manifests.register"
+      ],
+      "ownership_contract": {
+        "version": "1.0",
+        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+      },
+      "event_catalog": {
+        "version": "1.0",
+        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+      },
+      "valid_from": "2026-08-10T00:00:00Z",
+      "expires_at": null,
+      "service_identity_digest": "sha256:b8a82ddd16a828a49971ebd62ec89e095d9901b124a4e49bfcabb285cc9dd97d",
+      "registered_by_human_principal": "prn_platformadmin",
+      "registration_audit_ref": "audit://aud_manifestcontroller",
+      "registered_at": "2026-08-10T00:00:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
+      "registration_digest": "sha256:4988ad6bd5061156ae9167dc4ddeff6f6154a7d1ebc78261a9c646c42f31e0a2"
+    },
+    {
+      "schema_version": "1.0",
+      "controller_registration_id": "creg_workcontroller",
+      "revision": 1,
+      "previous_snapshot": null,
+      "state": "ACTIVE",
+      "workspace_id": "ws_stage0001",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "principal_type": "CONTROLLER_SERVICE",
+      "allowed_commands": [
+        "attempts.cancel",
+        "attempts.complete",
+        "attempts.fail",
+        "attempts.mark-unknown",
+        "attempts.reconcile",
+        "attempts.record-receipt",
+        "attempts.start",
+        "participation-manifests.freeze",
+        "work.cancel-request",
+        "work.claim",
+        "work.exhaust",
+        "work.heartbeat",
+        "work.request"
+      ],
+      "ownership_contract": {
+        "version": "1.0",
+        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+      },
+      "event_catalog": {
+        "version": "1.0",
+        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+      },
+      "valid_from": "2026-08-10T00:00:00Z",
+      "expires_at": null,
+      "service_identity_digest": "sha256:840a7fa931f3794342863af8b6ed9241b94b04374e7015523675da2b56c3c16f",
+      "registered_by_human_principal": "prn_platformadmin",
+      "registration_audit_ref": "audit://aud_workcontroller",
+      "registered_at": "2026-08-10T00:00:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
+      "registration_digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+    },
+    {
+      "schema_version": "1.0",
+      "controller_registration_id": "creg_casecontroller",
+      "revision": 1,
+      "previous_snapshot": null,
+      "state": "ACTIVE",
+      "workspace_id": "ws_stage0001",
+      "owner": "case-controller",
+      "controller_principal": "prn_casecontrol1",
+      "principal_type": "CONTROLLER_SERVICE",
+      "allowed_commands": [
+        "resolution-contracts.freeze",
+        "resolution-reviews.record"
+      ],
+      "ownership_contract": {
+        "version": "1.0",
+        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+      },
+      "event_catalog": {
+        "version": "1.0",
+        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+      },
+      "valid_from": "2026-08-10T00:00:00Z",
+      "expires_at": null,
+      "service_identity_digest": "sha256:47af9251ed32d4c1baa9ec311da61fd15822fd198e53fc29b8e46866e1e15792",
+      "registered_by_human_principal": "prn_platformadmin",
+      "registration_audit_ref": "audit://aud_casecontroller",
+      "registered_at": "2026-08-10T00:00:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
+      "registration_digest": "sha256:cc37a5523a6421a45144aacc9d0c49b0b18f0f5c759db23050c984c36f2d5238"
+    },
+    {
+      "schema_version": "1.0",
+      "controller_registration_id": "creg_proposalcontroller",
+      "revision": 1,
+      "previous_snapshot": null,
+      "state": "ACTIVE",
+      "workspace_id": "ws_stage0001",
+      "owner": "proposal-controller",
+      "controller_principal": "prn_proposalctl",
+      "principal_type": "CONTROLLER_SERVICE",
+      "allowed_commands": [
+        "candidate-contracts.freeze",
+        "candidate-revisions.record",
+        "intents.submit",
+        "proposals.decide",
+        "proposals.submit"
+      ],
+      "ownership_contract": {
+        "version": "1.0",
+        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+      },
+      "event_catalog": {
+        "version": "1.0",
+        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+      },
+      "valid_from": "2026-08-10T00:00:00Z",
+      "expires_at": null,
+      "service_identity_digest": "sha256:bd9cb133e1af9abe575c817e626bff94a61d2a3c8dfaecf04f408e35bae34f35",
+      "registered_by_human_principal": "prn_platformadmin",
+      "registration_audit_ref": "audit://aud_proposalcontroller",
+      "registered_at": "2026-08-10T00:00:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
+      "registration_digest": "sha256:18d25dd10b8e1bbb3eb84a22b44212ae1c67dee5f8cd1978d1f7e8095730773f"
+    },
+    {
+      "schema_version": "1.0",
+      "controller_registration_id": "creg_gatecontroller",
+      "revision": 1,
+      "previous_snapshot": null,
+      "state": "ACTIVE",
+      "workspace_id": "ws_stage0001",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "principal_type": "CONTROLLER_SERVICE",
+      "allowed_commands": [
+        "evaluations.freeze-plan",
+        "gates.record-result",
+        "gates.record-track-receipt",
+        "workorders.create-from-pass"
+      ],
+      "ownership_contract": {
+        "version": "1.0",
+        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+      },
+      "event_catalog": {
+        "version": "1.0",
+        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+      },
+      "valid_from": "2026-08-10T00:00:00Z",
+      "expires_at": null,
+      "service_identity_digest": "sha256:8a0f5c82f16d3f84aee3d85984121ab74feb59d4253f66ca6b0c52c267414be1",
+      "registered_by_human_principal": "prn_platformadmin",
+      "registration_audit_ref": "audit://aud_gatecontroller",
+      "registered_at": "2026-08-10T00:00:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
+      "registration_digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+    },
+    {
+      "schema_version": "1.0",
+      "controller_registration_id": "creg_capabilitycontroller",
+      "revision": 1,
+      "previous_snapshot": null,
+      "state": "ACTIVE",
+      "workspace_id": "ws_stage0001",
+      "owner": "capability-controller",
+      "controller_principal": "prn_capability1",
+      "principal_type": "CONTROLLER_SERVICE",
+      "allowed_commands": [
+        "capabilities.consume",
+        "capabilities.expire",
+        "capabilities.issue",
+        "capabilities.revoke"
+      ],
+      "ownership_contract": {
+        "version": "1.0",
+        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+      },
+      "event_catalog": {
+        "version": "1.0",
+        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+      },
+      "valid_from": "2026-08-10T00:00:00Z",
+      "expires_at": null,
+      "service_identity_digest": "sha256:e43333f4f41d870c6ef18f3c57cec6c6bd57871d4447cee8e2cae7c94959b207",
+      "registered_by_human_principal": "prn_platformadmin",
+      "registration_audit_ref": "audit://aud_capabilitycontroller",
+      "registered_at": "2026-08-10T00:00:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
+      "registration_digest": "sha256:936496a8ef5ca64400205d271428c62f08d44944df17633696e51a1ec4541818"
+    },
+    {
+      "schema_version": "1.0",
+      "controller_registration_id": "creg_evidenceworkspace",
+      "revision": 1,
+      "previous_snapshot": null,
+      "state": "ACTIVE",
+      "workspace_id": "ws_01J0000000000001",
+      "owner": "evidence-controller",
+      "controller_principal": "prn_evidencectl1",
+      "principal_type": "CONTROLLER_SERVICE",
+      "allowed_commands": [
+        "evidence.record"
+      ],
+      "ownership_contract": {
+        "version": "1.0",
+        "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+      },
+      "event_catalog": {
+        "version": "1.0",
+        "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+      },
+      "valid_from": "2026-08-10T00:00:00Z",
+      "expires_at": null,
+      "service_identity_digest": "sha256:b2d989e8cabdb3a867522a867a4839623f65795dad3ca64f306bca023c8100c7",
+      "registered_by_human_principal": "prn_platformadmin",
+      "registration_audit_ref": "audit://aud_evidenceworkspace",
+      "registered_at": "2026-08-10T00:00:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
+      "registration_digest": "sha256:581922c1e796af855b72eda21bf86ee5ef120bd2809340273c56cada7a8154c7"
+    }
+  ],
+  "receipts": [
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_skillmanifest00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_skillregistrycontroller",
+        "revision": 1,
+        "digest": "sha256:c5efeb5a070a39d1cda4a9b021ef8b08df1d60449a4d09de91305c1cb9555261"
+      },
+      "subject": {
+        "kind": "SKILL_MANIFEST",
+        "id": "skillm_stage0001",
+        "revision": 1,
+        "digest": "sha256:6189d8a10df5be1bbf4eb044f7427626172be883ec25cea9986bfe01cb179b6f"
+      },
+      "resource": "skill_manifest",
+      "owner": "skill-registry-controller",
+      "controller_principal": "prn_skillregistry",
+      "command": "skill-manifests.register",
+      "event_type": "skill_manifest.registered",
+      "event_id": "evt_auth0001",
+      "transaction_id": "txn_auth0001",
+      "audit_ref": "audit://aud_auth0001",
+      "recorded_at": "2026-08-10T00:40:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:2c048e2fddb692f721b7d417a4ab84c0a26875b2d1b675653b2af7e24489ca62"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_mcpmanifest00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_mcpregistrycontroller",
+        "revision": 1,
+        "digest": "sha256:f01ad47dd8b73dabc0f5b6677f0c628f7a8dafa732b19cc19cc7907616838fc4"
+      },
+      "subject": {
+        "kind": "MCP_MANIFEST",
+        "id": "mcpm_stage0001",
+        "revision": 1,
+        "digest": "sha256:02df34c7aa1172e18d55dcc84ebdd528d21687d36c3c5bd2889cb23f5b0573e9"
+      },
+      "resource": "mcp_manifest",
+      "owner": "mcp-registry-controller",
+      "controller_principal": "prn_mcpregistry01",
+      "command": "mcp-manifests.register",
+      "event_type": "mcp_manifest.registered",
+      "event_id": "evt_auth0002",
+      "transaction_id": "txn_auth0002",
+      "audit_ref": "audit://aud_auth0002",
+      "recorded_at": "2026-08-10T00:45:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:e22323c74f51c84156c4220c406a1aa755af049eb575d663ddcabf89800f2cfe"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_agentmanifest00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_manifestcontroller",
+        "revision": 1,
+        "digest": "sha256:4988ad6bd5061156ae9167dc4ddeff6f6154a7d1ebc78261a9c646c42f31e0a2"
+      },
+      "subject": {
+        "kind": "AGENT_MANIFEST",
+        "id": "aman_stage0001",
+        "revision": 1,
+        "digest": "sha256:aa7ab3b9e0068f4d572ce4ac5e04fe39c3d923d8cfeed9df65e999bb2ea94fab"
+      },
+      "resource": "agent_manifest",
+      "owner": "manifest-controller",
+      "controller_principal": "prn_manifestctl1",
+      "command": "agent-manifests.register",
+      "event_type": "agent_manifest.registered",
+      "event_id": "evt_auth0003",
+      "transaction_id": "txn_auth0003",
+      "audit_ref": "audit://aud_auth0003",
+      "recorded_at": "2026-08-10T00:45:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:06266b0b560d13270d2bc3eec435469e6ff234a4758b15b461b3ddac151fd62e"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_manifestplanner00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_manifestcontroller",
+        "revision": 1,
+        "digest": "sha256:4988ad6bd5061156ae9167dc4ddeff6f6154a7d1ebc78261a9c646c42f31e0a2"
+      },
+      "subject": {
+        "kind": "AGENT_MANIFEST",
+        "id": "aman_planner001",
+        "revision": 1,
+        "digest": "sha256:7e9929e0c3cc77658d513326e7fbc3fd4420eeeeb186430d885c4f5e5e24b0f9"
+      },
+      "resource": "agent_manifest",
+      "owner": "manifest-controller",
+      "controller_principal": "prn_manifestctl1",
+      "command": "agent-manifests.register",
+      "event_type": "agent_manifest.registered",
+      "event_id": "evt_auth0004",
+      "transaction_id": "txn_auth0004",
+      "audit_ref": "audit://aud_auth0004",
+      "recorded_at": "2026-08-10T00:45:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:0be2ee6356ef9eec0ab147fbf333cc0a3f0042f204b2dcbf8d82efb56427a002"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_manifestreviewer0000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_manifestcontroller",
+        "revision": 1,
+        "digest": "sha256:4988ad6bd5061156ae9167dc4ddeff6f6154a7d1ebc78261a9c646c42f31e0a2"
+      },
+      "subject": {
+        "kind": "AGENT_MANIFEST",
+        "id": "aman_reviewer01",
+        "revision": 1,
+        "digest": "sha256:471c638b9d70b03aba41163b55ef7051fc76d3b35875d02b18d4f25565f08a43"
+      },
+      "resource": "agent_manifest",
+      "owner": "manifest-controller",
+      "controller_principal": "prn_manifestctl1",
+      "command": "agent-manifests.register",
+      "event_type": "agent_manifest.registered",
+      "event_id": "evt_auth0005",
+      "transaction_id": "txn_auth0005",
+      "audit_ref": "audit://aud_auth0005",
+      "recorded_at": "2026-08-10T00:45:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:277007c2b6a5240bc7f66ce771170ebaf03d6f21f36046ba1b950fb13df6b632"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_manifestjudge000000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_manifestcontroller",
+        "revision": 1,
+        "digest": "sha256:4988ad6bd5061156ae9167dc4ddeff6f6154a7d1ebc78261a9c646c42f31e0a2"
+      },
+      "subject": {
+        "kind": "AGENT_MANIFEST",
+        "id": "aman_judge0001",
+        "revision": 1,
+        "digest": "sha256:48d9f457541bc7c5b1fd376fd74275606af5fb4729457e00edb123e6af6d81f2"
+      },
+      "resource": "agent_manifest",
+      "owner": "manifest-controller",
+      "controller_principal": "prn_manifestctl1",
+      "command": "agent-manifests.register",
+      "event_type": "agent_manifest.registered",
+      "event_id": "evt_auth0006",
+      "transaction_id": "txn_auth0006",
+      "audit_ref": "audit://aud_auth0006",
+      "recorded_at": "2026-08-10T00:45:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:56af12a6c4da65269b3f0ee245ba0242f3949eb8b9f8b7e0b54f4b8c71c7e4a2"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_attemptplannerrun0000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_planner0001",
+        "revision": 1,
+        "digest": "sha256:c3a240100d282b75c3158522a65dd7dfa94346b7d449d671e876cacfc2bd5b5b"
+      },
+      "resource": "attempt",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "attempts.start",
+      "event_type": "attempt.started",
+      "event_id": "evt_auth0007",
+      "transaction_id": "txn_auth0007",
+      "audit_ref": "audit://aud_auth0007",
+      "recorded_at": "2026-08-10T00:30:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:efaa45c10129cafa5de49537a13bb23b8d1731d9312bae3fddccdd5718794a87"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_modelcallplanner00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "MODEL_CALL_RECEIPT",
+        "id": "mcr_planner0001",
+        "revision": null,
+        "digest": "sha256:c4ad3336b3a9e04f26f48cee98ccc04a61cf2fc278d2e9c1424683cb460f75dc"
+      },
+      "resource": "attempt",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "attempts.record-receipt",
+      "event_type": "attempt.receipt_recorded",
+      "event_id": "evt_auth0008",
+      "transaction_id": "txn_auth0008",
+      "audit_ref": "audit://aud_auth0008",
+      "recorded_at": "2026-08-10T00:54:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:526fa17864d4a80e2a4752f30968ff3d16f220bedb38804947d60349626cd1ad"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_attemptplannerterm000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_planner0001",
+        "revision": 2,
+        "digest": "sha256:a9619151bbba9d54db749865a3441f26a4905d4a39c681a561a860beffa07909"
+      },
+      "resource": "attempt",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "attempts.complete",
+      "event_type": "attempt.succeeded",
+      "event_id": "evt_auth0009",
+      "transaction_id": "txn_auth0009",
+      "audit_ref": "audit://aud_auth0009",
+      "recorded_at": "2026-08-10T00:54:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:0e7bddc381973731bf230c1de55c0510767b59cc1491289d9517d936b6dbc9ed"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_attemptreviewerrun000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_reviewer001",
+        "revision": 1,
+        "digest": "sha256:af1a8a3c0c4a590232bf2319f7a54da11421b61b63273b80c35f6a445120c0a3"
+      },
+      "resource": "attempt",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "attempts.start",
+      "event_type": "attempt.started",
+      "event_id": "evt_auth0010",
+      "transaction_id": "txn_auth0010",
+      "audit_ref": "audit://aud_auth0010",
+      "recorded_at": "2026-08-10T00:30:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:228ab2a30d4bccdd11aaf35631ae475f75623c06365589b130bba0c915c194e5"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_modelcallreviewer00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "MODEL_CALL_RECEIPT",
+        "id": "mcr_reviewer0001",
+        "revision": null,
+        "digest": "sha256:54198149b3899529e210065006dcc314938a3643073cf31ee3f4d6cffdbbdb68"
+      },
+      "resource": "attempt",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "attempts.record-receipt",
+      "event_type": "attempt.receipt_recorded",
+      "event_id": "evt_auth0011",
+      "transaction_id": "txn_auth0011",
+      "audit_ref": "audit://aud_auth0011",
+      "recorded_at": "2026-08-10T00:58:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:67ffc43670d603267df13839db31e7f952963901475b84331ec24c1ef561cc36"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_attemptreviewerterm00000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_reviewer001",
+        "revision": 2,
+        "digest": "sha256:c7f04fad4e8369baf5bbe7738eb0d26ebdf64719382469730f03329db879636b"
+      },
+      "resource": "attempt",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "attempts.complete",
+      "event_type": "attempt.succeeded",
+      "event_id": "evt_auth0012",
+      "transaction_id": "txn_auth0012",
+      "audit_ref": "audit://aud_auth0012",
+      "recorded_at": "2026-08-10T00:58:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:a6e8f7d47d661ec1fa85923ec0c7706bde3c85c38abddc727d8faf70fa818915"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_resolutionreview00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_casecontroller",
+        "revision": 1,
+        "digest": "sha256:cc37a5523a6421a45144aacc9d0c49b0b18f0f5c759db23050c984c36f2d5238"
+      },
+      "subject": {
+        "kind": "RESOLUTION_REVIEW_RECEIPT",
+        "id": "rrr_stage0001",
+        "revision": null,
+        "digest": "sha256:263c16f4a531879858edcb2ace4ad7701fcbafb64ca46b2658fcea8cc2aa5fd5"
+      },
+      "resource": "resolution_contract",
+      "owner": "case-controller",
+      "controller_principal": "prn_casecontrol1",
+      "command": "resolution-reviews.record",
+      "event_type": "resolution_review.recorded",
+      "event_id": "evt_auth0013",
+      "transaction_id": "txn_auth0013",
+      "audit_ref": "audit://aud_auth0013",
+      "recorded_at": "2026-08-10T00:59:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:be88dcdb9e3bddb43a27fd2b7702b6387ef4ae475800e10da18eb9566ada34a9"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_resolutioncontract00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_casecontroller",
+        "revision": 1,
+        "digest": "sha256:cc37a5523a6421a45144aacc9d0c49b0b18f0f5c759db23050c984c36f2d5238"
+      },
+      "subject": {
+        "kind": "RESOLUTION_CONTRACT",
+        "id": "rc_stage0001",
+        "revision": 1,
+        "digest": "sha256:cc97aa93105ee1337bcdb5ae708c77c1c35be887bdc67aac270692b5e9883d83"
+      },
+      "resource": "resolution_contract",
+      "owner": "case-controller",
+      "controller_principal": "prn_casecontrol1",
+      "command": "resolution-contracts.freeze",
+      "event_type": "resolution_contract.frozen",
+      "event_id": "evt_auth0014",
+      "transaction_id": "txn_auth0014",
+      "audit_ref": "audit://aud_auth0014",
+      "recorded_at": "2026-08-10T01:00:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:1da9b46c3a5d644257228dee824629695bc83d1ee418804ef0bbcee89e899ae0"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_candidatecontract00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_proposalcontroller",
+        "revision": 1,
+        "digest": "sha256:18d25dd10b8e1bbb3eb84a22b44212ae1c67dee5f8cd1978d1f7e8095730773f"
+      },
+      "subject": {
+        "kind": "CANDIDATE_CONTRACT",
+        "id": "cc_stage0001",
+        "revision": null,
+        "digest": "sha256:68c1db5e06b8af0343e2e83b3f7abbbc5ddbd9ceebc67435d6734fa19986039b"
+      },
+      "resource": "candidate_contract",
+      "owner": "proposal-controller",
+      "controller_principal": "prn_proposalctl",
+      "command": "candidate-contracts.freeze",
+      "event_type": "candidate_contract.frozen",
+      "event_id": "evt_auth0015",
+      "transaction_id": "txn_auth0015",
+      "audit_ref": "audit://aud_auth0015",
+      "recorded_at": "2026-08-10T01:10:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:3c5703fe289596231c21da8666101e2989517f2d545913562c9fafc889569be4"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_evaluationplan00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_gatecontroller",
+        "revision": 1,
+        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      },
+      "subject": {
+        "kind": "EVALUATION_PLAN",
+        "id": "eplan_stage0001",
+        "revision": null,
+        "digest": "sha256:c4dc6a5c6ebbfd68d9f1335470f222ef7d6060bdeb3d134f43d4ec7343136db9"
+      },
+      "resource": "evaluation_plan",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "command": "evaluations.freeze-plan",
+      "event_type": "evaluation.plan_frozen",
+      "event_id": "evt_auth0016",
+      "transaction_id": "txn_auth0016",
+      "audit_ref": "audit://aud_auth0016",
+      "recorded_at": "2026-08-10T01:20:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:16265d1d959d3bb3f597d7796a83ac339db11e87e749d11a69baa9f04963bbf7"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_participationmanifest00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "PARTICIPATION_MANIFEST",
+        "id": "pman_stage0001",
+        "revision": 1,
+        "digest": "sha256:f06c957c2add870bb4eb08ae68bb73a6619d84c584095db075fb5ec16f0845d3"
+      },
+      "resource": "participation_manifest",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "participation-manifests.freeze",
+      "event_type": "participation_manifest.frozen",
+      "event_id": "evt_auth0017",
+      "transaction_id": "txn_auth0017",
+      "audit_ref": "audit://aud_auth0017",
+      "recorded_at": "2026-08-10T01:25:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:4e28c72321e1acb55c60db5fecc7c9544ea7a0fbd286482c6736583bd8f4d7b8"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_workertaskqueued00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "WORKER_TASK",
+        "id": "wt_stage0001",
+        "revision": 1,
+        "digest": "sha256:13b7637de9f37b79961c09e1a419712ee066686b0decbcc79a288805f17a2930"
+      },
+      "resource": "worker_task",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "work.request",
+      "event_type": "work.requested",
+      "event_id": "evt_auth0018",
+      "transaction_id": "txn_auth0018",
+      "audit_ref": "audit://aud_auth0018",
+      "recorded_at": "2026-08-10T01:30:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:3412bc322a2faec70059fc27b174b743150c18168ed07a55550382ed5db44790"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_capabilityrootdispatch00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_capabilitycontroller",
+        "revision": 1,
+        "digest": "sha256:936496a8ef5ca64400205d271428c62f08d44944df17633696e51a1ec4541818"
+      },
+      "subject": {
+        "kind": "CAPABILITY_LEASE",
+        "id": "cap_rootdisp001",
+        "revision": 1,
+        "digest": "sha256:bf78afd50332015ca7d0830f37d2bfe22e92317e7304a62a07dbe6ab4e966f4c"
+      },
+      "resource": "capability_lease",
+      "owner": "capability-controller",
+      "controller_principal": "prn_capability1",
+      "command": "capabilities.issue",
+      "event_type": "capability.issued",
+      "event_id": "evt_auth0019",
+      "transaction_id": "txn_auth0019",
+      "audit_ref": "audit://aud_auth0019",
+      "recorded_at": "2026-08-10T01:31:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:1e19427ca02b754272e0e395718a9d546ecfb48b0334815d1ba9f708af2ef901"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_workertaskleased00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "WORKER_TASK",
+        "id": "wt_stage0001",
+        "revision": 2,
+        "digest": "sha256:6be9901c5f7aaa26b7fa5a0746ce95c2be31bdba2eb2b407a619fb19c596fe69"
+      },
+      "resource": "worker_task",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "work.claim",
+      "event_type": "work.claimed",
+      "event_id": "evt_auth0020",
+      "transaction_id": "txn_auth0020",
+      "audit_ref": "audit://aud_auth0020",
+      "recorded_at": "2026-08-10T01:30:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:4e8009a26320fa092c77d9db24015d09470bf704f6feaebcf93752be136e4eb2"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_attemptcreated00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_generator01",
+        "revision": 1,
+        "digest": "sha256:23d45960f29e21b6a0a77f08134f43d9a7d1b16204945494cf496873b5a7c175"
+      },
+      "resource": "attempt",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "work.claim",
+      "event_type": "attempt.created",
+      "event_id": "evt_auth0021",
+      "transaction_id": "txn_auth0021",
+      "audit_ref": "audit://aud_auth0021",
+      "recorded_at": "2026-08-10T00:30:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:0a0984990faa99fd637f723ab213ba7fe1c9bb80519971384fca5183e8674663"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_capabilityruntime00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_capabilitycontroller",
+        "revision": 1,
+        "digest": "sha256:936496a8ef5ca64400205d271428c62f08d44944df17633696e51a1ec4541818"
+      },
+      "subject": {
+        "kind": "CAPABILITY_LEASE",
+        "id": "cap_stage0001",
+        "revision": 1,
+        "digest": "sha256:3f206cd20d67ab25a5bac23592775cb0501ac9d3f1a0d0aaed1e7e56ee4fe200"
+      },
+      "resource": "capability_lease",
+      "owner": "capability-controller",
+      "controller_principal": "prn_capability1",
+      "command": "capabilities.issue",
+      "event_type": "capability.issued",
+      "event_id": "evt_auth0022",
+      "transaction_id": "txn_auth0022",
+      "audit_ref": "audit://aud_auth0022",
+      "recorded_at": "2026-08-10T01:34:01Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:dc4c80106a6051d650d2b2a450ea22ccc8184a13420acb04dc9c01343218c145"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_attemptstarting00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_generator01",
+        "revision": 2,
+        "digest": "sha256:9579f850914788c40856ddf6b50183f100ea5c19d5b2ed733058e76681f6e60f"
+      },
+      "resource": "attempt",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "attempts.start",
+      "event_type": "attempt.starting",
+      "event_id": "evt_auth0023",
+      "transaction_id": "txn_auth0023",
+      "audit_ref": "audit://aud_auth0023",
+      "recorded_at": "2026-08-10T00:30:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:59559f52e1110c6115d4df0db27a59c1d77829e8e338dedf8258a46d557124ad"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_attemptrunning00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_generator01",
+        "revision": 3,
+        "digest": "sha256:7f28e9550202546b66758b728e962a3424010c835fc8c4523b2e6fad67c3ba71"
+      },
+      "resource": "attempt",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "attempts.start",
+      "event_type": "attempt.started",
+      "event_id": "evt_auth0024",
+      "transaction_id": "txn_auth0024",
+      "audit_ref": "audit://aud_auth0024",
+      "recorded_at": "2026-08-10T00:30:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:5de1e82bd79927dd08b790ec76e48e72737d413e05ae6fbc1babadcbf2fd3e12"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_modelcallgenerator000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "MODEL_CALL_RECEIPT",
+        "id": "mcr_generator01",
+        "revision": null,
+        "digest": "sha256:fea9d64bb26f9ff79a1c1a505411445c40d5568bedb2a5949f3cd1fb9b76515e"
+      },
+      "resource": "attempt",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "attempts.record-receipt",
+      "event_type": "attempt.receipt_recorded",
+      "event_id": "evt_auth0025",
+      "transaction_id": "txn_auth0025",
+      "audit_ref": "audit://aud_auth0025",
+      "recorded_at": "2026-08-10T01:39:10Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:c85282ae20e49775e14a87aac910d049b9d6e433430aa591153769f2f21be4dc"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_attemptoutput00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_generator01",
+        "revision": 4,
+        "digest": "sha256:6e7a24a8169d20750c9f631ff5d8133676661003a7565eb74d84048abb3ec17c"
+      },
+      "resource": "attempt",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "attempts.record-receipt",
+      "event_type": "attempt.output_recorded",
+      "event_id": "evt_auth0026",
+      "transaction_id": "txn_auth0026",
+      "audit_ref": "audit://aud_auth0026",
+      "recorded_at": "2026-08-10T00:30:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:8ee490a75b36bbff87811118d13c3786275c590793f576712ebeb93e4b2c86d0"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_proposal00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_proposalcontroller",
+        "revision": 1,
+        "digest": "sha256:18d25dd10b8e1bbb3eb84a22b44212ae1c67dee5f8cd1978d1f7e8095730773f"
+      },
+      "subject": {
+        "kind": "PROPOSAL",
+        "id": "prop_stage0001",
+        "revision": null,
+        "digest": "sha256:87e937dc93e36294569996ed4c5a24baacf98fda34d2ffabdad50b4e5b2de3db"
+      },
+      "resource": "proposal",
+      "owner": "proposal-controller",
+      "controller_principal": "prn_proposalctl",
+      "command": "proposals.submit",
+      "event_type": "proposal.submitted",
+      "event_id": "evt_auth0027",
+      "transaction_id": "txn_auth0027",
+      "audit_ref": "audit://aud_auth0027",
+      "recorded_at": "2026-08-10T01:40:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:e858c81451e0327153987c71a7fed4a84030aa83c8c5c7ffafaaa7f4261909f0"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_proposaldecision00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_proposalcontroller",
+        "revision": 1,
+        "digest": "sha256:18d25dd10b8e1bbb3eb84a22b44212ae1c67dee5f8cd1978d1f7e8095730773f"
+      },
+      "subject": {
+        "kind": "PROPOSAL_DECISION",
+        "id": "pdec_stage0001",
+        "revision": null,
+        "digest": "sha256:719bbdbeb56e9750dc399c07561c3033799027ed71346a429c1e69ae060e5a60"
+      },
+      "resource": "proposal_decision",
+      "owner": "proposal-controller",
+      "controller_principal": "prn_proposalctl",
+      "command": "proposals.decide",
+      "event_type": "proposal.accepted",
+      "event_id": "evt_accept0001",
+      "transaction_id": "txn_stage0001",
+      "audit_ref": "audit://aud_stage0001",
+      "recorded_at": "2026-08-10T01:40:30Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:753b419de555eec9582fcf2fd46a63b721e6ecbfb77525786dfe3fd10ef71f31"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_agentintent00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_proposalcontroller",
+        "revision": 1,
+        "digest": "sha256:18d25dd10b8e1bbb3eb84a22b44212ae1c67dee5f8cd1978d1f7e8095730773f"
+      },
+      "subject": {
+        "kind": "AGENT_INTENT",
+        "id": "aint_stage0001",
+        "revision": 1,
+        "digest": "sha256:55d57e8546c17de739bcf22ccaa87ed6628ebe6520e88ea4e59bbf5ed11b3c08"
+      },
+      "resource": "agent_intent",
+      "owner": "proposal-controller",
+      "controller_principal": "prn_proposalctl",
+      "command": "intents.submit",
+      "event_type": "agent_intent.submitted",
+      "event_id": "evt_auth0029",
+      "transaction_id": "txn_auth0029",
+      "audit_ref": "audit://aud_auth0029",
+      "recorded_at": "2026-08-10T01:40:10Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:3bc8a487c91052ab12cd27df8cca4057ec1ec33b87cde2d8ce23ea957be0ac1e"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_attemptsucceeded00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_generator01",
+        "revision": 5,
+        "digest": "sha256:56db1721d1645106e2fa2d6e43185c8d096d5cfc519f3dda8908e25d2260c0f8"
+      },
+      "resource": "attempt",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "attempts.complete",
+      "event_type": "attempt.succeeded",
+      "event_id": "evt_auth0030",
+      "transaction_id": "txn_auth0030",
+      "audit_ref": "audit://aud_auth0030",
+      "recorded_at": "2026-08-10T01:50:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:337308385c0dfbe26ae4c8580208f74c9e2cb6fa12917ce079a4c05cdac30828"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_workertaskcompleted00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "WORKER_TASK",
+        "id": "wt_stage0001",
+        "revision": 3,
+        "digest": "sha256:47965799747ce48dafb28006ebd6b42889549069a46ef73ffbf2880829fa34e0"
+      },
+      "resource": "worker_task",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "attempts.complete",
+      "event_type": "work.completed",
+      "event_id": "evt_auth0031",
+      "transaction_id": "txn_auth0031",
+      "audit_ref": "audit://aud_auth0031",
+      "recorded_at": "2026-08-10T01:30:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:8a54523b354241b3eef476edb5ccf6d0c13f6f4e9a36b70d643d6db11d880a23"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_capabilityconsumed00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_capabilitycontroller",
+        "revision": 1,
+        "digest": "sha256:936496a8ef5ca64400205d271428c62f08d44944df17633696e51a1ec4541818"
+      },
+      "subject": {
+        "kind": "CAPABILITY_LEASE",
+        "id": "cap_stage0001",
+        "revision": 2,
+        "digest": "sha256:905a20e5d7e8f527c7520769026854cd3adc9b5a3d04430e0e7223cb9698944a"
+      },
+      "resource": "capability_lease",
+      "owner": "capability-controller",
+      "controller_principal": "prn_capability1",
+      "command": "capabilities.consume",
+      "event_type": "capability.consumed",
+      "event_id": "evt_auth0032",
+      "transaction_id": "txn_auth0032",
+      "audit_ref": "audit://aud_auth0032",
+      "recorded_at": "2026-08-10T01:34:01Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:733055c668f1d3b7935c74ace79372c5f3c8752c366564d5e406004661cf24d2"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_candidaterevision00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_proposalcontroller",
+        "revision": 1,
+        "digest": "sha256:18d25dd10b8e1bbb3eb84a22b44212ae1c67dee5f8cd1978d1f7e8095730773f"
+      },
+      "subject": {
+        "kind": "CANDIDATE_REVISION",
+        "id": "crev_stage0001",
+        "revision": 1,
+        "digest": "sha256:6ac8562ff1059fd102ef1e2362c2f3cd0ee6575d6a51ba6bd431d73996fefc8a"
+      },
+      "resource": "candidate_revision",
+      "owner": "proposal-controller",
+      "controller_principal": "prn_proposalctl",
+      "command": "candidate-revisions.record",
+      "event_type": "candidate_revision.recorded",
+      "event_id": "evt_candidate001",
+      "transaction_id": "txn_stage0001",
+      "audit_ref": "audit://aud_auth0033",
+      "recorded_at": "2026-08-10T01:51:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:b513a9fcb2de7bae8895e6dd623268db93d37ce04d42b70b6030379434e9f7c9"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_attemptjudgerun00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_judge000001",
+        "revision": 1,
+        "digest": "sha256:760134007c4db7449fc59696ad08b5a906f2bed59912545ae099e82d2ae870d0"
+      },
+      "resource": "attempt",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "attempts.start",
+      "event_type": "attempt.started",
+      "event_id": "evt_auth0034",
+      "transaction_id": "txn_auth0034",
+      "audit_ref": "audit://aud_auth0034",
+      "recorded_at": "2026-08-10T00:30:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:1e651c89eddd6ac268eead8a136c289dc766c0ed2a75b9314592aaaec6c26d52"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_modelcalljudge00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "MODEL_CALL_RECEIPT",
+        "id": "mcr_judge0001",
+        "revision": null,
+        "digest": "sha256:39ca6fa4b66824b5ba439113f70361e880dfd5810802e1caf1080c0625de1299"
+      },
+      "resource": "attempt",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "attempts.record-receipt",
+      "event_type": "attempt.receipt_recorded",
+      "event_id": "evt_auth0035",
+      "transaction_id": "txn_auth0035",
+      "audit_ref": "audit://aud_auth0035",
+      "recorded_at": "2026-08-10T01:57:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:05aeeec3907a7afa40bcad14258e7c6bb9b35931a439afe95b1b19d5c70b4d8e"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_attemptjudgeterm0000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_workcontroller",
+        "revision": 1,
+        "digest": "sha256:792870727ee2dd43c18a632c970ebe0782adced0571bef87ad6636ab458bfa31"
+      },
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_judge000001",
+        "revision": 2,
+        "digest": "sha256:c131e6570b1c2ac9a7af7b1115fb20f1d7ed7af7c3af44c8b9eb4299131bb52f"
+      },
+      "resource": "attempt",
+      "owner": "work-controller",
+      "controller_principal": "prn_workcontrol1",
+      "command": "attempts.complete",
+      "event_type": "attempt.succeeded",
+      "event_id": "evt_auth0036",
+      "transaction_id": "txn_auth0036",
+      "audit_ref": "audit://aud_auth0036",
+      "recorded_at": "2026-08-10T01:57:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:578ef4ce37d3081fd8f76165fc65b2de491594ad771902e3c03683eb6a31c4d7"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_gatetrackpassdet000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_gatecontroller",
+        "revision": 1,
+        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      },
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_passdet0001",
+        "revision": null,
+        "digest": "sha256:ef731f489c6b1963283bca00e02ecddfbb1d0ad0daada0e2401f29e1cbd14286"
+      },
+      "resource": "gate_execution",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "command": "gates.record-track-receipt",
+      "event_type": "gate.track_receipt_recorded",
+      "event_id": "evt_auth0037",
+      "transaction_id": "txn_auth0037",
+      "audit_ref": "audit://aud_auth0037",
+      "recorded_at": "2026-08-10T01:55:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:bd7286f7c1b3822b2fefc1b6d36d6235ada15f4477b62373dfa52324a5882f6d"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_gatetrackpassjudge0000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_gatecontroller",
+        "revision": 1,
+        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      },
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_passjudge0001",
+        "revision": null,
+        "digest": "sha256:9e36cf3e53afbc079da6e07b0410d037b23a965310000504cbe512e08544e97e"
+      },
+      "resource": "gate_execution",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "command": "gates.record-track-receipt",
+      "event_type": "gate.track_receipt_recorded",
+      "event_id": "evt_auth0038",
+      "transaction_id": "txn_auth0038",
+      "audit_ref": "audit://aud_auth0038",
+      "recorded_at": "2026-08-10T01:58:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:24df2b4d1a4084605ef964402148109c475cfc26fec5499127513eb2bbf09769"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_gatetrackfaileddet000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_gatecontroller",
+        "revision": 1,
+        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      },
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_faileddet0001",
+        "revision": null,
+        "digest": "sha256:c0bb31680946d789b233781d2d84cc5f67c67d6d0e25b85d70d6b064e7a8e7c4"
+      },
+      "resource": "gate_execution",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "command": "gates.record-track-receipt",
+      "event_type": "gate.track_receipt_recorded",
+      "event_id": "evt_auth0039",
+      "transaction_id": "txn_auth0039",
+      "audit_ref": "audit://aud_auth0039",
+      "recorded_at": "2026-08-10T01:55:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:4ef012062eb55b48bca75fe56400160b96935d582df389da9917c560bef20cdc"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_gatetrackfailedjudge0000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_gatecontroller",
+        "revision": 1,
+        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      },
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_failedjudge0001",
+        "revision": null,
+        "digest": "sha256:9f651e3da24e8bdb076577ec54d2d41b8e9d511959a9aa2feaaea575a0466c07"
+      },
+      "resource": "gate_execution",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "command": "gates.record-track-receipt",
+      "event_type": "gate.track_receipt_recorded",
+      "event_id": "evt_auth0040",
+      "transaction_id": "txn_auth0040",
+      "audit_ref": "audit://aud_auth0040",
+      "recorded_at": "2026-08-10T01:58:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:d76e5b787bdabfa07578894a69e0f390e24a92e4a32ad3ae35b81228987187ae"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_gatetrackinconclusivedet000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_gatecontroller",
+        "revision": 1,
+        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      },
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_inconclusivedet0001",
+        "revision": null,
+        "digest": "sha256:eff0142087a6c5b27771ad733bba2c979c99d89308ec3878313476c4de5921db"
+      },
+      "resource": "gate_execution",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "command": "gates.record-track-receipt",
+      "event_type": "gate.track_receipt_recorded",
+      "event_id": "evt_auth0041",
+      "transaction_id": "txn_auth0041",
+      "audit_ref": "audit://aud_auth0041",
+      "recorded_at": "2026-08-10T01:55:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:2472f186bcb8086b42e791a6107e732c9a20d8c1d2885763d337ea7ba2326875"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_gatetrackinconclusivejudge0000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_gatecontroller",
+        "revision": 1,
+        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      },
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_inconclusivejudge0001",
+        "revision": null,
+        "digest": "sha256:58833c2e8837be186e791af5b19576dad312ddccbb47d1e855bb81ed961bf87e"
+      },
+      "resource": "gate_execution",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "command": "gates.record-track-receipt",
+      "event_type": "gate.track_receipt_recorded",
+      "event_id": "evt_auth0042",
+      "transaction_id": "txn_auth0042",
+      "audit_ref": "audit://aud_auth0042",
+      "recorded_at": "2026-08-10T01:58:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:7ea5f92f7ca3e60eb8f5aa83c7637093abf5cac3b075c33cbcc35ac7cdf829be"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_gatetrackerrordet000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_gatecontroller",
+        "revision": 1,
+        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      },
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_errordet0001",
+        "revision": null,
+        "digest": "sha256:871c02e3737ddcf99b1ccad28940804d8754520b63236a6272e5bcf94697f2eb"
+      },
+      "resource": "gate_execution",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "command": "gates.record-track-receipt",
+      "event_type": "gate.track_receipt_recorded",
+      "event_id": "evt_auth0043",
+      "transaction_id": "txn_auth0043",
+      "audit_ref": "audit://aud_auth0043",
+      "recorded_at": "2026-08-10T01:55:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:5cc6a6b745f8233988805e1195364fcf5a708c77b16c47681f57ba7a59caf351"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_gatetrackerrorjudge0000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_gatecontroller",
+        "revision": 1,
+        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      },
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_errorjudge0001",
+        "revision": null,
+        "digest": "sha256:2371496132f89da5181f1716439fe98517366f960b50a4e408deb70c56a35ee0"
+      },
+      "resource": "gate_execution",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "command": "gates.record-track-receipt",
+      "event_type": "gate.track_receipt_recorded",
+      "event_id": "evt_auth0044",
+      "transaction_id": "txn_auth0044",
+      "audit_ref": "audit://aud_auth0044",
+      "recorded_at": "2026-08-10T01:58:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:6b2bb3d448b77505e89c6367e746c069a6ec9127411a9b69b322bd5dcb842bce"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_gatetrackunknowndet000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_gatecontroller",
+        "revision": 1,
+        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      },
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_unknowndet0001",
+        "revision": null,
+        "digest": "sha256:88ec5640c7a6dab9af1080f220515130e03d9809c07b59e5e0d078fa212ce0d6"
+      },
+      "resource": "gate_execution",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "command": "gates.record-track-receipt",
+      "event_type": "gate.track_receipt_recorded",
+      "event_id": "evt_auth0045",
+      "transaction_id": "txn_auth0045",
+      "audit_ref": "audit://aud_auth0045",
+      "recorded_at": "2026-08-10T01:55:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:f61f750974617d66735cde338529c73ab4348973ac921836e167f78c90b19485"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_gatetrackunknownjudge0000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_gatecontroller",
+        "revision": 1,
+        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      },
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_unknownjudge0001",
+        "revision": null,
+        "digest": "sha256:abd9b02d1dfbb4363d894db4552485fcfd1b79cbf2b46946b0dbc012ce0fb713"
+      },
+      "resource": "gate_execution",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "command": "gates.record-track-receipt",
+      "event_type": "gate.track_receipt_recorded",
+      "event_id": "evt_auth0046",
+      "transaction_id": "txn_auth0046",
+      "audit_ref": "audit://aud_auth0046",
+      "recorded_at": "2026-08-10T01:58:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:c27a53872390327764e05b9917cd9ba5541b19e363f43105f85594b240965062"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_gatereportv4pass00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_gatecontroller",
+        "revision": 1,
+        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      },
+      "subject": {
+        "kind": "GATE_REPORT",
+        "id": "gate_stage0001",
+        "revision": null,
+        "digest": "sha256:b80624be72487fd19f96aba7123c5eacc0d714adc8dc33be50e5f4abab2aea7f"
+      },
+      "resource": "gate_execution",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "command": "gates.record-result",
+      "event_type": "gate.completed",
+      "event_id": "evt_auth0047",
+      "transaction_id": "txn_auth0047",
+      "audit_ref": "audit://aud_auth0047",
+      "recorded_at": "2026-08-10T01:59:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:1c4f9ab449cbbcc8e36d94d48525cd2d71237679dbe9f33e3dc1f6fcdb315408"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_gatereportv4failed00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_gatecontroller",
+        "revision": 1,
+        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      },
+      "subject": {
+        "kind": "GATE_REPORT",
+        "id": "gate_failed001",
+        "revision": null,
+        "digest": "sha256:ba2d43a7ecdac8e7a5011325e3a0d42b389eaadd5e6e3a4921dbde03ebebf03f"
+      },
+      "resource": "gate_execution",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "command": "gates.record-result",
+      "event_type": "gate.failed",
+      "event_id": "evt_auth0048",
+      "transaction_id": "txn_auth0048",
+      "audit_ref": "audit://aud_auth0048",
+      "recorded_at": "2026-08-10T01:59:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:b729646f184d3a78955c6b7f577f81347405f4a37efe54a07cb92ea05e93574c"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_gatereportv4inconclusive00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_gatecontroller",
+        "revision": 1,
+        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      },
+      "subject": {
+        "kind": "GATE_REPORT",
+        "id": "gate_inconcl01",
+        "revision": null,
+        "digest": "sha256:aadcfa0ba71cccd6d3598cfcbac780a19f198e6b7501ec5db8e528415e278f35"
+      },
+      "resource": "gate_execution",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "command": "gates.record-result",
+      "event_type": "gate.inconclusive",
+      "event_id": "evt_auth0049",
+      "transaction_id": "txn_auth0049",
+      "audit_ref": "audit://aud_auth0049",
+      "recorded_at": "2026-08-10T01:59:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:976ae4c81b506741b551b0427ca5e230e6c8fee1539dcaa2e8141250cb0c30bb"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_gatereportv4error00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_gatecontroller",
+        "revision": 1,
+        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      },
+      "subject": {
+        "kind": "GATE_REPORT",
+        "id": "gate_error0001",
+        "revision": null,
+        "digest": "sha256:d5155496d2976b2d58b315f85c312ad68cb2b99a3dd8717970a09ae64a29b39b"
+      },
+      "resource": "gate_execution",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "command": "gates.record-result",
+      "event_type": "gate.error",
+      "event_id": "evt_auth0050",
+      "transaction_id": "txn_auth0050",
+      "audit_ref": "audit://aud_auth0050",
+      "recorded_at": "2026-08-10T01:59:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:1c41008f7e013343bfd7dd38721434dd0ccb5324e6cb3fb3d44714305ded2de7"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_gatereportv4unknown00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_gatecontroller",
+        "revision": 1,
+        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      },
+      "subject": {
+        "kind": "GATE_REPORT",
+        "id": "gate_unknown01",
+        "revision": null,
+        "digest": "sha256:b4be9752681573ff91483f85cd4009ff316b85a4a005b205c398880cc95ef18b"
+      },
+      "resource": "gate_execution",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "command": "gates.record-result",
+      "event_type": "gate.unknown",
+      "event_id": "evt_auth0051",
+      "transaction_id": "txn_auth0051",
+      "audit_ref": "audit://aud_auth0051",
+      "recorded_at": "2026-08-10T01:59:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:c989926775e5455fa71fedc4c04df259966207fda8136646ec95833f0101cc24"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_workorder00000000",
+      "workspace_id": "ws_stage0001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_gatecontroller",
+        "revision": 1,
+        "digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+      },
+      "subject": {
+        "kind": "WORKORDER",
+        "id": "wo_stage0001",
+        "revision": 1,
+        "digest": "sha256:46333f7b55b19b634d71ece5d102f47176be2604d93b2ae6e9aceaf200161c6e"
+      },
+      "resource": "workorder",
+      "owner": "gate-controller",
+      "controller_principal": "prn_gatecontrol1",
+      "command": "workorders.create-from-pass",
+      "event_type": "workorder.created",
+      "event_id": "evt_auth0052",
+      "transaction_id": "txn_auth0052",
+      "audit_ref": "audit://aud_auth0052",
+      "recorded_at": "2026-08-10T02:00:00Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:2ceb7edda67c2aa4320c959021429448771987152d9c8140285bf1b7b254fc8c"
+    },
+    {
+      "schema_version": "1.0",
+      "authority_receipt_id": "arec_traceevidence00000000",
+      "workspace_id": "ws_01J0000000000001",
+      "controller_registration": {
+        "kind": "CONTROLLER_REGISTRATION",
+        "id": "creg_evidenceworkspace",
+        "revision": 1,
+        "digest": "sha256:581922c1e796af855b72eda21bf86ee5ef120bd2809340273c56cada7a8154c7"
+      },
+      "subject": {
+        "kind": "TRACE_EVIDENCE_RECEIPT",
+        "id": "ter_01J0000000000001",
+        "revision": null,
+        "digest": "sha256:5591b77f668f2eb3130fa37e6b435bc0dab2a87412b404c2b82b765be57f472d"
+      },
+      "resource": "evidence_receipt",
+      "owner": "evidence-controller",
+      "controller_principal": "prn_evidencectl1",
+      "command": "evidence.record",
+      "event_type": "evidence.recorded",
+      "event_id": "evt_auth0053",
+      "transaction_id": "txn_auth0053",
+      "audit_ref": "audit://aud_auth0053",
+      "recorded_at": "2026-08-10T09:00:02Z",
+      "immutable": true,
+      "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+      "authority_receipt_digest": "sha256:5307b2496dd781128d704db0020942ea4a79c9eb44b03b7fc5203363095fd3b6"
+    }
+  ],
+  "events": [
+    {
+      "event_id": "evt_auth0001",
+      "event_type": "skill_manifest.registered",
+      "transaction_id": "txn_auth0001",
+      "actor_principal": "prn_skillregistry",
+      "authority_receipt_id": "arec_skillmanifest00000000",
+      "subject": {
+        "kind": "SKILL_MANIFEST",
+        "id": "skillm_stage0001",
+        "revision": 1,
+        "digest": "sha256:6189d8a10df5be1bbf4eb044f7427626172be883ec25cea9986bfe01cb179b6f"
+      }
+    },
+    {
+      "event_id": "evt_auth0002",
+      "event_type": "mcp_manifest.registered",
+      "transaction_id": "txn_auth0002",
+      "actor_principal": "prn_mcpregistry01",
+      "authority_receipt_id": "arec_mcpmanifest00000000",
+      "subject": {
+        "kind": "MCP_MANIFEST",
+        "id": "mcpm_stage0001",
+        "revision": 1,
+        "digest": "sha256:02df34c7aa1172e18d55dcc84ebdd528d21687d36c3c5bd2889cb23f5b0573e9"
+      }
+    },
+    {
+      "event_id": "evt_auth0003",
+      "event_type": "agent_manifest.registered",
+      "transaction_id": "txn_auth0003",
+      "actor_principal": "prn_manifestctl1",
+      "authority_receipt_id": "arec_agentmanifest00000000",
+      "subject": {
+        "kind": "AGENT_MANIFEST",
+        "id": "aman_stage0001",
+        "revision": 1,
+        "digest": "sha256:aa7ab3b9e0068f4d572ce4ac5e04fe39c3d923d8cfeed9df65e999bb2ea94fab"
+      }
+    },
+    {
+      "event_id": "evt_auth0004",
+      "event_type": "agent_manifest.registered",
+      "transaction_id": "txn_auth0004",
+      "actor_principal": "prn_manifestctl1",
+      "authority_receipt_id": "arec_manifestplanner00000000",
+      "subject": {
+        "kind": "AGENT_MANIFEST",
+        "id": "aman_planner001",
+        "revision": 1,
+        "digest": "sha256:7e9929e0c3cc77658d513326e7fbc3fd4420eeeeb186430d885c4f5e5e24b0f9"
+      }
+    },
+    {
+      "event_id": "evt_auth0005",
+      "event_type": "agent_manifest.registered",
+      "transaction_id": "txn_auth0005",
+      "actor_principal": "prn_manifestctl1",
+      "authority_receipt_id": "arec_manifestreviewer0000000",
+      "subject": {
+        "kind": "AGENT_MANIFEST",
+        "id": "aman_reviewer01",
+        "revision": 1,
+        "digest": "sha256:471c638b9d70b03aba41163b55ef7051fc76d3b35875d02b18d4f25565f08a43"
+      }
+    },
+    {
+      "event_id": "evt_auth0006",
+      "event_type": "agent_manifest.registered",
+      "transaction_id": "txn_auth0006",
+      "actor_principal": "prn_manifestctl1",
+      "authority_receipt_id": "arec_manifestjudge000000000",
+      "subject": {
+        "kind": "AGENT_MANIFEST",
+        "id": "aman_judge0001",
+        "revision": 1,
+        "digest": "sha256:48d9f457541bc7c5b1fd376fd74275606af5fb4729457e00edb123e6af6d81f2"
+      }
+    },
+    {
+      "event_id": "evt_auth0007",
+      "event_type": "attempt.started",
+      "transaction_id": "txn_auth0007",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptplannerrun0000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_planner0001",
+        "revision": 1,
+        "digest": "sha256:c3a240100d282b75c3158522a65dd7dfa94346b7d449d671e876cacfc2bd5b5b"
+      }
+    },
+    {
+      "event_id": "evt_auth0008",
+      "event_type": "attempt.receipt_recorded",
+      "transaction_id": "txn_auth0008",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_modelcallplanner00000000",
+      "subject": {
+        "kind": "MODEL_CALL_RECEIPT",
+        "id": "mcr_planner0001",
+        "revision": null,
+        "digest": "sha256:c4ad3336b3a9e04f26f48cee98ccc04a61cf2fc278d2e9c1424683cb460f75dc"
+      }
+    },
+    {
+      "event_id": "evt_auth0009",
+      "event_type": "attempt.succeeded",
+      "transaction_id": "txn_auth0009",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptplannerterm000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_planner0001",
+        "revision": 2,
+        "digest": "sha256:a9619151bbba9d54db749865a3441f26a4905d4a39c681a561a860beffa07909"
+      }
+    },
+    {
+      "event_id": "evt_auth0010",
+      "event_type": "attempt.started",
+      "transaction_id": "txn_auth0010",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptreviewerrun000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_reviewer001",
+        "revision": 1,
+        "digest": "sha256:af1a8a3c0c4a590232bf2319f7a54da11421b61b63273b80c35f6a445120c0a3"
+      }
+    },
+    {
+      "event_id": "evt_auth0011",
+      "event_type": "attempt.receipt_recorded",
+      "transaction_id": "txn_auth0011",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_modelcallreviewer00000000",
+      "subject": {
+        "kind": "MODEL_CALL_RECEIPT",
+        "id": "mcr_reviewer0001",
+        "revision": null,
+        "digest": "sha256:54198149b3899529e210065006dcc314938a3643073cf31ee3f4d6cffdbbdb68"
+      }
+    },
+    {
+      "event_id": "evt_auth0012",
+      "event_type": "attempt.succeeded",
+      "transaction_id": "txn_auth0012",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptreviewerterm00000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_reviewer001",
+        "revision": 2,
+        "digest": "sha256:c7f04fad4e8369baf5bbe7738eb0d26ebdf64719382469730f03329db879636b"
+      }
+    },
+    {
+      "event_id": "evt_auth0013",
+      "event_type": "resolution_review.recorded",
+      "transaction_id": "txn_auth0013",
+      "actor_principal": "prn_casecontrol1",
+      "authority_receipt_id": "arec_resolutionreview00000000",
+      "subject": {
+        "kind": "RESOLUTION_REVIEW_RECEIPT",
+        "id": "rrr_stage0001",
+        "revision": null,
+        "digest": "sha256:263c16f4a531879858edcb2ace4ad7701fcbafb64ca46b2658fcea8cc2aa5fd5"
+      }
+    },
+    {
+      "event_id": "evt_auth0014",
+      "event_type": "resolution_contract.frozen",
+      "transaction_id": "txn_auth0014",
+      "actor_principal": "prn_casecontrol1",
+      "authority_receipt_id": "arec_resolutioncontract00000000",
+      "subject": {
+        "kind": "RESOLUTION_CONTRACT",
+        "id": "rc_stage0001",
+        "revision": 1,
+        "digest": "sha256:cc97aa93105ee1337bcdb5ae708c77c1c35be887bdc67aac270692b5e9883d83"
+      }
+    },
+    {
+      "event_id": "evt_auth0015",
+      "event_type": "candidate_contract.frozen",
+      "transaction_id": "txn_auth0015",
+      "actor_principal": "prn_proposalctl",
+      "authority_receipt_id": "arec_candidatecontract00000000",
+      "subject": {
+        "kind": "CANDIDATE_CONTRACT",
+        "id": "cc_stage0001",
+        "revision": null,
+        "digest": "sha256:68c1db5e06b8af0343e2e83b3f7abbbc5ddbd9ceebc67435d6734fa19986039b"
+      }
+    },
+    {
+      "event_id": "evt_auth0016",
+      "event_type": "evaluation.plan_frozen",
+      "transaction_id": "txn_auth0016",
+      "actor_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_evaluationplan00000000",
+      "subject": {
+        "kind": "EVALUATION_PLAN",
+        "id": "eplan_stage0001",
+        "revision": null,
+        "digest": "sha256:c4dc6a5c6ebbfd68d9f1335470f222ef7d6060bdeb3d134f43d4ec7343136db9"
+      }
+    },
+    {
+      "event_id": "evt_auth0017",
+      "event_type": "participation_manifest.frozen",
+      "transaction_id": "txn_auth0017",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_participationmanifest00000000",
+      "subject": {
+        "kind": "PARTICIPATION_MANIFEST",
+        "id": "pman_stage0001",
+        "revision": 1,
+        "digest": "sha256:f06c957c2add870bb4eb08ae68bb73a6619d84c584095db075fb5ec16f0845d3"
+      }
+    },
+    {
+      "event_id": "evt_auth0018",
+      "event_type": "work.requested",
+      "transaction_id": "txn_auth0018",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_workertaskqueued00000000",
+      "subject": {
+        "kind": "WORKER_TASK",
+        "id": "wt_stage0001",
+        "revision": 1,
+        "digest": "sha256:13b7637de9f37b79961c09e1a419712ee066686b0decbcc79a288805f17a2930"
+      }
+    },
+    {
+      "event_id": "evt_auth0019",
+      "event_type": "capability.issued",
+      "transaction_id": "txn_auth0019",
+      "actor_principal": "prn_capability1",
+      "authority_receipt_id": "arec_capabilityrootdispatch00000000",
+      "subject": {
+        "kind": "CAPABILITY_LEASE",
+        "id": "cap_rootdisp001",
+        "revision": 1,
+        "digest": "sha256:bf78afd50332015ca7d0830f37d2bfe22e92317e7304a62a07dbe6ab4e966f4c"
+      }
+    },
+    {
+      "event_id": "evt_auth0020",
+      "event_type": "work.claimed",
+      "transaction_id": "txn_auth0020",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_workertaskleased00000000",
+      "subject": {
+        "kind": "WORKER_TASK",
+        "id": "wt_stage0001",
+        "revision": 2,
+        "digest": "sha256:6be9901c5f7aaa26b7fa5a0746ce95c2be31bdba2eb2b407a619fb19c596fe69"
+      }
+    },
+    {
+      "event_id": "evt_auth0021",
+      "event_type": "attempt.created",
+      "transaction_id": "txn_auth0021",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptcreated00000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_generator01",
+        "revision": 1,
+        "digest": "sha256:23d45960f29e21b6a0a77f08134f43d9a7d1b16204945494cf496873b5a7c175"
+      }
+    },
+    {
+      "event_id": "evt_auth0022",
+      "event_type": "capability.issued",
+      "transaction_id": "txn_auth0022",
+      "actor_principal": "prn_capability1",
+      "authority_receipt_id": "arec_capabilityruntime00000000",
+      "subject": {
+        "kind": "CAPABILITY_LEASE",
+        "id": "cap_stage0001",
+        "revision": 1,
+        "digest": "sha256:3f206cd20d67ab25a5bac23592775cb0501ac9d3f1a0d0aaed1e7e56ee4fe200"
+      }
+    },
+    {
+      "event_id": "evt_auth0023",
+      "event_type": "attempt.starting",
+      "transaction_id": "txn_auth0023",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptstarting00000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_generator01",
+        "revision": 2,
+        "digest": "sha256:9579f850914788c40856ddf6b50183f100ea5c19d5b2ed733058e76681f6e60f"
+      }
+    },
+    {
+      "event_id": "evt_auth0024",
+      "event_type": "attempt.started",
+      "transaction_id": "txn_auth0024",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptrunning00000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_generator01",
+        "revision": 3,
+        "digest": "sha256:7f28e9550202546b66758b728e962a3424010c835fc8c4523b2e6fad67c3ba71"
+      }
+    },
+    {
+      "event_id": "evt_auth0025",
+      "event_type": "attempt.receipt_recorded",
+      "transaction_id": "txn_auth0025",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_modelcallgenerator000000",
+      "subject": {
+        "kind": "MODEL_CALL_RECEIPT",
+        "id": "mcr_generator01",
+        "revision": null,
+        "digest": "sha256:fea9d64bb26f9ff79a1c1a505411445c40d5568bedb2a5949f3cd1fb9b76515e"
+      }
+    },
+    {
+      "event_id": "evt_auth0026",
+      "event_type": "attempt.output_recorded",
+      "transaction_id": "txn_auth0026",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptoutput00000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_generator01",
+        "revision": 4,
+        "digest": "sha256:6e7a24a8169d20750c9f631ff5d8133676661003a7565eb74d84048abb3ec17c"
+      }
+    },
+    {
+      "event_id": "evt_auth0027",
+      "event_type": "proposal.submitted",
+      "transaction_id": "txn_auth0027",
+      "actor_principal": "prn_proposalctl",
+      "authority_receipt_id": "arec_proposal00000000",
+      "subject": {
+        "kind": "PROPOSAL",
+        "id": "prop_stage0001",
+        "revision": null,
+        "digest": "sha256:87e937dc93e36294569996ed4c5a24baacf98fda34d2ffabdad50b4e5b2de3db"
+      }
+    },
+    {
+      "event_id": "evt_accept0001",
+      "event_type": "proposal.accepted",
+      "transaction_id": "txn_stage0001",
+      "actor_principal": "prn_proposalctl",
+      "authority_receipt_id": "arec_proposaldecision00000000",
+      "subject": {
+        "kind": "PROPOSAL_DECISION",
+        "id": "pdec_stage0001",
+        "revision": null,
+        "digest": "sha256:719bbdbeb56e9750dc399c07561c3033799027ed71346a429c1e69ae060e5a60"
+      }
+    },
+    {
+      "event_id": "evt_auth0029",
+      "event_type": "agent_intent.submitted",
+      "transaction_id": "txn_auth0029",
+      "actor_principal": "prn_proposalctl",
+      "authority_receipt_id": "arec_agentintent00000000",
+      "subject": {
+        "kind": "AGENT_INTENT",
+        "id": "aint_stage0001",
+        "revision": 1,
+        "digest": "sha256:55d57e8546c17de739bcf22ccaa87ed6628ebe6520e88ea4e59bbf5ed11b3c08"
+      }
+    },
+    {
+      "event_id": "evt_auth0030",
+      "event_type": "attempt.succeeded",
+      "transaction_id": "txn_auth0030",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptsucceeded00000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_generator01",
+        "revision": 5,
+        "digest": "sha256:56db1721d1645106e2fa2d6e43185c8d096d5cfc519f3dda8908e25d2260c0f8"
+      }
+    },
+    {
+      "event_id": "evt_auth0031",
+      "event_type": "work.completed",
+      "transaction_id": "txn_auth0031",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_workertaskcompleted00000000",
+      "subject": {
+        "kind": "WORKER_TASK",
+        "id": "wt_stage0001",
+        "revision": 3,
+        "digest": "sha256:47965799747ce48dafb28006ebd6b42889549069a46ef73ffbf2880829fa34e0"
+      }
+    },
+    {
+      "event_id": "evt_auth0032",
+      "event_type": "capability.consumed",
+      "transaction_id": "txn_auth0032",
+      "actor_principal": "prn_capability1",
+      "authority_receipt_id": "arec_capabilityconsumed00000000",
+      "subject": {
+        "kind": "CAPABILITY_LEASE",
+        "id": "cap_stage0001",
+        "revision": 2,
+        "digest": "sha256:905a20e5d7e8f527c7520769026854cd3adc9b5a3d04430e0e7223cb9698944a"
+      }
+    },
+    {
+      "event_id": "evt_candidate001",
+      "event_type": "candidate_revision.recorded",
+      "transaction_id": "txn_stage0001",
+      "actor_principal": "prn_proposalctl",
+      "authority_receipt_id": "arec_candidaterevision00000000",
+      "subject": {
+        "kind": "CANDIDATE_REVISION",
+        "id": "crev_stage0001",
+        "revision": 1,
+        "digest": "sha256:6ac8562ff1059fd102ef1e2362c2f3cd0ee6575d6a51ba6bd431d73996fefc8a"
+      }
+    },
+    {
+      "event_id": "evt_auth0034",
+      "event_type": "attempt.started",
+      "transaction_id": "txn_auth0034",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptjudgerun00000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_judge000001",
+        "revision": 1,
+        "digest": "sha256:760134007c4db7449fc59696ad08b5a906f2bed59912545ae099e82d2ae870d0"
+      }
+    },
+    {
+      "event_id": "evt_auth0035",
+      "event_type": "attempt.receipt_recorded",
+      "transaction_id": "txn_auth0035",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_modelcalljudge00000000",
+      "subject": {
+        "kind": "MODEL_CALL_RECEIPT",
+        "id": "mcr_judge0001",
+        "revision": null,
+        "digest": "sha256:39ca6fa4b66824b5ba439113f70361e880dfd5810802e1caf1080c0625de1299"
+      }
+    },
+    {
+      "event_id": "evt_auth0036",
+      "event_type": "attempt.succeeded",
+      "transaction_id": "txn_auth0036",
+      "actor_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptjudgeterm0000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_judge000001",
+        "revision": 2,
+        "digest": "sha256:c131e6570b1c2ac9a7af7b1115fb20f1d7ed7af7c3af44c8b9eb4299131bb52f"
+      }
+    },
+    {
+      "event_id": "evt_auth0037",
+      "event_type": "gate.track_receipt_recorded",
+      "transaction_id": "txn_auth0037",
+      "actor_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackpassdet000000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_passdet0001",
+        "revision": null,
+        "digest": "sha256:ef731f489c6b1963283bca00e02ecddfbb1d0ad0daada0e2401f29e1cbd14286"
+      }
+    },
+    {
+      "event_id": "evt_auth0038",
+      "event_type": "gate.track_receipt_recorded",
+      "transaction_id": "txn_auth0038",
+      "actor_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackpassjudge0000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_passjudge0001",
+        "revision": null,
+        "digest": "sha256:9e36cf3e53afbc079da6e07b0410d037b23a965310000504cbe512e08544e97e"
+      }
+    },
+    {
+      "event_id": "evt_auth0039",
+      "event_type": "gate.track_receipt_recorded",
+      "transaction_id": "txn_auth0039",
+      "actor_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackfaileddet000000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_faileddet0001",
+        "revision": null,
+        "digest": "sha256:c0bb31680946d789b233781d2d84cc5f67c67d6d0e25b85d70d6b064e7a8e7c4"
+      }
+    },
+    {
+      "event_id": "evt_auth0040",
+      "event_type": "gate.track_receipt_recorded",
+      "transaction_id": "txn_auth0040",
+      "actor_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackfailedjudge0000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_failedjudge0001",
+        "revision": null,
+        "digest": "sha256:9f651e3da24e8bdb076577ec54d2d41b8e9d511959a9aa2feaaea575a0466c07"
+      }
+    },
+    {
+      "event_id": "evt_auth0041",
+      "event_type": "gate.track_receipt_recorded",
+      "transaction_id": "txn_auth0041",
+      "actor_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackinconclusivedet000000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_inconclusivedet0001",
+        "revision": null,
+        "digest": "sha256:eff0142087a6c5b27771ad733bba2c979c99d89308ec3878313476c4de5921db"
+      }
+    },
+    {
+      "event_id": "evt_auth0042",
+      "event_type": "gate.track_receipt_recorded",
+      "transaction_id": "txn_auth0042",
+      "actor_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackinconclusivejudge0000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_inconclusivejudge0001",
+        "revision": null,
+        "digest": "sha256:58833c2e8837be186e791af5b19576dad312ddccbb47d1e855bb81ed961bf87e"
+      }
+    },
+    {
+      "event_id": "evt_auth0043",
+      "event_type": "gate.track_receipt_recorded",
+      "transaction_id": "txn_auth0043",
+      "actor_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackerrordet000000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_errordet0001",
+        "revision": null,
+        "digest": "sha256:871c02e3737ddcf99b1ccad28940804d8754520b63236a6272e5bcf94697f2eb"
+      }
+    },
+    {
+      "event_id": "evt_auth0044",
+      "event_type": "gate.track_receipt_recorded",
+      "transaction_id": "txn_auth0044",
+      "actor_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackerrorjudge0000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_errorjudge0001",
+        "revision": null,
+        "digest": "sha256:2371496132f89da5181f1716439fe98517366f960b50a4e408deb70c56a35ee0"
+      }
+    },
+    {
+      "event_id": "evt_auth0045",
+      "event_type": "gate.track_receipt_recorded",
+      "transaction_id": "txn_auth0045",
+      "actor_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackunknowndet000000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_unknowndet0001",
+        "revision": null,
+        "digest": "sha256:88ec5640c7a6dab9af1080f220515130e03d9809c07b59e5e0d078fa212ce0d6"
+      }
+    },
+    {
+      "event_id": "evt_auth0046",
+      "event_type": "gate.track_receipt_recorded",
+      "transaction_id": "txn_auth0046",
+      "actor_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackunknownjudge0000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_unknownjudge0001",
+        "revision": null,
+        "digest": "sha256:abd9b02d1dfbb4363d894db4552485fcfd1b79cbf2b46946b0dbc012ce0fb713"
+      }
+    },
+    {
+      "event_id": "evt_auth0047",
+      "event_type": "gate.completed",
+      "transaction_id": "txn_auth0047",
+      "actor_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatereportv4pass00000000",
+      "subject": {
+        "kind": "GATE_REPORT",
+        "id": "gate_stage0001",
+        "revision": null,
+        "digest": "sha256:b80624be72487fd19f96aba7123c5eacc0d714adc8dc33be50e5f4abab2aea7f"
+      }
+    },
+    {
+      "event_id": "evt_auth0048",
+      "event_type": "gate.failed",
+      "transaction_id": "txn_auth0048",
+      "actor_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatereportv4failed00000000",
+      "subject": {
+        "kind": "GATE_REPORT",
+        "id": "gate_failed001",
+        "revision": null,
+        "digest": "sha256:ba2d43a7ecdac8e7a5011325e3a0d42b389eaadd5e6e3a4921dbde03ebebf03f"
+      }
+    },
+    {
+      "event_id": "evt_auth0049",
+      "event_type": "gate.inconclusive",
+      "transaction_id": "txn_auth0049",
+      "actor_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatereportv4inconclusive00000000",
+      "subject": {
+        "kind": "GATE_REPORT",
+        "id": "gate_inconcl01",
+        "revision": null,
+        "digest": "sha256:aadcfa0ba71cccd6d3598cfcbac780a19f198e6b7501ec5db8e528415e278f35"
+      }
+    },
+    {
+      "event_id": "evt_auth0050",
+      "event_type": "gate.error",
+      "transaction_id": "txn_auth0050",
+      "actor_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatereportv4error00000000",
+      "subject": {
+        "kind": "GATE_REPORT",
+        "id": "gate_error0001",
+        "revision": null,
+        "digest": "sha256:d5155496d2976b2d58b315f85c312ad68cb2b99a3dd8717970a09ae64a29b39b"
+      }
+    },
+    {
+      "event_id": "evt_auth0051",
+      "event_type": "gate.unknown",
+      "transaction_id": "txn_auth0051",
+      "actor_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatereportv4unknown00000000",
+      "subject": {
+        "kind": "GATE_REPORT",
+        "id": "gate_unknown01",
+        "revision": null,
+        "digest": "sha256:b4be9752681573ff91483f85cd4009ff316b85a4a005b205c398880cc95ef18b"
+      }
+    },
+    {
+      "event_id": "evt_auth0052",
+      "event_type": "workorder.created",
+      "transaction_id": "txn_auth0052",
+      "actor_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_workorder00000000",
+      "subject": {
+        "kind": "WORKORDER",
+        "id": "wo_stage0001",
+        "revision": 1,
+        "digest": "sha256:46333f7b55b19b634d71ece5d102f47176be2604d93b2ae6e9aceaf200161c6e"
+      }
+    },
+    {
+      "event_id": "evt_auth0053",
+      "event_type": "evidence.recorded",
+      "transaction_id": "txn_auth0053",
+      "actor_principal": "prn_evidencectl1",
+      "authority_receipt_id": "arec_traceevidence00000000",
+      "subject": {
+        "kind": "TRACE_EVIDENCE_RECEIPT",
+        "id": "ter_01J0000000000001",
+        "revision": null,
+        "digest": "sha256:5591b77f668f2eb3130fa37e6b435bc0dab2a87412b404c2b82b765be57f472d"
+      }
+    }
+  ],
+  "audits": [
+    {
+      "audit_ref": "audit://aud_auth0001",
+      "transaction_id": "txn_auth0001",
+      "controller_principal": "prn_skillregistry",
+      "authority_receipt_id": "arec_skillmanifest00000000",
+      "subject": {
+        "kind": "SKILL_MANIFEST",
+        "id": "skillm_stage0001",
+        "revision": 1,
+        "digest": "sha256:6189d8a10df5be1bbf4eb044f7427626172be883ec25cea9986bfe01cb179b6f"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0002",
+      "transaction_id": "txn_auth0002",
+      "controller_principal": "prn_mcpregistry01",
+      "authority_receipt_id": "arec_mcpmanifest00000000",
+      "subject": {
+        "kind": "MCP_MANIFEST",
+        "id": "mcpm_stage0001",
+        "revision": 1,
+        "digest": "sha256:02df34c7aa1172e18d55dcc84ebdd528d21687d36c3c5bd2889cb23f5b0573e9"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0003",
+      "transaction_id": "txn_auth0003",
+      "controller_principal": "prn_manifestctl1",
+      "authority_receipt_id": "arec_agentmanifest00000000",
+      "subject": {
+        "kind": "AGENT_MANIFEST",
+        "id": "aman_stage0001",
+        "revision": 1,
+        "digest": "sha256:aa7ab3b9e0068f4d572ce4ac5e04fe39c3d923d8cfeed9df65e999bb2ea94fab"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0004",
+      "transaction_id": "txn_auth0004",
+      "controller_principal": "prn_manifestctl1",
+      "authority_receipt_id": "arec_manifestplanner00000000",
+      "subject": {
+        "kind": "AGENT_MANIFEST",
+        "id": "aman_planner001",
+        "revision": 1,
+        "digest": "sha256:7e9929e0c3cc77658d513326e7fbc3fd4420eeeeb186430d885c4f5e5e24b0f9"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0005",
+      "transaction_id": "txn_auth0005",
+      "controller_principal": "prn_manifestctl1",
+      "authority_receipt_id": "arec_manifestreviewer0000000",
+      "subject": {
+        "kind": "AGENT_MANIFEST",
+        "id": "aman_reviewer01",
+        "revision": 1,
+        "digest": "sha256:471c638b9d70b03aba41163b55ef7051fc76d3b35875d02b18d4f25565f08a43"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0006",
+      "transaction_id": "txn_auth0006",
+      "controller_principal": "prn_manifestctl1",
+      "authority_receipt_id": "arec_manifestjudge000000000",
+      "subject": {
+        "kind": "AGENT_MANIFEST",
+        "id": "aman_judge0001",
+        "revision": 1,
+        "digest": "sha256:48d9f457541bc7c5b1fd376fd74275606af5fb4729457e00edb123e6af6d81f2"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0007",
+      "transaction_id": "txn_auth0007",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptplannerrun0000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_planner0001",
+        "revision": 1,
+        "digest": "sha256:c3a240100d282b75c3158522a65dd7dfa94346b7d449d671e876cacfc2bd5b5b"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0008",
+      "transaction_id": "txn_auth0008",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_modelcallplanner00000000",
+      "subject": {
+        "kind": "MODEL_CALL_RECEIPT",
+        "id": "mcr_planner0001",
+        "revision": null,
+        "digest": "sha256:c4ad3336b3a9e04f26f48cee98ccc04a61cf2fc278d2e9c1424683cb460f75dc"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0009",
+      "transaction_id": "txn_auth0009",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptplannerterm000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_planner0001",
+        "revision": 2,
+        "digest": "sha256:a9619151bbba9d54db749865a3441f26a4905d4a39c681a561a860beffa07909"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0010",
+      "transaction_id": "txn_auth0010",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptreviewerrun000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_reviewer001",
+        "revision": 1,
+        "digest": "sha256:af1a8a3c0c4a590232bf2319f7a54da11421b61b63273b80c35f6a445120c0a3"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0011",
+      "transaction_id": "txn_auth0011",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_modelcallreviewer00000000",
+      "subject": {
+        "kind": "MODEL_CALL_RECEIPT",
+        "id": "mcr_reviewer0001",
+        "revision": null,
+        "digest": "sha256:54198149b3899529e210065006dcc314938a3643073cf31ee3f4d6cffdbbdb68"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0012",
+      "transaction_id": "txn_auth0012",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptreviewerterm00000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_reviewer001",
+        "revision": 2,
+        "digest": "sha256:c7f04fad4e8369baf5bbe7738eb0d26ebdf64719382469730f03329db879636b"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0013",
+      "transaction_id": "txn_auth0013",
+      "controller_principal": "prn_casecontrol1",
+      "authority_receipt_id": "arec_resolutionreview00000000",
+      "subject": {
+        "kind": "RESOLUTION_REVIEW_RECEIPT",
+        "id": "rrr_stage0001",
+        "revision": null,
+        "digest": "sha256:263c16f4a531879858edcb2ace4ad7701fcbafb64ca46b2658fcea8cc2aa5fd5"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0014",
+      "transaction_id": "txn_auth0014",
+      "controller_principal": "prn_casecontrol1",
+      "authority_receipt_id": "arec_resolutioncontract00000000",
+      "subject": {
+        "kind": "RESOLUTION_CONTRACT",
+        "id": "rc_stage0001",
+        "revision": 1,
+        "digest": "sha256:cc97aa93105ee1337bcdb5ae708c77c1c35be887bdc67aac270692b5e9883d83"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0015",
+      "transaction_id": "txn_auth0015",
+      "controller_principal": "prn_proposalctl",
+      "authority_receipt_id": "arec_candidatecontract00000000",
+      "subject": {
+        "kind": "CANDIDATE_CONTRACT",
+        "id": "cc_stage0001",
+        "revision": null,
+        "digest": "sha256:68c1db5e06b8af0343e2e83b3f7abbbc5ddbd9ceebc67435d6734fa19986039b"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0016",
+      "transaction_id": "txn_auth0016",
+      "controller_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_evaluationplan00000000",
+      "subject": {
+        "kind": "EVALUATION_PLAN",
+        "id": "eplan_stage0001",
+        "revision": null,
+        "digest": "sha256:c4dc6a5c6ebbfd68d9f1335470f222ef7d6060bdeb3d134f43d4ec7343136db9"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0017",
+      "transaction_id": "txn_auth0017",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_participationmanifest00000000",
+      "subject": {
+        "kind": "PARTICIPATION_MANIFEST",
+        "id": "pman_stage0001",
+        "revision": 1,
+        "digest": "sha256:f06c957c2add870bb4eb08ae68bb73a6619d84c584095db075fb5ec16f0845d3"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0018",
+      "transaction_id": "txn_auth0018",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_workertaskqueued00000000",
+      "subject": {
+        "kind": "WORKER_TASK",
+        "id": "wt_stage0001",
+        "revision": 1,
+        "digest": "sha256:13b7637de9f37b79961c09e1a419712ee066686b0decbcc79a288805f17a2930"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0019",
+      "transaction_id": "txn_auth0019",
+      "controller_principal": "prn_capability1",
+      "authority_receipt_id": "arec_capabilityrootdispatch00000000",
+      "subject": {
+        "kind": "CAPABILITY_LEASE",
+        "id": "cap_rootdisp001",
+        "revision": 1,
+        "digest": "sha256:bf78afd50332015ca7d0830f37d2bfe22e92317e7304a62a07dbe6ab4e966f4c"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0020",
+      "transaction_id": "txn_auth0020",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_workertaskleased00000000",
+      "subject": {
+        "kind": "WORKER_TASK",
+        "id": "wt_stage0001",
+        "revision": 2,
+        "digest": "sha256:6be9901c5f7aaa26b7fa5a0746ce95c2be31bdba2eb2b407a619fb19c596fe69"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0021",
+      "transaction_id": "txn_auth0021",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptcreated00000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_generator01",
+        "revision": 1,
+        "digest": "sha256:23d45960f29e21b6a0a77f08134f43d9a7d1b16204945494cf496873b5a7c175"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0022",
+      "transaction_id": "txn_auth0022",
+      "controller_principal": "prn_capability1",
+      "authority_receipt_id": "arec_capabilityruntime00000000",
+      "subject": {
+        "kind": "CAPABILITY_LEASE",
+        "id": "cap_stage0001",
+        "revision": 1,
+        "digest": "sha256:3f206cd20d67ab25a5bac23592775cb0501ac9d3f1a0d0aaed1e7e56ee4fe200"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0023",
+      "transaction_id": "txn_auth0023",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptstarting00000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_generator01",
+        "revision": 2,
+        "digest": "sha256:9579f850914788c40856ddf6b50183f100ea5c19d5b2ed733058e76681f6e60f"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0024",
+      "transaction_id": "txn_auth0024",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptrunning00000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_generator01",
+        "revision": 3,
+        "digest": "sha256:7f28e9550202546b66758b728e962a3424010c835fc8c4523b2e6fad67c3ba71"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0025",
+      "transaction_id": "txn_auth0025",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_modelcallgenerator000000",
+      "subject": {
+        "kind": "MODEL_CALL_RECEIPT",
+        "id": "mcr_generator01",
+        "revision": null,
+        "digest": "sha256:fea9d64bb26f9ff79a1c1a505411445c40d5568bedb2a5949f3cd1fb9b76515e"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0026",
+      "transaction_id": "txn_auth0026",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptoutput00000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_generator01",
+        "revision": 4,
+        "digest": "sha256:6e7a24a8169d20750c9f631ff5d8133676661003a7565eb74d84048abb3ec17c"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0027",
+      "transaction_id": "txn_auth0027",
+      "controller_principal": "prn_proposalctl",
+      "authority_receipt_id": "arec_proposal00000000",
+      "subject": {
+        "kind": "PROPOSAL",
+        "id": "prop_stage0001",
+        "revision": null,
+        "digest": "sha256:87e937dc93e36294569996ed4c5a24baacf98fda34d2ffabdad50b4e5b2de3db"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_stage0001",
+      "transaction_id": "txn_stage0001",
+      "controller_principal": "prn_proposalctl",
+      "authority_receipt_id": "arec_proposaldecision00000000",
+      "subject": {
+        "kind": "PROPOSAL_DECISION",
+        "id": "pdec_stage0001",
+        "revision": null,
+        "digest": "sha256:719bbdbeb56e9750dc399c07561c3033799027ed71346a429c1e69ae060e5a60"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0029",
+      "transaction_id": "txn_auth0029",
+      "controller_principal": "prn_proposalctl",
+      "authority_receipt_id": "arec_agentintent00000000",
+      "subject": {
+        "kind": "AGENT_INTENT",
+        "id": "aint_stage0001",
+        "revision": 1,
+        "digest": "sha256:55d57e8546c17de739bcf22ccaa87ed6628ebe6520e88ea4e59bbf5ed11b3c08"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0030",
+      "transaction_id": "txn_auth0030",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptsucceeded00000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_generator01",
+        "revision": 5,
+        "digest": "sha256:56db1721d1645106e2fa2d6e43185c8d096d5cfc519f3dda8908e25d2260c0f8"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0031",
+      "transaction_id": "txn_auth0031",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_workertaskcompleted00000000",
+      "subject": {
+        "kind": "WORKER_TASK",
+        "id": "wt_stage0001",
+        "revision": 3,
+        "digest": "sha256:47965799747ce48dafb28006ebd6b42889549069a46ef73ffbf2880829fa34e0"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0032",
+      "transaction_id": "txn_auth0032",
+      "controller_principal": "prn_capability1",
+      "authority_receipt_id": "arec_capabilityconsumed00000000",
+      "subject": {
+        "kind": "CAPABILITY_LEASE",
+        "id": "cap_stage0001",
+        "revision": 2,
+        "digest": "sha256:905a20e5d7e8f527c7520769026854cd3adc9b5a3d04430e0e7223cb9698944a"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0033",
+      "transaction_id": "txn_stage0001",
+      "controller_principal": "prn_proposalctl",
+      "authority_receipt_id": "arec_candidaterevision00000000",
+      "subject": {
+        "kind": "CANDIDATE_REVISION",
+        "id": "crev_stage0001",
+        "revision": 1,
+        "digest": "sha256:6ac8562ff1059fd102ef1e2362c2f3cd0ee6575d6a51ba6bd431d73996fefc8a"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0034",
+      "transaction_id": "txn_auth0034",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptjudgerun00000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_judge000001",
+        "revision": 1,
+        "digest": "sha256:760134007c4db7449fc59696ad08b5a906f2bed59912545ae099e82d2ae870d0"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0035",
+      "transaction_id": "txn_auth0035",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_modelcalljudge00000000",
+      "subject": {
+        "kind": "MODEL_CALL_RECEIPT",
+        "id": "mcr_judge0001",
+        "revision": null,
+        "digest": "sha256:39ca6fa4b66824b5ba439113f70361e880dfd5810802e1caf1080c0625de1299"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0036",
+      "transaction_id": "txn_auth0036",
+      "controller_principal": "prn_workcontrol1",
+      "authority_receipt_id": "arec_attemptjudgeterm0000000",
+      "subject": {
+        "kind": "ATTEMPT",
+        "id": "att_judge000001",
+        "revision": 2,
+        "digest": "sha256:c131e6570b1c2ac9a7af7b1115fb20f1d7ed7af7c3af44c8b9eb4299131bb52f"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0037",
+      "transaction_id": "txn_auth0037",
+      "controller_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackpassdet000000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_passdet0001",
+        "revision": null,
+        "digest": "sha256:ef731f489c6b1963283bca00e02ecddfbb1d0ad0daada0e2401f29e1cbd14286"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0038",
+      "transaction_id": "txn_auth0038",
+      "controller_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackpassjudge0000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_passjudge0001",
+        "revision": null,
+        "digest": "sha256:9e36cf3e53afbc079da6e07b0410d037b23a965310000504cbe512e08544e97e"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0039",
+      "transaction_id": "txn_auth0039",
+      "controller_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackfaileddet000000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_faileddet0001",
+        "revision": null,
+        "digest": "sha256:c0bb31680946d789b233781d2d84cc5f67c67d6d0e25b85d70d6b064e7a8e7c4"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0040",
+      "transaction_id": "txn_auth0040",
+      "controller_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackfailedjudge0000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_failedjudge0001",
+        "revision": null,
+        "digest": "sha256:9f651e3da24e8bdb076577ec54d2d41b8e9d511959a9aa2feaaea575a0466c07"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0041",
+      "transaction_id": "txn_auth0041",
+      "controller_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackinconclusivedet000000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_inconclusivedet0001",
+        "revision": null,
+        "digest": "sha256:eff0142087a6c5b27771ad733bba2c979c99d89308ec3878313476c4de5921db"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0042",
+      "transaction_id": "txn_auth0042",
+      "controller_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackinconclusivejudge0000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_inconclusivejudge0001",
+        "revision": null,
+        "digest": "sha256:58833c2e8837be186e791af5b19576dad312ddccbb47d1e855bb81ed961bf87e"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0043",
+      "transaction_id": "txn_auth0043",
+      "controller_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackerrordet000000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_errordet0001",
+        "revision": null,
+        "digest": "sha256:871c02e3737ddcf99b1ccad28940804d8754520b63236a6272e5bcf94697f2eb"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0044",
+      "transaction_id": "txn_auth0044",
+      "controller_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackerrorjudge0000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_errorjudge0001",
+        "revision": null,
+        "digest": "sha256:2371496132f89da5181f1716439fe98517366f960b50a4e408deb70c56a35ee0"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0045",
+      "transaction_id": "txn_auth0045",
+      "controller_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackunknowndet000000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_unknowndet0001",
+        "revision": null,
+        "digest": "sha256:88ec5640c7a6dab9af1080f220515130e03d9809c07b59e5e0d078fa212ce0d6"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0046",
+      "transaction_id": "txn_auth0046",
+      "controller_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatetrackunknownjudge0000",
+      "subject": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_unknownjudge0001",
+        "revision": null,
+        "digest": "sha256:abd9b02d1dfbb4363d894db4552485fcfd1b79cbf2b46946b0dbc012ce0fb713"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0047",
+      "transaction_id": "txn_auth0047",
+      "controller_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatereportv4pass00000000",
+      "subject": {
+        "kind": "GATE_REPORT",
+        "id": "gate_stage0001",
+        "revision": null,
+        "digest": "sha256:b80624be72487fd19f96aba7123c5eacc0d714adc8dc33be50e5f4abab2aea7f"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0048",
+      "transaction_id": "txn_auth0048",
+      "controller_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatereportv4failed00000000",
+      "subject": {
+        "kind": "GATE_REPORT",
+        "id": "gate_failed001",
+        "revision": null,
+        "digest": "sha256:ba2d43a7ecdac8e7a5011325e3a0d42b389eaadd5e6e3a4921dbde03ebebf03f"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0049",
+      "transaction_id": "txn_auth0049",
+      "controller_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatereportv4inconclusive00000000",
+      "subject": {
+        "kind": "GATE_REPORT",
+        "id": "gate_inconcl01",
+        "revision": null,
+        "digest": "sha256:aadcfa0ba71cccd6d3598cfcbac780a19f198e6b7501ec5db8e528415e278f35"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0050",
+      "transaction_id": "txn_auth0050",
+      "controller_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatereportv4error00000000",
+      "subject": {
+        "kind": "GATE_REPORT",
+        "id": "gate_error0001",
+        "revision": null,
+        "digest": "sha256:d5155496d2976b2d58b315f85c312ad68cb2b99a3dd8717970a09ae64a29b39b"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0051",
+      "transaction_id": "txn_auth0051",
+      "controller_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_gatereportv4unknown00000000",
+      "subject": {
+        "kind": "GATE_REPORT",
+        "id": "gate_unknown01",
+        "revision": null,
+        "digest": "sha256:b4be9752681573ff91483f85cd4009ff316b85a4a005b205c398880cc95ef18b"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0052",
+      "transaction_id": "txn_auth0052",
+      "controller_principal": "prn_gatecontrol1",
+      "authority_receipt_id": "arec_workorder00000000",
+      "subject": {
+        "kind": "WORKORDER",
+        "id": "wo_stage0001",
+        "revision": 1,
+        "digest": "sha256:46333f7b55b19b634d71ece5d102f47176be2604d93b2ae6e9aceaf200161c6e"
+      }
+    },
+    {
+      "audit_ref": "audit://aud_auth0053",
+      "transaction_id": "txn_auth0053",
+      "controller_principal": "prn_evidencectl1",
+      "authority_receipt_id": "arec_traceevidence00000000",
+      "subject": {
+        "kind": "TRACE_EVIDENCE_RECEIPT",
+        "id": "ter_01J0000000000001",
+        "revision": null,
+        "digest": "sha256:5591b77f668f2eb3130fa37e6b435bc0dab2a87412b404c2b82b765be57f472d"
+      }
+    }
+  ]
+}

@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/agent-run-ref.schema.json",
+  "title": "CaseLoop AgentRunRef",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "agent_run_ref_id",
+    "workspace_id",
+    "governed_agent_id",
+    "source_id",
+    "source_kind",
+    "locator",
+    "observed_at",
+    "locator_digest",
+    "completeness",
+    "missing_fields",
+    "immutable",
+    "hash_rule",
+    "agent_run_ref_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+    },
+    "agent_run_ref_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/agent_run_ref_id"
+    },
+    "workspace_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+    },
+    "governed_agent_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/governed_agent_id"
+    },
+    "source_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/source_id"
+    },
+    "source_kind": {
+      "type": "string",
+      "enum": [
+        "langfuse",
+        "otel",
+        "phoenix",
+        "custom"
+      ]
+    },
+    "locator": {
+      "type": "object",
+      "required": [
+        "project_ref",
+        "trace_id"
+      ],
+      "properties": {
+        "project_ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "trace_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "session_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 256
+        },
+        "root_observation_id": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 256
+        }
+      },
+      "additionalProperties": false
+    },
+    "started_at": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "ended_at": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "observed_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "deep_link": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "format": "uri"
+    },
+    "completeness": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/completeness"
+    },
+    "missing_fields": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "locator_digest": {
+      "description": "Content digest of locator only; it does not attest to the containing AgentRunRef.",
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "immutable": {
+      "const": true
+    },
+    "hash_rule": {
+      "const": "jcs-rfc8785-v1+sha256(excluding:/agent_run_ref_digest)"
+    },
+    "agent_run_ref_digest": {
+      "description": "Whole AgentRunRef self-hash excluding only this top-level field.",
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "completeness": {
+            "const": "COMPLETE"
+          }
+        },
+        "required": [
+          "completeness"
+        ]
+      },
+      "then": {
+        "properties": {
+          "missing_fields": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "completeness": {
+            "enum": [
+              "PARTIAL",
+              "UNKNOWN"
+            ]
+          }
+        },
+        "required": [
+          "completeness"
+        ]
+      },
+      "then": {
+        "properties": {
+          "missing_fields": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

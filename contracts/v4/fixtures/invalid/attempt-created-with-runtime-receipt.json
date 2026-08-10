@@ -1,0 +1,11 @@
+{
+  "base_fixture": "attempt-created.json",
+  "mutations": [
+    {"op": "set", "path": "runtime.runtime_session_id", "value": "session-too-early"},
+    {"op": "set", "path": "model.resolved_provider", "value": "zhipu"},
+    {"op": "set", "path": "model.resolved_model", "value": "glm-5.2"},
+    {"op": "set", "path": "model.resolution_kind", "value": "EXACT"},
+    {"op": "set", "path": "model.model_resolution_receipt_digest", "value": "sha256:4343434343434343434343434343434343434343434343434343434343434343"}
+  ],
+  "expected_invariant": "created_has_no_runtime_or_model_resolution_receipt"
+}

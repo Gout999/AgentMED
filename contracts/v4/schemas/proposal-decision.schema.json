@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/proposal-decision.schema.json",
+  "title": "CaseLoop ProposalDecision",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "proposal_decision_id",
+    "decision_event_id",
+    "workspace_id",
+    "proposal_id",
+    "proposal_digest",
+    "decision",
+    "reason_code",
+    "decided_by_principal",
+    "decided_at",
+    "accepted_proposal_id",
+    "downstream_event",
+    "transaction_id",
+    "audit_ref",
+    "immutable",
+    "hash_rule",
+    "decision_digest",
+    "authority_receipt_id"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+    },
+    "proposal_decision_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/proposal_decision_id"
+    },
+    "decision_event_id": {
+      "type": "string",
+      "pattern": "^evt_[0-9A-Za-z]{8,64}$"
+    },
+    "workspace_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+    },
+    "proposal_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/proposal_id"
+    },
+    "proposal_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "decision": {
+      "enum": [
+        "ACCEPTED",
+        "REJECTED"
+      ]
+    },
+    "reason_code": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{2,63}$"
+    },
+    "decided_by_principal": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+    },
+    "decided_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "accepted_proposal_id": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/proposal_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "downstream_event": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "event_id",
+            "event_type",
+            "causation_id",
+            "accepted_proposal_id",
+            "transaction_id"
+          ],
+          "properties": {
+            "event_id": {
+              "type": "string",
+              "pattern": "^evt_[0-9A-Za-z]{8,64}$"
+            },
+            "event_type": {
+              "type": "string",
+              "pattern": "^[a-z][a-z0-9_]*\\.[a-z][a-z0-9_]*$"
+            },
+            "causation_id": {
+              "type": "string",
+              "pattern": "^evt_[0-9A-Za-z]{8,64}$"
+            },
+            "accepted_proposal_id": {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/proposal_id"
+            },
+            "transaction_id": {
+              "type": "string",
+              "pattern": "^txn_[0-9A-Za-z]{8,64}$"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "transaction_id": {
+      "type": "string",
+      "pattern": "^txn_[0-9A-Za-z]{8,64}$"
+    },
+    "audit_ref": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"
+    },
+    "immutable": {
+      "const": true
+    },
+    "hash_rule": {
+      "const": "jcs-rfc8785-v1+sha256(excluding:/decision_digest)"
+    },
+    "decision_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "authority_receipt_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "decision": {
+            "const": "ACCEPTED"
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "then": {
+        "properties": {
+          "accepted_proposal_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/proposal_id"
+          },
+          "downstream_event": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "decision": {
+            "const": "REJECTED"
+          }
+        },
+        "required": [
+          "decision"
+        ]
+      },
+      "then": {
+        "properties": {
+          "accepted_proposal_id": {
+            "type": "null"
+          },
+          "downstream_event": {
+            "type": "null"
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,1 @@
+{"bundle":"root_dispatch","mutations":[{"document":"capability_lease","path":"issued_by_principal","value":"prn_otherctrl01"}],"expected_invariant":"authority.capability_issuer_mismatch"}

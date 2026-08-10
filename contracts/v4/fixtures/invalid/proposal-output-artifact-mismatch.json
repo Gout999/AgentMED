@@ -1,0 +1,1 @@
+{"base_fixture":"proposal.json","mutations":[{"op":"set","path":"content_ref.digest","value":"sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}],"expected_invariant":"proposal.output_artifact_mismatch"}

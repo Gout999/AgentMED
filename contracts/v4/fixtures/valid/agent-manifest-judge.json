@@ -1,0 +1,77 @@
+{
+  "schema_version": "1.0",
+  "agent_manifest_id": "aman_judge0001",
+  "revision": 1,
+  "state": "FROZEN",
+  "immutable": true,
+  "workspace_id": "ws_stage0001",
+  "principal_id": "prn_judge000001",
+  "team_id": "team_coding_stage0",
+  "role": "independent-judge",
+  "agent_version_set": {
+    "id": "avs_stage0001",
+    "digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+  },
+  "soul_digest": "sha256:0603cb81f7024efdc40209f5a9eb88fe2ee53d71f09bb969cee3fca65915749d",
+  "role_manifest_digest": "sha256:cac420a3c8c4d832cbaea378e6b71241e83fa28ce2a6568ce3f9995087be5aee",
+  "runtime_policy": {
+    "allowed_runtime_kinds": [
+      "CLAUDE_CODE"
+    ],
+    "isolated_worktree_required": true,
+    "personal_config_mount_allowed": false
+  },
+  "model_policy": {
+    "primary_model": "glm-5.2",
+    "primary_model_digest": "sha256:e98e0a4525faca36a76fbfa50590193c98c12f87c5793df5d430d83fa0c1bcc2",
+    "allowed_fallback_models": [
+      {
+        "model": "stepfun-3.7-flash",
+        "model_digest": "sha256:53510308e077c135078c56b7f54eac386a0d07bd67c13e2ad4a89bd7b22f66bf"
+      }
+    ],
+    "fallback_creates_new_attempt": true
+  },
+  "skills": [
+    {
+      "skill_manifest_id": "skillm_stage0001",
+      "version": "1.0.0",
+      "manifest_digest": "sha256:6189d8a10df5be1bbf4eb044f7427626172be883ec25cea9986bfe01cb179b6f",
+      "required_for_success": true,
+      "revision": 1
+    }
+  ],
+  "mcp_servers": [
+    {
+      "mcp_manifest_id": "mcpm_stage0001",
+      "manifest_digest": "sha256:02df34c7aa1172e18d55dcc84ebdd528d21687d36c3c5bd2889cb23f5b0573e9",
+      "tool_catalog_digest": "sha256:bee0c3f66462acc0e8815f7f992928bb0d4b367c5b2d8ae7d731d8f6cf813740",
+      "revision": 1
+    }
+  ],
+  "harness_digest": "sha256:dea430c15cde99d6e7349956964e4ffa176ef74813a2a24df54e427718066203",
+  "permission_ceiling": {
+    "files": [
+      {
+        "path": "src/handler.py",
+        "access": "READ"
+      }
+    ],
+    "processes": [],
+    "network": [],
+    "mcp_tools": [
+      {
+        "server": "repo-reader",
+        "tool": "read_file",
+        "schema_digest": "sha256:2626262626262626262626262626262626262626262626262626262626262626"
+      }
+    ],
+    "cloud_actions": [],
+    "secret_refs": []
+  },
+  "registered_at": "2026-08-10T00:45:00Z",
+  "manifest_digest": "sha256:48d9f457541bc7c5b1fd376fd74275606af5fb4729457e00edb123e6af6d81f2",
+  "previous_snapshot": null,
+  "authority_receipt_id": "arec_manifestjudge000000000",
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/manifest_digest)"
+}

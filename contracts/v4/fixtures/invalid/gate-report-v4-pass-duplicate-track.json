@@ -1,0 +1,7 @@
+{
+  "base_fixture": "gate-report-v4-pass.json",
+  "mutations": [
+    {"op": "set", "path": "track_receipts.1.track", "value": "DETERMINISTIC_TEST"}
+  ],
+  "expected_invariant": "gate_report.duplicate_track"
+}

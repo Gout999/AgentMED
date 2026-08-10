@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "participation_manifest_id": "pman_stage0001",
+  "workspace_id": "ws_stage0001",
+  "case_id": "case_stage0001",
+  "resolution_contract": {
+    "id": "rc_stage0001",
+    "digest": "sha256:cc97aa93105ee1337bcdb5ae708c77c1c35be887bdc67aac270692b5e9883d83"
+  },
+  "mode": "SINGLE_AGENT",
+  "selection_reason": "One generator owns this bounded task.",
+  "team_manifest_digest": "sha256:1313131313131313131313131313131313131313131313131313131313131313",
+  "participants": [
+    {
+      "principal_id": "prn_generator01",
+      "role": "coding-generator",
+      "agent_manifest": {
+        "kind": "AGENT_MANIFEST",
+        "id": "aman_stage0001",
+        "revision": 1,
+        "digest": "sha256:aa7ab3b9e0068f4d572ce4ac5e04fe39c3d923d8cfeed9df65e999bb2ea94fab"
+      },
+      "worker_task_id": "wt_stage0001",
+      "enabled": true
+    }
+  ],
+  "dependencies": [],
+  "not_participating_roles": [
+    "coding-planner",
+    "coding-reviewer"
+  ],
+  "frozen_by_principal": "prn_workcontrol1",
+  "frozen_at": "2026-08-10T01:25:00Z",
+  "manifest_digest": "sha256:f06c957c2add870bb4eb08ae68bb73a6619d84c584095db075fb5ec16f0845d3",
+  "revision": 1,
+  "previous_snapshot": null,
+  "state": "FROZEN",
+  "authority_receipt_id": "arec_participationmanifest00000000",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/manifest_digest)"
+}

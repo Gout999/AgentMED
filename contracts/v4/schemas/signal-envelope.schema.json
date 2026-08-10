@@ -1,0 +1,283 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/signal-envelope.schema.json",
+  "title": "CaseLoop SignalEnvelope",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "signal_id",
+    "workspace_id",
+    "source",
+    "signal_kind",
+    "reporter",
+    "occurred_at",
+    "observed_at",
+    "content_ref",
+    "privacy",
+    "completeness",
+    "missing_fields",
+    "untrusted_content",
+    "immutable",
+    "hash_rule",
+    "signal_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+    },
+    "signal_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/signal_id"
+    },
+    "workspace_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+    },
+    "project_id": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/project_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "environment_id": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/environment_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "governed_agent_id": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/governed_agent_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source": {
+      "type": "object",
+      "required": [
+        "source_id",
+        "adapter_kind",
+        "source_event_id",
+        "source_event_version",
+        "provider_origin",
+        "payload_digest"
+      ],
+      "properties": {
+        "source_id": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/source_id"
+        },
+        "adapter_kind": {
+          "type": "string",
+          "enum": [
+            "manual",
+            "langfuse",
+            "feishu_maintainer",
+            "quality_api",
+            "github",
+            "gitlab",
+            "sentry",
+            "otel",
+            "eval_ci",
+            "custom"
+          ]
+        },
+        "source_event_id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 512
+        },
+        "source_event_version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "provider_origin": {
+          "type": "string",
+          "format": "uri",
+          "minLength": 1
+        },
+        "payload_digest": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+        }
+      },
+      "additionalProperties": false
+    },
+    "signal_kind": {
+      "type": "string",
+      "enum": [
+        "external_feedback",
+        "internal_feedback",
+        "maintainer_report",
+        "monitor_alert",
+        "eval_regression",
+        "runtime_failure",
+        "policy_violation",
+        "agent_self_report",
+        "scheduled_inspection"
+      ]
+    },
+    "reporter": {
+      "type": "object",
+      "required": [
+        "kind",
+        "ref"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "external_user",
+            "maintainer",
+            "monitor",
+            "governed_agent",
+            "system"
+          ]
+        },
+        "ref": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        }
+      },
+      "additionalProperties": false
+    },
+    "occurred_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "observed_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "content_ref": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+    },
+    "agent_run_ref_id": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/agent_run_ref_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "privacy": {
+      "type": "object",
+      "required": [
+        "classification",
+        "redaction_status",
+        "raw_content_persisted"
+      ],
+      "properties": {
+        "classification": {
+          "type": "string",
+          "enum": [
+            "PUBLIC",
+            "INTERNAL",
+            "CONFIDENTIAL",
+            "RESTRICTED"
+          ]
+        },
+        "redaction_status": {
+          "type": "string",
+          "enum": [
+            "NOT_REQUIRED",
+            "REDACTED",
+            "UNKNOWN"
+          ]
+        },
+        "raw_content_persisted": {
+          "type": "boolean"
+        },
+        "retention_expires_at": {
+          "oneOf": [
+            {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "completeness": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/completeness"
+    },
+    "missing_fields": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "untrusted_content": {
+      "type": "boolean",
+      "const": true
+    },
+    "immutable": {
+      "const": true
+    },
+    "hash_rule": {
+      "const": "jcs-rfc8785-v1+sha256(excluding:/signal_digest)"
+    },
+    "signal_digest": {
+      "description": "Whole SignalEnvelope self-hash; this is distinct from content_ref.digest.",
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "completeness": {
+            "const": "COMPLETE"
+          }
+        },
+        "required": [
+          "completeness"
+        ]
+      },
+      "then": {
+        "properties": {
+          "missing_fields": {
+            "maxItems": 0
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "completeness": {
+            "enum": [
+              "PARTIAL",
+              "UNKNOWN"
+            ]
+          }
+        },
+        "required": [
+          "completeness"
+        ]
+      },
+      "then": {
+        "properties": {
+          "missing_fields": {
+            "minItems": 1
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

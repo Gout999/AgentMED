@@ -1,0 +1,34 @@
+{
+  "schema_version": "1.0",
+  "controller_registration_id": "creg_gatecontroller",
+  "revision": 1,
+  "previous_snapshot": null,
+  "state": "ACTIVE",
+  "workspace_id": "ws_stage0001",
+  "owner": "gate-controller",
+  "controller_principal": "prn_gatecontrol1",
+  "principal_type": "CONTROLLER_SERVICE",
+  "allowed_commands": [
+    "evaluations.freeze-plan",
+    "gates.record-result",
+    "gates.record-track-receipt",
+    "workorders.create-from-pass"
+  ],
+  "ownership_contract": {
+    "version": "1.0",
+    "digest": "sha256:d3c2a13be884566c2e033f293e7ffad440d5dbd987f969a5e1285631436dc85f"
+  },
+  "event_catalog": {
+    "version": "1.0",
+    "digest": "sha256:b57be63e8c976f309905d4a56cbdeec775fd73f87bd25312aee140b7372cee49"
+  },
+  "valid_from": "2026-08-10T00:00:00Z",
+  "expires_at": null,
+  "service_identity_digest": "sha256:8a0f5c82f16d3f84aee3d85984121ab74feb59d4253f66ca6b0c52c267414be1",
+  "registered_by_human_principal": "prn_platformadmin",
+  "registration_audit_ref": "audit://aud_gatecontroller",
+  "registered_at": "2026-08-10T00:00:00Z",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)",
+  "registration_digest": "sha256:631a7b6510fd9891cdbd8903512e23767eda408bfd27bd2e1d74ced79cc8ac7a"
+}

@@ -1,0 +1,1 @@
+{"bundle":"delegated_dispatch","mutations":[{"document":"worker_task","path":"delegation_proposal_id","value":"prop_rebound001"}],"expected_invariant":"delegated_dispatch.child_proposal_id_mismatch"}

@@ -1,0 +1,134 @@
+{
+  "schema_version": "1.0",
+  "capability_grant_id": "cap_stage0001",
+  "revision": 2,
+  "workspace_id": "ws_stage0001",
+  "grant_kind": "ATTEMPT_RUNTIME",
+  "issuance_basis": "CLAIMED_ATTEMPT",
+  "status": "CONSUMED",
+  "principal_id": "prn_generator01",
+  "audience": "agent-runtime",
+  "bound_worker_task_id": "wt_stage0001",
+  "bound_attempt_id": "att_generator01",
+  "claim_binding": {
+    "claim_event_id": "evt_claim000001",
+    "lease_id": "lease_stage0001",
+    "attempt_id": "att_generator01",
+    "worker_principal": "prn_generator01",
+    "runtime_session_id": "claude-session-stage0",
+    "fencing_token": 1,
+    "claimed_at": "2026-08-10T01:34:00Z"
+  },
+  "dispatch_causation": null,
+  "accepted_proposal": null,
+  "resolution_contract": {
+    "id": "rc_stage0001",
+    "digest": "sha256:cc97aa93105ee1337bcdb5ae708c77c1c35be887bdc67aac270692b5e9883d83"
+  },
+  "bound_agent_intent": null,
+  "bound_workorder": null,
+  "authorization_grant": null,
+  "source_permissions": {
+    "package_request": {
+      "files": [
+        {
+          "path": "src/handler.py",
+          "access": "READ"
+        }
+      ],
+      "processes": [],
+      "network": [],
+      "mcp_tools": [],
+      "cloud_actions": [],
+      "secret_refs": []
+    },
+    "principal_ceiling": {
+      "files": [
+        {
+          "path": "src/handler.py",
+          "access": "READ"
+        }
+      ],
+      "processes": [],
+      "network": [],
+      "mcp_tools": [
+        {
+          "server": "repo-reader",
+          "tool": "read_file",
+          "schema_digest": "sha256:2626262626262626262626262626262626262626262626262626262626262626"
+        }
+      ],
+      "cloud_actions": [],
+      "secret_refs": []
+    },
+    "workspace_policy": {
+      "files": [
+        {
+          "path": "src/handler.py",
+          "access": "READ"
+        }
+      ],
+      "processes": [],
+      "network": [],
+      "mcp_tools": [],
+      "cloud_actions": [],
+      "secret_refs": []
+    },
+    "task_or_action_scope": {
+      "files": [
+        {
+          "path": "src/handler.py",
+          "access": "READ"
+        }
+      ],
+      "processes": [],
+      "network": [],
+      "mcp_tools": [],
+      "cloud_actions": [],
+      "secret_refs": []
+    }
+  },
+  "effective_permissions": {
+    "files": [
+      {
+        "path": "src/handler.py",
+        "access": "READ"
+      }
+    ],
+    "processes": [],
+    "network": [],
+    "mcp_tools": [],
+    "cloud_actions": [],
+    "secret_refs": []
+  },
+  "effective_permissions_digest": "sha256:0cc29a7c6db7a32bac8e34f487cbc03b05b7a72f3a7445c2e18c8394cf0887b4",
+  "allowed_effect_class": "READ_ONLY",
+  "budget": {
+    "max_attempts": 1,
+    "max_wall_seconds": 600,
+    "max_tokens": 50000,
+    "max_cost_microunits": 0
+  },
+  "nonce": "nonce_stage000000000001",
+  "one_time": true,
+  "issued_by_principal": "prn_capability1",
+  "issued_at": "2026-08-10T01:34:01Z",
+  "expires_at": "2026-08-10T02:04:01Z",
+  "consumed_at": "2026-08-10T01:50:01Z",
+  "immutable": true,
+  "grant_digest": "sha256:905a20e5d7e8f527c7520769026854cd3adc9b5a3d04430e0e7223cb9698944a",
+  "previous_snapshot": {
+    "kind": "CAPABILITY_LEASE",
+    "id": "cap_stage0001",
+    "revision": 1,
+    "digest": "sha256:3f206cd20d67ab25a5bac23592775cb0501ac9d3f1a0d0aaed1e7e56ee4fe200"
+  },
+  "authority_receipt_id": "arec_capabilityconsumed00000000",
+  "bound_resource": {
+    "kind": "ATTEMPT",
+    "id": "att_generator01",
+    "revision": 1,
+    "digest": "sha256:23d45960f29e21b6a0a77f08134f43d9a7d1b16204945494cf496873b5a7c175"
+  },
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/grant_digest)"
+}

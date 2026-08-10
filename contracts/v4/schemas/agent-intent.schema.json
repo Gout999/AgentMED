@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/agent-intent.schema.json",
+  "title": "CaseLoop AgentIntent",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "agent_intent_id",
+    "revision",
+    "previous_snapshot",
+    "workspace_id",
+    "worker_task_id",
+    "attempt_id",
+    "proposal",
+    "intent_kind",
+    "target_ref",
+    "parameters_digest",
+    "external_effect_class",
+    "capability_grant_id",
+    "idempotency_key",
+    "submitted_at",
+    "controlled_action_not_started",
+    "intent_digest",
+    "attempt_snapshot",
+    "runtime_capability",
+    "authority_receipt_id",
+    "immutable",
+    "hash_rule"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+    },
+    "agent_intent_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/agent_intent_id"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "previous_snapshot": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "workspace_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+    },
+    "worker_task_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/worker_task_id"
+    },
+    "attempt_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+    },
+    "proposal": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+    },
+    "intent_kind": {
+      "enum": [
+        "READ_SOURCE",
+        "RUN_SANDBOX",
+        "WRITE_CANDIDATE",
+        "DELEGATE_RUNTIME",
+        "REQUEST_EXTERNAL_ACTION"
+      ]
+    },
+    "target_ref": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 1024
+    },
+    "parameters_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "external_effect_class": {
+      "enum": [
+        "READ_ONLY",
+        "IDEMPOTENT",
+        "REVERSIBLE",
+        "COMPENSATABLE",
+        "IRREVERSIBLE"
+      ]
+    },
+    "capability_grant_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/capability_grant_id"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128
+    },
+    "submitted_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "controlled_action_not_started": {
+      "const": true
+    },
+    "intent_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "attempt_snapshot": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+    },
+    "runtime_capability": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+    },
+    "authority_receipt_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
+    },
+    "immutable": {
+      "const": true
+    },
+    "hash_rule": {
+      "const": "jcs-rfc8785-v1+sha256(excluding:/intent_digest)"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "revision": {
+            "const": 1
+          }
+        },
+        "required": [
+          "revision"
+        ]
+      },
+      "then": {
+        "properties": {
+          "previous_snapshot": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "previous_snapshot": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

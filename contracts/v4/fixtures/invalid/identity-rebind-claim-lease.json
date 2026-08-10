@@ -1,0 +1,1 @@
+{"bundle":"identity","mutations":[{"document":"capability_lease","path":"claim_binding.lease_id","value":"lease_rebound001"}],"expected_invariant":"identity_chain.capability_claim_lease_id_mismatch"}

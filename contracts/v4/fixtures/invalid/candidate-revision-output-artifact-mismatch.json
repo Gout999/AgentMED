@@ -1,0 +1,7 @@
+{
+  "base_fixture": "candidate-revision.json",
+  "mutations": [
+    {"op": "set", "path": "candidate_artifact.digest", "value": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}
+  ],
+  "expected_invariant": "candidate_revision.output_artifact_mismatch"
+}

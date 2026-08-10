@@ -1,0 +1,598 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/capability-lease.schema.json",
+  "title": "CaseLoop CapabilityLease",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "capability_grant_id",
+    "revision",
+    "workspace_id",
+    "grant_kind",
+    "issuance_basis",
+    "status",
+    "principal_id",
+    "audience",
+    "bound_worker_task_id",
+    "bound_attempt_id",
+    "claim_binding",
+    "dispatch_causation",
+    "accepted_proposal",
+    "resolution_contract",
+    "bound_agent_intent",
+    "bound_workorder",
+    "authorization_grant",
+    "source_permissions",
+    "effective_permissions",
+    "effective_permissions_digest",
+    "allowed_effect_class",
+    "budget",
+    "nonce",
+    "one_time",
+    "issued_by_principal",
+    "issued_at",
+    "expires_at",
+    "consumed_at",
+    "immutable",
+    "grant_digest",
+    "bound_resource",
+    "previous_snapshot",
+    "authority_receipt_id",
+    "hash_rule"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+    },
+    "capability_grant_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/capability_grant_id"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "workspace_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+    },
+    "grant_kind": {
+      "enum": [
+        "DISPATCH_CLAIM",
+        "ATTEMPT_RUNTIME",
+        "ACTION_EXECUTION"
+      ]
+    },
+    "issuance_basis": {
+      "enum": [
+        "ROOT_CONTROLLER",
+        "ACCEPTED_DELEGATION",
+        "CLAIMED_ATTEMPT",
+        "AUTHORIZED_ACTION"
+      ]
+    },
+    "status": {
+      "enum": [
+        "ACTIVE",
+        "REVOKED",
+        "CONSUMED",
+        "EXPIRED"
+      ]
+    },
+    "principal_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+    },
+    "audience": {
+      "enum": [
+        "agent-runtime",
+        "scoped-executor"
+      ]
+    },
+    "bound_worker_task_id": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/worker_task_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "bound_attempt_id": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "claim_binding": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "claim_event_id",
+            "lease_id",
+            "attempt_id",
+            "worker_principal",
+            "runtime_session_id",
+            "fencing_token",
+            "claimed_at"
+          ],
+          "properties": {
+            "claim_event_id": {
+              "type": "string",
+              "pattern": "^evt_[0-9A-Za-z]{8,64}$"
+            },
+            "lease_id": {
+              "type": "string",
+              "pattern": "^lease_[0-9A-Za-z]{8,64}$"
+            },
+            "attempt_id": {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+            },
+            "worker_principal": {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+            },
+            "runtime_session_id": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 256
+            },
+            "fencing_token": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "claimed_at": {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "dispatch_causation": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "decision_event_id",
+            "downstream_event_id",
+            "transaction_id",
+            "worker_task_snapshot"
+          ],
+          "properties": {
+            "decision_event_id": {
+              "type": "string",
+              "pattern": "^evt_[0-9A-Za-z]{8,64}$"
+            },
+            "downstream_event_id": {
+              "type": "string",
+              "pattern": "^evt_[0-9A-Za-z]{8,64}$"
+            },
+            "transaction_id": {
+              "type": "string",
+              "pattern": "^txn_[0-9A-Za-z]{8,64}$"
+            },
+            "worker_task_snapshot": {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "accepted_proposal": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "resolution_contract": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "bound_agent_intent": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "bound_workorder": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "authorization_grant": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "source_permissions": {
+      "type": "object",
+      "required": [
+        "package_request",
+        "principal_ceiling",
+        "workspace_policy",
+        "task_or_action_scope"
+      ],
+      "properties": {
+        "package_request": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
+        },
+        "principal_ceiling": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
+        },
+        "workspace_policy": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
+        },
+        "task_or_action_scope": {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
+        }
+      },
+      "additionalProperties": false
+    },
+    "effective_permissions": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
+    },
+    "effective_permissions_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "allowed_effect_class": {
+      "enum": [
+        "READ_ONLY",
+        "IDEMPOTENT",
+        "REVERSIBLE",
+        "COMPENSATABLE",
+        "IRREVERSIBLE"
+      ]
+    },
+    "budget": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/budget"
+    },
+    "nonce": {
+      "type": "string",
+      "pattern": "^nonce_[0-9A-Za-z]{16,96}$"
+    },
+    "one_time": {
+      "const": true
+    },
+    "issued_by_principal": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+    },
+    "issued_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "expires_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "consumed_at": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "immutable": {
+      "const": true
+    },
+    "grant_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "bound_resource": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+    },
+    "previous_snapshot": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "authority_receipt_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
+    },
+    "hash_rule": {
+      "const": "jcs-rfc8785-v1+sha256(excluding:/grant_digest)"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "grant_kind": {
+            "const": "DISPATCH_CLAIM"
+          }
+        },
+        "required": [
+          "grant_kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "audience": {
+            "const": "agent-runtime"
+          },
+          "issuance_basis": {
+            "enum": [
+              "ROOT_CONTROLLER",
+              "ACCEPTED_DELEGATION"
+            ]
+          },
+          "bound_worker_task_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/worker_task_id"
+          },
+          "bound_attempt_id": {
+            "type": "null"
+          },
+          "claim_binding": {
+            "type": "null"
+          },
+          "resolution_contract": {
+            "type": "object"
+          },
+          "bound_agent_intent": {
+            "type": "null"
+          },
+          "bound_workorder": {
+            "type": "null"
+          },
+          "authorization_grant": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "grant_kind": {
+            "const": "DISPATCH_CLAIM"
+          },
+          "issuance_basis": {
+            "const": "ROOT_CONTROLLER"
+          }
+        },
+        "required": [
+          "grant_kind",
+          "issuance_basis"
+        ]
+      },
+      "then": {
+        "properties": {
+          "accepted_proposal": {
+            "type": "null"
+          },
+          "dispatch_causation": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "grant_kind": {
+            "const": "DISPATCH_CLAIM"
+          },
+          "issuance_basis": {
+            "const": "ACCEPTED_DELEGATION"
+          }
+        },
+        "required": [
+          "grant_kind",
+          "issuance_basis"
+        ]
+      },
+      "then": {
+        "properties": {
+          "accepted_proposal": {
+            "type": "object"
+          },
+          "dispatch_causation": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "grant_kind": {
+            "const": "ATTEMPT_RUNTIME"
+          }
+        },
+        "required": [
+          "grant_kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "audience": {
+            "const": "agent-runtime"
+          },
+          "issuance_basis": {
+            "const": "CLAIMED_ATTEMPT"
+          },
+          "bound_worker_task_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/worker_task_id"
+          },
+          "bound_attempt_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+          },
+          "claim_binding": {
+            "type": "object"
+          },
+          "dispatch_causation": {
+            "type": "null"
+          },
+          "accepted_proposal": {
+            "type": "null"
+          },
+          "resolution_contract": {
+            "type": "object"
+          },
+          "bound_agent_intent": {
+            "type": "null"
+          },
+          "bound_workorder": {
+            "type": "null"
+          },
+          "authorization_grant": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "grant_kind": {
+            "const": "ACTION_EXECUTION"
+          }
+        },
+        "required": [
+          "grant_kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "audience": {
+            "const": "scoped-executor"
+          },
+          "issuance_basis": {
+            "const": "AUTHORIZED_ACTION"
+          },
+          "bound_worker_task_id": {
+            "type": "null"
+          },
+          "bound_attempt_id": {
+            "type": "null"
+          },
+          "claim_binding": {
+            "type": "null"
+          },
+          "dispatch_causation": {
+            "type": "null"
+          },
+          "accepted_proposal": {
+            "type": "object"
+          },
+          "resolution_contract": {
+            "type": "object"
+          },
+          "bound_agent_intent": {
+            "type": "object"
+          },
+          "bound_workorder": {
+            "type": "object"
+          },
+          "authorization_grant": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "ACTIVE"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "consumed_at": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "status": {
+            "const": "CONSUMED"
+          }
+        },
+        "required": [
+          "status"
+        ]
+      },
+      "then": {
+        "properties": {
+          "consumed_at": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "revision": {
+            "const": 1
+          }
+        },
+        "required": [
+          "revision"
+        ]
+      },
+      "then": {
+        "properties": {
+          "previous_snapshot": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "previous_snapshot": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

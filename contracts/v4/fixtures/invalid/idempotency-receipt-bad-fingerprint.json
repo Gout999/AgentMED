@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "workspace_id": "ws_01J0000000000001",
+  "principal_id": "prn_01J0000000000001",
+  "intent": "signals.submit",
+  "idempotency_key": "signal-submit-0001",
+  "request_fingerprint": "not-a-content-digest",
+  "resource": {
+    "kind": "signal",
+    "id": "sig_01J0000000000001"
+  },
+  "operation_id": null,
+  "request_id": "req_01J0000000000002",
+  "audit_ref": "audit://aud_01J0000000000002",
+  "status": "COMPLETED",
+  "replayed": false,
+  "response_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+  "created_at": "2026-08-10T09:00:00Z"
+}

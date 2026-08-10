@@ -1,0 +1,31 @@
+{
+  "base_fixture": "resolution-contract.json",
+  "mutations": [
+    {
+      "op": "set",
+      "path": "proposer",
+      "value": {
+        "principal_id": "prn_reviewer001",
+        "attempt": {
+          "kind": "ATTEMPT",
+          "id": "att_reviewer001",
+          "revision": 2,
+          "digest": "sha256:c7f04fad4e8369baf5bbe7738eb0d26ebdf64719382469730f03329db879636b"
+        },
+        "agent_manifest": {
+          "kind": "AGENT_MANIFEST",
+          "id": "aman_reviewer01",
+          "revision": 1,
+          "digest": "sha256:471c638b9d70b03aba41163b55ef7051fc76d3b35875d02b18d4f25565f08a43"
+        },
+        "model_call_receipt": {
+          "kind": "MODEL_CALL_RECEIPT",
+          "id": "mcr_reviewer0001",
+          "revision": null,
+          "digest": "sha256:54198149b3899529e210065006dcc314938a3643073cf31ee3f4d6cffdbbdb68"
+        }
+      }
+    }
+  ],
+  "expected_invariant": "resolution_contract.review_attempt_not_independent"
+}

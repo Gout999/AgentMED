@@ -1,0 +1,43 @@
+{
+  "schema_version": "1.0",
+  "proposal_id": "prop_stage0001",
+  "workspace_id": "ws_stage0001",
+  "case_id": "case_stage0001",
+  "worker_task_id": "wt_stage0001",
+  "authored_by_attempt_id": "att_generator01",
+  "authored_by_principal": "prn_generator01",
+  "submitted_by_principal": "prn_generator01",
+  "proposal_type": "CHANGE",
+  "agent_manifest": {
+    "kind": "AGENT_MANIFEST",
+    "id": "aman_stage0001",
+    "revision": 1,
+    "digest": "sha256:aa7ab3b9e0068f4d572ce4ac5e04fe39c3d923d8cfeed9df65e999bb2ea94fab"
+  },
+  "input_snapshot_digest": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+  "content_ref": {
+    "uri": "artifact://stage0/candidate.patch",
+    "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "media_type": "text/plain"
+  },
+  "receipt_set_digest": "sha256:3434343434343434343434343434343434343434343434343434343434343434",
+  "candidate_contract": {
+    "kind": "CANDIDATE_CONTRACT",
+    "id": "cc_stage0001",
+    "revision": null,
+    "digest": "sha256:68c1db5e06b8af0343e2e83b3f7abbbc5ddbd9ceebc67435d6734fa19986039b"
+  },
+  "delegation": null,
+  "submitted_at": "2026-08-10T01:40:00Z",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/proposal_digest)",
+  "proposal_digest": "sha256:87e937dc93e36294569996ed4c5a24baacf98fda34d2ffabdad50b4e5b2de3db",
+  "authored_by_attempt": {
+    "kind": "ATTEMPT",
+    "id": "att_generator01",
+    "revision": 4,
+    "digest": "sha256:6e7a24a8169d20750c9f631ff5d8133676661003a7565eb74d84048abb3ec17c"
+  },
+  "controlled_action_not_started": true,
+  "authority_receipt_id": "arec_proposal00000000"
+}

@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/idempotency-receipt.schema.json",
+  "title": "CaseLoop public command idempotency receipt",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "workspace_id",
+    "principal_id",
+    "intent",
+    "idempotency_key",
+    "request_fingerprint",
+    "resource",
+    "request_id",
+    "audit_ref",
+    "status",
+    "replayed",
+    "created_at",
+    "idempotency_receipt_id",
+    "immutable",
+    "hash_rule",
+    "receipt_digest"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+    },
+    "workspace_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+    },
+    "principal_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+    },
+    "intent": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/intent_name"
+    },
+    "idempotency_key": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 128
+    },
+    "request_fingerprint": {
+      "description": "Digest of canonical request content, not the receipt self-hash.",
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "resource": {
+      "type": "object",
+      "required": [
+        "kind",
+        "id"
+      ],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": [
+            "signal",
+            "source_diagnostic",
+            "investigation",
+            "stop_request",
+            "approval_decision",
+            "rollback_request"
+          ]
+        },
+        "id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9]*_[0-9A-Za-z]{8,64}$"
+        }
+      },
+      "additionalProperties": false
+    },
+    "operation_id": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^op_[0-9A-Za-z]{8,64}$"
+    },
+    "request_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/request_id"
+    },
+    "audit_ref": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ACCEPTED",
+        "COMPLETED"
+      ]
+    },
+    "replayed": {
+      "type": "boolean"
+    },
+    "response_digest": {
+      "description": "Digest of response content when present, not the receipt self-hash.",
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "created_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "idempotency_receipt_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/idempotency_receipt_id"
+    },
+    "immutable": {
+      "const": true
+    },
+    "hash_rule": {
+      "const": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)"
+    },
+    "receipt_digest": {
+      "description": "Whole immutable wire-response self-hash excluding only this field. Each delivery or replay has its own receipt id; this is not the authoritative PostgreSQL idempotency record.",
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    }
+  },
+  "additionalProperties": false
+}

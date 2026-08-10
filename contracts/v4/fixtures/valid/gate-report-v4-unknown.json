@@ -1,0 +1,79 @@
+{
+  "schema_version": "1.0",
+  "gate_report_id": "gate_unknown01",
+  "gate_execution_id": "gexec_unknown01",
+  "workspace_id": "ws_stage0001",
+  "case_id": "case_stage0001",
+  "resolution_contract": {
+    "id": "rc_stage0001",
+    "digest": "sha256:cc97aa93105ee1337bcdb5ae708c77c1c35be887bdc67aac270692b5e9883d83"
+  },
+  "candidate_contract": {
+    "id": "cc_stage0001",
+    "digest": "sha256:68c1db5e06b8af0343e2e83b3f7abbbc5ddbd9ceebc67435d6734fa19986039b"
+  },
+  "candidate_revision": {
+    "id": "crev_stage0001",
+    "digest": "sha256:6ac8562ff1059fd102ef1e2362c2f3cd0ee6575d6a51ba6bd431d73996fefc8a"
+  },
+  "evaluation_plan": {
+    "id": "eplan_stage0001",
+    "digest": "sha256:c4dc6a5c6ebbfd68d9f1335470f222ef7d6060bdeb3d134f43d4ec7343136db9"
+  },
+  "base": {
+    "target_ref": "repo://example/project",
+    "revision": "0123456789abcdef",
+    "content_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+  },
+  "target": {
+    "target_ref": "repo://example/project",
+    "revision": "candidate-stage0001",
+    "content_digest": "sha256:4141414141414141414141414141414141414141414141414141414141414141"
+  },
+  "diff_artifact": {
+    "uri": "artifact://stage0/candidate.patch",
+    "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "media_type": "text/plain"
+  },
+  "required_tracks": [
+    "DETERMINISTIC_TEST",
+    "INDEPENDENT_JUDGE"
+  ],
+  "track_receipts": [
+    {
+      "track": "DETERMINISTIC_TEST",
+      "receipt": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_unknowndet0001",
+        "revision": null,
+        "digest": "sha256:88ec5640c7a6dab9af1080f220515130e03d9809c07b59e5e0d078fa212ce0d6"
+      }
+    },
+    {
+      "track": "INDEPENDENT_JUDGE",
+      "receipt": {
+        "kind": "GATE_TRACK_RECEIPT",
+        "id": "gtr_unknownjudge0001",
+        "revision": null,
+        "digest": "sha256:abd9b02d1dfbb4363d894db4552485fcfd1b79cbf2b46946b0dbc012ce0fb713"
+      }
+    }
+  ],
+  "evidence_facets": [
+    "agent-causal",
+    "contract",
+    "repo-sandbox"
+  ],
+  "completeness": "UNKNOWN",
+  "status": "UNKNOWN",
+  "decision_rule": "PASS_IFF_ALL_REQUIRED_TRACKS_COMPLETE_PASS",
+  "terminal": true,
+  "terminal_reason_digest": "sha256:5757575757575757575757575757575757575757575757575757575757575757",
+  "started_at": "2026-08-10T01:52:00Z",
+  "completed_at": "2026-08-10T01:59:00Z",
+  "created_by_principal": "prn_gatecontrol1",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/gate_report_digest)",
+  "gate_report_digest": "sha256:b4be9752681573ff91483f85cd4009ff316b85a4a005b205c398880cc95ef18b",
+  "authority_receipt_id": "arec_gatereportv4unknown00000000"
+}

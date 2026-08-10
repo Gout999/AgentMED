@@ -1,0 +1,1 @@
+{"base_fixture":"proposal.json","mutations":[{"op":"set","path":"workspace_id","value":"ws_replaced001"}],"expected_invariant":"proposal.workspace_mismatch"}

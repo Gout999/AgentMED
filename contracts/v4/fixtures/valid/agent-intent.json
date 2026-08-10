@@ -1,0 +1,39 @@
+{
+  "schema_version": "1.0",
+  "agent_intent_id": "aint_stage0001",
+  "workspace_id": "ws_stage0001",
+  "worker_task_id": "wt_stage0001",
+  "attempt_id": "att_generator01",
+  "proposal": {
+    "kind": "PROPOSAL",
+    "id": "prop_stage0001",
+    "revision": null,
+    "digest": "sha256:87e937dc93e36294569996ed4c5a24baacf98fda34d2ffabdad50b4e5b2de3db"
+  },
+  "intent_kind": "READ_SOURCE",
+  "target_ref": "repo://example/project/src/handler.py",
+  "parameters_digest": "sha256:3232323232323232323232323232323232323232323232323232323232323232",
+  "external_effect_class": "READ_ONLY",
+  "capability_grant_id": "cap_stage0001",
+  "idempotency_key": "stage0-read-source-0001",
+  "submitted_at": "2026-08-10T01:40:10Z",
+  "intent_digest": "sha256:55d57e8546c17de739bcf22ccaa87ed6628ebe6520e88ea4e59bbf5ed11b3c08",
+  "revision": 1,
+  "previous_snapshot": null,
+  "attempt_snapshot": {
+    "kind": "ATTEMPT",
+    "id": "att_generator01",
+    "revision": 4,
+    "digest": "sha256:6e7a24a8169d20750c9f631ff5d8133676661003a7565eb74d84048abb3ec17c"
+  },
+  "runtime_capability": {
+    "kind": "CAPABILITY_LEASE",
+    "id": "cap_stage0001",
+    "revision": 1,
+    "digest": "sha256:3f206cd20d67ab25a5bac23592775cb0501ac9d3f1a0d0aaed1e7e56ee4fe200"
+  },
+  "controlled_action_not_started": true,
+  "authority_receipt_id": "arec_agentintent00000000",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/intent_digest)"
+}

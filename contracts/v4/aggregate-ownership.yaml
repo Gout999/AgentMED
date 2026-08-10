@@ -1,0 +1,615 @@
+version: "1.0"
+status: target_contract
+current_implementation_baseline: v3
+
+rules:
+  command_has_exactly_one_owner: true
+  public_mutation_has_explicit_command_target: true
+  projection_accepts_commands: false
+  agent_output_is_authoritative: false
+  controller_decision_mutates_proposal: false
+  coordinator_owns_domain_success: false
+  controller_record_requires_authority_receipt: true
+  authority_receipt_is_post_record_and_same_transaction: true
+  authority_receipt_grants_execution: false
+  subject_stores_authority_receipt_id_only: true
+
+# Exact command -> event authority for controller-recorded v4 snapshots.  A
+# command/event pair that is not listed here cannot back an AuthorityReceipt.
+record_authority:
+  RESOLUTION_CONTRACT: {resource: resolution_contract, owner: case-controller, command_events: {resolution-contracts.freeze: [resolution_contract.frozen]}}
+  RESOLUTION_REVIEW_RECEIPT: {resource: resolution_contract, owner: case-controller, command_events: {resolution-reviews.record: [resolution_review.recorded]}}
+  CANDIDATE_CONTRACT: {resource: candidate_contract, owner: proposal-controller, command_events: {candidate-contracts.freeze: [candidate_contract.frozen]}}
+  CANDIDATE_REVISION: {resource: candidate_revision, owner: proposal-controller, command_events: {candidate-revisions.record: [candidate_revision.recorded]}}
+  PROPOSAL: {resource: proposal, owner: proposal-controller, command_events: {proposals.submit: [proposal.submitted]}}
+  PROPOSAL_DECISION: {resource: proposal_decision, owner: proposal-controller, command_events: {proposals.decide: [proposal.accepted, proposal.rejected]}}
+  AGENT_INTENT: {resource: agent_intent, owner: proposal-controller, command_events: {intents.submit: [agent_intent.submitted]}}
+  TRACE_EVIDENCE_RECEIPT: {resource: evidence_receipt, owner: evidence-controller, command_events: {evidence.record: [evidence.recorded]}}
+  EVALUATION_PLAN: {resource: evaluation_plan, owner: gate-controller, command_events: {evaluations.freeze-plan: [evaluation.plan_frozen]}}
+  GATE_TRACK_RECEIPT: {resource: gate_execution, owner: gate-controller, command_events: {gates.record-track-receipt: [gate.track_receipt_recorded]}}
+  GATE_REPORT: {resource: gate_execution, owner: gate-controller, command_events: {gates.record-result: [gate.completed, gate.failed, gate.inconclusive, gate.error, gate.unknown]}}
+  WORKORDER: {resource: workorder, owner: gate-controller, command_events: {workorders.create-from-pass: [workorder.created]}}
+  CAPABILITY_LEASE: {resource: capability_lease, owner: capability-controller, command_events: {capabilities.issue: [capability.issued], capabilities.consume: [capability.consumed], capabilities.revoke: [capability.revoked], capabilities.expire: [capability.expired]}}
+  AGENT_MANIFEST: {resource: agent_manifest, owner: manifest-controller, command_events: {agent-manifests.register: [agent_manifest.registered]}}
+  PARTICIPATION_MANIFEST: {resource: participation_manifest, owner: work-controller, command_events: {participation-manifests.freeze: [participation_manifest.frozen]}}
+  SKILL_MANIFEST: {resource: skill_manifest, owner: skill-registry-controller, command_events: {skill-manifests.register: [skill_manifest.registered]}}
+  MCP_MANIFEST: {resource: mcp_manifest, owner: mcp-registry-controller, command_events: {mcp-manifests.register: [mcp_manifest.registered]}}
+  WORKER_TASK:
+    resource: worker_task
+    owner: work-controller
+    command_events:
+      work.request: [work.requested]
+      work.claim: [work.claimed]
+      work.heartbeat: [work.heartbeat_recorded]
+      work.cancel-request: [work.cancel_requested]
+      work.exhaust: [work.exhausted]
+      attempts.complete: [work.completed]
+      attempts.fail: [work.retry_scheduled, work.blocked_unknown]
+      attempts.cancel: [work.cancelled]
+      attempts.reconcile: [work.unknown_reconciled_retry, work.unknown_reconciled_completed]
+  ATTEMPT:
+    resource: attempt
+    owner: work-controller
+    command_events:
+      work.claim: [attempt.created]
+      attempts.start: [attempt.starting, attempt.started]
+      attempts.record-receipt: [attempt.receipt_recorded, attempt.output_recorded]
+      attempts.complete: [attempt.succeeded]
+      attempts.fail: [attempt.failed, attempt.timed_out]
+      attempts.cancel: [attempt.cancel_requested, attempt.cancelled]
+      attempts.mark-unknown: [attempt.unknown]
+      attempts.reconcile: [attempt.reconciled_succeeded, attempt.reconciled_failed]
+  MODEL_CALL_RECEIPT:
+    resource: attempt
+    owner: work-controller
+    command_events:
+      attempts.record-receipt: [attempt.receipt_recorded]
+
+resources:
+  signal:
+    kind: aggregate
+    owner: signal-controller
+    commands:
+      - signals.submit
+      - signals.acknowledge
+      - signals.link-case
+      - signals.split-case-link
+      - signals.supersede
+      - signals.close
+      - signals.reopen
+    events:
+      - signal.received
+      - signal.acknowledged
+      - signal_case_link.linked
+      - signal_case_link.split
+      - signal.superseded
+      - signal.closed
+      - signal.reopened
+    explicitly_does_not_own:
+      - case_resolution
+      - worker_execution
+      - release_decision
+
+  source_connection:
+    kind: aggregate
+    owner: source-controller
+    commands:
+      - source-connections.register
+      - source-connections.update
+      - source-connections.disable
+    events:
+      - source_connection.registered
+      - source_connection.updated
+      - source_connection.disabled
+    explicitly_does_not_own:
+      - source_sync_execution
+      - signal_lifecycle
+      - case_resolution
+
+  source_sync_run:
+    kind: aggregate
+    owner: source-controller
+    commands:
+      - source-sync-runs.request-doctor
+      - source-sync-runs.start
+      - source-sync-runs.record-terminal
+      - source-sync-runs.reconcile
+    events:
+      - source_sync_run.doctor_requested
+      - source_sync_run.started
+      - source_sync_run.completed
+      - source_sync_run.failed
+      - source_sync_run.unknown
+      - source_sync_run.reconciled
+    explicitly_does_not_own:
+      - source_configuration
+      - signal_lifecycle
+      - case_resolution
+
+  quality_case:
+    kind: aggregate
+    owner: case-controller
+    commands:
+      - cases.open-from-signal
+      - cases.triage
+      - cases.accept-finding
+      - cases.resolve
+      - cases.reopen
+    events:
+      - case.opened
+      - case.triaged
+      - case.finding_accepted
+      - case.resolution_recorded
+      - case.reopened
+    explicitly_does_not_own:
+      - worker_lease
+      - gate_result
+      - notification_delivery
+
+  automation_request:
+    kind: aggregate
+    owner: automation-request-controller
+    commands:
+      - automation-requests.start-investigation
+      - automation-requests.admit
+      - automation-requests.reject
+      - automation-requests.update-budget
+      - automation-requests.request-stop
+    events:
+      - automation_request.submitted
+      - automation_request.admitted
+      - automation_request.rejected
+      - automation_request.budget_updated
+      - automation_request.stop_requested
+    explicitly_does_not_own:
+      - current_stage
+      - worker_execution
+      - experiment_lifecycle
+      - gate_result
+      - release_decision
+      - case_resolution
+      - external_operation_result
+
+  resolution_contract:
+    kind: immutable_record
+    owner: case-controller
+    commands:
+      - resolution-reviews.record
+      - resolution-contracts.freeze
+    events:
+      - resolution_review.recorded
+      - resolution_contract.frozen
+    explicitly_does_not_own:
+      - candidate_build
+      - evaluation_plan
+
+  candidate_contract:
+    kind: immutable_record
+    owner: proposal-controller
+    commands:
+      - candidate-contracts.freeze
+    events:
+      - candidate_contract.frozen
+    explicitly_does_not_own:
+      - gate_result
+      - executable_workorder
+
+  candidate_revision:
+    kind: immutable_record
+    owner: proposal-controller
+    commands:
+      - candidate-revisions.record
+    events:
+      - candidate_revision.recorded
+    explicitly_does_not_own:
+      - gate_result
+      - executable_workorder
+
+  worker_task:
+    kind: aggregate
+    owner: work-controller
+    commands:
+      - work.request
+      - work.claim
+      - work.heartbeat
+      - work.cancel-request
+      - work.exhaust
+    events:
+      - work.requested
+      - work.claimed
+      - work.heartbeat_recorded
+      - work.retry_scheduled
+      - work.cancel_requested
+      - work.cancelled
+      - work.completed
+      - work.exhausted
+      - work.blocked_unknown
+      - work.unknown_reconciled_retry
+      - work.unknown_reconciled_completed
+    explicitly_does_not_own:
+      - case_resolution
+      - proposal_acceptance
+      - release_decision
+
+  attempt:
+    kind: aggregate
+    owner: work-controller
+    commands:
+      - attempts.start
+      - attempts.record-receipt
+      - attempts.complete
+      - attempts.fail
+      - attempts.mark-unknown
+      - attempts.cancel
+      - attempts.reconcile
+    events:
+      - attempt.created
+      - attempt.starting
+      - attempt.started
+      - attempt.receipt_recorded
+      - attempt.output_recorded
+      - attempt.succeeded
+      - attempt.failed
+      - attempt.timed_out
+      - attempt.cancel_requested
+      - attempt.cancelled
+      - attempt.unknown
+      - attempt.reconciled_succeeded
+      - attempt.reconciled_failed
+    explicitly_does_not_own:
+      - proposal_acceptance
+      - domain_success
+
+  proposal:
+    kind: immutable_record
+    owner: proposal-controller
+    commands:
+      - proposals.submit
+    events:
+      - proposal.submitted
+    explicitly_does_not_own:
+      - proposal_decision
+      - mutable_workflow
+
+  proposal_decision:
+    kind: immutable_record
+    owner: proposal-controller
+    commands:
+      - proposals.decide
+    events:
+      - proposal.accepted
+      - proposal.rejected
+    explicitly_does_not_own:
+      - proposal_content
+      - gate_result
+
+  agent_intent:
+    kind: immutable_record
+    owner: proposal-controller
+    commands:
+      - intents.submit
+    events:
+      - agent_intent.submitted
+    explicitly_does_not_own:
+      - external_operation_result
+      - approval_decision
+
+  evidence_receipt:
+    kind: immutable_record
+    owner: evidence-controller
+    commands:
+      - evidence.record
+      - evidence.verify
+      - evidence.supersede
+    events:
+      - evidence.recorded
+      - evidence.verified
+      - evidence.superseded
+    explicitly_does_not_own:
+      - gate_result
+      - case_resolution
+
+  evaluation_plan:
+    kind: immutable_record
+    owner: gate-controller
+    commands:
+      - evaluations.freeze-plan
+    events:
+      - evaluation.plan_frozen
+    explicitly_does_not_own:
+      - candidate_content
+      - release_decision
+
+  gate_execution:
+    kind: aggregate
+    owner: gate-controller
+    commands:
+      - gates.start
+      - gates.record-track-receipt
+      - gates.record-result
+    events:
+      - gate.started
+      - gate.track_receipt_recorded
+      - gate.completed
+      - gate.failed
+      - gate.inconclusive
+      - gate.error
+      - gate.unknown
+      - gate.reconciled_pass
+      - gate.reconciled_failed
+      - gate.reconciled_inconclusive
+      - gate.reconciled_error
+    explicitly_does_not_own:
+      - release_decision
+      - case_resolution
+
+  workorder:
+    kind: immutable_record
+    owner: gate-controller
+    commands:
+      - workorders.create-from-pass
+    events:
+      - workorder.created
+    explicitly_does_not_own:
+      - approval_decision
+      - external_operation_result
+
+  approval_grant:
+    kind: aggregate
+    owner: approval-controller
+    commands:
+      - approvals.request
+      - approvals.decide
+      - approvals.revoke
+      - approvals.expire
+    events:
+      - approval.requested
+      - approval.decided
+      - approval.revoked
+      - approval.expired
+    explicitly_does_not_own:
+      - workorder_content
+      - external_operation_result
+
+  capability_lease:
+    kind: aggregate
+    owner: capability-controller
+    commands:
+      - capabilities.issue
+      - capabilities.revoke
+      - capabilities.consume
+      - capabilities.expire
+    events:
+      - capability.issued
+      - capability.revoked
+      - capability.consumed
+      - capability.expired
+    explicitly_does_not_own:
+      - business_success
+      - approval_decision
+
+  agent_manifest:
+    kind: immutable_record
+    owner: manifest-controller
+    commands:
+      - agent-manifests.register
+    events:
+      - agent_manifest.registered
+    explicitly_does_not_own:
+      - runtime_execution
+
+  participation_manifest:
+    kind: immutable_record
+    owner: work-controller
+    commands:
+      - participation-manifests.freeze
+    events:
+      - participation_manifest.frozen
+    explicitly_does_not_own:
+      - unlisted_agent_participation
+
+  skill_manifest:
+    kind: immutable_record
+    owner: skill-registry-controller
+    commands:
+      - skill-manifests.register
+    events:
+      - skill_manifest.registered
+    explicitly_does_not_own:
+      - skill_release
+      - effective_capability
+
+  mcp_manifest:
+    kind: immutable_record
+    owner: mcp-registry-controller
+    commands:
+      - mcp-manifests.register
+    events:
+      - mcp_manifest.registered
+    explicitly_does_not_own:
+      - mcp_release
+      - effective_capability
+
+  controller_registration:
+    kind: trust_root_record
+    owner: control-plane-authority
+    commands:
+      - controllers.register
+      - controllers.revoke
+      - controllers.expire
+    events:
+      - controller.registered
+      - controller.revoked
+      - controller.expired
+    explicitly_does_not_own:
+      - business_record_content
+      - execution_authority
+
+  authority_receipt:
+    kind: immutable_record
+    owner: control-plane-authority
+    commands:
+      - authority.record-receipt
+    events:
+      - authority.receipt_recorded
+    explicitly_does_not_own:
+      - capability_grant
+      - approval_decision
+      - execution_authority
+
+  external_operation:
+    kind: aggregate
+    owner: scoped-executor-controller
+    commands:
+      - external-operations.request
+      - external-operations.request-rollback
+      - external-operations.reconcile
+    events:
+      - external_operation.requested
+      - external_operation.started
+      - external_operation.succeeded
+      - external_operation.failed
+      - external_operation.unknown
+      - external_operation.reconciled
+    explicitly_does_not_own:
+      - case_resolution
+      - approval_decision
+
+  case_resolution_decision:
+    kind: immutable_record
+    owner: case-controller
+    commands:
+      - case-resolution.decide
+    events:
+      - case_resolution.decided
+    explicitly_does_not_own:
+      - closure_delivery
+
+  closure_delivery:
+    kind: aggregate
+    owner: closure-controller
+    commands:
+      - closures.request
+      - closures.reconcile
+    events:
+      - closure.requested
+      - closure.delivered
+      - closure.failed
+      - closure.unknown
+      - closure.reconciled
+    explicitly_does_not_own:
+      - release_success
+      - case_resolution
+
+  coordinator_reaction_ledger:
+    kind: process_manager
+    owner: durable-work-coordinator
+    commands:
+      - reactions.record
+      - reactions.retry
+    events:
+      - reaction.recorded
+      - reaction.retry_scheduled
+    explicitly_does_not_own:
+      - current_stage
+      - case_resolution
+      - gate_result
+      - release_decision
+
+  automation_run_view:
+    kind: projection
+    owner: projection-builder
+    commands: []
+    events: []
+    derives_from:
+      - automation_request
+      - signal
+      - quality_case
+      - worker_task
+      - attempt
+      - proposal_decision
+      - candidate_revision
+      - gate_execution
+      - external_operation
+      - closure_delivery
+
+components:
+  agent_runtime_adapter:
+    may:
+      - consume_work_requested
+      - wake_worker
+      - record_dispatch_receipt
+    must_not:
+      - own_business_state
+      - claim_for_worker
+      - accept_proposal
+      - approve
+      - release
+
+  exporter:
+    may:
+      - read_authoritative_records
+      - render_evidence
+    must_not:
+      - dispatch
+      - claim
+      - acknowledge_for_worker
+      - submit_proposal
+      - approve
+      - execute_business_command
+      - write_agent_artifact
+
+  agent_worker:
+    may:
+      - claim_authorized_worker_task
+      - call_model_skill_and_mcp
+      - submit_intent_proposal_or_finding
+    must_not:
+      - mutate_authoritative_decision
+      - approve_own_output
+      - execute_release_without_scoped_capability
+
+cutover:
+  routing_key: work_contract_version
+  current_route: v3_case_lease
+  target_route: v4_worker_task_lease
+  no_dual_lease: true
+  v3_case_lease:
+    contract_version: v3
+    status: current
+    resource: case
+  v4_worker_task_lease:
+    contract_version: v4
+    status: inactive_until_stage_2
+    resource: worker_task
+  activation_preconditions:
+    - block_new_v3_claims_for_selected_work
+    - verify_inflight_v3_terminal_or_reconciled
+    - verify_no_active_v3_lease_for_selected_work
+    - create_v4_worker_task_with_new_identity
+    - enable_v4_route_for_selected_work
+  recovery_gate:
+    requires_inflight_terminal_or_reconciled: true
+    shadow_only_until_passed: true
+    required_crash_points:
+      - case_created_before_closure
+      - release_promoted_before_notification
+      - notification_started_before_evidence
+  cutover_receipt:
+    required:
+      - routing_key
+      - route_version
+      - prior_lease_authority
+      - new_lease_authority
+      - reconciliation_evidence_digest
+  rollback:
+    before_activation: disable_v4_route
+    after_activation:
+      - stop_new_v4_tasks
+      - drain_or_reconcile_existing_v4_tasks
+      - never_recreate_v3_lease_for_migrated_task
+  compatibility:
+    public_major_path: /api/v1
+    current_schema_version: "1.0"
+    supported_previous_compatible_minor_count: 1
+    expand_backfill_contract_required: true

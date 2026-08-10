@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "model_call_receipt_id": "mcr_generator01",
+  "workspace_id": "ws_stage0001",
+  "case_id": "case_stage0001",
+  "attempt_snapshot": {
+    "kind": "ATTEMPT",
+    "id": "att_generator01",
+    "revision": 3,
+    "digest": "sha256:7f28e9550202546b66758b728e962a3424010c835fc8c4523b2e6fad67c3ba71"
+  },
+  "executor_principal": "prn_generator01",
+  "agent_manifest": {
+    "kind": "AGENT_MANIFEST",
+    "id": "aman_stage0001",
+    "revision": 1,
+    "digest": "sha256:aa7ab3b9e0068f4d572ce4ac5e04fe39c3d923d8cfeed9df65e999bb2ea94fab"
+  },
+  "runtime_session_id": "claude-session-stage0",
+  "requested_model": "stepfun-3.7-flash",
+  "resolved_provider": "stepfun",
+  "resolved_model": "stepfun-3.7-flash",
+  "model_resolution_receipt_digest": "sha256:4af53139a539610c6a3708bc0a5dc9e1b4468f102b4b6ddc4e293e17e83f905a",
+  "provider_provenance": {
+    "protocol": "STEPFUN_NATIVE",
+    "provider_org": "stepfun-ai",
+    "endpoint_origin": "https://api.stepfun.com",
+    "account_project": {
+      "account_ref": "provider-account://stepfun/caseloop",
+      "project_ref": "provider-project://stepfun/stage0"
+    },
+    "credential_ref": "credential://stepfun/stage0/replay",
+    "model_family": "stepfun-3",
+    "provider_request_id": "req-generator-0001",
+    "returned_model": "stepfun-3.7-flash",
+    "http_status": 200,
+    "finish_reason": "stop",
+    "token_usage": {
+      "input_tokens": 100,
+      "output_tokens": 50,
+      "total_tokens": 150
+    },
+    "raw_retained": false,
+    "call_mode": "REPLAY"
+  },
+  "independence_basis": {
+    "provider_org": "stepfun-ai",
+    "endpoint_origin": "https://api.stepfun.com",
+    "account_project": {
+      "account_ref": "provider-account://stepfun/caseloop",
+      "project_ref": "provider-project://stepfun/stage0"
+    },
+    "credential_ref": "credential://stepfun/stage0/replay",
+    "model_family": "stepfun-3"
+  },
+  "independence_key": "sha256:165152920c3783ed1df530e3169684360dc5b371e797093fd695844bd431dce3",
+  "request_digest": "sha256:96306c945bdbe63adf27e9fa5d92b8622ca7ba020ebc3214f9838857418910ef",
+  "response_digest": "sha256:78486fdf553950c8095e31347a0484816aad2e9687b0fb15e163c2da941f29a8",
+  "usage_digest": "sha256:0e63335f73be3fdbe9a106896545d4e5605c91631ddb386b3e1020a3e27c2db2",
+  "outcome": "SUCCEEDED",
+  "started_at": "2026-08-10T01:35:10Z",
+  "completed_at": "2026-08-10T01:39:00Z",
+  "recorded_at": "2026-08-10T01:39:10Z",
+  "authority_receipt_id": "arec_modelcallgenerator000000",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/model_call_receipt_digest)",
+  "model_call_receipt_digest": "sha256:fea9d64bb26f9ff79a1c1a505411445c40d5568bedb2a5949f3cd1fb9b76515e"
+}

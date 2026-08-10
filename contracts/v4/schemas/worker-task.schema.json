@@ -1,0 +1,425 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/worker-task.schema.json",
+  "title": "CaseLoop WorkerTask",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "worker_task_id",
+    "workspace_id",
+    "case_id",
+    "task_kind",
+    "state",
+    "assigned_team_id",
+    "team_manifest_digest",
+    "assigned_role",
+    "role_manifest_digest",
+    "parent_worker_task_id",
+    "parent_attempt_id",
+    "delegation_proposal_id",
+    "requested_by_principal",
+    "input_snapshot_digest",
+    "resolution_contract",
+    "participation_manifest",
+    "capability_requirements_digest",
+    "budget",
+    "attempts_used",
+    "current_lease",
+    "terminal_attempt_id",
+    "terminal_attempt",
+    "accepted_proposal_id",
+    "domain_success_owned",
+    "created_at",
+    "revision",
+    "task_digest",
+    "previous_snapshot",
+    "authority_receipt_id",
+    "immutable",
+    "hash_rule"
+  ],
+  "properties": {
+    "schema_version": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+    },
+    "worker_task_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/worker_task_id"
+    },
+    "workspace_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+    },
+    "case_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/case_id"
+    },
+    "task_kind": {
+      "enum": [
+        "PLANNING",
+        "GENERATION",
+        "EVALUATION",
+        "CURATION",
+        "DELEGATED_RUNTIME"
+      ]
+    },
+    "state": {
+      "enum": [
+        "QUEUED",
+        "LEASED",
+        "WAITING_RETRY",
+        "CANCEL_REQUESTED",
+        "COMPLETED",
+        "CANCELLED",
+        "EXHAUSTED",
+        "BLOCKED_UNKNOWN"
+      ]
+    },
+    "assigned_team_id": {
+      "type": "string",
+      "pattern": "^team_[0-9A-Za-z_-]{4,64}$"
+    },
+    "team_manifest_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "assigned_role": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{2,63}$"
+    },
+    "role_manifest_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "parent_worker_task_id": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/worker_task_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "parent_attempt_id": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "delegation_proposal_id": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/proposal_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "requested_by_principal": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+    },
+    "input_snapshot_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "resolution_contract": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+    },
+    "participation_manifest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+    },
+    "capability_requirements_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "budget": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/budget"
+    },
+    "attempts_used": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "current_lease": {
+      "oneOf": [
+        {
+          "type": "object",
+          "required": [
+            "lease_id",
+            "attempt_id",
+            "worker_principal",
+            "fencing_token",
+            "expires_at"
+          ],
+          "properties": {
+            "lease_id": {
+              "type": "string",
+              "pattern": "^lease_[0-9A-Za-z]{8,64}$"
+            },
+            "attempt_id": {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+            },
+            "worker_principal": {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+            },
+            "fencing_token": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "expires_at": {
+              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "terminal_attempt_id": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "terminal_attempt": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "accepted_proposal_id": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/proposal_id"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "domain_success_owned": {
+      "const": false
+    },
+    "created_at": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "task_digest": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+    },
+    "previous_snapshot": {
+      "oneOf": [
+        {
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "authority_receipt_id": {
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
+    },
+    "immutable": {
+      "const": true
+    },
+    "hash_rule": {
+      "const": "jcs-rfc8785-v1+sha256(excluding:/task_digest)"
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "LEASED"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "current_lease": {
+            "type": "object"
+          },
+          "attempts_used": {
+            "minimum": 1
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "QUEUED"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "current_lease": {
+            "type": "null"
+          },
+          "attempts_used": {
+            "const": 0
+          },
+          "terminal_attempt_id": {
+            "type": "null"
+          },
+          "terminal_attempt": {
+            "type": "null"
+          },
+          "accepted_proposal_id": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "const": "COMPLETED"
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "current_lease": {
+            "type": "null"
+          },
+          "terminal_attempt_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+          },
+          "terminal_attempt": {
+            "type": "object"
+          },
+          "accepted_proposal_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/proposal_id"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "enum": [
+              "WAITING_RETRY",
+              "CANCELLED",
+              "EXHAUSTED",
+              "BLOCKED_UNKNOWN"
+            ]
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "current_lease": {
+            "type": "null"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "state": {
+            "enum": [
+              "COMPLETED",
+              "CANCELLED",
+              "EXHAUSTED"
+            ]
+          }
+        },
+        "required": [
+          "state"
+        ]
+      },
+      "then": {
+        "properties": {
+          "terminal_attempt_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+          },
+          "terminal_attempt": {
+            "type": "object"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "task_kind": {
+            "const": "DELEGATED_RUNTIME"
+          }
+        },
+        "required": [
+          "task_kind"
+        ]
+      },
+      "then": {
+        "properties": {
+          "parent_worker_task_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/worker_task_id"
+          },
+          "parent_attempt_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+          },
+          "delegation_proposal_id": {
+            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/proposal_id"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "revision": {
+            "const": 1
+          }
+        },
+        "required": [
+          "revision"
+        ]
+      },
+      "then": {
+        "properties": {
+          "previous_snapshot": {
+            "type": "null"
+          }
+        }
+      },
+      "else": {
+        "properties": {
+          "previous_snapshot": {
+            "type": "object"
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": false
+}

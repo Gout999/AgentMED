@@ -1,0 +1,1 @@
+{"base_fixture":"attempt.json","mutations":[{"op":"set","path":"terminal_receipt.stream_complete","value":false}],"expected_invariant":"success_requires_complete_stream"}

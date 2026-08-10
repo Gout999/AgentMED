@@ -1,0 +1,26 @@
+{
+  "schema_version": "1.0",
+  "agent_run_ref_id": "arr_01J0000000000001",
+  "workspace_id": "ws_01J0000000000001",
+  "governed_agent_id": "ga_01J0000000000001",
+  "source_id": "src_01J0000000000001",
+  "source_kind": "langfuse",
+  "locator": {
+    "project_ref": "customer-agent-prod",
+    "trace_id": "trace-01J0000000000001",
+    "session_id": "session-01J0000000000001",
+    "root_observation_id": "observation-01J0000000000001"
+  },
+  "started_at": "2026-08-10T08:57:50Z",
+  "ended_at": "2026-08-10T08:58:05Z",
+  "observed_at": "2026-08-10T09:00:00Z",
+  "deep_link": "https://cloud.langfuse.com/project/customer-agent-prod/traces/trace-01J0000000000001",
+  "locator_digest": "sha256:d4020d89d38fd2c5c8d834c375eeb34102a255f7d56dc769ab46835caf36bdbd",
+  "completeness": "COMPLETE",
+  "missing_fields": [
+    "locator.trace_id"
+  ],
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/agent_run_ref_digest)",
+  "agent_run_ref_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+}

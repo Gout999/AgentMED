@@ -1,0 +1,70 @@
+{
+  "schema_version": "1.0",
+  "workorder_id": "wo_stage0001",
+  "revision": 1,
+  "workspace_id": "ws_stage0001",
+  "case_id": "case_stage0001",
+  "semantic": "V4_POST_GATE_EXECUTION",
+  "resolution_contract": {
+    "id": "rc_stage0001",
+    "digest": "sha256:cc97aa93105ee1337bcdb5ae708c77c1c35be887bdc67aac270692b5e9883d83"
+  },
+  "candidate_contract": {
+    "id": "cc_stage0001",
+    "digest": "sha256:68c1db5e06b8af0343e2e83b3f7abbbc5ddbd9ceebc67435d6734fa19986039b"
+  },
+  "candidate_revision": {
+    "id": "crev_stage0001",
+    "digest": "sha256:6ac8562ff1059fd102ef1e2362c2f3cd0ee6575d6a51ba6bd431d73996fefc8a"
+  },
+  "evaluation_plan": {
+    "id": "eplan_stage0001",
+    "digest": "sha256:c4dc6a5c6ebbfd68d9f1335470f222ef7d6060bdeb3d134f43d4ec7343136db9"
+  },
+  "candidate_id": "cand_stage0001",
+  "candidate_artifact": {
+    "uri": "artifact://stage0/candidate.patch",
+    "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "media_type": "text/plain"
+  },
+  "gate_report": {
+    "id": "gate_stage0001",
+    "digest": "sha256:b80624be72487fd19f96aba7123c5eacc0d714adc8dc33be50e5f4abab2aea7f"
+  },
+  "gate_status": "PASS",
+  "target": {
+    "repository_ref": "repo://example/project",
+    "base_revision": "0123456789abcdef",
+    "base_digest": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+    "target_revision": "candidate-stage0001",
+    "target_digest": "sha256:4141414141414141414141414141414141414141414141414141414141414141"
+  },
+  "diff_artifact": {
+    "uri": "artifact://stage0/candidate.patch",
+    "digest": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+    "media_type": "text/plain"
+  },
+  "action_scope": {
+    "files": [
+      {
+        "path": "src/handler.py",
+        "access": "WRITE"
+      }
+    ],
+    "processes": [],
+    "network": [],
+    "mcp_tools": [],
+    "cloud_actions": [],
+    "secret_refs": []
+  },
+  "risk_class": "R1_REVERSIBLE",
+  "required_authorization": "HUMAN_APPROVAL",
+  "nonce": "nonce_workorder00000001",
+  "expires_at": "2026-08-10T03:00:00Z",
+  "created_by_principal": "prn_gatecontrol1",
+  "created_at": "2026-08-10T02:00:00Z",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/workorder_hash)",
+  "workorder_hash": "sha256:46333f7b55b19b634d71ece5d102f47176be2604d93b2ae6e9aceaf200161c6e",
+  "authority_receipt_id": "arec_workorder00000000"
+}

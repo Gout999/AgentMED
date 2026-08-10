@@ -1,0 +1,1 @@
+{"bundle":"identity","mutations":[{"document":"proposal_decision","path":"proposal_id","value":"prop_rebound001"},{"document":"proposal_decision","path":"accepted_proposal_id","value":"prop_rebound001"},{"document":"proposal_decision","path":"downstream_event.accepted_proposal_id","value":"prop_rebound001"}],"expected_invariant":"identity_chain.proposal_decision_id_mismatch"}

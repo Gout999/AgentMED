@@ -1,0 +1,75 @@
+{
+  "schema_version": "1.0",
+  "gate_track_receipt_id": "gtr_unknownjudge0001",
+  "workspace_id": "ws_stage0001",
+  "case_id": "case_stage0001",
+  "gate_execution_id": "gexec_unknown01",
+  "resolution_contract": {
+    "kind": "RESOLUTION_CONTRACT",
+    "id": "rc_stage0001",
+    "revision": 1,
+    "digest": "sha256:cc97aa93105ee1337bcdb5ae708c77c1c35be887bdc67aac270692b5e9883d83"
+  },
+  "candidate_contract": {
+    "kind": "CANDIDATE_CONTRACT",
+    "id": "cc_stage0001",
+    "revision": null,
+    "digest": "sha256:68c1db5e06b8af0343e2e83b3f7abbbc5ddbd9ceebc67435d6734fa19986039b"
+  },
+  "candidate_revision": {
+    "kind": "CANDIDATE_REVISION",
+    "id": "crev_stage0001",
+    "revision": 1,
+    "digest": "sha256:6ac8562ff1059fd102ef1e2362c2f3cd0ee6575d6a51ba6bd431d73996fefc8a"
+  },
+  "evaluation_plan": {
+    "kind": "EVALUATION_PLAN",
+    "id": "eplan_stage0001",
+    "revision": null,
+    "digest": "sha256:c4dc6a5c6ebbfd68d9f1335470f222ef7d6060bdeb3d134f43d4ec7343136db9"
+  },
+  "track": "INDEPENDENT_JUDGE",
+  "status": "UNKNOWN",
+  "completeness": "UNKNOWN",
+  "executor": {
+    "kind": "AGENT_JUDGE",
+    "execution": {
+      "principal_id": "prn_judge000001",
+      "attempt": {
+        "kind": "ATTEMPT",
+        "id": "att_judge000001",
+        "revision": 2,
+        "digest": "sha256:c131e6570b1c2ac9a7af7b1115fb20f1d7ed7af7c3af44c8b9eb4299131bb52f"
+      },
+      "agent_manifest": {
+        "kind": "AGENT_MANIFEST",
+        "id": "aman_judge0001",
+        "revision": 1,
+        "digest": "sha256:48d9f457541bc7c5b1fd376fd74275606af5fb4729457e00edb123e6af6d81f2"
+      },
+      "model_call_receipt": {
+        "kind": "MODEL_CALL_RECEIPT",
+        "id": "mcr_judge0001",
+        "revision": null,
+        "digest": "sha256:39ca6fa4b66824b5ba439113f70361e880dfd5810802e1caf1080c0625de1299"
+      }
+    },
+    "evaluator_version_digest": "sha256:b661435bfb23d267394dc2487e4539871dcdb5b9899a71675e02b9c0f53f67a1"
+  },
+  "evidence_receipts": [
+    {
+      "id": "judgercpt_unknownjudge001",
+      "digest": "sha256:4da32781ca94066ddf34b95073f91a58718d270d8479f74ac2834d555d7792de"
+    }
+  ],
+  "evidence_facets": [
+    "agent-causal"
+  ],
+  "terminal_reason_digest": "sha256:f30b6fb419df7d38335dde2c5db7faadb74d20b6b5b68752cbb637f29f875406",
+  "started_at": "2026-08-10T01:53:00Z",
+  "completed_at": "2026-08-10T01:58:00Z",
+  "authority_receipt_id": "arec_gatetrackunknownjudge0000",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/gate_track_receipt_digest)",
+  "gate_track_receipt_digest": "sha256:abd9b02d1dfbb4363d894db4552485fcfd1b79cbf2b46946b0dbc012ce0fb713"
+}

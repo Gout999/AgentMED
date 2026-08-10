@@ -1,0 +1,1 @@
+{"bundle":"identity","mutations":[{"document":"attempt","path":"input_snapshot_digest","value":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"},{"document":"proposal","path":"input_snapshot_digest","value":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}],"expected_invariant":"identity_chain.input_snapshot_mismatch"}

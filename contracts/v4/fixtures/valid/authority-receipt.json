@@ -1,0 +1,29 @@
+{
+  "schema_version": "1.0",
+  "authority_receipt_id": "arec_skillmanifest00000000",
+  "workspace_id": "ws_stage0001",
+  "controller_registration": {
+    "kind": "CONTROLLER_REGISTRATION",
+    "id": "creg_skillregistrycontroller",
+    "revision": 1,
+    "digest": "sha256:c5efeb5a070a39d1cda4a9b021ef8b08df1d60449a4d09de91305c1cb9555261"
+  },
+  "subject": {
+    "kind": "SKILL_MANIFEST",
+    "id": "skillm_stage0001",
+    "revision": 1,
+    "digest": "sha256:6189d8a10df5be1bbf4eb044f7427626172be883ec25cea9986bfe01cb179b6f"
+  },
+  "resource": "skill_manifest",
+  "owner": "skill-registry-controller",
+  "controller_principal": "prn_skillregistry",
+  "command": "skill-manifests.register",
+  "event_type": "skill_manifest.registered",
+  "event_id": "evt_auth0001",
+  "transaction_id": "txn_auth0001",
+  "audit_ref": "audit://aud_auth0001",
+  "recorded_at": "2026-08-10T00:40:00Z",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/authority_receipt_digest)",
+  "authority_receipt_digest": "sha256:2c048e2fddb692f721b7d417a4ab84c0a26875b2d1b675653b2af7e24489ca62"
+}

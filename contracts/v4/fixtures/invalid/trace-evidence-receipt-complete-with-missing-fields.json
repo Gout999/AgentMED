@@ -1,0 +1,38 @@
+{
+  "schema_version": "1.0",
+  "receipt_id": "ter_01J0000000000001",
+  "workspace_id": "ws_01J0000000000001",
+  "source_id": "src_01J0000000000001",
+  "signal_id": "sig_01J0000000000001",
+  "agent_run_ref_id": "arr_01J0000000000001",
+  "query": {
+    "adapter_kind": "langfuse",
+    "endpoint_origin": "https://cloud.langfuse.com",
+    "source_version": "api-v2",
+    "requested_at": "2026-08-10T09:00:00Z",
+    "window_start": "2026-08-10T08:55:00Z",
+    "window_end": "2026-08-10T09:00:00Z",
+    "filters_digest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+  },
+  "field_results": [
+    {"name": "trace.input", "status": "OBSERVED"},
+    {"name": "trace.output", "status": "OBSERVED"},
+    {"name": "observations.model", "status": "OBSERVED"},
+    {
+      "name": "observations.tools",
+      "status": "MISSING",
+      "reason_digest": "sha256:abababababababababababababababababababababababababababababababab"
+    }
+  ],
+  "completeness": "COMPLETE",
+  "artifact_ref": {
+    "uri": "caseloop-artifact://trace/ter_01J0000000000001/snapshot",
+    "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+    "media_type": "application/json"
+  },
+  "source_payload_digest": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+  "collected_at": "2026-08-10T09:00:02Z",
+  "retention_expires_at": "2026-09-09T09:00:00Z",
+  "deep_link": "https://cloud.langfuse.com/project/customer-agent-prod/traces/trace-01J0000000000001",
+  "failure": null
+}

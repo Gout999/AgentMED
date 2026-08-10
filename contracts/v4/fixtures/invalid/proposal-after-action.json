@@ -1,0 +1,1 @@
+{"base_fixture":"proposal.json","mutations":[{"op":"set","path":"controlled_action_not_started","value":false}],"expected_invariant":"proposal_precedes_controlled_action"}

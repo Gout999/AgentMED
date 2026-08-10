@@ -1,0 +1,64 @@
+{
+  "schema_version": "1.0",
+  "resolution_review_receipt_id": "rrr_stage0001",
+  "workspace_id": "ws_stage0001",
+  "case_id": "case_stage0001",
+  "resolution_contract_id": "rc_stage0001",
+  "reviewed_content_digest": "sha256:feb0d475f950ca2811f35f8ac509a8b280192f609aeae26a19ff173ab036f4f5",
+  "review_policy": {
+    "mode": "AGENT_SEPARATE",
+    "required_distinct_dimensions": []
+  },
+  "proposer": {
+    "principal_id": "prn_planner0001",
+    "attempt": {
+      "kind": "ATTEMPT",
+      "id": "att_planner0001",
+      "revision": 2,
+      "digest": "sha256:a9619151bbba9d54db749865a3441f26a4905d4a39c681a561a860beffa07909"
+    },
+    "agent_manifest": {
+      "kind": "AGENT_MANIFEST",
+      "id": "aman_planner001",
+      "revision": 1,
+      "digest": "sha256:7e9929e0c3cc77658d513326e7fbc3fd4420eeeeb186430d885c4f5e5e24b0f9"
+    },
+    "model_call_receipt": {
+      "kind": "MODEL_CALL_RECEIPT",
+      "id": "mcr_planner0001",
+      "revision": null,
+      "digest": "sha256:c4ad3336b3a9e04f26f48cee98ccc04a61cf2fc278d2e9c1424683cb460f75dc"
+    }
+  },
+  "reviewer": {
+    "kind": "AGENT",
+    "execution": {
+      "principal_id": "prn_reviewer001",
+      "attempt": {
+        "kind": "ATTEMPT",
+        "id": "att_reviewer001",
+        "revision": 2,
+        "digest": "sha256:c7f04fad4e8369baf5bbe7738eb0d26ebdf64719382469730f03329db879636b"
+      },
+      "agent_manifest": {
+        "kind": "AGENT_MANIFEST",
+        "id": "aman_reviewer01",
+        "revision": 1,
+        "digest": "sha256:471c638b9d70b03aba41163b55ef7051fc76d3b35875d02b18d4f25565f08a43"
+      },
+      "model_call_receipt": {
+        "kind": "MODEL_CALL_RECEIPT",
+        "id": "mcr_reviewer0001",
+        "revision": null,
+        "digest": "sha256:54198149b3899529e210065006dcc314938a3643073cf31ee3f4d6cffdbbdb68"
+      }
+    }
+  },
+  "verdict": "APPROVED",
+  "findings_digest": "sha256:b32aaa6f9b5749a708685f88c3fc11fb6581f1ec0c0e5e7c94a7558c6c46f08c",
+  "reviewed_at": "2026-08-10T00:59:00Z",
+  "authority_receipt_id": "arec_resolutionreview00000000",
+  "immutable": true,
+  "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/review_receipt_digest)",
+  "review_receipt_digest": "sha256:263c16f4a531879858edcb2ace4ad7701fcbafb64ca46b2658fcea8cc2aa5fd5"
+}

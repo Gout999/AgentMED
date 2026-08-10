@@ -1,0 +1,7 @@
+{
+  "base_fixture": "candidate-contract.json",
+  "mutations": [
+    {"op": "set", "path": "candidate_kind", "value": "POLICY"}
+  ],
+  "expected_invariant": "candidate_contract.change_surface_exceeds_resolution"
+}
