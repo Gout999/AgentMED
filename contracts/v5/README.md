@@ -1,16 +1,19 @@
 # CaseLoop V5 draft contract namespace
 
-> Status: **DRAFT TARGET CONTRACT / NOT IMPLEMENTED**
+> Status: **ACCEPTED V5 CONSTRUCTION BASELINE (2026-08-11; freeze `8dd25ca` + `b3727d7`) / NOT IMPLEMENTED**
 
 This namespace makes the proposed V5 AI-application governance boundary
 machine-readable before any route, migration, worker, Adapter, Console page, or
-live capability is implemented.
+live capability is implemented. The V5-0B (`8dd25ca`, system governance
+ownership) and V5-0C (`b3727d7`, first system wire slice) freezes are accepted
+as the V5 stage construction baseline; acceptance is contract-only and does not
+make any runtime facet exist.
 
 ## Authority
 
 - `docs/product-principles.md` and D-013 define the accepted product boundary.
-- `docs/prd-v5.md`, `docs/plan-v5.md`, the progressive blueprint, and these
-  files still require explicit review before becoming the construction baseline.
+- `docs/prd-v5.md`, `docs/plan-v5.md`, the progressive blueprint, and these files are the
+  accepted V5 stage construction baseline as of 2026-08-11 (freeze commits `8dd25ca` + `b3727d7`).
 - V4 Stage 1A remains the current implemented public slice under `/api/v1`.
 - V5 system resources target `/api/v2`; no V5 route or capability discovery is
   enabled by this directory.

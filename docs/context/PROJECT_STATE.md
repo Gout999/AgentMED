@@ -1,25 +1,55 @@
 # Project State
 
-- `repository_snapshot`: `22c23f89708471e3f1cb8ca893414733a839a1bd`
-- `last_independently_verified_evidence_subject_commit`: `22c23f89708471e3f1cb8ca893414733a839a1bd`
+- `repository_snapshot`: `b3727d72e9251bbf4d92047c02512d38eb976cf5`
+- `last_independently_verified_evidence_subject_commit`: `b3727d72e9251bbf4d92047c02512d38eb976cf5` (V5-0C, contract-only freeze; V5 runtime facets NOT_RUN)
 - `stage0_documentation_commit`: `b7889a7e200f76bd5985188ff6fb7e9e1860fd28`
 - `previous_v3_evidence_commit`: `cef1598b4ac1d42fdd4f206c5747eb89a06f24fc`
 - `active_branch`: `codex/v4-foundation`
 - `origin/main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `local main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `collaborator_sync_merge`: `4b5377dae317eaeadbf23ab85481881096b6d6d2`
-- `working_tree`: after the Stage 1A implementation and closure commits, the only intended dirty paths are the two preserved historical WIP groups: six tracked judge/live files plus five untracked tests/adapters. Stage 1A implementation/evidence is committed separately and must not be recombined with those historical code changes.
-- `last_updated`: `2026-08-10` (Asia/Shanghai)
+- `working_tree`: after the V5-0 closure commit, the intended remaining dirty paths are the preserved historical judge/live WIP groups (six tracked eval/live files plus untracked eval test and `scripts/b1_live/`) and any uncommitted working files. V5-0 freeze commits `8dd25ca` + `b3727d7` and the accepted V5 construction baseline documents are committed separately. Do not mix the WIP groups with V5 stage evidence or claim an implementation commit.
+- `last_updated`: `2026-08-11` (Asia/Hong_Kong)
 
 ## Current product and requirements state
 
-- User-ratified direction: CaseLoop is a long-term open-source AI Agent quality and change-governance project. Target-user needs decide scope; competition, market gaps and feature overlap do not.
-- Product baseline: `docs/product-principles.md`. The approved `docs/plan-v4.md` is the target architecture, dependency order, and new-development baseline. `docs/plan-v3.md`, `docs/spec.md`, existing contracts, migrations, and executable tests remain the implemented customer-service Scenario Pack compatibility baseline until explicitly migrated.
+- User-ratified direction: CaseLoop is a long-term open-source, Agent-native governance and
+  operations control plane for AI applications. `AIApplication` is the top-level governed object;
+  Agent is one component. Target-user needs decide scope; competition, market gaps and overlap do not.
+- Product baseline: `docs/product-principles.md`; D-013 records the accepted V5 product boundary.
+  Two independent product/evaluation reviews converged on a partial GO and the user accepted their
+  shared changes on 2026-08-11: confirmed acceptance before Gate, code-vs-AI-behavior workload
+  profiles, CLI-first onboarding, Gate reality checks, and release only for deployable targets.
+  `docs/prd-v5.md`, `docs/plan-v5.md` and the progressive blueprint record that direction.
+  On 2026-08-11 the V5-0 contract baseline was frozen (V5-0B `8dd25ca`, V5-0C `b3727d7`) and
+  independently accepted; the V5 stage construction baseline now supersedes `docs/plan-v4.md` for
+  V5-stage work only. `docs/plan-v4.md` remains the V4 compatibility baseline; v3
+  code/contracts/migrations/tests remain the implemented Scenario compatibility baseline. V5
+  contract freeze is not runtime implementation: every V5 runtime/live facet stays `NOT_RUN`.
 - Confirmed later requirement, not implemented: CaseLoop self-observability through Langfuse and a pluggable TraceSource that can retrieve a governed Agent's Langfuse input/output/model/tool evidence with explicit completeness state.
-- The first reference workflow remains customer service. The authenticated no-trace Signal intake subset is implemented and locally verified in S1A. Closure/VersionSet generalization, Langfuse as the first TraceSource, coding Agent governance, real-Agent/exporter acceptance and the two-Team direction remain approved targets, not current runtime capabilities.
+- The first reference workflow remains customer service. The authenticated no-trace Signal intake
+  subset is implemented and locally verified in S1A. V5 acceptance/BadcaseSpec readiness,
+  SystemVersionSet, SystemEpisodeView/Snapshot, durable operations, system Gate, CLI onboarding,
+  Agent-native async transports, local/shadow release and observed runtime verification are all
+  target-only and unimplemented.
 - `docs/plan-v4.md`, backed by `docs/research/demand/caseloop-v4-small-team-adoption.md`, is approved. Stage 0 and Stage 1 Entry are `DONE (contract-only)`; Stage 1A is `DONE (local runtime)` at `22c23f8`, with independent evidence. All provider, Agent runtime, repository, human-authorized external and production facets are `NOT_RUN`.
-- The user is now inventorying a possible V5 expansion from Agent governance to AI-system governance. S1B through S7 are frozen until that requirement set is reviewed and a compatibility/supersession decision is recorded; no V5 details are inferred here.
-- The Wiki is aligned to the S1A closure boundary. It retains AgentTeams as a versioned internal adapter, Langfuse as a planned dual integration, platform evidence export as distinct from real Agent causal execution, and v3 assets as the current implemented compatibility baseline.
+- D-013 has closed the high-level V5 scope decision. The draft defines the proposed
+  Desired/Observed/Effect split, schema-major-2 V4 lifecycle reuse, `/api/v2` compatibility boundary, first wire
+  slice, CLI-first competition proof, verification-only Candidate path and deployable-service
+  local/shadow golden path. The V5-0 contract baseline (V5-0B `8dd25ca`, V5-0C `b3727d7`) is
+  frozen and independently accepted; V5-1 and later runtime stages are unfrozen on the local branch
+  and proceed one at a time per the blueprint dependency graph. V4 S1B–S7 remain frozen.
+- `contracts/v5/` is deliberately non-routable and non-discoverable; the freeze commits do not add a migration,
+  HTTP route, CLI command, MCP/A2A runtime, Agent execution or live source. The V5 focused suite is
+  68 passed (including 13 adversarial checks added by the verifier); v3/v4 independent is 449
+  passed; the v3/v4/V5 combined offline suite is 517 passed. `test_quality_api.py` needs a live
+  service and is `NOT_RUN`. These are contract evidence only.
+- The two later independent reports found a real target problem but also showed that acceptance
+  criteria, first-use cost and Gate reality validity need to precede governance ceremony. Their
+  changes were accepted without deleting the broader V5 target or weakening release authority.
+  The revised exact schemas, owner acceptance, conformance evidence and construction authorization
+  were completed by the V5-0B/0C freeze and their independent acceptance on 2026-08-11.
+- The Wiki is being aligned to the accepted V5 construction baseline while preserving V4 S1A and v3 facts.
 - The user authorized local branching, planning, contracts, code, and tests. Push, PR, paid provider calls, human approval, and production or other external writes remain separately gated.
 - The user's earlier live demo and the independently verifiable P0-4 live acceptance are different evidence claims. A prior run does not need to be repeated merely because time passed; rerun only when the acceptance target, code/provider path, evidence contract or reproducibility requirement makes a new run necessary.
 
@@ -47,7 +77,8 @@ This is the observed 2026-08-10 local platform snapshot and must be rechecked be
   condition.
 - P0-2 (`8e237e3`) transactionally connects the required domain events to the
   outbox, idempotent dispatch, audit, notification/archive, and Trust Ledger.
-  One action creates one Trust sample; 3/3 still fails the 0.9 Wilson threshold.
+  One action creates one Trust sample; 3/3 still fails the 0.9 Wilson threshold. This is retained
+  v3 Trust accounting behavior, not a default V5 Candidate-quality threshold or sample-size rule.
 - P0-3 (`a08c005`) connects the production Console to authoritative T8 read
   models with runtime guards and loading, empty, error, retry, partial, stale,
   and UNKNOWN states. The Console remains read-only.
@@ -108,7 +139,12 @@ This is the observed 2026-08-10 local platform snapshot and must be rechecked be
 - Full acceptance criteria, dependencies, evidence, and commits are in
   `PLANS.md`.
 
-Stage 1A is closed. The current product activity is requirements intake for the possible V5 AI-system-governance expansion; S1B through S7 must not start until the scope decision is recorded. Live-provider calls and external writes remain separately gated.
+Stage 1A is closed. The V5 product boundary, review-driven product adjustments, and the frozen
+V5-0 contract baseline (V5-0B `8dd25ca`, V5-0C `b3727d7`) are recorded and independently accepted.
+V5-1 and later runtime stages are unfrozen on the local branch and proceed one at a time per the
+progressive-delivery dependency graph; the current activity is V5-1A (Application catalog). V4
+S1B through S7 remain frozen, and every V5 runtime/live facet stays `NOT_RUN` until a stage
+produces real evidence. Live-provider calls and external writes remain separately gated.
 
 ## Actual runnable commands
 
@@ -143,6 +179,24 @@ cd ../contracts
 
 If FileProvider has offloaded an ignored virtual environment, rebuild it under
 `/tmp` and rerun the same command. Do not classify a blocked import as a pass.
+
+## Independently verified V5-0 contract freeze record
+
+| Scope | Result | Classification |
+|---|---|---|
+| V5-0B `8dd25ca` system governance ownership | independent acceptance PASS; verifier added 13 adversarial checks, all green | contract-only freeze |
+| V5-0C `b3727d7` first system wire slice | independent acceptance PASS; FAIL list empty | contract-only freeze |
+| v3 + v4 + v5 combined offline | 517 passed, 0 failed, 0 skipped | contract only |
+| v3 + v4 independent | 449 passed | contract only |
+| V5 focused suite | 68 passed (test_v5_adversarial + test_v5_compatibility + test_v5_draft + test_v5_first_slice) | contract only |
+| `conformance/test_quality_api.py` | NOT_RUN; requires a live service | live, not run |
+
+Evidence: freeze commits `8dd25ca2c0876632778827c9cbfb9dc14a169f1a` and
+`b3727d72e9251bbf4d92047c02512d38eb976cf5`. Only `contract=PASS`; every V5
+runtime/provider/Agent/repository/human/production facet is `NOT_RUN`. Known V5-1B
+alignment item: `trusted_attestor` is still dangling in the trust-role lists of
+`system-versions.record` and `bootstrap_attestation`; V5-1B must align it with
+`catalog_admin`.
 
 ## Independently verified v4 Stage 0 contract record
 

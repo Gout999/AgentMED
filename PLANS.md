@@ -4,15 +4,43 @@ Status values: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
 
 ## Current milestone
 
-CaseLoop v4 requirements and the dependency-ordered construction direction are approved. **Stage 0 and the Stage 1 Entry wire-contract freeze are `DONE (contract-only)`; Stage 1A — authenticated maintainer report without trace — is `DONE (local runtime)`** on `codex/v4-foundation`. Stage 1A does not imply provider, AgentTeams, Claude, repository or production execution.
+CaseLoop 的 V5 产品边界已经由 D-013 接受：产品升级为**面向 AI 应用的 Agent-native
+治理运营控制面**，顶层对象是 `AIApplication`，Agent 是 `SystemComponent`。V5 的 PRD、
+架构、progressive blueprint 与 `contracts/v5/` 已经形成施工基线。两份独立产品/
+评测 review 的共同修改已经得到用户确认：First Useful Case 先形成可信验收标准，区分
+代码与 AI 行为 workload，CLI 降低接入成本，Gate 要经真实反例/正例验证，只有可部署
+target 才进入 release/observed/rollback。
+
+**V5-0 合同基线已冻结并解冻 runtime 施工**：V5-0B（`8dd25ca`，system governance
+ownership）与 V5-0C（`b3727d7`，first system wire slice）均于 2026-08-11 通过独立
+验收（0B 含验收方补 13 个对抗机检；0C FAIL 清单为空）。离线最终计数：v3+v4+v5 合并
+517 passed；v3/v4 独立 449 passed；V5 focused 68 passed。当前进入 V5-1A（Application
+catalog）。合同冻结 ≠ runtime 已实现：全部 V5 runtime/live facet 仍为 `NOT_RUN`，
+`test_quality_api.py` 需 live 服务属 NOT_RUN。
+
+当前真实 runtime 仍停在 V4 Stage 1A：**Stage 0 和 Stage 1 Entry 为
+`DONE (contract-only)`；Stage 1A — authenticated maintainer report without trace —
+为 `DONE (local runtime)`**，commit `22c23f8`。它不证明 provider、Agent、repository、
+human-authorized external 或 production 能力。
 
 - Product and scope baseline: `docs/product-principles.md`.
-- Approved v4 target and new-development baseline: `docs/plan-v4.md`.
+- V5 stage construction baseline: `docs/plan-v5.md` + `docs/plans/v5-progressive-delivery.md` + 已冻结的 `contracts/v5/`（含 V5-0B/0C 两个 freeze commit）。`docs/plan-v4.md` 保留为 V4 兼容性基线；v3 保留为已实现兼容基线。
 - Current implemented compatibility baseline: `docs/plan-v3.md`, `docs/spec.md`, existing `contracts/`, migrations, and executable tests. The v3 customer-service workload and its evidence remain valid historical assets until explicitly migrated; v4 approval does not make proposed capabilities implemented.
-- Ratified boundaries include Langfuse dual integration, separate `agent-causal` and exporter acceptance tracks, a retained six-Worker quality Team, and a new professional `caseloop-coding-team` using a controlled Claude Code child runtime after Stage 2 validation.
+- D-013 保留 V4 Durable Work、Candidate/Gate/WorkOrder、Approval、ExternalOperation、
+  audit 与 recovery 铁律，但把 Langfuse、AgentTeams、Claude Code 和 Coding Team 改为
+  可插拔 Adapter；真实外部 Agent 经 CLI 调用即可满足比赛首条 Agent-native 证明。
 - Local branch, document, contract, code, and test construction is authorized. Push, PR, paid provider calls, human approvals, and production or other external writes still require their own authorization.
-- Construction hold after S1A closure: do not start S1B through S7 while the user inventories the possible V5 expansion from Agent governance to AI-system governance. Resume only after the new product boundary is reviewed and the v4/v5 compatibility decision is recorded.
+- V5 stage 施工已解冻：V5-1 及之后 stage 在本地分支按 blueprint 依赖图逐 stage 施工，每 stage 需 focused tests + verifier + evidence + semantic commit。V4 S1B–S7 仍冻结。
 - Security prerequisite for the next live/provider run: rotate the potentially exposed StepFun, Feishu, and internal authority/read/write/role credentials after a resolved Compose configuration expanded values into a private tool log. No secret value may enter Git or evidence. Rotation is not part of Stage 0 and remains unperformed; live execution is blocked until it is complete and a redacted preflight passes.
+
+## V5 design preparation
+
+| Priority | Work item | Status | Dependencies | Acceptance criteria | Required tests | Evidence | Completion commit |
+|---|---|---|---|---|---|---|---|
+| V5-0A | Product boundary and supersession ADR | DONE | User-confirmed AI-application governance and Agent-native direction | D-013 records `AIApplication` top-level scope, CLI/Console dual surface, V4 safety inheritance, Adapter boundary and no-third-stack rule | Markdown and cross-document review | draft documents only; no runtime facet | pending documentation commit |
+| V5-0B | Domain, owner and lifecycle draft contracts | DONE | V5-0A | Common authority envelope + V5 exact binding; schema-major-2 Candidate/Eval/Gate/WorkOrder/Approval/Operation keep V4 logical owners; additive acceptance/BadcaseSpec owned by ResolutionContract; workload/applicability; verification-only PASS cannot create WorkOrder; release remains ExternalOperation-rooted; Desired/Observed/Effect stay separate | Focused V5 suite 68 passed (incl. 13 adversarial checks added by the verifier); v3+v4 independent 449 passed; v3+v4+v5 combined 517 passed | contract-only freeze; runtime facets `NOT_RUN` | freeze commit `8dd25ca`; independent acceptance PASS 2026-08-11 |
+| V5-0C | Compatibility and first wire slice review | DONE | V5-0B | `/api/v1` history stays unchanged; all V2 transports disabled; explicit CLI/API major; CLI `init`/`case from-issue` only compose canonical intents; trusted atomic manifest import reaches empty V5 domain tables with seeded V4 trust roots and an existing V4 Case; application and acceptance bindings have read/write paths; resource visibility and principal allowlists fail closed | compatibility, bootstrap, acceptance provenance/confirmation, workflow retry, principal, visibility, no-route, A2A/MCP mapping and adversarial binding checks in the revised focused suite | contract-only freeze; no route/migration; runtime facets `NOT_RUN` | freeze commit `b3727d7`; independent acceptance PASS 2026-08-11, FAIL list empty |
+| V5-1+ | V5 runtime implementation | TODO | V5-0B/0C 已关闭；按 blueprint 依赖图逐 stage | Start V5 runtime stages one at a time per the progressive-delivery dependency graph; each stage needs focused tests, verifier, evidence and semantic commit; V4 S1B–S7 remain frozen | stage-specific tests/evidence to be derived from accepted contracts | pending | pending |
 
 ## Active v4 delivery
 
