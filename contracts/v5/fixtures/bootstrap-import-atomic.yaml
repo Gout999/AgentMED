@@ -1,0 +1,138 @@
+version: "0.2-draft"
+status: draft_contract_fixture
+runtime_status: NOT_RUN
+fixture_id: v5-0c-trusted-bootstrap-import-atomic
+
+# Freeze of the trusted one-shot manifest import: from empty authoritative V5
+# domain tables (with seeded V4 Controller trust roots and an existing V4
+# QualityCase), one local PostgreSQL transaction constructs every prerequisite
+# object through its canonical owner. Any step failure rolls back the whole
+# transaction; system-versions.record may never silently create prerequisites.
+
+preconditions:
+  authoritative_v5_domain_tables: EMPTY
+  seeded_v4_trust_roots:
+    - controller_registration_for_application_catalog_controller
+    - controller_registration_for_version_controller
+    - controller_registration_for_case_controller
+  existing_v4_case:
+    case_id: case_fixture0001
+    revision: 1
+    digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  full_database_empty: false
+  authenticated_principal:
+    principal_type: human
+    trust_role: integrator
+    trust_role_source: server_registration
+
+one_local_transaction_constructs:
+  - AI_APPLICATION
+  - ENVIRONMENT
+  - SYSTEM_COMPONENT
+  - COMPONENT_REVISION
+  - TOPOLOGY_REVISION
+  - SYSTEM_VERSION_SET
+  - BOOTSTRAP_ATTESTATION
+  - SYSTEM_ASSIGNMENT
+
+after_import:
+  - APPLICATION_CASE_BINDING  # 由 cases.bind-application 在 import 之后单独创建，不属于 manifest 事务
+
+atomicity:
+  mode: ALL_OR_NOTHING_LOCAL_POSTGRES
+  any_step_failure_rolls_back_every_record: true
+  authority_receipt_per_subject: true
+  external_side_effects: FORBIDDEN
+  retry: IDEMPOTENT_REPLAY_OF_SAME_MANIFEST_DIGEST
+
+negative_cases:
+  - name: missing_component_revision
+    mutation: remove_component_revision
+    expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION
+  - name: caller_self_reports_integrator
+    mutation: trust_role_source_is_payload
+    expected: DENY_AND_AUDIT
+  - name: cross_workspace_component
+    mutation: component_workspace_differs
+    expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION
+  - name: authority_receipt_failure
+    mutation: fail_one_authority_receipt
+    expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION
+  - name: bootstrap_claims_observed
+    mutation: add_observed_match_to_assignment
+    expected: REJECT
+  - name: parallel_assignment_bootstrap
+    mutation: use_new_assignment_id_for_same_workspace_application_environment
+    expected: CONFLICT_AND_ROLLBACK_ENTIRE_TRANSACTION
+  - name: system_versions_record_silently_creates_prerequisites
+    mutation: system_versions_record_invokes_implicit_register_of_application_environment_or_component
+    expected: REJECT_AND_AUDIT
+  - name: importer_role_not_allowlisted
+    mutation: principal_trust_role_outside_allowlist
+    expected: DENY_AND_AUDIT
+
+contract_grounding:
+  compatibility:
+    bootstrap_import_contract:
+      mode: TRUSTED_ONE_SHOT_MANIFEST_IMPORT
+      preconditions:
+        authoritative_v5_domain_tables: EMPTY
+        seeded_v4_controller_trust_roots: true
+        existing_v4_case_allowed: true
+      atomicity: ALL_OR_NOTHING_LOCAL_POSTGRES
+      any_step_failure_rolls_back_every_record: true
+      system_versions_record_may_not_silently_create_prerequisites: true
+      external_side_effects: FORBIDDEN
+      authority_receipt_per_subject: true
+      importer_trust_roles: [integrator, catalog_admin, trusted_builder]
+  intent_registry:
+    intents:
+      system-manifests.import:
+        kind: mutation
+        transaction_semantics: ALL_OR_NOTHING_LOCAL_POSTGRES
+        external_side_effects: FORBIDDEN
+        required_trust_roles_any_of: [integrator, catalog_admin, trusted_builder]
+        trust_roles_source: authenticated_server_registration
+        workflow_owner: manifest_import_coordinator
+      system-versions.record:
+        kind: mutation
+        idempotency: required
+        command_target: {resource: system_version_set, command: system-versions.record}
+  aggregate_ownership:
+    components:
+      manifest_import_coordinator:
+        failure_semantics:
+          local_database_atomicity: ALL_OR_NOTHING
+          retry: IDEMPOTENT_REPLAY_OF_SAME_MANIFEST_DIGEST
+          rollback: ROLLBACK_ENTIRE_LOCAL_BUSINESS_TRANSACTION
+        must_not:
+          - bypass_resource_owner
+          - perform_external_side_effect
+          - create_observed_state
+          - infer_release_success
+  domain_model:
+    resources:
+      bootstrap_attestation:
+        allowed_attester_trust_roles: [integrator, trusted_builder, trusted_attestor]
+        proves: authority_to_create_initial_desired_assignment_only
+      system_assignment:
+        bootstrap:
+          generation: 1
+          exact_authority_kind: BOOTSTRAP_ATTESTATION
+          trusted_principal_required: true
+          proves_desired_only: true
+        database_uniqueness_rule: one_non_retired_assignment_aggregate_per_identity_key
+  events:
+    system_assignment:
+      events:
+        system_assignment.recorded:
+          guards:
+            - assignment_slots_application_environment_and_scope_equal_bootstrap_attestation
+            - one_assignment_aggregate_per_workspace_application_environment
+
+does_not_prove:
+  - migration_exists
+  - import_route_implemented
+  - observed_runtime_match
+  - release_success
+  - any_runtime_behavior

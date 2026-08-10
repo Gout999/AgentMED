@@ -1,0 +1,104 @@
+version: "0.2-draft"
+status: draft_contract_fixture
+runtime_status: NOT_RUN
+fixture_id: v5-0c-principal-allowlist-adversarial
+
+# Freeze of the principal allowlist: public/internal principal types,
+# server-derived trust roles, and resource visibility all fail closed. An
+# external_agent can never self-report owner, declared deployed version,
+# observed state, or external effect; manifest import is restricted to
+# integrator/catalog-admin/trusted-builder with roles from server registration.
+
+cases:
+  - name: external_agent_self_reports_owner
+    principal_type: external_agent
+    claimed: {owner_principal_ids: [self]}
+    expected: DENY_AND_AUDIT
+  - name: external_agent_self_declares_deployed_version
+    principal_type: external_agent
+    claimed: {declared_deployed_version: v2.3.1}
+    expected: DENY_AND_AUDIT
+  - name: external_agent_self_attests_observed_state
+    principal_type: external_agent
+    claimed: {observed_state: {component: healthy}}
+    expected: DENY_AND_AUDIT
+  - name: external_agent_self_reports_external_effect
+    principal_type: external_agent
+    claimed: {external_effect: CONFIRMED}
+    expected: DENY_AND_AUDIT
+  - name: caller_payload_asserts_trust_role
+    principal_type: external_agent
+    claimed: {trust_role: integrator}
+    expected: DENY_AND_AUDIT
+  - name: manifest_import_by_unlisted_role
+    principal_type: human
+    claimed: {trust_role: reviewer}
+    expected: DENY_AND_AUDIT
+  - name: unlisted_principal_type
+    principal_type: intern
+    expected: DENY_AND_AUDIT
+  - name: internal_scope_by_public_principal
+    principal_type: service
+    scope: observed_state:attest:trusted
+    expected: DENY_AND_AUDIT
+
+allowed:
+  manifest_import_roles: [integrator, catalog_admin, trusted_builder]
+  manifest_import_principal_types: [human, service]
+  external_agent_manifest_import: false
+
+contract_grounding:
+  intent_registry:
+    principal_types:
+      public: [human, external_agent, service, connector]
+      internal: [internal_controller, internal_worker]
+      trust_roles_are_server_derived: true
+      caller_payload_may_assert_trust_role: false
+    authorization_defaults:
+      deny_unlisted_principal_type: true
+      deny_unlisted_scope: true
+      all_public_principals_denied_internal_intents: true
+      resource_visibility_is_checked_after_workspace_scope: true
+      unauthorized_resource_response: OPAQUE_NOT_FOUND
+    forbidden_public_scopes:
+      external_agent:
+        - observed_state:attest:trusted
+        - external_effects:attest:trusted
+    intents:
+      system-manifests.import:
+        allowed_principal_types: [human, service]
+        required_trust_roles_any_of: [integrator, catalog_admin, trusted_builder]
+        trust_roles_source: authenticated_server_registration
+      applications.register:
+        required_trust_roles_any_of: [integrator, catalog_admin]
+    first_slice_wire_contract:
+      principal_allowlist_contract:
+        external_agent_cannot_self_report:
+          - owner
+          - declared_deployed_version
+          - observed_state
+          - external_effect
+        manifest_import_allowed_roles: [integrator, catalog_admin, trusted_builder]
+        deny_unlisted_principal_type: true
+  domain_model:
+    resources:
+      provider_version_attestation:
+        invariants:
+          - caller_payload_cannot_self_attest_provider_version
+      observed_state_snapshot:
+        invariants:
+          - observation_is_independent_from_assignment_readback
+          - desired_readback_cannot_create_match
+      operation_execution_receipt:
+        does_not_prove:
+          - desired_assignment_changed
+          - runtime_observed_match
+          - external_effect_verified
+      external_effect_receipt:
+        invariants:
+          - caseloop_operation_origin_exactly_matches_current_operation_and_frozen_receipt_requirement
+
+does_not_prove:
+  - authentication_implemented
+  - authorization_implemented
+  - any_runtime_behavior

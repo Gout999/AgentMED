@@ -131,3 +131,106 @@ implementation_gate:
   v5_routes_may_activate: false
   v5_migration_may_run: false
   implementation_authorized: false
+
+first_slice:
+  name: V5-0C-first-system-slice
+  status: DRAFT_FROZEN_WIRE_CONTRACT_ONLY
+  runtime_status: NOT_IMPLEMENTED
+  count: 10
+  intents:
+    - capabilities.get
+    - system-manifests.import
+    - applications.get
+    - system-versions.get
+    - system-versions.diff
+    - cases.bind-application
+    - case-application-bindings.get
+    - acceptance-criteria.propose
+    - acceptance-criteria.get
+    - acceptance-criteria.confirm
+  outside_the_slice: UNDISCOVERABLE_SKELETON
+  skeleton_intents_generate:
+    http_route: false
+    cli_command: false
+    sdk_method: false
+    capability_discovery: false
+    mcp_tool: false
+    a2a_method: false
+  wire_contract_ref: contracts/v5/intent-registry.yaml#first_slice_wire_contract
+  fixture_ref: contracts/v5/fixtures/first-wire-slice.yaml
+
+authority_routing_no_dual_write:
+  routing_key: [public_contract_major, work_contract_version, resource_kind]
+  one_owner_per_routing_key: true
+  same_fact_dual_write_forbidden: true
+  v4_record_authority_kinds_and_v5_record_authority_kinds_are_disjoint: true
+  v5_bridge_references_preserved_v4_records_only: true
+  v4_and_v5_call_the_same_governance_kernel: true
+  transport_adapters_may_not_create_parallel_authority: true
+
+bootstrap_import_contract:
+  mode: TRUSTED_ONE_SHOT_MANIFEST_IMPORT
+  preconditions:
+    authoritative_v5_domain_tables: EMPTY
+    seeded_v4_controller_trust_roots: true
+    existing_v4_case_allowed: true
+  constructs_in_one_local_postgresql_transaction:
+    - AI_APPLICATION
+    - ENVIRONMENT
+    - SYSTEM_COMPONENT
+    - COMPONENT_REVISION
+    - TOPOLOGY_REVISION
+    - SYSTEM_VERSION_SET
+    - BOOTSTRAP_ATTESTATION
+    - SYSTEM_ASSIGNMENT
+  atomicity: ALL_OR_NOTHING_LOCAL_POSTGRES
+  any_step_failure_rolls_back_every_record: true
+  system_versions_record_may_not_silently_create_prerequisites: true
+  external_side_effects: FORBIDDEN
+  authority_receipt_per_subject: true
+  importer_trust_roles: [integrator, catalog_admin, trusted_builder]
+
+application_case_binding_contract:
+  additive_link_to_immutable_s1a_case: true
+  exact_case_fields: [case_id, case_revision, case_digest]
+  same_exact_case_same_target: IDEMPOTENT_REPLAY
+  same_exact_case_different_target: CONFLICT
+  rebinding_requires_new_quality_case_revision: true
+  conflict_is_never_silently_overwritten_by_latest: true
+  write_response_lost_read_back_path: case-application-bindings.get
+  read_back_returns_exact_case_binding: true
+
+acceptance_criteria_wire:
+  intents:
+    - acceptance-criteria.propose
+    - acceptance-criteria.get
+    - acceptance-criteria.confirm
+  agent_can_propose: true
+  proposer_cannot_self_confirm: true
+  confirm_requires_human_maintainer_or_domain_reviewer: true
+  reauthentication_required_on_confirm: true
+  confirmed_revision_is_immutable_and_additive: true
+  confirmed_revision_references_prior_proposed_revision: true
+  confirmed_revision_never_rewrites_quality_case_payload_or_digest: true
+  readiness_read_path: NEEDS_ACCEPTANCE_CRITERIA
+  readiness_blocks_gate_pass_but_allows_case_investigation: true
+
+s1a_receipt_regression:
+  byte_for_byte_unchanged: true
+  pinned_digests_fixture: contracts/v5/fixtures/s1a-receipt-regression.yaml
+  rewrite_existing_payload_forbidden: true
+  recompute_existing_digest_forbidden: true
+  reinterpret_governed_agent_id_as_application_id_forbidden: true
+  upgrade_historical_evidence_facet_forbidden: true
+
+onboarding_workflow_orchestration:
+  caseloop_init:
+    steps: [local_read_only_discovery, manifest_draft, human_confirmation, canonical_manifest_import]
+    canonical_import_intent: system-manifests.import
+  caseloop_case_from_issue:
+    steps: [issue_snapshot, signal_submit, case_open, application_binding, acceptance_criteria_draft]
+    canonical_intents_only: true
+  retry_safety:
+    no_second_owner_on_retry: true
+    no_duplicate_case_on_retry: true
+    no_auto_confirmed_acceptance: true

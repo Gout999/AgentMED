@@ -148,7 +148,7 @@ intents:
     execution_mode: synchronous_local_transaction
     scope: system_manifests:import
     allowed_principal_types: [human, service]
-    required_trust_roles_any_of: [integrator, trusted_builder, trusted_attestor]
+    required_trust_roles_any_of: [integrator, catalog_admin, trusted_builder]
     trust_roles_source: authenticated_server_registration
     idempotency: required
     workflow_owner: manifest_import_coordinator
@@ -702,3 +702,61 @@ competition_profile:
   generic_operations_list_required: false
   generic_cancel_required: false
   competition_slice_is_delivery_sequence_not_product_scope_reduction: true
+
+first_slice_wire_contract:
+  slice_name: V5-0C
+  status: DRAFT
+  runtime_status: NOT_IMPLEMENTED
+  count: 10
+  intents:
+    - capabilities.get
+    - system-manifests.import
+    - applications.get
+    - system-versions.get
+    - system-versions.diff
+    - cases.bind-application
+    - case-application-bindings.get
+    - acceptance-criteria.propose
+    - acceptance-criteria.get
+    - acceptance-criteria.confirm
+  transport_generation_all_disabled: true
+  http:
+    api_prefix: /api/v2
+    mutation_idempotency_key_field: X-CaseLoop-Idempotency-Key
+    missing_mutation_idempotency_key: REQUEST_INVALID
+  error_contract:
+    fail_closed: true
+    error_envelope: contracts/v4/schemas/public-error.schema.json
+    unknown_or_not_allowed_intent: OPAQUE_NOT_FOUND
+    unauthenticated_or_forbidden: DENY_AND_AUDIT
+    unauthorized_resource: OPAQUE_NOT_FOUND
+    conflict: CONFLICT_AND_AUDIT
+    route_or_version_mismatch: REJECT_AND_AUDIT
+    audit_failure_fails_business_transaction: true
+  idempotency_contract:
+    mutation_idempotency_key_required: true
+    key_scope: [authenticated_principal_id, workspace_id, intent_name]
+    same_key_same_request: RETURN_SAME_RECORD_AND_RESPONSE
+    same_key_different_request: CONFLICT_AND_AUDIT
+    replay_creates_no_second_record: true
+    replay_does_not_duplicate_cross_owner_reaction: true
+    response_includes_replayed_flag: true
+  cursor_contract:
+    paginated_queries_require_server_issued_opaque_cursor: true
+    missing_or_invalid_cursor: REQUEST_INVALID
+    visibility_filter_before_cursor_and_count: true
+    cursor_does_not_authorize_visibility_bypass: true
+  principal_allowlist_contract:
+    public: [human, external_agent, service, connector]
+    internal: [internal_controller, internal_worker]
+    trust_roles_are_server_derived: true
+    caller_payload_may_assert_trust_role: false
+    external_agent_cannot_self_report:
+      - owner
+      - declared_deployed_version
+      - observed_state
+      - external_effect
+    manifest_import_allowed_roles: [integrator, catalog_admin, trusted_builder]
+    deny_unlisted_principal_type: true
+    deny_unlisted_scope: true
+    unauthorized_resource_response: OPAQUE_NOT_FOUND

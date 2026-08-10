@@ -1,0 +1,92 @@
+version: "0.2-draft"
+status: draft_contract_fixture
+runtime_status: NOT_RUN
+fixture_id: v5-0c-s1a-receipt-byte-for-byte-regression
+
+# Byte-for-byte regression pins for the S1A wire fixtures. The digest of each
+# preserved /api/v1 fixture must never change: V5 adds additive links and route
+# receipts but never rewrites S1A payloads, digests, authority receipts, or
+# historical evidence facets.
+
+subject: contracts/v4/fixtures/valid
+
+pinned_files:
+  - path: public-signal-submission-response.json
+    sha256: 55441898bf2bab3544207eb0ada407b7026a886efae884301ec34c5a540ac215
+    kind: s1a_response
+    immutability:
+      - idempotency_receipt_is_immutable
+      - case_revision_and_disposition_are_preserved
+      - response_has_replayed_flag
+  - path: public-signal-submission.json
+    sha256: f81a1e2a206fc354a9e8d89f05dfac0b16893103f7f7e720b355984cc58b251f
+    kind: s1a_request
+    immutability:
+      - signal_payload_is_preserved
+  - path: authority-receipt.json
+    sha256: 62f4a0411d6a3f8fb7a131f0272a208cf01124af8bc69fba08f592b14a3ddda0
+    kind: s1a_receipt
+    immutability:
+      - authority_receipt_is_immutable
+      - subject_kind_id_revision_digest_are_preserved
+  - path: signal-envelope.json
+    sha256: c983284e8b65332286563a2900d4d20b6876ffdddfabb61467d018a36e3f768b
+    kind: s1a_receipt
+    immutability:
+      - signal_digest_is_preserved
+  - path: idempotency-receipt.json
+    sha256: 5f39a2b4b1c0cf622000cb9e9b77aeeb28400de1ffe02396fe55b765b20b72d1
+    kind: s1a_receipt
+    immutability:
+      - request_fingerprint_and_response_digest_are_preserved
+  - path: resolution-contract.json
+    sha256: 21bef8a58b0729d25de85c72b4bf5df01e5c60eaa9a8cf97c4be7997c0715eff
+    kind: s1a_receipt
+    immutability:
+      - frozen_resolution_contract_is_preserved
+  - path: trace-evidence-receipt.json
+    sha256: 0581336cf083d5c2bdc7f3e53f5ac4641ec4ffca5cd923ba5d2e5b17cefe29ea
+    kind: s1a_receipt
+    immutability:
+      - trace_evidence_receipt_is_preserved
+
+forbidden_changes:
+  - rewrite_existing_payload
+  - recompute_existing_digest
+  - reinterpret_governed_agent_id_as_application_id
+  - rewrite_existing_authority_receipt
+  - upgrade_historical_evidence_facet
+  - rename_immutable_record_kind
+  - delete_or_reorder_required_field
+
+contract_grounding:
+  compatibility:
+    current_implemented_public_slice:
+      api_prefix: /api/v1
+      schema_major: 1
+      behavior: unchanged
+    immutable_records:
+      - signal
+      - signal_content
+      - signal_case_link
+      - agent_run_ref
+      - trace_evidence_receipt
+      - authority_receipt
+    history_rules:
+      rewrite_existing_payload: false
+      recompute_existing_digest: false
+      reinterpret_governed_agent_id_as_application_id: false
+      rewrite_existing_authority_receipt: false
+      upgrade_historical_evidence_facet: false
+    s1a_receipt_regression:
+      byte_for_byte_unchanged: true
+      pinned_digests_fixture: contracts/v5/fixtures/s1a-receipt-regression.yaml
+    schema_major_rules:
+      v4_closed_json_schemas_are_not_extended: true
+      silent_upgrade_or_downgrade: REJECT_AND_AUDIT
+
+does_not_prove:
+  - s1a_runtime_path_still_live
+  - v5_routes_implemented
+  - migration_exists
+  - any_new_authority_wrote_a_dual_fact

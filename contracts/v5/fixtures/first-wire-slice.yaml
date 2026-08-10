@@ -1,0 +1,152 @@
+version: "0.2-draft"
+status: draft_contract_fixture
+runtime_status: NOT_RUN
+fixture_id: v5-0c-first-wire-slice
+
+# Freeze of the exact V5-0C first wire slice: the ten canonical intents that
+# may eventually generate transports, the api-major handshake, and the rule
+# that every other V5 intent remains an undiscoverable skeleton.
+
+slice:
+  name: V5-0C-first-system-slice
+  count: 10
+  intents:
+    - name: capabilities.get
+      kind: query
+      http: {method: GET, path: /api/v2/capabilities, operation_id: getV5Capabilities}
+      scope: capabilities:read
+      idempotency: none
+    - name: system-manifests.import
+      kind: mutation
+      http: {method: POST, path: /api/v2/system-manifests:import, operation_id: importSystemManifest}
+      scope: system_manifests:import
+      idempotency: required
+    - name: applications.get
+      kind: query
+      http: {method: GET, path: "/api/v2/applications/{application_id}", operation_id: getApplication}
+      scope: applications:read
+      idempotency: none
+    - name: system-versions.get
+      kind: query
+      http: {method: GET, path: "/api/v2/system-versions/{system_version_set_id}", operation_id: getSystemVersion}
+      scope: system_versions:read
+      idempotency: none
+    - name: system-versions.diff
+      kind: query
+      http: {method: GET, path: /api/v2/system-versions:diff, operation_id: diffSystemVersions}
+      scope: system_versions:read
+      idempotency: none
+    - name: cases.bind-application
+      kind: mutation
+      http: {method: POST, path: "/api/v2/cases/{case_id}:bind-application", operation_id: bindCaseApplication}
+      scope: cases:bind
+      idempotency: required
+    - name: case-application-bindings.get
+      kind: query
+      http: {method: GET, path: "/api/v2/cases/{case_id}/application-binding{?case_revision,case_digest}", operation_id: getCaseApplicationBinding}
+      scope: cases:read
+      idempotency: none
+    - name: acceptance-criteria.propose
+      kind: mutation
+      http: {method: POST, path: "/api/v2/cases/{case_id}:propose-acceptance-criteria", operation_id: proposeAcceptanceCriteria}
+      scope: acceptance_criteria:propose
+      idempotency: required
+    - name: acceptance-criteria.get
+      kind: query
+      http: {method: GET, path: "/api/v2/cases/{case_id}/acceptance-criteria{?case_revision}", operation_id: getAcceptanceCriteria}
+      scope: acceptance_criteria:read
+      idempotency: none
+    - name: acceptance-criteria.confirm
+      kind: mutation
+      http: {method: POST, path: "/api/v2/acceptance-criteria/{acceptance_criteria_revision_id}:confirm", operation_id: confirmAcceptanceCriteria}
+      scope: acceptance_criteria:confirm
+      idempotency: required
+
+transport_status:
+  http_routes: DISABLED
+  cli_commands: DISABLED
+  sdk_methods: DISABLED
+  capability_discovery: DISABLED
+  mcp_tools: DISABLED
+  a2a_agent_card: DISABLED
+  a2a_transport: DISABLED
+  a2a_methods: DISABLED
+
+skeleton_outside_slice:
+  status: UNDISCOVERABLE_SKELETON
+  examples:
+    - investigations.start
+    - evaluations.start
+    - approvals.decide
+    - releases.request
+  skeleton_generates: {http_route: false, cli_command: false, sdk_method: false, capability_discovery: false, mcp_tool: false, a2a_method: false}
+
+api_major_handshake:
+  default_api_major: 1
+  v2_requires_explicit_selection: true
+  cli_flag: "--api-version 2"
+  http_request_header: X-CaseLoop-Contract-Version
+  http_response_header: X-CaseLoop-Contract-Version
+  v2_required_request_value: "2.0"
+  cases:
+    - name: v1_default_unchanged
+      major: 1
+      expected: UNCHANGED_COMPATIBILITY_FACADE
+    - name: v2_explicit_cli_flag
+      major: 2
+      invocation: "caseloop --api-version 2"
+      expected: OK
+    - name: v2_missing_or_other_header_value
+      major: 2
+      expected: REQUEST_INVALID
+    - name: v2_never_falls_back_to_v1
+      major: 2
+      expected: NO_FALLBACK
+    - name: url_major_mismatches_request_header
+      major: 2
+      expected: REJECT_AND_AUDIT
+    - name: response_does_not_echo_contract_major
+      major: 2
+      expected: REJECT_AND_AUDIT
+    - name: attempted_downgrade
+      major: 1
+      expected: REJECT_AND_AUDIT
+
+contract_grounding:
+  compatibility:
+    first_slice:
+      status: DRAFT_FROZEN_WIRE_CONTRACT_ONLY
+      count: 10
+    v5_target_surface:
+      first_wire_slice_count: 10
+    schema_major_rules:
+      default_cli_api_major: 1
+      v2_cli_requires_explicit_api_major: true
+      url_header_and_response_major_must_match: true
+      silent_upgrade_or_downgrade: REJECT_AND_AUDIT
+  intent_registry:
+    first_slice_wire_contract:
+      count: 10
+      transport_generation_all_disabled: true
+    api_major_selection:
+      default_api_major: 1
+      v2_requires_explicit_selection: true
+      cli: {flag: "--api-version 2"}
+      http:
+        request_header: X-CaseLoop-Contract-Version
+        response_header: X-CaseLoop-Contract-Version
+        v2_required_request_value: "2.0"
+        v2_missing_or_other_value_error: REQUEST_INVALID
+        v2_never_falls_back_to_v1: true
+        url_major_must_match_request_header_major: true
+        mismatched_or_downgraded_major: REJECT_AND_AUDIT
+    wire_contract_rules:
+      draft_must_not_generate_any_transport: true
+      draft_must_not_enter_capability_discovery: true
+
+does_not_prove:
+  - any_http_route_implemented
+  - any_cli_command_implemented
+  - any_capability_discovery_enabled
+  - migration_exists
+  - runtime_behavior

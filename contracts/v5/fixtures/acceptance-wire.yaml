@@ -1,0 +1,163 @@
+version: "0.2-draft"
+status: draft_contract_fixture
+runtime_status: NOT_RUN
+fixture_id: v5-0c-acceptance-criteria-wire
+
+# Freeze of the acceptance-criteria propose/get/confirm wire: an Agent may
+# propose an untrusted PROPOSED revision, must never confirm it, confirmation
+# is reserved for a reauthenticated human maintainer or domain reviewer, the
+# confirmed revision is a new immutable and additive record that references the
+# prior proposed revision, and the additive Case readiness read path exposes
+# NEEDS_ACCEPTANCE_CRITERIA without rewriting the S1A case payload or digest.
+
+preconditions:
+  s1a_case:
+    case_id: case_fixture0001
+    case_revision: 1
+    case_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  resolution_contract:
+    id: rc_fixture0001
+    revision: 1
+  workspace_id: ws_fixture0001
+
+propose:
+  intent: acceptance-criteria.propose
+  proposer:
+    principal_type: external_agent
+    trust_role: null
+  idempotency_key: ac-propose-0001
+  expected:
+    confirmation_status: PROPOSED
+    is_untrusted: true
+    is_authoritative: false
+    forbids: [confirmer_principal, confirmed_at]
+
+get:
+  intent: acceptance-criteria.get
+  required_query_fields: [case_revision]
+  expected:
+    returns_proposed_revisions_by_case_revision: true
+    readiness: NEEDS_ACCEPTANCE_CRITERIA
+  readiness_invariants:
+    - needs_acceptance_criteria_is_projection_not_case_lifecycle
+    - needs_acceptance_criteria_blocks_gate_pass_but_allows_case_investigation
+    - needs_acceptance_criteria_does_not_rewrite_quality_case_payload_or_digest
+
+confirm:
+  intent: acceptance-criteria.confirm
+  confirmer:
+    principal_type: human
+    required_trust_roles: [maintainer, domain_reviewer]
+    trust_role_source: server_registration
+    reauthentication: required
+  idempotency_key: ac-confirm-0001
+  expected:
+    confirmation_status: CONFIRMED
+    is_authoritative: true
+    new_immutable_record_not_in_place_rewrite: true
+    references_prior_proposed_revision: true
+    does_not_rewrite_quality_case_payload_or_digest: true
+    readiness_after_confirm: READY
+
+adversarial:
+  - name: proposer_cannot_self_confirm
+    mutation: same_principal_proposes_then_confirms
+    expected: DENY_AND_AUDIT
+  - name: non_human_cannot_confirm
+    mutation: external_agent_or_service_principal_confirms
+    expected: DENY_AND_AUDIT
+  - name: confirm_requires_required_trust_role
+    mutation: human_without_maintainer_or_domain_reviewer_role_confirms
+    expected: DENY_AND_AUDIT
+  - name: confirmed_revision_cannot_be_rewritten_in_place
+    mutation: overwrite_confirmed_revision_in_place
+    expected: REJECT
+  - name: confirm_without_reauthentication
+    mutation: confirm_skips_reauthentication
+    expected: REQUEST_INVALID_AND_AUDIT
+
+contract_grounding:
+  domain_model:
+    acceptance_provenance:
+      case_readiness_is_projection_not_case_lifecycle: true
+      case_readiness_values: [NEEDS_ACCEPTANCE_CRITERIA, READY]
+      needs_acceptance_criteria_blocks_gate_pass: true
+      needs_acceptance_criteria_allows_case_investigation: true
+      needs_acceptance_criteria_does_not_rewrite_quality_case_payload_or_digest: true
+      acceptance_criteria_revision:
+        agent_can_propose: true
+        agent_can_confirm: false
+        confirmer_must_be_human_maintainer_or_domain_reviewer: true
+        proposed_revision_is_untrusted: true
+        confirmed_revision_is_authoritative: true
+        confirmed_revision_references_prior_proposed_revision: true
+        confirmed_revision_is_immutable_and_additive: true
+    resources:
+      acceptance_criteria_revision:
+        kind: immutable_record
+        owner: case-controller
+        subordinate_to: resolution_contract
+        confirmation_status_union:
+          variants:
+            PROPOSED: {is_untrusted: true, is_authoritative: false}
+            CONFIRMED:
+              requires_confirmer_is_human_maintainer_or_domain_reviewer: true
+              is_authoritative: true
+      case_readiness:
+        kind: projection
+        commands: []
+        readiness_values: [NEEDS_ACCEPTANCE_CRITERIA, READY]
+  aggregate_ownership:
+    record_authority:
+      ACCEPTANCE_CRITERIA_REVISION:
+        owner: case-controller
+        command_events:
+          acceptance-criteria.propose: [acceptance_criteria.proposed]
+          acceptance-criteria.confirm: [acceptance_criteria.confirmed]
+  intent_registry:
+    intents:
+      acceptance-criteria.propose:
+        allowed_principal_types: [human, external_agent, service, connector]
+        idempotency: required
+        records_untrusted_proposal_not_confirmed_acceptance_criteria: true
+      acceptance-criteria.get:
+        required_query_fields: [case_revision]
+      acceptance-criteria.confirm:
+        allowed_principal_types: [human]
+        required_trust_roles_any_of: [maintainer, domain_reviewer]
+        reauthentication: required
+        confirmed_revision_is_immutable_and_additive: true
+        confirmed_revision_does_not_rewrite_quality_case_payload_or_digest: true
+  events:
+    acceptance_criteria_revision:
+      events:
+        acceptance_criteria.proposed:
+          constants: {confirmation_status: PROPOSED}
+          guards:
+            - proposer_is_agent_service_or_connector_not_human_maintainer_or_domain_reviewer
+            - proposed_revision_is_untrusted_and_not_authoritative
+        acceptance_criteria.confirmed:
+          constants: {confirmation_status: CONFIRMED}
+          guards:
+            - confirmer_is_human_maintainer_or_domain_reviewer
+            - confirmer_is_not_the_proposer
+            - confirmed_revision_is_new_immutable_record_not_in_place_rewrite
+            - confirmed_revision_does_not_rewrite_quality_case_payload_or_digest
+  compatibility:
+    acceptance_criteria_wire:
+      intents: [acceptance-criteria.propose, acceptance-criteria.get, acceptance-criteria.confirm]
+      agent_can_propose: true
+      proposer_cannot_self_confirm: true
+      confirm_requires_human_maintainer_or_domain_reviewer: true
+      reauthentication_required_on_confirm: true
+      confirmed_revision_is_immutable_and_additive: true
+      confirmed_revision_references_prior_proposed_revision: true
+      confirmed_revision_never_rewrites_quality_case_payload_or_digest: true
+      readiness_read_path: NEEDS_ACCEPTANCE_CRITERIA
+      readiness_blocks_gate_pass_but_allows_case_investigation: true
+
+does_not_prove:
+  - acceptance_route_implemented
+  - readiness_projection_implemented
+  - gate_pass_blocking_implemented
+  - any_runtime_behavior

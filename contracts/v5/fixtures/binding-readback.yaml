@@ -1,0 +1,133 @@
+version: "0.2-draft"
+status: draft_contract_fixture
+runtime_status: NOT_RUN
+fixture_id: v5-0c-application-case-binding-readback
+
+# Freeze of the ApplicationCaseBinding wire semantics: additive link to an
+# immutable S1A case, exact (case_id, case_revision, case_digest) read-back
+# authority after a lost write response, idempotent replay, conflict on a
+# different target for the same exact case, rebinding only through a new case
+# revision, and fail-closed adversarial rejections.
+
+preconditions:
+  s1a_case:
+    case_id: case_fixture0001
+    case_revision: 1
+    case_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+  workspace_id: ws_fixture0001
+  binding_write:
+    intent: cases.bind-application
+    idempotency_key: bind-fixture-0001
+    target: {application_id: app_fixture0001, environment_id: env_fixture0001}
+    principal_type: human
+    trust_role: integrator
+    trust_role_source: server_registration
+
+scenarios:
+  - name: idempotent_replay_same_key_same_request
+    operation: cases.bind-application
+    same_key: true
+    same_request: true
+    expected: RETURN_SAME_RECORD_AND_RESPONSE
+    asserts:
+      - no_second_binding_record
+      - response_includes_replayed_flag
+  - name: same_key_different_request_conflict
+    operation: cases.bind-application
+    same_key: true
+    same_request: false
+    mutation: different_application_target
+    expected: CONFLICT_AND_AUDIT
+  - name: readback_after_lost_write_response
+    operation: case-application-bindings.get
+    query_fields: [case_revision, case_digest]
+    expected: AUTHORITATIVE_READ_BACK
+    asserts:
+      - returns_exact_case_binding_fields
+      - returns_application_and_environment_target
+      - response_is_authoritative_after_write_without_live_response
+  - name: rebind_requires_new_case_revision
+    operation: cases.bind-application
+    same_exact_case: true
+    different_target: true
+    expected: CONFLICT_AND_AUDIT
+    asserts:
+      - conflict_is_never_silently_overwritten_by_latest
+      - rebinding_only_legal_after_new_quality_case_revision
+
+adversarial:
+  - name: cross_workspace_reference
+    mutation: application_or_case_in_another_workspace
+    expected: REJECT_AND_AUDIT
+  - name: caller_self_reports_owner
+    mutation: principal_payload_asserts_owner_or_trust_role
+    expected: DENY_AND_AUDIT
+  - name: route_downgrade
+    mutation: v2_request_served_on_v1_or_version_header_mismatch
+    expected: REJECT_AND_AUDIT
+  - name: binder_cannot_read_application
+    mutation: remove_application_authorization
+    expected: OPAQUE_NOT_FOUND_AND_AUDIT
+  - name: case_and_application_cross_workspace
+    mutation: move_case_to_other_workspace
+    expected: OPAQUE_NOT_FOUND_AND_AUDIT
+
+contract_grounding:
+  domain_model:
+    resources:
+      application_case_binding:
+        kind: immutable_record
+        exact_case_binding_fields: [case_id, case_revision, case_digest]
+        uniqueness_key: [workspace_id, case_id, case_revision, case_digest]
+        invariants:
+          - original_signal_payload_is_unchanged
+          - original_case_payload_is_unchanged
+          - original_digest_is_not_recomputed
+          - same_exact_case_binding_and_same_target_is_idempotent
+          - same_exact_case_binding_and_different_target_is_conflict
+          - rebinding_requires_a_new_quality_case_revision
+  aggregate_ownership:
+    record_authority:
+      APPLICATION_CASE_BINDING:
+        resource: application_case_binding
+        owner: case-controller
+        command_events: {cases.bind-application: [case.application_bound]}
+  intent_registry:
+    intents:
+      cases.bind-application:
+        kind: mutation
+        idempotency: required
+        authorization_condition: case_application_and_environment_authorized_binder
+        same_workspace_required: true
+        unauthorized_result: OPAQUE_NOT_FOUND
+      case-application-bindings.get:
+        kind: query
+        required_query_fields: [case_revision, case_digest]
+        unique_result_key: [workspace_id, case_id, case_revision, case_digest]
+        different_target_for_same_exact_case: CONFLICT
+  compatibility:
+    application_case_binding_contract:
+      additive_link_to_immutable_s1a_case: true
+      exact_case_fields: [case_id, case_revision, case_digest]
+      same_exact_case_same_target: IDEMPOTENT_REPLAY
+      same_exact_case_different_target: CONFLICT
+      rebinding_requires_new_quality_case_revision: true
+      conflict_is_never_silently_overwritten_by_latest: true
+      write_response_lost_read_back_path: case-application-bindings.get
+      read_back_returns_exact_case_binding: true
+  events:
+    application_case_binding:
+      events:
+        case.application_bound:
+          event_version: "2.0"
+          payload_required:
+            - exact_application_case_binding
+            - exact_case_binding
+            - application_id
+            - environment_id
+            - declared_system_version_set_binding_or_unknown
+
+does_not_prove:
+  - binding_route_implemented
+  - case_revision_transition_implemented
+  - any_runtime_behavior
