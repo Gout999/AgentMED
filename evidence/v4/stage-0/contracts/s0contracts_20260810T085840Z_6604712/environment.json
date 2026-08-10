@@ -1,0 +1,14 @@
+{
+  "schema_version": "1.0",
+  "captured_at": "2026-08-10T09:01:41Z",
+  "platform": "Darwin 25.5.0 arm64",
+  "git": "git version 2.50.1 (Apple Git-155)",
+  "python": "Python 3.14.4",
+  "pytest": "pytest 9.1.1",
+  "jq": "jq-1.7.1-apple",
+  "branch": "codex/v4-foundation",
+  "head": "6604712b37409cf679dfb43ce97fb9882efdc713",
+  "environment_variables_captured": false,
+  "provider_credentials_read": false,
+  "provider_calls_performed": false
+}

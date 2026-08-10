@@ -1,0 +1,56 @@
+{
+  "schema_version": "1.0",
+  "run_id": "s0contracts_20260810T085840Z_6604712",
+  "stage": "V4-S0",
+  "started_at": "2026-08-10T08:58:40Z",
+  "completed_at": "2026-08-10T09:01:41Z",
+  "result": "PASS",
+  "repository": {
+    "branch": "codex/v4-foundation",
+    "base_commit": "81ae70654eeef55d60e96cac90e181609dea4f29",
+    "documentation_commit": "b7889a7e200f76bd5985188ff6fb7e9e1860fd28",
+    "contract_commit": "6604712b37409cf679dfb43ce97fb9882efdc713"
+  },
+  "scope": {
+    "included": [
+      "approved v4 product and dual-Team documents",
+      "contracts/v4 ownership, events, state machines, intent and OpenAPI skeleton",
+      "immutable identity, capability, model, review, proposal, Gate and WorkOrder contracts",
+      "v3 compatibility and v4 conformance tests"
+    ],
+    "excluded": [
+      "database migrations",
+      "runtime or public API implementation",
+      "AgentTeams or Claude Code execution",
+      "provider calls",
+      "repository or release writes",
+      "historical judge-provider and B1 adapter WIP"
+    ]
+  },
+  "evidence_facets": [
+    {"facet": "contract", "status": "PASS"},
+    {"facet": "replay", "status": "NOT_RUN"},
+    {"facet": "domain-provider-live", "status": "NOT_RUN"},
+    {"facet": "agentteams-native", "status": "NOT_RUN"},
+    {"facet": "claude-runtime-live", "status": "NOT_RUN"},
+    {"facet": "agent-causal", "status": "NOT_RUN"},
+    {"facet": "repo-sandbox", "status": "NOT_RUN"},
+    {"facet": "human-authorized-external", "status": "NOT_RUN"},
+    {"facet": "production-canary", "status": "NOT_RUN"}
+  ],
+  "verification": {
+    "v3_v4_tests": 397,
+    "v3_compatibility_tests": 29,
+    "json_documents": 218,
+    "yaml_documents": 5,
+    "markdown_files": 41,
+    "local_markdown_links": 111,
+    "independent_verifier": "PASS"
+  },
+  "limitations": [
+    "All ModelCallReceipt fixtures use REPLAY and do not prove live provider calls.",
+    "ACTION_EXECUTION remains fail-closed and deferred to Stage 4.",
+    "judge_model_policy_digest and threshold_digest remain contract-only pointers until Stage 3 typed execution binding.",
+    "No v4 runtime, database, AgentTeams, Claude Code, Langfuse or external write path was executed."
+  ]
+}

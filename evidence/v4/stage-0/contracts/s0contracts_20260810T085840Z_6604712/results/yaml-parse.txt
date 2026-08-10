@@ -1,0 +1,7 @@
+contracts/v4/aggregate-ownership.yaml OK
+contracts/v4/events/events.yaml OK
+contracts/v4/events/state-machines.yaml OK
+contracts/v4/intent-registry.yaml OK
+contracts/v4/openapi/public-api.yaml OK
+yaml_files=5
+status=PASS

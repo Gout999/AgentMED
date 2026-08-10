@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "result": "PASS",
+  "contract_tests": {"passed": 397, "failed": 0, "skipped": 0},
+  "v3_compatibility": {"passed": 29, "failed": 0, "skipped": 0},
+  "static_checks": {
+    "json": "PASS",
+    "yaml": "PASS",
+    "python": "PASS",
+    "markdown_links": "PASS",
+    "soul_sync": "PASS",
+    "git_diff_check": "PASS"
+  },
+  "independent_verifier": {
+    "result": "PASS",
+    "remaining_p0": 0,
+    "remaining_p1": 0
+  },
+  "facet_result": "contract=PASS; all runtime/live facets=NOT_RUN"
+}

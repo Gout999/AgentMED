@@ -1,0 +1,9 @@
+{"id":"cmd-001","cwd":"contracts","command":"../eval-harness/.venv/bin/python -m pytest conformance/test_schemas.py conformance/test_wilson.py conformance/test_v4_*.py -q","exit_code":0,"status":"PASS","output_ref":"results/pytest-v3-v4.txt"}
+{"id":"cmd-002","cwd":"contracts","command":"../eval-harness/.venv/bin/python -m pytest conformance/test_schemas.py conformance/test_wilson.py -q","exit_code":0,"status":"PASS","output_ref":"results/v3-compatibility.txt"}
+{"id":"cmd-003","cwd":"repository root","command":"find contracts/v4 -type f -name '*.json' -print0 | xargs -0 -n1 jq empty","exit_code":0,"status":"PASS","output_ref":"results/json-parse.txt"}
+{"id":"cmd-004","cwd":"repository root","command":"PyYAML safe_load every contracts/v4 YAML document","exit_code":0,"status":"PASS","output_ref":"results/yaml-parse.txt"}
+{"id":"cmd-005","cwd":"repository root","command":"compile v4 conformance helpers and test_v4 modules without writing bytecode","exit_code":0,"status":"PASS","output_ref":"results/python-parse.txt"}
+{"id":"cmd-006","cwd":"repository root","command":"eval-harness/.venv/bin/python agents/scripts/verify-soul-sync.py","exit_code":0,"status":"PASS","output_ref":"results/soul-sync.txt"}
+{"id":"cmd-007","cwd":"repository root","command":"check local Markdown links in the v4 documentation commit","exit_code":0,"status":"PASS","output_ref":"results/markdown-links.txt"}
+{"id":"cmd-008","cwd":"repository root","command":"git diff --check","exit_code":0,"status":"PASS","output_ref":"results/git-diff-check.txt"}
+{"id":"review-001","kind":"independent-verifier","status":"PASS","scope":"schema, integrity, semantics, authority equivocation, identity independence, GateTrack exact binding and documentation causality","output_ref":"verifier-report.md"}

@@ -1,0 +1,20 @@
+{
+  "schema_version": "1.0",
+  "excluded_from_stage0_commits": [
+    "eval-harness/.env.example",
+    "eval-harness/README.md",
+    "eval-harness/eval_harness/config.py",
+    "eval-harness/eval_harness/gate.py",
+    "eval-harness/eval_harness/llm.py",
+    "eval-harness/tests/unit/test_llm.py",
+    "scripts/run_b1_live.py",
+    "scripts/b1_live/agent_trace.py",
+    "scripts/b1_live/approval_grant.py",
+    "scripts/b1_live/feishu_message.py",
+    "scripts/b1_live/test_b1_live_adapters.py"
+  ],
+  "tracked_modified": 6,
+  "untracked": 5,
+  "staged": 0,
+  "reason": "These are the two pre-existing judge-provider and live-B1 WIP groups. They were preserved and were not used as Stage 0 completion evidence."
+}

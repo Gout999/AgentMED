@@ -1,0 +1,9 @@
+{
+  "schema_version": "1.0",
+  "v3_baseline_commit": "81ae70654eeef55d60e96cac90e181609dea4f29",
+  "v4_contract_commit": "6604712b37409cf679dfb43ce97fb9882efdc713",
+  "command": "cd contracts && ../eval-harness/.venv/bin/python -m pytest conformance/test_schemas.py conformance/test_wilson.py -q",
+  "result": {"passed": 29, "failed": 0, "skipped": 0},
+  "runtime_replay_rerun": "NOT_RUN",
+  "reason": "Stage 0 did not change the v3 runtime call path; historical replay is reference-only and is not promoted into new v4 evidence."
+}

@@ -1,12 +1,42 @@
 # Project State
 
-- `last_verified_commit`: `cef1598b4ac1d42fdd4f206c5747eb89a06f24fc`
-- `active_branch`: `codex/p0-close-b1-loop`
-- `origin/main commit`: `a6de5cc1a06d6967634676b2661da7d2e46d287b`
-- `local main commit`: `89ea66750dfed3df6feeed493d9e2499ef77cdbe`
+- `repository_snapshot`: `6604712b37409cf679dfb43ce97fb9882efdc713`
+- `last_independently_verified_evidence_subject_commit`: `6604712b37409cf679dfb43ce97fb9882efdc713`
+- `stage0_documentation_commit`: `b7889a7e200f76bd5985188ff6fb7e9e1860fd28`
+- `previous_v3_evidence_commit`: `cef1598b4ac1d42fdd4f206c5747eb89a06f24fc`
+- `active_branch`: `codex/v4-foundation`
+- `origin/main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
+- `local main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `collaborator_sync_merge`: `4b5377dae317eaeadbf23ab85481881096b6d6d2`
-- `working_tree`: clean after the final review handoff commit; verified before the PR was marked ready.
-- `last_updated`: `2026-08-10T00:19:31+10:00`
+- `working_tree`: after the Stage 0 evidence/context commit, the only intended dirty paths are the two preserved historical WIP groups: six tracked judge/live files plus five untracked tests/adapters. The Stage 0 documentation and contract groups are committed separately and must not be recombined with those historical code changes.
+- `last_updated`: `2026-08-10` (Asia/Shanghai)
+
+## Current product and requirements state
+
+- User-ratified direction: CaseLoop is a long-term open-source AI Agent quality and change-governance project. Target-user needs decide scope; competition, market gaps and feature overlap do not.
+- Product baseline: `docs/product-principles.md`. The approved `docs/plan-v4.md` is the target architecture, dependency order, and new-development baseline. `docs/plan-v3.md`, `docs/spec.md`, existing contracts, migrations, and executable tests remain the implemented customer-service Scenario Pack compatibility baseline until explicitly migrated.
+- Confirmed new requirement, not implemented: CaseLoop self-observability through Langfuse and a pluggable TraceSource that can retrieve a governed Agent's Langfuse input/output/model/tool evidence with explicit completeness state.
+- The first reference workflow remains customer service. General Signal/Closure/VersionSet contracts, Langfuse as the first TraceSource, coding Agent governance as the second workload, separate real-Agent/exporter acceptance, and the two-Team direction are approved requirements. They remain unimplemented until their v4 contracts, migrations, runtime path, tests, and evidence land.
+- `docs/plan-v4.md`, backed by `docs/research/demand/caseloop-v4-small-team-adoption.md`, is approved for progressive local construction. Stage 0 is `DONE (contract-only)`: 397 tests and an independent authority-equivocation verifier passed. No migration/runtime/live capability follows from this status. Stage 1 Entry wire-contract freeze is now `IN_PROGRESS`; runtime implementation remains blocked until it passes.
+- The Wiki alignment is WIP. It must retain AgentTeams as a versioned internal adapter, Langfuse as a planned dual integration, platform evidence export as distinct from real Agent causal execution, and v3 assets as the current implemented compatibility baseline.
+- The user authorized local branching, planning, contracts, code, and tests. Push, PR, paid provider calls, human approval, and production or other external writes remain separately gated.
+- The user's earlier live demo and the independently verifiable P0-4 live acceptance are different evidence claims. A prior run does not need to be repeated merely because time passed; rerun only when the acceptance target, code/provider path, evidence contract or reproducibility requirement makes a new run necessary.
+
+## Security prerequisite before the next live run
+
+- During a read-only Docker Compose inspection on 2026-08-10, a resolved configuration command expanded secret-bearing environment values into the private tool log. No value was copied into repository files, evidence, or this handoff, but the affected credentials must be treated as potentially exposed.
+- Before any subsequent provider/live run, rotate the StepFun credential, Feishu app secret, and internal authority/read/write and role-token material referenced by `deploy/.env` or `.env.b1-live`; update the local secret stores without committing their values, then re-run a redacted credential/preflight check.
+- Rotation has **not** been performed or authorized in this Stage 0 work. Until it is complete, provider/live execution is blocked; offline contracts, documentation, and tests may continue.
+
+## Current AgentTeams runtime snapshot
+
+This is the observed 2026-08-10 local platform snapshot and must be rechecked before a later live claim:
+
+- AgentTeams Manager and Controller were running. The `caseloop-team` object reported `Active`, but `leaderReady=false` and `readyWorkers=0`; no CaseLoop Agent task was executing.
+- All six formal Workers — `quality-officer`, `collector`, `attributionist`, `repairer`, `gatekeeper`, and `case-officer` — were `Sleeping`. Their current reference runtime/model is CoPaw with StepFun `step-3.7-flash`.
+- Three older `spike-*` Workers were also sleeping and are not members of the formal CaseLoop Team. `caseloop-approver` is a Human approval identity, not an Agent.
+- No Claude Code Agent or GLM Agent was deployed in AgentTeams. The proposed three-role `caseloop-coding-team` had not been created; it is a Stage 2 target, not current capability.
+- The deployed MCP projection names differed from `agents/team.yaml`, and the inspected runtime response did not expose enough Skill state to prove the repository-declared Skill was loaded or called. Desired manifests and observed deployment state must remain separate.
 
 ## Verified completed capabilities
 
@@ -44,10 +74,10 @@
   command fails during preflight when genuine inputs are absent and never falls
   back to replay.
 
-## Proven gaps
+## Proven gaps at the last independently verified P0 evidence snapshot
 
-- P0-4 is not accepted as DONE because no live-provider B1 run has been made.
-  Its report truthfully records the missing credentials, deployed endpoints,
+- At `cef1598`, P0-4 was not accepted as DONE because that evidence package did
+  not contain an independently validated live-provider B1 run. Its report records the missing credentials, deployed endpoints,
   post-injection Feishu input, fresh human ApprovalGrants, and independent
   AgentTeams trace attestation.
 - Live recovery is not yet durable across every interruption. A failure after
@@ -60,9 +90,9 @@
 - Non-terminal `eval.requested`, `eval.started`, and track-completed event
   metadata remains explicitly tracked as P1 contract debt.
 
-## Work queue
+## Historical P0 work queue
 
-- `current_only_in_progress`: P0-4 live closure remains blocked — add
+- `previous_only_in_progress`: P0-4 live closure remained blocked at the above evidence snapshot — add
   authoritative resumable or terminal failure reconciliation for Case,
   Experiment, and Release without weakening approval, revision, gate, or audit
   bindings.
@@ -71,6 +101,8 @@
   external inputs in its preflight report are supplied.
 - Full acceptance criteria, dependencies, evidence, and commits are in
   `PLANS.md`.
+
+The current active work is the v4 Stage 1 Entry wire-contract freeze in `PLANS.md`. Local implementation is authorized; live-provider calls and external writes remain separately gated.
 
 ## Actual runnable commands
 
@@ -98,13 +130,25 @@ cd ../mcp-servers
 
 cd ../contracts
 ../eval-harness/.venv/bin/python -m pytest \
-  conformance/test_schemas.py conformance/test_wilson.py -q
+  conformance/test_schemas.py conformance/test_wilson.py conformance/test_v4_*.py -q
 ```
 
 If FileProvider has offloaded an ignored virtual environment, rebuild it under
 `/tmp` and rerun the same command. Do not classify a blocked import as a pass.
 
-## Latest test results
+## Independently verified v4 Stage 0 contract record
+
+| Scope | Result | Classification |
+|---|---|---|
+| v3 + v4 contract suite | 397 passed, 0 failed, 0 skipped | contract only |
+| v3 compatibility subset | 29 passed | existing schema/Wilson baseline retained |
+| v4 JSON/YAML/Python | 218 JSON, 5 YAML, 15 Python files passed | static contract validation |
+| documentation links/SOUL/diff | 111 local links, SOUL sync and diff-check passed | repository consistency |
+| independent verifier | PASS; 0 remaining P0/P1 | repeated event/audit keys and same `(kind,id,revision)` equivocation attacks rejected |
+
+Evidence: `evidence/v4/stage-0/contracts/s0contracts_20260810T085840Z_6604712/`. Only `contract=PASS`; every runtime/provider/Agent/repository/human/production facet is `NOT_RUN`.
+
+## Last independently verified v3 test baseline
 
 | Scope | Result | Classification |
 |---|---|---|
@@ -119,9 +163,9 @@ If FileProvider has offloaded an ignored virtual environment, rebuild it under
 | demo live E2E | 6 failed | failures are connection refused at `127.0.0.1:8080` |
 | live B1 preflight | exit 2, blocked | expected fail-closed result; no provider call or replay fallback |
 
-## External blockers and required inputs
+## Legacy P0 live-acceptance inputs
 
-The exact live report requires: `STEPFUN_API_KEY`, `JUDGE_MODEL`,
+The exact legacy P0 live-acceptance report requires: `STEPFUN_API_KEY`, `JUDGE_MODEL`,
 `CASELOOP_B1_BAD_VERSIONSET_ID`, `CASELOOP_B1_GOOD_VERSIONSET_ID`,
 `CASELOOP_QUALITY_API_BASE_URL`, `CASELOOP_READ_TOKEN`,
 `CONTROL_PLANE_BASE_URL`, `CONTROL_PLANE_TOKEN`, `GATE_AUTHORITY_TOKEN`,
