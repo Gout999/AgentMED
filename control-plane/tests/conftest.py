@@ -1,18 +1,20 @@
 """pytest 共享夹具。
 
 - sqlite_session：unit 用（内存 SQLite，无外部依赖）
-- pg_session / pg_engine：integration 用（compose 起 PG 后可用；不可达则 skip）
+- pg_session / pg_engine：integration 用（仅显式授权的 test/scratch PG）
 - app_client：FastAPI TestClient（SQLite 内存）
 """
 from __future__ import annotations
 
-import os
 import base64
 import hashlib
 import json
+import os
+import re
+from contextlib import contextmanager
 from pathlib import Path
 import uuid
-from typing import Any
+from typing import Any, Iterator, Mapping
 
 import pytest
 import sqlalchemy as sa
@@ -36,6 +38,194 @@ TEST_DATABASE_URL = os.environ.get(
 TEST_CONTROL_TOKEN = "test-control-plane-token"
 TEST_APPROVAL_TOKEN = "test-approval-authority-token"
 TEST_GATE_TOKEN = "test-gate-authority-token"
+
+_RESET_OPT_IN = "CASELOOP_ALLOW_INTEGRATION_RESET"
+_DISPOSABLE_DATABASE_TOKEN = {"test", "scratch"}
+_DATABASE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$")
+
+
+class UnsafeIntegrationDatabaseError(RuntimeError):
+    """Stable fail-closed refusal for a destructive integration DB operation."""
+
+
+def _refuse_reset(reason: str) -> None:
+    raise UnsafeIntegrationDatabaseError(f"caseloop.integration_reset.refused.{reason}")
+
+
+def _parse_disposable_postgres_url(database_url: str) -> tuple[sa.engine.URL, str]:
+    """Parse a PG URL without rendering credentials and require a disposable DB name."""
+
+    try:
+        url = sa.engine.make_url(database_url)
+    except Exception:  # SQLAlchemy can raise ArgumentError for malformed input.
+        raise UnsafeIntegrationDatabaseError(
+            "caseloop.integration_reset.refused.invalid_database_url"
+        ) from None
+    if url.get_backend_name() != "postgresql":
+        _refuse_reset("postgresql_required")
+    database = url.database or ""
+    tokens = {token.lower() for token in re.split(r"[_-]+", database) if token}
+    if not _DATABASE_NAME.fullmatch(database) or not (tokens & _DISPOSABLE_DATABASE_TOKEN):
+        _refuse_reset("unsafe_database_name")
+    return url, database
+
+
+def _validate_pg_reset_target(
+    database_url: str,
+    engine: Any,
+    *,
+    environ: Mapping[str, str] | None = None,
+) -> str:
+    """Validate opt-in and configured/engine targets before opening a connection."""
+
+    source = os.environ if environ is None else environ
+    if source.get(_RESET_OPT_IN) != "true":
+        _refuse_reset("opt_in_required")
+
+    configured_url, database = _parse_disposable_postgres_url(database_url)
+    try:
+        engine_url = engine.url
+        if not isinstance(engine_url, sa.engine.URL):
+            engine_url = sa.engine.make_url(str(engine_url))
+    except Exception:
+        raise UnsafeIntegrationDatabaseError(
+            "caseloop.integration_reset.refused.invalid_database_url"
+        ) from None
+
+    try:
+        engine_backend = engine_url.get_backend_name()
+    except Exception:
+        _refuse_reset("invalid_database_url")
+    endpoint = (
+        engine_backend,
+        engine_url.host,
+        engine_url.port,
+        engine_url.database,
+    )
+    configured_endpoint = (
+        configured_url.get_backend_name(),
+        configured_url.host,
+        configured_url.port,
+        configured_url.database,
+    )
+    if endpoint != configured_endpoint:
+        _refuse_reset("engine_database_mismatch")
+    # Re-validate the engine URL itself so a safe configured label cannot bless
+    # an engine whose URL parser produced an unsafe target.
+    _parse_disposable_postgres_url(str(engine_url))
+    return database
+
+
+@contextmanager
+def _verified_pg_reset_connection(
+    database_url: str,
+    engine: Any,
+    *,
+    environ: Mapping[str, str] | None = None,
+) -> Iterator[Any]:
+    """Yield one transaction only after ``current_database()`` matches exactly."""
+
+    expected_database = _validate_pg_reset_target(database_url, engine, environ=environ)
+    try:
+        connection = engine.connect()
+    except Exception:
+        raise UnsafeIntegrationDatabaseError(
+            "caseloop.integration_reset.refused.database_unreachable"
+        ) from None
+
+    transaction = None
+    try:
+        try:
+            transaction = connection.begin()
+            actual_database = connection.execute(
+                sa.text("SELECT current_database()")
+            ).scalar_one()
+        except Exception:
+            raise UnsafeIntegrationDatabaseError(
+                "caseloop.integration_reset.refused.current_database_unavailable"
+            ) from None
+        actual_tokens = {
+            token.lower()
+            for token in re.split(r"[_-]+", str(actual_database))
+            if token
+        }
+        if (
+            actual_database != expected_database
+            or not _DATABASE_NAME.fullmatch(str(actual_database))
+            or not (actual_tokens & _DISPOSABLE_DATABASE_TOKEN)
+        ):
+            _refuse_reset("current_database_mismatch")
+        yield connection
+    except BaseException:
+        if transaction is not None:
+            try:
+                transaction.rollback()
+            except Exception:  # Preserve the original stable refusal/failure.
+                pass
+        raise
+    else:
+        if transaction is not None:
+            transaction.commit()
+    finally:
+        connection.close()
+
+
+def _assert_pg_reset_safe(
+    database_url: str,
+    engine: Any,
+    *,
+    environ: Mapping[str, str] | None = None,
+) -> str:
+    """Run the complete non-mutating reset preflight and return the DB name."""
+
+    with _verified_pg_reset_connection(database_url, engine, environ=environ):
+        pass
+    return _parse_disposable_postgres_url(database_url)[1]
+
+
+def _drop_pg_metadata(
+    engine: Any,
+    database_url: str,
+    *,
+    environ: Mapping[str, str] | None = None,
+) -> None:
+    with _verified_pg_reset_connection(database_url, engine, environ=environ) as connection:
+        Base.metadata.drop_all(bind=connection)
+
+
+def _create_pg_metadata(
+    engine: Any,
+    database_url: str,
+    *,
+    environ: Mapping[str, str] | None = None,
+) -> None:
+    with _verified_pg_reset_connection(database_url, engine, environ=environ) as connection:
+        Base.metadata.create_all(bind=connection)
+
+
+def _reset_pg_metadata(
+    engine: Any,
+    database_url: str,
+    *,
+    environ: Mapping[str, str] | None = None,
+) -> None:
+    """Reset ORM metadata with a fresh fail-closed check before each operation."""
+
+    _drop_pg_metadata(engine, database_url, environ=environ)
+    _create_pg_metadata(engine, database_url, environ=environ)
+
+
+def _reset_pg_database_for_migrations(
+    engine: Any,
+    database_url: str,
+    *,
+    environ: Mapping[str, str] | None = None,
+) -> None:
+    """Empty a disposable PG for an Alembic migration test; never calls create_all."""
+
+    with _verified_pg_reset_connection(database_url, engine, environ=environ) as connection:
+        connection.execute(sa.text("DROP SCHEMA IF EXISTS public CASCADE"))
+        connection.execute(sa.text("CREATE SCHEMA public"))
 
 
 def make_workorder(
@@ -479,31 +669,28 @@ def test_settings() -> Settings:
 # ------------------------------------------------------------------ pg（integration）
 
 
-def _pg_available() -> bool:
-    try:
-        eng = sa.create_engine(TEST_DATABASE_URL, connect_args={"connect_timeout": 2})
-        conn = eng.connect()
-        conn.close()
-        eng.dispose()
-        return True
-    except Exception:  # noqa: BLE001
-        return False
-
-
 def _new_pg_engine():
-    return sa.create_engine(TEST_DATABASE_URL, poolclass=sa.pool.NullPool)
+    return sa.create_engine(
+        TEST_DATABASE_URL,
+        poolclass=sa.pool.NullPool,
+        connect_args={"connect_timeout": 2},
+    )
 
 
 @pytest.fixture()
 def pg_engine():
-    if not _pg_available():
-        pytest.skip("Postgres 不可达：先 docker compose -f deploy/compose.yaml up -d postgres")
     eng = _new_pg_engine()
-    Base.metadata.drop_all(eng)
-    Base.metadata.create_all(eng)
-    yield eng
-    Base.metadata.drop_all(eng)
-    eng.dispose()
+    initialized = False
+    try:
+        _reset_pg_metadata(eng, TEST_DATABASE_URL)
+        initialized = True
+        yield eng
+    finally:
+        try:
+            if initialized:
+                _drop_pg_metadata(eng, TEST_DATABASE_URL)
+        finally:
+            eng.dispose()
 
 
 @pytest.fixture()
@@ -544,7 +731,7 @@ def pg_client(pg_engine) -> tuple[TestClient, FakeQualityClient]:
         gate_authority_token=TEST_GATE_TOKEN,
         require_mcp_role_tokens=False,
     )
-    app = create_app(settings=settings, quality_client=quality, engine=pg_engine, create_tables=True)
+    app = create_app(settings=settings, quality_client=quality, engine=pg_engine, create_tables=False)
     with TestClient(app) as client:
         client.headers["Authorization"] = f"Bearer {TEST_CONTROL_TOKEN}"
         yield client, quality
@@ -569,11 +756,8 @@ def app_client(sqlite_engine, test_settings) -> tuple[TestClient, FakeQualityCli
 
 def build_pg_app(*, audit_force_fail: bool = False, quality: FakeQualityClient | None = None) -> TestClient:
     """构建绑定 PG 的 FastAPI app（integration HTTP 测试用）。"""
-    if not _pg_available():
-        pytest.skip("Postgres 不可达：先 docker compose -f deploy/compose.yaml up -d postgres")
     eng = _new_pg_engine()
-    Base.metadata.drop_all(eng)
-    Base.metadata.create_all(eng)
+    _reset_pg_metadata(eng, TEST_DATABASE_URL)
     settings = Settings(
         database_url=TEST_DATABASE_URL,
         operation_poll_timeout_seconds=0.05,
@@ -587,7 +771,7 @@ def build_pg_app(*, audit_force_fail: bool = False, quality: FakeQualityClient |
         require_mcp_role_tokens=False,
     )
     q = quality or FakeQualityClient()
-    app = create_app(settings=settings, quality_client=q, engine=eng, create_tables=True)
+    app = create_app(settings=settings, quality_client=q, engine=eng, create_tables=False)
     client = TestClient(app)
     client.headers["Authorization"] = f"Bearer {TEST_CONTROL_TOKEN}"
     client.__enter__()  # type: ignore[attr-defined]

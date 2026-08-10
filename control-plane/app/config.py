@@ -4,7 +4,7 @@ from __future__ import annotations
 from functools import lru_cache
 from typing import List
 
-from pydantic import Field
+from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -34,6 +34,18 @@ class Settings(BaseSettings):
     )
     approval_authority_token: str = Field(default="", alias="APPROVAL_AUTHORITY_TOKEN")
     gate_authority_token: str = Field(default="", alias="GATE_AUTHORITY_TOKEN")
+
+    # Public v4 credentials are an independent authority namespace.  Neither
+    # secret may fall back to or reuse an internal controller/role token.
+    public_credential_hash_pepper: SecretStr = Field(
+        default=SecretStr(""), alias="PUBLIC_CREDENTIAL_HASH_PEPPER"
+    )
+    public_cursor_signing_key: SecretStr = Field(
+        default=SecretStr(""), alias="PUBLIC_CURSOR_SIGNING_KEY"
+    )
+    public_auth_issuer: str = Field(
+        default="https://auth.caseloop.dev", alias="PUBLIC_AUTH_ISSUER"
+    )
 
     lease_ttl_seconds: int = Field(default=60, alias="LEASE_TTL_SECONDS")
     complaint_dedup_window_hours: int = Field(default=24, alias="COMPLAINT_DEDUP_WINDOW_HOURS")

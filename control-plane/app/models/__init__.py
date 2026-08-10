@@ -11,6 +11,20 @@ from app.models.tables import (
     TrustLedger,
     WorkOrder,
 )
+from app.models.v4_tables import (
+    AgentRunRef,
+    AuthorityReceipt,
+    ControllerRegistration,
+    PublicCommandIdempotency,
+    PublicCredential,
+    PublicPrincipal,
+    QualityCase,
+    Signal,
+    SignalCaseLink,
+    SignalContent,
+    SourceConnection,
+    TraceEvidenceReceipt,
+)
 
 __all__ = [
     "Base",
@@ -23,4 +37,16 @@ __all__ = [
     "Approval",
     "TrustLedger",
     "Audit",
+    "SourceConnection",
+    "PublicPrincipal",
+    "PublicCredential",
+    "PublicCommandIdempotency",
+    "SignalContent",
+    "Signal",
+    "QualityCase",
+    "SignalCaseLink",
+    "AgentRunRef",
+    "TraceEvidenceReceipt",
+    "ControllerRegistration",
+    "AuthorityReceipt",
 ]

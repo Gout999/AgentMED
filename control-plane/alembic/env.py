@@ -8,6 +8,7 @@ from alembic import context
 from sqlalchemy import engine_from_config, pool
 
 from app.models.tables import Base
+from app.models import v4_tables as _v4_tables  # noqa: F401  # register v4 metadata
 
 config = context.config
 if config.config_file_name is not None:

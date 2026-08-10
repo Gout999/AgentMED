@@ -14,6 +14,16 @@ def test_sqlite_upgrade_head_allows_multi_stage_gate_binding(tmp_path: Path) -> 
     config = Config(str(root / "alembic.ini"))
     config.set_main_option("script_location", str(root / "alembic"))
     config.set_main_option("sqlalchemy.url", f"sqlite:///{database}")
+    command.upgrade(config, "006")
+
+    historical_engine = sa.create_engine(f"sqlite:///{database}")
+    with historical_engine.begin() as connection:
+        assert (
+            connection.execute(sa.text("select version_num from alembic_version")).scalar_one()
+            == "006"
+        )
+    historical_engine.dispose()
+
     command.upgrade(config, "head")
 
     engine = sa.create_engine(f"sqlite:///{database}")
@@ -29,7 +39,7 @@ def test_sqlite_upgrade_head_allows_multi_stage_gate_binding(tmp_path: Path) -> 
     with engine.begin() as connection:
         assert (
             connection.execute(sa.text("select version_num from alembic_version")).scalar_one()
-            == "006"
+            == "007"
         )
         base = {
             "workorder_id": "wo-multi-stage",

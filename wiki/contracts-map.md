@@ -2,7 +2,7 @@
 
 [返回 Wiki 索引](INDEX.md)
 
-> 状态：Phase 0B 的 v3 契约是客服参考纵切的实施基线。`contracts/v4/` 已通过 Stage 0 contract-only verifier；它约束后续新开发，但没有 migration/runtime/live 证据，不能写成已实现能力。
+> 状态：Phase 0B 的 v3 契约是客服参考纵切的实施基线。`contracts/v4/` 已通过 Stage 0 与 Stage 1 Entry contract-only verifier。S1A 的 migration、HTTP/CLI 和 no-trace runtime 已写入当前工作树，但仍等待独立 verifier、evidence 与 completion commit，不能写成 `DONE` 或 live；S1B 尚未实现，provider-live 还受凭证轮换和单独授权阻塞。
 
 施工顺序：先确定变更涉及哪份契约，再精读文件和对应 conformance test。本页只做导航，不能覆盖原契约。
 
@@ -26,11 +26,18 @@
 | 路径 | 内容 | 状态边界 |
 |---|---|---|
 | [v4/README.md](../contracts/v4/README.md) | v4 contract 版本、边界和运行命令 | target contract，不证明 API 已上线 |
-| [v4/aggregate-ownership.yaml](../contracts/v4/aggregate-ownership.yaml) | Signal、Case、Work、Proposal、Evidence、Gate 与外部操作的唯一 owner/cutover | target ownership；PG 表尚未迁移 |
-| [v4/intent-registry.yaml](../contracts/v4/intent-registry.yaml) | 当前冻结的 11 个 public intent、scope、HTTP/CLI/MCP/A2A 映射与首次 Stage | 只 advertise 对应 Stage 已实现的 intent |
-| [v4/openapi/public-api.yaml](../contracts/v4/openapi/public-api.yaml) | Public API v1 OpenAPI 3.1 target surface | contract skeleton；无 runtime route 证明 |
+| [v4/aggregate-ownership.yaml](../contracts/v4/aggregate-ownership.yaml) | Signal、Case、Work、Proposal、Evidence、Gate 与外部操作的唯一 owner/cutover | target ownership；S1A 对应 PG 表已进入工作树但待 verifier，其他 owner 仍是 target |
+| [v4/intent-registry.yaml](../contracts/v4/intent-registry.yaml) | 14 个 target public intent：8 个 S1A/S1B `FROZEN`，6 个后续 Stage `SKELETON`；含 scope、transport mapping 与 activation Stage | 当前工作树只实现 5 个 S1A HTTP/CLI intent，且尚未通过阶段闭合；S1B 3 个 intent 仍不得 advertise |
+| [v4/openapi/public-api.yaml](../contracts/v4/openapi/public-api.yaml) | Public API v1 OpenAPI 3.1：5 个 S1A 与 3 个 S1B frozen operation | 当前工作树只存在 S1A route，待 verifier；OpenAPI 中的 S1B operation 不是 runtime 证明 |
 | [v4/events/](../contracts/v4/events/) | WorkerTask/Attempt/Gate/Capability/ExternalOperation 等事件与恢复状态机 | target event grammar；不是运行日志 |
-| [v4/schemas/](../contracts/v4/schemas/) | Signal、AgentRunRef、TraceEvidenceReceipt、Resolution/Candidate/Evaluation、WorkerTask/Attempt/Proposal 等 JSON Schema | target schemas；fixtures 不是 live evidence |
+| [v4/schemas/](../contracts/v4/schemas/) | Signal、AgentRunRef、TraceEvidenceReceipt、Resolution/Candidate/Evaluation、WorkerTask/Attempt/Proposal 等 JSON Schema | S1A subset 已有工作树 runtime，仍待 verifier；其余 target schemas 与 fixtures 都不是 live evidence |
+
+## Stage 1 切片状态边界
+
+| 切片 | 当前事实 | 仍缺什么 |
+|---|---|---|
+| S1A · authenticated maintainer report without trace | 工作树已包含 `007`、本地 bootstrap、5 个 HTTP/CLI intent，以及同事务 Signal/Case link/`UNKNOWN` receipt/event/audit/outbox/idempotency 路径 | 独立 verifier、正式 evidence、completion commit；在这些完成前状态仍是 `IN_PROGRESS`，也没有 provider-live 声明 |
+| S1B · Langfuse read + CaseLoop OTel write/readback | `FROZEN` wire contract only；connector、cursor/DLQ、真实 Langfuse 读取与独立 sink 回读均未实现 | 008、runtime、测试，以及轮换后的隔离凭证和单独 live 授权；当前 provider-live 为 `BLOCKED` |
 
 ## Fixtures 与样例
 
@@ -64,7 +71,7 @@
 - 归因：只有 `ATTRIBUTED` 可进入修复；`INCONCLUSIVE` 补实验或人工接管，`CONFOUNDED` 按协议扩大实验。
 - Trust：一次动作一个样本，多探针不能增加样本量；R2 永远逐次审批。
 
-## 已进入 target contract、尚未实现的边界
+## 已进入 target contract、尚未闭合的边界
 
 下列内容已经由 PRD v2 / plan v4 批准；能否进入某个已实现能力仍取决于对应 migration、runtime、test、evidence 和 cutover：
 
@@ -78,4 +85,4 @@
 | `Closure / Release Adapter` | 不同 Agent runtime 的发布、回滚、停止、告警和结果回传语义 |
 | CaseLoop 自身 trace 出站 | 标准传播、service/tenant 标识、脱敏、采样与 Langfuse adapter 配置 |
 
-表中前三项与 Proposal Causation 已有 Stage 0 target schema；Connector、存储、完整分布式 trace、Closure/Release Adapter 和 CaseLoop 自身 trace 出站仍待后续 Stage 实现。target contract 只能证明我们已明确语义，不能证明真实调用路径。
+表中 Signal 的 S1A no-trace 子集已进入工作树，但仍待阶段 verifier/evidence/commit；TraceSource、带 locator 的 Trace Completeness、Connector、完整分布式 trace、Closure/Release Adapter 和 CaseLoop 自身 trace 出站仍待 S1B 或后续 Stage 实现。target contract 只能证明我们已明确语义，不能证明真实调用路径或 live。

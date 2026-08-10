@@ -16,13 +16,14 @@ from app.api import (
     experiments,
     gates,
     notifications,
+    public_v4,
     read_views,
     releases,
 )
 from app.config import Settings, get_settings
 from app.api.deps import validate_authority_config
 from app.db import get_engine, get_session_factory
-from app.models.tables import Base
+from app.models import Base
 from app.quality.client import FakeQualityClient, QualityAPIClient
 from app.services.event_store import CASConflict
 from app.services.state_machines import IllegalTransition
@@ -88,6 +89,7 @@ def create_app(
     app.include_router(notifications.router)
     app.include_router(read_views.router)
     app.include_router(evidence_export.router)
+    app.include_router(public_v4.router)
 
     @app.get("/healthz")
     def healthz() -> dict[str, str]:

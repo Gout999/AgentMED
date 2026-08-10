@@ -267,6 +267,8 @@ deploy/compose.yaml
 
 两份 migration 均从 `006` 线性前进并提供 upgrade/downgrade 测试；downgrade 不得静默丢弃已固化证据。
 
+当前工作树中的 `007` 是 prototype 阶段的 additive expand migration，但会直接执行 `ALTER TABLE`、约束和索引创建；它没有证明大表上的 zero-downtime。当前规模可在明确 maintenance window 内执行；进入大数据量或生产部署前，必须先评估锁与扫描时间，并按需要拆成 online DDL、分批 backfill、`NOT VALID`/后置校验等可回滚步骤。现有本地 PostgreSQL upgrade/downgrade 验证不能被写成零停机证据。
+
 ### 验证
 
 - **focused**：规范化、同源幂等、跨源 link proposal、trace completeness、PII policy、cursor/watermark、DLQ replay、audit failure rollback；CaseLoop 自身 OTel export receipt、client-side masking、export 失败不影响 PG 权威写入但必须留下可观测失败；quickstart/readiness/doctor。

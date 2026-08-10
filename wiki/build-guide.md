@@ -13,6 +13,15 @@
 
 通用 Agent 新能力必须先进入新版 PRD / plan / contracts。Langfuse 或第二 workload 的需求已被确认，不等于可以跳过契约阶段直接施工。
 
+## 当前 v4 施工切片
+
+| 切片 | 当前状态 | 口径 |
+|---|---|---|
+| S1A · authenticated maintainer report without trace | `IMPLEMENTED IN WORKING TREE / VERIFIER PENDING` | `007`、本地 bootstrap、5 个 HTTP/CLI intent 和 PostgreSQL 事务链已在工作树中；在 verifier、evidence、completion commit 完成前仍是 `IN_PROGRESS`，不能称 `DONE` 或 live |
+| S1B · Langfuse read + CaseLoop OTel write/readback | `NOT IMPLEMENTED / PROVIDER-LIVE BLOCKED` | 当前只有 frozen wire contract；connector、008、真实读取和独立 sink 回读尚未施工，且 live 前必须轮换隔离凭证并取得单独授权 |
+
+Stage 1 只有在 S1A 与 S1B 各自满足测试、证据和验收边界后才能整体关闭；本地 PostgreSQL/loopback 通过不等于 `domain-provider-live`。
+
 ## 工具无关的角色分工
 
 - **任务控制者**：确认目标和权限，拆分无重叠 scope，维护决策与验收口径。
@@ -62,7 +71,7 @@
 ## 环境与凭证安全
 
 - 每个进程只注入各自 `.env.example` 所需的最小变量；不要 `source` 其他仓库或未知整份 `.env`。
-- 测试数据库必须显式指定 disposable URL。若 shell 已有生产/演示 `DATABASE_URL`，测试可能沿用它。
+- 测试数据库必须显式指定 disposable URL。会 reset schema 的 control-plane PostgreSQL integration suite 还必须显式设置 `CASELOOP_ALLOW_INTEGRATION_RESET=true`；若 shell 已有生产/演示 `DATABASE_URL`，测试可能沿用它。
 - `docker compose config` 可能展开 secret 并打印到日志；共享会话不要运行未脱敏的完整输出。
 - CaseLoop 原生 control-plane 默认宿主 `8090`；Compose profile 是宿主 `18090 → 容器 8090`；AgentTeams controller 的容器内 `8090` 属于另一个地址空间。
 - MCP 隔离测试使用 [mcp-servers/README.md](../mcp-servers/README.md) 中的完整受信 backend smoke，包含所需 token 和 consumer 约束；不要复制过期裸命令。

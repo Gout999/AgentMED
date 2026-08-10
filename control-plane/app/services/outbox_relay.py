@@ -41,6 +41,9 @@ DOMAIN_EVENT_TYPES = {
     "CASE_ARCHIVED",
 }
 TRUST_EVENT_TYPES = {"RELEASE_PROMOTED", "RELEASE_ROLLED_BACK", "RELEASE_UNKNOWN"}
+# The fixed Phase-1 worker owns only these v3 channels.  v4 rows are consumed
+# by a separate contract-aware worker and must remain invisible here.
+LEGACY_OUTBOX_CHANNELS = ("domain.events", "notification.delivery")
 
 
 class OutboxDeliveryError(Exception):
@@ -222,6 +225,8 @@ class OutboxDispatcher:
             unresolved_predecessor = (
                 select(predecessor.outbox_id)
                 .where(
+                    predecessor.contract_version.is_(None),
+                    predecessor.channel.in_(LEGACY_OUTBOX_CHANNELS),
                     predecessor.aggregate_id == Outbox.aggregate_id,
                     predecessor.source_event_seq < Outbox.source_event_seq,
                     predecessor.event_type != "LEGACY_UNATTRIBUTED",
@@ -233,6 +238,8 @@ class OutboxDispatcher:
             statement = (
                 select(Outbox)
                 .where(
+                    Outbox.contract_version.is_(None),
+                    Outbox.channel.in_(LEGACY_OUTBOX_CHANNELS),
                     or_(
                         and_(
                             Outbox.status == "PENDING",

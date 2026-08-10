@@ -1,0 +1,33 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "caseloop-cli"
+version = "0.1.0"
+description = "Stage 1A public CLI for CaseLoop"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "httpx>=0.27,<1",
+  "pydantic>=2.10,<3",
+  "PyYAML>=6,<7",
+  "rfc8785==0.1.4",
+]
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8,<10",
+  "pytest-cov>=5,<8",
+]
+
+[project.scripts]
+caseloop = "caseloop_cli.main:entrypoint"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = ["--strict-markers"]
