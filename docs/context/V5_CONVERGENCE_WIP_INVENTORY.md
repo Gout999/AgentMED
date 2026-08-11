@@ -2,11 +2,11 @@
 
 Status: **PRESERVED / EXCLUDED FROM C0 BASELINE**
 
-Snapshot date: 2026-08-11 (Asia/Hong_Kong)  
-Source worktree: original local repository worktree (absolute path intentionally omitted)  
-Source branch: `codex/v4-foundation`  
-Source HEAD: `c838b2bcefb80c8458aefa17934e190a5d8485f3`  
-Clean convergence worktree: temporary clean worktree (absolute path intentionally omitted)  
+Snapshot date: 2026-08-11 (Asia/Hong_Kong)
+Source worktree: original local repository worktree (absolute path intentionally omitted)
+Source branch: `codex/v4-foundation`
+Source HEAD: `c838b2bcefb80c8458aefa17934e190a5d8485f3`
+Clean convergence worktree: temporary clean worktree (absolute path intentionally omitted)
 Convergence branch: `codex/v5-convergence`
 
 ## Purpose
