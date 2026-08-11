@@ -76,6 +76,15 @@ def test_contracts_freeze_two_immutable_revisions_and_historical_authority() -> 
     assert domain_history["recommended_implementation_names"] == history[
         "recommended_implementation_names"
     ]
+    activation = ownership_decision["activation"]
+    assert activation["exact_previous_binding_is_server_derived"] is True
+    assert activation["compare_and_swap"] == {
+        "expected_revision": 1,
+        "expected_state": "REGISTERED",
+        "next_revision": 2,
+        "next_state": "ACTIVE",
+    }
+    assert activation["duplicate_or_stale_or_wrong_state"] == "REJECT_AND_AUDIT"
 
     for name, expected_commands in (
         ("ai_application", ["applications.register", "applications.activate"]),
@@ -201,37 +210,42 @@ def test_adversarial_and_recovery_boundaries_fail_closed() -> None:
     fixture = _load(FIXTURE)
     outcomes = {row["name"]: row["expected"] for row in fixture["adversarial"]}
 
-    assert outcomes["update_revision_1_in_place"] == "REJECT_AND_AUDIT"
-    assert outcomes["activation_without_exact_previous_binding"] == "REJECT_AND_AUDIT"
-    assert outcomes["concurrent_second_activation"] == "REJECT_AND_AUDIT"
-    assert outcomes["component_revision_binds_registered_revision_1"] == (
-        "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION"
-    )
-    assert outcomes["activation_receipt_failure"] == (
-        "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION"
-    )
-    assert outcomes["internal_controller_with_activation_scope_calls_directly"] == "DENY_AND_AUDIT"
-    assert outcomes["activation_request_digest_or_manifest_digest_mismatch"] == (
-        "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION"
-    )
-    assert outcomes["controller_receipt_without_initiating_principal_audit"] == (
-        "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION"
-    )
-    assert outcomes["initiating_principal_audit_without_controller_receipt"] == (
-        "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION"
-    )
-    assert outcomes["component_revision_binds_stale_active_revision_after_reactivation"] == (
-        "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION"
-    )
-    assert outcomes["component_revision_binds_deprecated_revision"] == (
-        "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION"
-    )
-    assert outcomes["component_revision_binds_retired_revision"] == (
-        "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION"
-    )
-    assert outcomes["reinterpret_legacy_active_revision_1_as_registered"] == (
-        "EXPLICIT_RECOVERY_REQUIRED"
-    )
+    assert outcomes == {
+        "update_revision_1_in_place": "REJECT_AND_AUDIT",
+        "activation_without_exact_previous_binding": "REJECT_AND_AUDIT",
+        "activate_from_active": "REJECT_AND_AUDIT",
+        "concurrent_second_activation": "REJECT_AND_AUDIT",
+        "component_revision_binds_registered_revision_1": (
+            "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION"
+        ),
+        "component_revision_binds_bare_component_id": (
+            "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION"
+        ),
+        "cross_workspace_active_component_binding": (
+            "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION"
+        ),
+        "activation_receipt_failure": "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION",
+        "internal_controller_with_activation_scope_calls_directly": "DENY_AND_AUDIT",
+        "activation_request_digest_or_manifest_digest_mismatch": (
+            "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION"
+        ),
+        "controller_receipt_without_initiating_principal_audit": (
+            "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION"
+        ),
+        "initiating_principal_audit_without_controller_receipt": (
+            "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION"
+        ),
+        "component_revision_binds_stale_active_revision_after_reactivation": (
+            "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION"
+        ),
+        "component_revision_binds_deprecated_revision": (
+            "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION"
+        ),
+        "component_revision_binds_retired_revision": (
+            "REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION"
+        ),
+        "reinterpret_legacy_active_revision_1_as_registered": "EXPLICIT_RECOVERY_REQUIRED",
+    }
     assert fixture["recovery"] == {
         "populated_without_v5_catalog_history": "UPGRADE_ALLOWED",
         "populated_with_direct_active_v5_history": "EXPLICIT_RECOVERY_REQUIRED",
