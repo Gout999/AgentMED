@@ -146,23 +146,23 @@ function qs(params: Record<string, string | number | undefined>): string {
 }
 
 /**
- * C4 generated-transport shadow for the applications.list response.
+ * C5 generated structural-wire gate for the applications.list response.
  *
- * The generated guard (contracts/v5/generated/ts/applications.list.ts static
- * copy) runs first, then the legacy validator. On disagreement the mismatch is
- * logged and the legacy result wins (explicit per-surface fallback during the
- * C4 cutover); on agreement the shared result is used.
+ * The generated guard runs first and the semantic validator runs second.
+ * Both must pass.  The semantic layer retains cross-record invariants that the
+ * generated JSON-Schema guard cannot express; it never overrides a generated
+ * rejection.
  */
 function applicationCatalogListShadowGuard(value: unknown): value is ApplicationCatalogListResponse {
   const generatedValid = applicationsListGuard(value);
   const legacyValid = guards.applicationCatalogList(value);
   if (generatedValid !== legacyValid) {
     console.error(
-      "[catalog-shadow] applications.list generated/legacy guard disagreement; falling back to the legacy validator.",
+      "[catalog-wire] applications.list structural/semantic guard disagreement; rejecting fail-closed.",
       { generated: generatedValid, legacy: legacyValid },
     );
   }
-  return legacyValid;
+  return generatedValid && legacyValid;
 }
 
 export const api = {

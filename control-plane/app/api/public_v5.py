@@ -34,6 +34,10 @@ from app.public_api.auth_contract import AcceptedPrincipalContext, HeaderContrac
 from app.public_api.errors import map_public_error
 from app.public_api.v2_contract import PublicV2RequestHeaders
 from app.public_api.v5_capability_models import V5ServerCapabilitiesResponse
+from app.public_api.v5_generated_wire import (
+    GeneratedWireValidationError,
+    validate_generated_wire,
+)
 from app.public_api.v5_models import (
     AcceptanceCriteriaConfirmRequest,
     AcceptanceCriteriaConfirmResponse,
@@ -144,9 +148,15 @@ def _public_headers(request: Request) -> dict[str, str]:
 
 
 def _json_response(model: BaseModel, *, status_code: int) -> JSONResponse:
+    payload = model.model_dump(mode="json", exclude_none=False)
+    validate_generated_wire(
+        model_name=type(model).__name__,
+        direction="response",
+        payload=payload,
+    )
     return JSONResponse(
         status_code=status_code,
-        content=model.model_dump(mode="json", exclude_none=False),
+        content=payload,
         headers={"X-CaseLoop-Contract-Version": _CONTRACT_VERSION},
     )
 
@@ -500,7 +510,16 @@ async def _parse_body(request: Request, model: type[ResponseModel]) -> ResponseM
     except (UnicodeDecodeError, json.JSONDecodeError, _InvalidJson):
         raise _RouteFailure("REQUEST_INVALID", {"fields": ["body"]}) from None
     try:
+        validate_generated_wire(
+            model_name=model.__name__,
+            direction="request",
+            payload=payload,
+        )
         return model.model_validate(payload)
+    except GeneratedWireValidationError as exc:
+        raise _RouteFailure(
+            "VALIDATION_FAILED", {"fields": exc.fields}
+        ) from None
     except ValidationError as exc:
         fields = sorted({".".join(str(part) for part in item["loc"]) for item in exc.errors()})
         raise _RouteFailure("VALIDATION_FAILED", {"fields": fields}) from None
@@ -644,8 +663,9 @@ def get_v5_capabilities(request: Request) -> JSONResponse:
             server_version=f"{__version__}+v5-r2",
         )
         response = V5ServerCapabilitiesResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=200)
         _commit(session)
-        return _json_response(response, status_code=200)
+        return wire_response
     except HeaderContractViolation as exc:
         return _handle_header_violation(
             session,
@@ -711,8 +731,9 @@ async def register_application(request: Request) -> JSONResponse:
             request_id=request_id,
         )
         response = ApplicationRegisterResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=201)
         _commit(session)
-        return _json_response(response, status_code=201)
+        return wire_response
     except HeaderContractViolation as exc:
         return _handle_header_violation(
             session,
@@ -768,8 +789,9 @@ def list_applications(request: Request) -> JSONResponse:
             cursor=cursor,
         )
         response = ApplicationListResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=200)
         _commit(session)
-        return _json_response(response, status_code=200)
+        return wire_response
     except HeaderContractViolation as exc:
         return _handle_header_violation(
             session,
@@ -813,8 +835,9 @@ def get_application(application_id: str, request: Request) -> JSONResponse:
             request_id=request_id,
         )
         response = ApplicationGetResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=200)
         _commit(session)
-        return _json_response(response, status_code=200)
+        return wire_response
     except HeaderContractViolation as exc:
         return _handle_header_violation(
             session,
@@ -883,8 +906,9 @@ async def register_environment(request: Request) -> JSONResponse:
             request_id=request_id,
         )
         response = EnvironmentRegisterResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=201)
         _commit(session)
-        return _json_response(response, status_code=201)
+        return wire_response
     except HeaderContractViolation as exc:
         return _handle_header_violation(
             session,
@@ -927,8 +951,9 @@ def get_environment(environment_id: str, request: Request) -> JSONResponse:
             request_id=request_id,
         )
         response = EnvironmentGetResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=200)
         _commit(session)
-        return _json_response(response, status_code=200)
+        return wire_response
     except HeaderContractViolation as exc:
         return _handle_header_violation(
             session,
@@ -997,8 +1022,9 @@ async def register_component(request: Request) -> JSONResponse:
             request_id=request_id,
         )
         response = ComponentRegisterResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=201)
         _commit(session)
-        return _json_response(response, status_code=201)
+        return wire_response
     except HeaderContractViolation as exc:
         return _handle_header_violation(
             session,
@@ -1041,8 +1067,9 @@ def get_component(component_id: str, request: Request) -> JSONResponse:
             request_id=request_id,
         )
         response = ComponentGetResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=200)
         _commit(session)
-        return _json_response(response, status_code=200)
+        return wire_response
     except HeaderContractViolation as exc:
         return _handle_header_violation(
             session,
@@ -1111,8 +1138,9 @@ async def record_dependency_edge(request: Request) -> JSONResponse:
             request_id=request_id,
         )
         response = DependencyEdgeRecordResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=201)
         _commit(session)
-        return _json_response(response, status_code=201)
+        return wire_response
     except HeaderContractViolation as exc:
         return _handle_header_violation(
             session,
@@ -1155,8 +1183,9 @@ def get_dependency_edge(dependency_edge_id: str, request: Request) -> JSONRespon
             request_id=request_id,
         )
         response = DependencyEdgeGetResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=200)
         _commit(session)
-        return _json_response(response, status_code=200)
+        return wire_response
     except HeaderContractViolation as exc:
         return _handle_header_violation(
             session,
@@ -1231,8 +1260,9 @@ async def import_system_manifest(request: Request) -> JSONResponse:
             request_id=request_id,
         )
         response = SystemManifestImportResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=201)
         _commit(session)
-        return _json_response(response, status_code=201)
+        return wire_response
     except HeaderContractViolation as exc:
         return _handle_header_violation(
             session,
@@ -1273,8 +1303,9 @@ def _unregistered_get_system_version(
             request_id=request_id,
         )
         response = SystemVersionGetResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=200)
         _commit(session)
-        return _json_response(response, status_code=200)
+        return wire_response
     except HeaderContractViolation as exc:
         if session is not None:
             _rollback(session)
@@ -1334,8 +1365,9 @@ def _unregistered_diff_system_versions(
             request_id=request_id,
         )
         response = SystemVersionDiffResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=200)
         _commit(session)
-        return _json_response(response, status_code=200)
+        return wire_response
     except HeaderContractViolation as exc:
         if session is not None:
             _rollback(session)
@@ -1409,8 +1441,9 @@ async def _unregistered_bind_case_application(
             request_id=request_id,
         )
         response = CaseBindApplicationResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=201)
         _commit(session)
-        return _json_response(response, status_code=201)
+        return wire_response
     except HeaderContractViolation as exc:
         if session is not None:
             _rollback(session)
@@ -1465,8 +1498,9 @@ def _unregistered_get_case_application_binding(
             request_id=request_id,
         )
         response = ApplicationBindingGetResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=200)
         _commit(session)
-        return _json_response(response, status_code=200)
+        return wire_response
     except HeaderContractViolation as exc:
         if session is not None:
             _rollback(session)
@@ -1534,8 +1568,9 @@ async def _unregistered_propose_acceptance_criteria(
             request_id=request_id,
         )
         response = AcceptanceCriteriaProposeResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=201)
         _commit(session)
-        return _json_response(response, status_code=201)
+        return wire_response
     except HeaderContractViolation as exc:
         if session is not None:
             _rollback(session)
@@ -1588,8 +1623,9 @@ def _unregistered_get_acceptance_criteria(
             request_id=request_id,
         )
         response = AcceptanceCriteriaGetResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=200)
         _commit(session)
-        return _json_response(response, status_code=200)
+        return wire_response
     except HeaderContractViolation as exc:
         if session is not None:
             _rollback(session)
@@ -1659,8 +1695,9 @@ async def _unregistered_confirm_acceptance_criteria(
             request_id=request_id,
         )
         response = AcceptanceCriteriaConfirmResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=201)
         _commit(session)
-        return _json_response(response, status_code=201)
+        return wire_response
     except HeaderContractViolation as exc:
         if session is not None:
             _rollback(session)

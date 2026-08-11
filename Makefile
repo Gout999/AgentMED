@@ -11,4 +11,4 @@ demo-b1-live:
 	$(PYTHON) scripts/run_b1_live.py --eval-python $(EVAL_PYTHON)
 
 check-v5:
-	bash scripts/verify_convergence.sh
+	PYTHON="$(PYTHON)" CONTRACT_PYTHON="$(EVAL_PYTHON)" bash scripts/verify_convergence.sh

@@ -399,7 +399,7 @@ It may not:
 
 ## 10. Completion language
 
-Allowed before C5 closes:
+Allowed only after the named wave has its own semantic and status closure:
 
 - `D-015 ACCEPTED / NOT RUNTIME CUTOVER PROOF`;
 - `C0 DONE` (`a14784a`+`903e954`) / `C1 DONE` (`3dc7339`) / `C2 DONE` (`d2c3f18`) / `C3 DONE` (`3adaac0`) / `C4 DONE` (`1d7b59c`) / `C5 DONE` (`19f26bf`), or the exact independently verified wave status;
@@ -407,9 +407,9 @@ Allowed before C5 closes:
 - `D2/R3/R4/V5-2+ LOCKED`;
 - `SHA/evidence digest DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`.
 
-Forbidden before their own closure:
+Forbidden before their own runtime closure:
 
-- `architecture converged`;
+- `architecture converged` before the C0-C5 series passes its effective gate;
 - `V5 runtime cut over`;
 - `V5 complete` or `Core V5 complete`;
 - `second VersionSet/diff implemented`;

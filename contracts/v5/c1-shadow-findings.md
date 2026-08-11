@@ -4,9 +4,11 @@ C1 runs the generated JSON Schema 2020-12 wire contracts in shadow beside the
 legacy Pydantic models and records any accept/reject divergence instead of
 silently coercing it (v5-architecture-convergence.md#C1). The curated corpus
 (`contracts/v5/corpus/`) contains only cases where both validators agree; the
-divergences below are known, reproduced findings that C4 (or a later wave)
-must adjudicate before cutover. None of them weakens the current legacy
-behavior, changes a route or changes the public major.
+divergences below are known, reproduced findings. C4/C5 adjudicated them with
+a layered fail-closed boundary: generated JSON Schema owns structural wire
+acceptance, while Pydantic/TypeScript validators retain semantic and aggregate
+invariants. Both layers must accept and neither may override the other's
+rejection. This does not change the public major.
 
 ## 1. Structural wire shapes: schema scope
 
@@ -27,8 +29,9 @@ are deliberately absent from the corpus:
   schema-valid / legacy-invalid.
 
 Disposition: these are semantic service/aggregate invariants, not wire shape.
-They stay in the legacy layer (and its tests) until C4; C1 does not attempt a
-schema encoding.
+They remain in the semantic validator/service layer and its tests; C1 does not
+attempt an unsound schema encoding. C4/C5 require generated structural
+acceptance before that semantic layer runs.
 
 ## 2. V5IdempotencyReceipt intent-binding (legacy stricter)
 
@@ -38,10 +41,9 @@ intent: `resource.kind`, `resource.id` prefix, `operation_id == null` and
 structural only (kind/status enums, op_ or null, generic id pattern), so an
 inconsistent receipt can be schema-valid / legacy-invalid.
 
-Disposition: corpus valid cases are authored on the legacy-strict side, so the
-harness stays green. Encoding the per-intent binding table into the schema is a
-C4 candidate (the compiler already emits `command_target`/`workflow_owner`
-metadata that would feed it).
+Disposition: corpus valid cases are authored on the semantic-strict side. The
+semantic validator remains authoritative for this cross-field rule; the
+compiler supplies the activated intent and structural receipt shape first.
 
 ## 3. Record revision/lifecycle coupling (schema stricter on rev >= 2)
 
@@ -57,8 +59,9 @@ re-checked). Divergent corners (verified):
 
 Disposition: the schema's lifecycle↔binding coupling matches the domain model
 (`domain-model.yaml#lifecycle_revision_contract`); the legacy rev>=2 laxness is
-a gap. Schema is kept as the stricter domain truth; the legacy model aligns in
-a later wave. Corpus cases are authored where both validators agree.
+a gap. Schema is kept as the stricter domain truth. Runtime acceptance now
+requires both schema and semantic validation, so every divergent corner fails
+closed without silently widening either layer.
 
 ## 4. Capability `execution_mode` per intent (legacy stricter)
 
@@ -66,9 +69,8 @@ a later wave. Corpus cases are authored where both validators agree.
 `synchronous_local_transaction` and every other activated intent →
 `synchronous`. The `enabledIntent` schema does not encode the name→mode rule.
 
-Disposition: the rule is derivable from the intent registry and is already
-emitted verbatim by the C1 compiler; the capability manifest is the candidate
-single source. Encoding it in the schema is optional; recorded, not coerced.
+Disposition: the intent registry and generated capability manifest own the
+per-intent execution mode; the semantic model additionally verifies it.
 
 ## 5. Manifest/specification constraints (legacy stricter)
 
@@ -88,8 +90,9 @@ In the request-side `ManifestRevisionSpec`, the schema types
 the legacy model declares `dict[str, Any] | None` for that request field. A
 non-conforming dict is legacy-valid / schema-invalid.
 
-Disposition: recorded; the schema's tighter shape is the intended contract and
-the legacy model should narrow in a later wave.
+Disposition: the schema's tighter shape is the structural contract. Because
+generated validation runs before semantic validation, the legacy open dict can
+no longer admit this invalid shape on an activated transport.
 
 ## 7. date-time format enforcement
 
@@ -104,6 +107,7 @@ it.
 
 ## Verdict
 
-All divergences are recorded, none silently coerced. The C1 corpus and shadow
-harness prove accept/reject parity over the structural wire space; the legacy
-runtime, routes and default major are unchanged.
+All divergences are recorded and adjudicated without silent coercion. The C1
+corpus and shadow harness characterize the boundary; C4/C5 make generated
+structural validation and semantic validation jointly mandatory and
+fail-closed. The default public and CLI major remains unchanged.

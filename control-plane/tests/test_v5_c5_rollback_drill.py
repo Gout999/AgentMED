@@ -1,9 +1,8 @@
 """C5 rollback drill: V5 入口禁用路径构造验证（v5-architecture-convergence.md#C5）。
 
-当前控制面**没有运行时 kill-switch**：`app.main.create_app` 固定 include
-``public_v5.router``，不存在按配置关闭 V5 面的开关。本 drill 通过**构造**
-验证「禁用 V5 面」的行为契约——monkeypatch 掉 ``app.main.public_v5``
-（替换为空 router），构造一个不含任何 v5 路由的 app，并断言：
+控制面通过 server-owned ``ENABLE_PUBLIC_V5`` 开关禁用整个 V5 public
+router。本 drill 使用真实 Settings 路径构造一个不含任何 V5 路由的 app，
+并断言：
 
 1. V3/V4 字节不变：同一 seed 下 ``GET /api/v1/capabilities``（capabilities
    v1 只读 smoke）的成功响应与未认证 401 错误信封，在 baseline app（含
@@ -20,20 +19,17 @@
 对照性断言 ``test_disabled_construction_actually_removes_v5_surface`` 保证
 drill 的构造确实删除了 v5 面（否则 404 断言是空谈）。
 
-本 drill 不修改任何迁移、路由或模型代码：禁用只发生在测试构造层面。
+该开关只改变 transport reachability，不删除迁移、模型或 immutable facts。
 """
 
 from __future__ import annotations
 
 import json
-import types
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import pytest
 import sqlalchemy as sa
-from fastapi import APIRouter
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 from sqlalchemy.orm import Session
@@ -136,31 +132,24 @@ def _fresh_engine() -> sa.Engine:
     return engine
 
 
-def _settings() -> Settings:
+def _settings(*, include_v5: bool) -> Settings:
     return Settings(
         database_url="sqlite://",
         public_credential_hash_pepper=SecretStr(PEPPER),
         public_cursor_signing_key=SecretStr(CURSOR_KEY),
         require_mcp_role_tokens=False,
+        enable_public_v5=include_v5,
     )
 
 
-def _build_app(engine: sa.Engine, *, include_v5: bool, monkeypatch: pytest.MonkeyPatch):
-    """Build the control-plane app; ``include_v5=False`` constructs the
-    V5-disabled surface (monkeypatched empty router in place of public_v5).
+def _build_app(engine: sa.Engine, *, include_v5: bool):
+    """Build through the production Settings-controlled V5 route switch."""
 
-    No kill-switch exists today: the disabled path is a construction-level
-    simulation of the C5 rollback action "disable affected V5 entry points".
-    """
-    if not include_v5:
-        import app.main as main_module
-
-        monkeypatch.setattr(
-            main_module,
-            "public_v5",
-            types.SimpleNamespace(router=APIRouter()),
-        )
-    return create_app(settings=_settings(), engine=engine, create_tables=True)
+    return create_app(
+        settings=_settings(include_v5=include_v5),
+        engine=engine,
+        create_tables=True,
+    )
 
 
 def _v1_headers() -> dict[str, str]:
@@ -204,10 +193,10 @@ def _masked_canonical(value: Any) -> bytes:
 # ---------------------------------------------------------------------------
 
 
-def test_v1_capabilities_bytes_identical_with_v5_surface_disabled(monkeypatch) -> None:
-    with TestClient(_build_app(_fresh_engine(), include_v5=True, monkeypatch=monkeypatch)) as baseline:
+def test_v1_capabilities_bytes_identical_with_v5_surface_disabled() -> None:
+    with TestClient(_build_app(_fresh_engine(), include_v5=True)) as baseline:
         with TestClient(
-            _build_app(_fresh_engine(), include_v5=False, monkeypatch=monkeypatch)
+            _build_app(_fresh_engine(), include_v5=False)
         ) as disabled:
             response_a = baseline.get("/api/v1/capabilities", headers=_v1_headers())
             response_b = disabled.get("/api/v1/capabilities", headers=_v1_headers())
@@ -231,10 +220,10 @@ def test_v1_capabilities_bytes_identical_with_v5_surface_disabled(monkeypatch) -
     assert "applications.register" not in enabled_b
 
 
-def test_v1_error_envelope_bytes_identical_with_v5_surface_disabled(monkeypatch) -> None:
-    with TestClient(_build_app(_fresh_engine(), include_v5=True, monkeypatch=monkeypatch)) as baseline:
+def test_v1_error_envelope_bytes_identical_with_v5_surface_disabled() -> None:
+    with TestClient(_build_app(_fresh_engine(), include_v5=True)) as baseline:
         with TestClient(
-            _build_app(_fresh_engine(), include_v5=False, monkeypatch=monkeypatch)
+            _build_app(_fresh_engine(), include_v5=False)
         ) as disabled:
             unauth_a = baseline.get("/api/v1/capabilities", headers={"X-Request-ID": REQUEST_ID})
             unauth_b = disabled.get("/api/v1/capabilities", headers={"X-Request-ID": REQUEST_ID})
@@ -251,10 +240,10 @@ def test_v1_error_envelope_bytes_identical_with_v5_surface_disabled(monkeypatch)
 # ---------------------------------------------------------------------------
 
 
-def test_disabled_construction_actually_removes_v5_surface(monkeypatch) -> None:
-    with TestClient(_build_app(_fresh_engine(), include_v5=True, monkeypatch=monkeypatch)) as baseline:
+def test_disabled_construction_actually_removes_v5_surface() -> None:
+    with TestClient(_build_app(_fresh_engine(), include_v5=True)) as baseline:
         with TestClient(
-            _build_app(_fresh_engine(), include_v5=False, monkeypatch=monkeypatch)
+            _build_app(_fresh_engine(), include_v5=False)
         ) as disabled:
             # Baseline: the v5 route exists and requires authentication (401,
             # never 404) — the route table serves.
@@ -268,9 +257,9 @@ def test_disabled_construction_actually_removes_v5_surface(monkeypatch) -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_v5_write_path_unreachable_produces_no_outbox_rows(monkeypatch) -> None:
+def test_v5_write_path_unreachable_produces_no_outbox_rows() -> None:
     engine = _fresh_engine()
-    with TestClient(_build_app(engine, include_v5=False, monkeypatch=monkeypatch)) as disabled:
+    with TestClient(_build_app(engine, include_v5=False)) as disabled:
         # Read path: 404 with the standard FastAPI JSON envelope, not a 500.
         read = disabled.get("/api/v2/capabilities", headers=_v1_headers())
         assert read.status_code == 404

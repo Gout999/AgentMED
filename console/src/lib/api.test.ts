@@ -510,13 +510,13 @@ describe("CaseLoop Console API client", () => {
     expect(applicationsListGuard(invalidComponent)).toBe(guards.applicationCatalogList(invalidComponent));
   });
 
-  it("falls back to the legacy guard result on generated/legacy disagreement", async () => {
+  it("rejects fail-closed on generated/semantic disagreement", async () => {
     const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
     try {
       const credential = { workspaceId, projectId, bearerToken: "opaque-shadow-token" };
 
-      // Generated accepts (schema-valid envelope), legacy rejects the
-      // cross-record workspace mismatch → legacy wins → invalid_response.
+      // Generated accepts the structural envelope, while the semantic layer
+      // rejects the cross-record workspace mismatch.
       fetchMock.mockResolvedValueOnce(jsonResponse(catalogResponse({
         workspace_id: "ws_01J0000000000002",
       })));
@@ -526,15 +526,16 @@ describe("CaseLoop Console API client", () => {
       });
       expect(errorSpy).toHaveBeenCalled();
 
-      // Generated rejects (owner list beyond schema maxItems 32), legacy
-      // accepts → legacy wins → request succeeds.
+      // Generated rejects an owner list beyond maxItems=32 even though the
+      // semantic layer accepts it.  Structural rejection cannot be overridden.
       errorSpy.mockClear();
       const overfull = catalogResponse();
       (overfull.items[0].application as Record<string, unknown>).owner_principal_ids =
         Array.from({ length: 33 }, (_, index) => `prn_01J0000000${String(index).padStart(4, "0")}`);
       fetchMock.mockResolvedValueOnce(jsonResponse(overfull));
-      await expect(api.listApplications(credential)).resolves.toMatchObject({
-        workspace_id: workspaceId,
+      await expect(api.listApplications(credential)).rejects.toMatchObject({
+        status: 200,
+        code: "invalid_response",
       });
       expect(errorSpy).toHaveBeenCalled();
     } finally {

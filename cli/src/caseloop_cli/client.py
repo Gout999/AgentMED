@@ -56,9 +56,9 @@ _MISSING_NO_TRACE = (
     "observations.tools",
 )
 
-# Hand-written response-model mapping, kept as the source of truth: the CLI
-# validates v2 success payloads with the hand-copied ``_generated`` models,
-# keyed by the activated intent from the C1 operation manifest.
+# CLI semantic response-model adapters.  The C1 generated operation manifest
+# owns the activated intent and structural wire selection; these local models
+# add fail-closed semantic checks and may not override a generated rejection.
 _V2_RESPONSE_MODELS: dict[str, SuccessModel] = {
     "capabilities.get": V5ServerCapabilitiesResponse,
     "applications.register": ApplicationRegisterResponse,

@@ -169,6 +169,46 @@ def test_public_v5_routes_and_v1_lane_majors_are_preserved() -> None:
     assert len(public_v4.router.routes) > 0, "v1/v4 preserved lane must stay registered"
 
 
+def test_generated_request_schema_is_an_effective_fail_closed_gate() -> None:
+    from app.public_api.v5_generated_wire import (
+        GeneratedWireValidationError,
+        validate_generated_wire,
+    )
+    from app.public_api.v5_models import ApplicationRegisterRequest
+
+    payload = ApplicationRegisterRequest(
+        schema_version="2.0",
+        project_id="proj_01J0000000000001",
+        slug="generated-gate",
+        display_name="Generated gate",
+        owner_principal_ids=["prn_01J0000000000001"],
+        criticality="P1",
+        data_classification="INTERNAL",
+        governance_mode="MANAGED",
+    ).model_dump(mode="json")
+    validate_generated_wire(
+        model_name="ApplicationRegisterRequest",
+        direction="request",
+        payload=payload,
+    )
+    payload["generated_schema_forbidden_extra"] = True
+    with pytest.raises(GeneratedWireValidationError):
+        validate_generated_wire(
+            model_name="ApplicationRegisterRequest",
+            direction="request",
+            payload=payload,
+        )
+
+
+def test_public_v5_validates_response_before_commit() -> None:
+    source = PUBLIC_V5_SOURCE.read_text(encoding="utf-8")
+    assert "wire_response = _json_response(response" in source
+    assert source.count("wire_response = _json_response(response") == source.count(
+        "return wire_response"
+    )
+    assert "_commit(session)\n        return _json_response" not in source
+
+
 # ---------------------------------------------------------------------------
 # 3. CLI-side allowlist vs operation-manifest cli entries
 # ---------------------------------------------------------------------------

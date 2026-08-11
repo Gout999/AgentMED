@@ -7,13 +7,15 @@ the findings that were deliberately **not** forcibly unified, because
 unifying them would change observable bytes, cardinality, error codes or
 accepted behavior. Each entry is a C4/C5 adjudication input.
 
-## 1. Coordinator still writes Environment/DependencyEdge directly
+## 1. Environment/DependencyEdge owner port (resolved in C5 remediation)
 
-`V5ManifestImportCoordinator._record_owned_catalog_record` continues to write
-environment/dependency-edge rows itself instead of calling
-`ApplicationCatalogService.register_environment/record_dependency_edge`. A
-function-level comparison showed the two paths differ in seven observable
-ways, so direct consolidation would change bytes/cardinality:
+The original C3 subject left Environment/DependencyEdge persistence inside
+`V5ManifestImportCoordinator._record_owned_catalog_record`.  C5 remediation
+moved that implementation to the owner-local
+`V5ManifestCatalogCommandPort`; the coordinator now only delegates
+`register_environment` and `record_dependency_edge` using the caller's
+Session/UoW.  The composed port deliberately preserves the seven observable
+differences from the standalone public commands:
 
 1. transaction_id: the coordinator reuses the manifest-level transaction_id
    for every child audit/event/receipt; the catalog service allocates a fresh
@@ -33,15 +35,14 @@ ways, so direct consolidation would change bytes/cardinality:
    `v5.manifest.edge_endpoint_invalid`.
 6. trust-role set: the coordinator allows `trusted_builder`; the catalog
    `_CATALOG_TRUST_ROLES` does not.
-7. pre-checks: the catalog service rejects duplicate env names and
-   self/cyclic edges (with graph advisory lock); the manifest path relies on
-   bootstrap-empty + workspace lock and currently accepts cyclic manifests.
+7. graph pre-checks remain aggregate semantics: the manifest request model
+   rejects duplicate names, unknown endpoints, self edges and cycles before
+   the composed command port runs; the standalone path retains its graph lock.
 
-Recommended direction: add a "composed manifest mode" to
-`ApplicationCatalogService` (injected manifest transaction_id, no per-record
-idempotency/command audit, composed-event path, `v5.manifest.*` error codes)
-instead of reusing the public register methods. That is new interface work for
-C4/C5, not a C3 rename.
+The static C3 gate now asserts that the coordinator constructs neither ORM
+row and that both commands enter the catalog owner port.  This is the composed
+manifest mode required by the C3 ownership boundary, without adding per-child
+idempotency or splitting the manifest transaction.
 
 ## 2. Function-level import edges retained for the composition primitive
 
@@ -89,5 +90,5 @@ global-session fallback in public paths, no new cross-owner table access,
 capability resolution consumes the C1 activated-operation set and cannot
 activate an uncompiled operation (manifest fail-closed), single-UoW and
 flush-only semantics preserved (876 unit + 547 conformance + checker PASS).
-The coordinator decomposition into application/domain/repository layers and
-the composed-manifest catalog mode are the C4/C5 continuation of this file.
+The C5 remediation owner-port check closes the remaining coordinator ownership
+finding without changing public bytes, cardinality or transaction ownership.

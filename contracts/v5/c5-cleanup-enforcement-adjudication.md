@@ -23,9 +23,10 @@ Retained with justification: the seven `_unregistered_*` handlers in
 `public_v5.py` (reserved R3-full/R4 transport shells whose services are
 directly tested; deletion lacks a C4-parity "obsolete" proof and would force
 R4 to rewrite the wire surface), the live `_generated/` response models
-(public_v1/public_error_v1/public_v2/manifest_v2 — runtime pydantic authority
-per C4 §1), and the `_SPECS` catalog entries (the lookup table is live;
-per-kind unreachability was not proven, so no removal by count).
+  (public_v1/public_error_v1/public_v2/manifest_v2 — additive semantic adapters
+  behind generated structural authority per C4 §1), and the `_SPECS` catalog
+  entries (the lookup table is live; per-kind unreachability was not proven,
+  so no removal by count).
 
 ## 2. Enforcement is now effective
 
@@ -38,15 +39,17 @@ per-kind unreachability was not proven, so no removal by count).
 - `scripts/verify_convergence.sh` (+ `make check-v5`) is the unified C5
   enforcement entry: compiler determinism (re-emit must be byte-identical),
   compiler tests, conformance (incl. `test_v5_*`), control-plane unit + the six
-  wave checkers, the import-graph checker, and the CLI suite.
+  wave checkers including the C5 rollback drill, the import-graph checker,
+  CLI, Console test/build, and the explicit disposable-PostgreSQL matrix. The
+  gate fails when PG reset opt-in or `DATABASE_URL` is absent.
 - The stale `TODO C4` text in the OpenAPI emitter (and in the generated
   `openapi.yaml` description and the pinned test) was replaced with the C4
   decision wording; regeneration is deterministic.
 
 ## 3. Recovery verification
 
-- New `test_v5_c5_rollback_drill.py`: there is no V5 kill-switch today, so the
-  drill constructs an app without the v5 router and asserts: V1 capabilities
+- `ENABLE_PUBLIC_V5=false` is the production Settings-controlled route switch.
+  `test_v5_c5_rollback_drill.py` uses that real path and asserts: V1 capabilities
   and error-envelope bytes identical (masked per-request `audit_ref`/
   `generated_at`, per the C4 drill convention), the disabled construction
   actually removes the v5 surface (baseline 401 vs disabled 404), v5 write
@@ -60,13 +63,15 @@ per-kind unreachability was not proven, so no removal by count).
 
 ## 4. Honest verification boundary
 
-- The 12 PG-gated migration tests and the PG integration suites require a
-  disposable PostgreSQL (compose in `deploy/`); without one they remain
-  `NOT_RUN` (never described as PASS). Unit-level migration tests (26 cases,
-  SQLite) are green.
-- The corpus covers the structural wire space; the divergences recorded in
-  `contracts/v5/c1-shadow-findings.md` remain the C4/final-closure
-  adjudication set.
+- The final remediation gate ran 12 PostgreSQL migration cases plus 5
+  lifecycle/catalog/manifest integrations against the explicitly disposable
+  `control_plane_test` database. Unit-level migration cases run separately
+  with `DATABASE_URL` unset so PostgreSQL configuration cannot contaminate
+  SQLite fixtures.
+- The C1 divergence set is closed by layered authority: generated JSON Schema
+  owns structural wire acceptance; Pydantic/TypeScript semantic validators own
+  cross-field and cross-record invariants; both must pass and disagreement is
+  fail-closed.
 
 ## Verdict
 

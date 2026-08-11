@@ -1,8 +1,9 @@
-"""Generated frozen CaseLoop public v2 success wire models. Do not hand edit.
+"""CaseLoop public v2 semantic response adapters.
 
-Hand-copied from ``control-plane/app/public_api/v5_models.py`` (schema-major-2)
-so the CLI can validate /api/v2 responses without importing the control-plane
-package.  Any change to that module must be mirrored here.
+The C1-generated JSON Schema and activated-operation manifest own structural
+wire acceptance. These local Pydantic models add CLI-side semantic checks;
+both layers must accept a response. They must not be treated as a competing
+wire source or used to override a generated rejection.
 """
 
 from __future__ import annotations

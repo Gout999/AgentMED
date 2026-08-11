@@ -18,6 +18,7 @@ the checker semantics are verified independently of the live tree.
 from __future__ import annotations
 
 import sys
+import ast
 from pathlib import Path
 
 import pytest
@@ -123,6 +124,23 @@ def test_no_direct_table_access_violations(report: cig.Report) -> None:
         "direct-table-access violations:\n"
         + "\n".join(str(v) for v in report.dta_violations)
     )
+
+
+def test_manifest_coordinator_does_not_construct_owned_catalog_rows() -> None:
+    """Environment/edge persistence belongs to the catalog command port."""
+
+    source = APP_DIR / "services" / "v5_manifest_import_coordinator.py"
+    tree = ast.parse(source.read_text(encoding="utf-8"))
+    constructed = {
+        node.func.id
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name)
+        and node.func.id in {"Environment", "DependencyEdge"}
+    }
+    assert constructed == set()
+    text = source.read_text(encoding="utf-8")
+    assert "self.catalog_commands.register_environment(" in text
+    assert "self.catalog_commands.record_dependency_edge(" in text
 
 
 def test_advisory_lock_calls_are_whitelisted(report: cig.Report) -> None:

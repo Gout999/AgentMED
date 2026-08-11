@@ -1,11 +1,13 @@
-# contracts/v5/generated — C1 compiler output (deterministic candidates)
+# contracts/v5/generated — deterministic V5 transport authority
 
 These files are produced by the C1 activated-operation compiler
 (`contracts/compiler/`), which reads `contracts/v5/intent-registry.yaml` and
 `contracts/v5/schemas/*.schema.json` and emits the activated-operation and
-capability manifests. They are **candidate single sources** for C4 transport
-cutover and for shadow-parity comparison with the legacy
-`control-plane/app/services/v5_capabilities.py` allowlist and route decorators.
+capability manifests. After C5 remediation, these artifacts are effective for
+activated-operation identity, route/capability/CLI discovery, OpenAPI and
+structural wire validation. Runtime semantic validators remain an additional
+fail-closed layer for cross-field and cross-record invariants; they cannot
+override a generated rejection.
 
 ## Regeneration
 
@@ -26,10 +28,10 @@ semantic commit plus an adjudicated parity finding; it is not a silent update.
 - `operation-manifest.json` — one entry per activated intent with registry
   metadata (method/path/operation_id/scope/principal/idempotency/capability)
   and JSON Schema 2020-12 request/response/error references.
-- `capability-manifest.json` — the candidate capability discovery surface
-  (name/scope/execution_mode with http=true and cli=true), mirroring the
-  legacy `v5_capabilities.py` table.
+- `capability-manifest.json` — the effective capability discovery source
+  (name/scope/execution_mode with http=true and cli=true).
 
-This is not a route/capability activation. `activation_flags` in the intent
-registry remain false; legacy validators and routes stay authoritative until
-C4.
+Generation does not activate an intent by itself. Only registry entries that
+already satisfy the frozen activated-operation rule enter these files, and the
+runtime fails closed if registered routes or capability discovery drift from
+the emitted set.

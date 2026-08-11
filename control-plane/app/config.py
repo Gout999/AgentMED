@@ -46,6 +46,7 @@ class Settings(BaseSettings):
     public_auth_issuer: str = Field(
         default="https://auth.caseloop.dev", alias="PUBLIC_AUTH_ISSUER"
     )
+    enable_public_v5: bool = Field(default=True, alias="ENABLE_PUBLIC_V5")
 
     lease_ttl_seconds: int = Field(default=60, alias="LEASE_TTL_SECONDS")
     complaint_dedup_window_hours: int = Field(default=24, alias="COMPLAINT_DEDUP_WINDOW_HOURS")

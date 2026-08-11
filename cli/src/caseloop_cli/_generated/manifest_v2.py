@@ -1,9 +1,9 @@
-"""Frozen CaseLoop public v2 manifest / system-version wire models.
+"""CaseLoop public v2 manifest semantic request/response adapters.
 
-Hand-copied from ``control-plane/app/public_api/v5_models.py`` (schema-major-2)
-so the CLI can build and validate /api/v2 system-manifest payloads without
-importing the control-plane package.  Any change to that module must be
-mirrored here and in ``cli/src/caseloop_cli/client.py``.
+The C1-generated JSON Schema and activated-operation manifest own structural
+wire acceptance. These local Pydantic models add CLI-side semantic checks;
+both layers must accept a payload. They must not be treated as a competing
+wire source or used to override a generated rejection.
 """
 
 from __future__ import annotations
