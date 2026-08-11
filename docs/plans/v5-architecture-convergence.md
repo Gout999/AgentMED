@@ -4,7 +4,7 @@
 >
 > Decision: [D-015](../decisions/D-015-v5-default-development-baseline-and-v3-v4-compatibility-lanes.md)
 >
-> Current wave: **C1 ELIGIBLE / NOT STARTED**（C0 DONE: semantic series `a14784a` + `903e954`, verifier PASS P0=0/P1=0）
+> Current wave: **C2 ELIGIBLE / NOT STARTED**（C0 DONE `a14784a`+`903e954`; C1 DONE `3dc7339`, verifier PASS P0=0/P1=0）
 >
 > Locked while C0–C5 remain open: **D2, R3, R4, V5-2+**
 
@@ -169,7 +169,7 @@ confirm each path through compiler/registration, import and behavior parity befo
 
 ### C1 — Single-source wire and activated-operation compiler
 
-**Status:** `ELIGIBLE / NOT STARTED`（unlocked by C0 DONE; 须先完成 C0 gate review 再开工）。
+**Status:** `DONE`. Semantic subject `3dc7339`; post-commit verifier PASS, P0=0/P1=0; deterministic regeneration; shadow parity on 103 corpus cases; SHA/evidence digest `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`.
 
 **Scope:** establish JSON Schema 2020-12 plus the intent registry as the canonical source for public
 wire shapes and activated operation metadata. Build a deterministic activated-operation compiler.
@@ -206,7 +206,7 @@ the mismatch corpus and failed finding.
 
 ### C2 — Foundation extraction: records, event specifications and graph verifier
 
-**Status:** `LOCKED UNTIL C1 PASS`.
+**Status:** `ELIGIBLE / NOT STARTED`（unlocked by C1 DONE; 须先完成 C1 gate review 再开工）。
 
 **Scope:** after C1 freezes wire inputs, extract closed record primitives, major-aware event
 specifications and the exact-binding/graph verifier from version-named or oversized modules. The
@@ -402,7 +402,7 @@ It may not:
 Allowed before C5 closes:
 
 - `D-015 ACCEPTED / NOT RUNTIME CUTOVER PROOF`;
-- `C0 DONE`（semantic series `a14784a` + `903e954`, verifier PASS P0=0/P1=0), or the exact independently verified wave status;
+- `C0 DONE` (`a14784a`+`903e954`) / `C1 DONE` (`3dc7339`), or the exact independently verified wave status;
 - `R2 contract/replay PASS only`;
 - `D2/R3/R4/V5-2+ LOCKED`;
 - `SHA/evidence digest DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`.

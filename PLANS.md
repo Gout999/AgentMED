@@ -19,11 +19,11 @@ R2 的当前冻结结果包括 contracts 541、control-plane unit 876（另 12 �
 CLI 118、Console 17 + build、disposable PostgreSQL 17/17。仅 `contract` 与限定范围内的
 `replay` 为 PASS；其余七个 canonical facets 均为 `NOT_RUN`。产品 owner 要求 SHA-256 与
 digest-bearing final evidence 延后到全项目最终收口，因此 R1/R2 仍记为 `VERIFYING`，不能
-据此宣称 runtime 全量 DONE、live 或 production。C0 已关闭，semantic series `a14784a` + `903e954`，post-commit verifier PASS（P0=0/P1=0）；C1 为 `ELIGIBLE / NOT STARTED`，须先完成 C0 gate review。
+据此宣称 runtime 全量 DONE、live 或 production。C0 已关闭（semantic series `a14784a` + `903e954`）、C1 已关闭（semantic subject `3dc7339`），post-commit verifier PASS（P0=0/P1=0）；C2 为 `ELIGIBLE / NOT STARTED`，须先完成 C1 gate review。
 
 D-015 接受 V5 为所有新产品/领域开发的默认设计与施工基线，并把 V3/V4 固定为兼容
 lane；这不改变 public API/CLI 默认 major，不激活新 route/capability，也不追溯改写既有
-事实。当前执行焦点是 C0–C5 architecture convergence；C0 已关闭，下一 wave 是 C1（single-source wire 与 activated-operation compiler）。D2、R3-full、R4 与 V5-2+ 在
+事实。当前执行焦点是 C0–C5 architecture convergence；C0 与 C1 已关闭，下一 wave 是 C2（foundation extraction）。D2、R3-full、R4 与 V5-2+ 在
 收敛 gate 前暂停，禁止继续跨层堆叠。
 
 - Product and scope baseline: `docs/product-principles.md` + D-013 + D-015.
@@ -49,8 +49,9 @@ lane；这不改变 public API/CLI 默认 major，不激活新 route/capability�
 | V5-R1 | Authority and event foundation | VERIFYING | V5-D1 | append-only lifecycle history、REGISTERED rev1、non-production rev2 CAS harness、major-2 event/receipt replay primitives；production activation deny-all | clean post-commit verifier PASS；R1 focused/migration/PG matrix | checksum/evidence digest deferred by product owner to final whole-project closure；only scoped `contract/replay=PASS` | `8e216939f9126b0bcef57b8ce9d292c27ba23717` |
 | V5-R2 | Application catalog and bootstrap-only first graph | VERIFYING | V5-R1 | exact 11 public intents；standalone register stays REGISTERED；manifest-only dual-authority activation；one-shot atomic first graph；R3-full get/diff/second VersionSet hidden | contracts 541；control unit 876 + 12 safety skip；CLI 118；Console 17 + build；disposable PG 17/17；post-commit verifier P0=0/P1=0 | checksum/evidence digest deferred by product owner；`contract=PASS`；R2-scoped `replay=PASS`；other 7 facets `NOT_RUN` | `c838b2bcefb80c8458aefa17934e190a5d8485f3` |
 | V5-C0 | Default-development baseline and convergence authority | DONE | V5-R2 semantic verifier；product-owner D-015 decision | D-015 tracked；V5 default-development baseline、V3/V4 compatibility lanes、clean convergence branch、preserved WIP inventory、Master/blueprint/status/contract navigation agree；no runtime/schema change | focused compatibility conformance；Markdown links/status drift；independent clean post-commit verifier | no checksum at this stage；all runtime facets `NOT_RUN`；post-commit verifier PASS P0=0/P1=0 | `a14784a` + `903e954` |
-| V5-C1 | Single-source wire and activated-operation compiler | ELIGIBLE / NOT STARTED | V5-C0 DONE | JSON Schema + intent registry become non-overlapping sources；generated Python/TS/OpenAPI/route/capability/CLI manifests shadow old validators with exact parity | golden wire corpus；negative corpus；deterministic regeneration；V3/V4/V5 regressions | pending | pending |
-| V5-C2..C5 | Foundation extraction, dependency untangling, transport cutover and compatibility cleanup | TODO | previous convergence wave DONE | modular monolith；single PG UoW；no local import cycles；compat facades preserve signatures/errors/bytes；no new product capability | per-wave characterization + offline/PG parity + verifier | pending | pending |
+| V5-C1 | Single-source wire and activated-operation compiler | DONE | V5-C0 DONE | JSON Schema + intent registry become non-overlapping sources；generated Python/TS/OpenAPI/route/capability/CLI manifests shadow old validators with exact parity | golden wire corpus；negative corpus；deterministic regeneration；V3/V4/V5 regressions | post-commit verifier PASS P0=0/P1=0；determinism PASS；shadow parity 103 cases | `3dc7339` |
+| V5-C2 | Foundation extraction | ELIGIBLE / NOT STARTED | previous convergence wave DONE | modular monolith；single PG UoW；no local import cycles；compat facades preserve signatures/errors/bytes；no new product capability | per-wave characterization + offline/PG parity + verifier | pending | pending |
+| V5-C3..C5 | Dependency untangling, transport cutover and compatibility cleanup | TODO | previous convergence wave DONE | modular monolith；single PG UoW；no local import cycles；compat facades preserve signatures/errors/bytes；no new product capability | per-wave characterization + offline/PG parity + verifier | pending | pending |
 | V5-D2 / R3-full / R4 / V5-2+ | Feature progression after convergence | BLOCKED | V5-C0..C5 DONE；stage-specific decision/contract gate | resume only from the accepted Master dependency graph；no dormant route/capability or dirty WIP promotion | stage-specific | pending | pending |
 
 ## Active v4 delivery
