@@ -11,17 +11,18 @@ machine-readable missing/extra detail sets).  This keeps discovery, help,
 OpenAPI and capability surfaces from claiming routes the manifest does not
 activate — and from hiding routes the manifest does activate.
 
-Fallback semantics (C4 "explicit per-surface fallback"): registration facts
-stay legacy authority — the ``@router.*`` decorators in ``public_v5`` remain
-the truth for what actually serves.  ``install_route_manifest_check`` is the
-import-time hook: it runs the fail-closed gate and, when the gate rejects
-(mismatch or manifest unavailability), prints a loud warning and lets the
-legacy registration keep serving so legacy/V3/V4 paths are never degraded by
-discovery-side drift.
+C5 effective enforcement (replaces the C4 explicit per-surface fallback): the
+gate is import-time and fail-closed.  ``public_v5`` calls
+``install_route_manifest_check`` at module import; a mismatch
+(``RouteManifestMismatchError``) or manifest unavailability
+(``V5CapabilitiesManifestError``) propagates and aborts the import, so the v5
+boundary can never come up with a route table that disagrees with the C1
+activated-operation manifest.  The gate is a pure check — it never mutates the
+registered route table, so an already-imported legacy/V3/V4 surface keeps
+serving byte-identical wire.
 """
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 from typing import Sequence
 
@@ -29,7 +30,6 @@ from fastapi import APIRouter
 from fastapi.routing import APIRoute
 
 from app.services.v5_capabilities import (
-    V5CapabilitiesManifestError,
     V5OperationManifest,
     load_v5_operation_manifest,
 )
@@ -115,22 +115,14 @@ def check_registered_v5_routes(
 
 
 def install_route_manifest_check(router: APIRouter) -> None:
-    """Import-time gate hook with explicit legacy fallback.
+    """Import-time fail-closed gate.
 
-    Registration facts remain legacy authority: the decorators already
-    installed the routes and they keep serving.  The gate is discovery-side
-    fail-closed; on rejection (mismatch or manifest unavailability) it prints
-    a clear error to stderr and does not raise, so the legacy table serves on
-    regardless of discovery drift.
+    Runs the route↔manifest comparison at import time.  Any disagreement
+    (``RouteManifestMismatchError``) or manifest unavailability
+    (``V5CapabilitiesManifestError``) propagates and aborts the import —
+    there is no fallback that lets a discovery-drifting route table serve.
     """
-    try:
-        check_registered_v5_routes(router)
-    except (RouteManifestMismatchError, V5CapabilitiesManifestError) as exc:
-        print(
-            "WARNING: v5 route registry gate FAILED; serving legacy "
-            f"registration: {exc}",
-            file=sys.stderr,
-        )
+    check_registered_v5_routes(router)
 
 
 __all__ = [

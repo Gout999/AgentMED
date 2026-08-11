@@ -6,12 +6,13 @@ router never recreates its state machines or invents audit/evidence records.
 The helper set mirrors the frozen ``public_v4`` boundary but pins the contract
 version to 2.0 and never falls back to v1.
 
-C4 route-manifest gate: ``v5_route_registry.install_route_manifest_check`` runs
+C5 route-manifest gate: ``v5_route_registry.install_route_manifest_check`` runs
 at import time and asserts the registered (method, path, operation_id) table is
-exactly the C1 activated-operation manifest's http entries.  Registration facts
-(decorators below) remain legacy authority: on gate rejection the module prints
-a clear error and keeps serving the legacy registration (discovery-side
-fail-closed).
+exactly the C1 activated-operation manifest's http entries.  The gate is
+fail-closed: a mismatch (``RouteManifestMismatchError``) or manifest
+unavailability (``V5CapabilitiesManifestError``) propagates and aborts this
+import, so the boundary can never serve a route table that disagrees with the
+activated-operation manifest.
 """
 from __future__ import annotations
 
@@ -1691,8 +1692,9 @@ async def _unregistered_confirm_acceptance_criteria(
 
 
 # ---------------------------------------------------------------------------
-# C4 route↔manifest gate: fail-closed discovery check, legacy-authority
-# fallback (see module docstring and v5_route_registry).
+# C5 route↔manifest gate: import-time fail-closed enforcement — a mismatch or
+# manifest unavailability aborts this import (see module docstring and
+# v5_route_registry).
 # ---------------------------------------------------------------------------
 install_route_manifest_check(router)
 

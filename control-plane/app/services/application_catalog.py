@@ -89,14 +89,6 @@ _READ_SCOPE = "applications:read"
 _REGISTER_PRINCIPAL_TYPES = frozenset({"human", "service"})
 _CATALOG_TRUST_ROLES = frozenset({"integrator", "catalog_admin"})
 _READ_PRINCIPAL_TYPES = frozenset({"human", "external_agent", "service", "connector"})
-_MUTATION_INTENTS = frozenset(
-    {
-        "applications.register",
-        "environments.register",
-        "system-components.register",
-        "dependency-edges.record",
-    }
-)
 
 
 class ApplicationCatalogError(RuntimeError):

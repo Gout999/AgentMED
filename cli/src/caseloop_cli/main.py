@@ -1,20 +1,17 @@
 from __future__ import annotations
 
 import argparse
-import hashlib
 import json
 import os
 import re
 import sys
 import time
-import urllib.request
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Sequence, TextIO
 
 import httpx
-import rfc8785
 from pydantic import ValidationError
 
 from ._generated.manifest_v2 import SystemManifestImportRequest
@@ -25,7 +22,6 @@ from ._generated.operation_manifest import (
 )
 from .client import PublicApiClient, RuntimeConfig
 from .config import load_profile, read_credential, setting
-from .discovery import DiscoveryError, discover
 from .errors import CliError, ExitFamily
 
 
@@ -43,8 +39,6 @@ _IDS = {
     "edge": re.compile(r"^de_[0-9A-Za-z]{8,64}$"),
     "version_set": re.compile(r"^vset_[0-9A-Za-z]{8,64}$"),
     "principal": re.compile(r"^prn_[0-9A-Za-z]{8,64}$"),
-    "binding": re.compile(r"^acb_[0-9A-Za-z]{8,64}$"),
-    "acceptance_revision": re.compile(r"^acr_[0-9A-Za-z]{8,64}$"),
     "digest": re.compile(r"^sha256:[0-9a-f]{64}$"),
 }
 
@@ -317,8 +311,9 @@ def _load_manifest_payload(path: str) -> dict[str, object]:
         raise CliError("MANIFEST_INVALID_JSON", ExitFamily.INPUT) from exc
     if not isinstance(payload, dict):
         raise CliError("MANIFEST_INVALID", ExitFamily.INPUT)
-    # ``caseloop init`` drafts carry an informational ``_discovery`` section;
-    # strip underscore-prefixed metadata keys before canonical validation.
+    # Manifest drafts from the local discovery renderer carry an
+    # informational ``_discovery`` section; strip underscore-prefixed
+    # metadata keys before canonical validation.
     payload = {key: value for key, value in payload.items() if not key.startswith("_")}
     try:
         model = SystemManifestImportRequest.model_validate(payload)
@@ -334,359 +329,10 @@ def _load_manifest_payload(path: str) -> dict[str, object]:
     return model.model_dump(mode="json")
 
 
-_ISSUE_URL = re.compile(
-    r"^https?://github\.com/(?P<owner>[A-Za-z0-9_.-]{1,128})/"
-    r"(?P<repo>[A-Za-z0-9_.-]{1,128})/issues/(?P<number>[1-9][0-9]{0,9})$"
-)
-_ISSUE_CACHE_ENV = "CASELOOP_CACHE_DIR"
-
-
-def _parse_issue_url(url: str) -> tuple[str, str, int]:
-    match = _ISSUE_URL.fullmatch(url)
-    if match is None:
-        raise CliError("ISSUE_URL_INVALID", ExitFamily.INPUT)
-    return match.group("owner"), match.group("repo"), int(match.group("number"))
-
-
-def _issue_cache_dir(env: dict[str, str]) -> Path:
-    configured = env.get(_ISSUE_CACHE_ENV)
-    if configured:
-        return Path(configured)
-    return Path.home() / ".cache" / "caseloop" / "issues"
-
-
-def _fetch_issue_snapshot(
-    url: str,
-    *,
-    snapshot_file: str | None,
-    refresh: bool,
-    env: dict[str, str],
-    uuid_factory: Callable[[], uuid.UUID],
-) -> dict[str, object]:
-    """Read-only issue snapshot fetch: local snapshot file, else cached GitHub
-    API response, else a live read-only GET.  Never writes to the remote."""
-    if snapshot_file is not None:
-        try:
-            raw = Path(snapshot_file).read_text(encoding="utf-8")
-        except OSError as exc:
-            raise CliError("ISSUE_SNAPSHOT_UNREADABLE", ExitFamily.INPUT) from exc
-        try:
-            payload = json.loads(raw)
-        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-            raise CliError("ISSUE_SNAPSHOT_INVALID_JSON", ExitFamily.INPUT) from exc
-        if not isinstance(payload, dict):
-            raise CliError("ISSUE_SNAPSHOT_INVALID", ExitFamily.INPUT)
-        return payload
-
-    owner, repo, number = _parse_issue_url(url)
-    cache = _issue_cache_dir(env)
-    cache_file = cache / f"{owner}-{repo}-{number}.json"
-    if cache_file.is_file() and not refresh:
-        try:
-            payload = json.loads(cache_file.read_text(encoding="utf-8"))
-        except (json.JSONDecodeError, OSError, UnicodeDecodeError) as exc:
-            raise CliError("ISSUE_SNAPSHOT_UNREADABLE", ExitFamily.INPUT) from exc
-        if not isinstance(payload, dict):
-            raise CliError("ISSUE_SNAPSHOT_INVALID", ExitFamily.INPUT)
-        return payload
-
-    api_url = f"https://api.github.com/repos/{owner}/{repo}/issues/{number}"
-    request = urllib.request.Request(
-        api_url,
-        headers={"Accept": "application/vnd.github+json", "User-Agent": "caseloop-cli"},
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=20) as response:  # noqa: S310 - read-only public GET
-            raw = response.read()
-    except Exception as exc:  # noqa: BLE001 - stable boundary for network failures
-        raise CliError("ISSUE_FETCH_FAILED", ExitFamily.TEMPORARY) from exc
-    try:
-        payload = json.loads(raw.decode("utf-8"))
-    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-        raise CliError("ISSUE_SNAPSHOT_INVALID_JSON", ExitFamily.INPUT) from exc
-    if not isinstance(payload, dict):
-        raise CliError("ISSUE_SNAPSHOT_INVALID", ExitFamily.INPUT)
-    try:
-        cache.mkdir(parents=True, exist_ok=True)
-        cache_file.write_text(
-            json.dumps(payload, ensure_ascii=False, sort_keys=True), encoding="utf-8"
-        )
-    except OSError:
-        # A read-only snapshot is still usable without the local cache.
-        pass
-    return payload
-
-
-def _issue_snapshot_payload(payload: dict[str, object]) -> dict[str, object]:
-    title = payload.get("title")
-    if not isinstance(title, str) or not title:
-        raise CliError("ISSUE_SNAPSHOT_INVALID", ExitFamily.INPUT)
-    return {
-        "title": title,
-        "body": payload.get("body") if isinstance(payload.get("body"), str) else "",
-        "state": payload.get("state") if isinstance(payload.get("state"), str) else None,
-        "number": payload.get("number"),
-        "html_url": payload.get("html_url"),
-        "user": {"login": (payload.get("user") or {}).get("login")} if isinstance(payload.get("user"), dict) else None,
-        "edited_flag": bool(payload.get("edited_flag", False)),
-    }
-
-
 def _cmd_manifest_validate(args: argparse.Namespace, *, output_stream: TextIO) -> int:
     _load_manifest_payload(args.manifest_file)
     _write_json(output_stream, {"schema_version": "1.0", "manifest_valid": True})
     return int(ExitFamily.OK)
-
-
-def _cmd_init(args: argparse.Namespace, *, output_stream: TextIO, error_stream: TextIO) -> int:
-    try:
-        result = discover(args.repo)
-    except DiscoveryError as exc:
-        raise CliError(exc.code, ExitFamily.INPUT) from None
-    _write_json(output_stream, result.to_manifest_draft())
-    error_stream.write(
-        "caseloop init: draft only; no server state was written.\n"
-        "Complete 'application'/'environment', then run:\n"
-        "  caseloop --api-version 2 system-manifest validate --manifest-file <file>\n"
-        "  caseloop --api-version 2 system-manifest import --manifest-file <file>\n"
-    )
-    return int(ExitFamily.OK)
-
-
-def _canonical_digest(value: object) -> str:
-    try:
-        canonical = rfc8785.dumps(value)
-    except (rfc8785.CanonicalizationError, TypeError, ValueError):
-        raise CliError("ISSUE_SNAPSHOT_INVALID", ExitFamily.INPUT) from None
-    return "sha256:" + hashlib.sha256(canonical).hexdigest()
-
-
-def _cmd_case_from_issue(
-    args: argparse.Namespace,
-    *,
-    client: PublicApiClient,
-    env: dict[str, str],
-    profile: dict[str, object],
-    uuid_factory: Callable[[], uuid.UUID],
-    clock: Callable[[], datetime],
-    output_stream: TextIO,
-    error_stream: TextIO,
-) -> dict[str, object]:
-    """``caseloop case from-issue <github-url>`` orchestration.
-
-    Composes only canonical intents: signals.submit → cases.bind-application →
-    acceptance-criteria.propose (draft).  The issue snapshot is read-only data
-    (local file / cached GET); issue text is never an instruction and nothing
-    is ever auto-confirmed.  Deterministic source-event ids and idempotency
-    keys make retries safe (no duplicate case, no second owner).
-    """
-    owner, repo, number = _parse_issue_url(args.github_url)
-    source_event_id = f"github-issue:{owner}:{repo}:{number}"
-    if not 1 <= len(source_event_id) <= 512:
-        raise CliError("SOURCE_EVENT_ID_INVALID", ExitFamily.INPUT)
-    snapshot = _fetch_issue_snapshot(
-        args.github_url,
-        snapshot_file=args.snapshot_file,
-        refresh=args.refresh,
-        env=env,
-        uuid_factory=uuid_factory,
-    )
-    normalized = _issue_snapshot_payload(snapshot)
-    title = normalized["title"]
-    if len(title) > 256:
-        title = title[:253] + "..."
-    body = str(normalized["body"] or "")
-    if len(body) > 20_000:
-        body = body[:19_997] + "..."
-
-    source_id = _valid_id(
-        setting(args.source_id, env, "CASELOOP_SOURCE_ID", profile, "source_id"),
-        "source",
-        required=True,
-    )
-    reporter_ref = _required(
-        setting(args.reporter_ref, env, "CASELOOP_REPORTER_REF", profile, "reporter_ref"),
-        "REPORTER_REF_REQUIRED",
-    )
-    if len(reporter_ref) > 256:
-        raise CliError("SIGNAL_INPUT_INVALID", ExitFamily.INPUT)
-    attachment_digest = _canonical_digest(normalized)
-    signal_idem = args.idempotency_key or f"case-from-issue-{owner}-{repo}-{number}"
-    if not 8 <= len(signal_idem) <= 128:
-        raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
-    # Deterministic per snapshot version: retries reuse the issue's updated_at
-    # so the same idempotency key replays instead of conflicting.
-    occurred_at = (
-        snapshot["updated_at"]
-        if isinstance(snapshot.get("updated_at"), str)
-        else clock().astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
-    )
-    signal_payload = {
-        "schema_version": "1.0",
-        "source_id": source_id,
-        "source_event_id": source_event_id,
-        "source_event_version": "1",
-        "signal_kind": "maintainer_report",
-        "reporter": {"kind": "maintainer", "source_subject_ref": reporter_ref},
-        "project_id": None,
-        "environment_id": None,
-        "governed_agent_id": None,
-        "occurred_at": occurred_at,
-        "content": {
-            "summary": title,
-            "body": body,
-            "attachments": [
-                {
-                    "uri": args.github_url,
-                    "digest": attachment_digest,
-                    "media_type": "application/json",
-                }
-            ],
-        },
-        "run_locator": None,
-        "privacy_classification": "PUBLIC",
-    }
-    signal_response = client.request(
-        "POST",
-        "/api/v1/signals",
-        body=json.dumps(
-            signal_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-        ).encode("utf-8"),
-        idempotency_key=signal_idem,
-        api_major=1,
-    )
-    case_id = signal_response["case"]["case_id"]
-    case_revision = signal_response["case"]["revision"]
-
-    # Resolve the exact case binding (case_id, case_revision, case_digest) from
-    # the authoritative read path, then bind and propose as canonical intents.
-    criteria_response = client.request(
-        "GET",
-        f"/api/v2/cases/{case_id}/acceptance-criteria",
-        params=[("case_revision", str(case_revision))],
-        api_major=2,
-    )
-    exact_binding = criteria_response.get("exact_case_binding")
-    if not isinstance(exact_binding, dict) or not isinstance(
-        exact_binding.get("case_digest"), str
-    ):
-        raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
-    case_digest = exact_binding["case_digest"]
-
-    fetched_at = snapshot.get("updated_at") if isinstance(snapshot.get("updated_at"), str) else occurred_at
-    bind_idem = f"case-bind-{owner}-{repo}-{number}"
-    if not 8 <= len(bind_idem) <= 128:
-        raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
-    bind_payload = {
-        "schema_version": "2.0",
-        "case_id": case_id,
-        "case_revision": case_revision,
-        "case_digest": case_digest,
-        "application_id": _valid_id(args.application_id, "application", required=True),
-        "environment_id": _valid_id(args.environment_id, "environment", required=True),
-        "declared_system_version_set_binding_or_unknown": {
-            "kind": "UNKNOWN",
-            "reason": "NOT_DECLARED",
-        },
-        "issue_snapshot": {
-            "source_kind": "github_issue",
-            "source_url": args.github_url,
-            "external_repo": f"{owner}/{repo}",
-            "external_issue_number": number,
-            "snapshot_payload": snapshot,
-            "edited_flag": bool(normalized.get("edited_flag", False)),
-            "deleted_flag": bool(normalized.get("state") in ("deleted", "DELETED")),
-            "fetched_at": fetched_at,
-        },
-    }
-    bind_response = client.request(
-        "POST",
-        f"/api/v2/cases/{case_id}:bind-application",
-        body=json.dumps(
-            bind_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-        ).encode("utf-8"),
-        idempotency_key=bind_idem,
-        api_major=2,
-    )
-    propose_idem = f"acceptance-propose-{owner}-{repo}-{number}"
-    if not 8 <= len(propose_idem) <= 128:
-        raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
-    propose_payload = {
-        "schema_version": "2.0",
-        "case_id": case_id,
-        "case_revision": case_revision,
-        "case_digest": case_digest,
-        "acceptance_source": {
-            "kind": "github_issue",
-            "url": args.github_url,
-            "repo": f"{owner}/{repo}",
-            "number": number,
-        },
-        "reproducer_input": {
-            "kind": "github_issue_body",
-            "untrusted": True,
-            "issue_url": args.github_url,
-            "issue_body": body,
-        },
-        "reproducer_environment": None,
-        "expected_behavior": {
-            "kind": "maintainer_review_required",
-            "untrusted": True,
-            "issue_title": title,
-            "note": "draft derived from the issue title only; expected behavior "
-            "is not acceptance truth until confirmed by a human maintainer",
-        },
-        "oracle_or_evaluator": None,
-        "applicable_workload_profile": {
-            "name": "unknown",
-            "note": "workload profile must be confirmed by a human",
-        },
-        "applicable_deployment_profile": {
-            "name": "unknown",
-            "note": "deployment profile must be confirmed by a human",
-        },
-    }
-    propose_response = client.request(
-        "POST",
-        f"/api/v2/cases/{case_id}:propose-acceptance-criteria",
-        body=json.dumps(
-            propose_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-        ).encode("utf-8"),
-        idempotency_key=propose_idem,
-        api_major=2,
-    )
-    revision = propose_response["acceptance_criteria_revision"]
-    revision_id = revision["acceptance_criteria_revision_id"]
-    revision_digest = revision["record_envelope"]["record_digest"]
-
-    error_stream.write(
-        f"caseloop case from-issue: case {case_id} bound to "
-        f"{bind_response['application_case_binding']['application_id']}; "
-        f"acceptance draft {revision_id} recorded as PROPOSED (untrusted).\n"
-        "No acceptance criteria were auto-confirmed. A reauthenticated human "
-        "maintainer/domain reviewer must confirm the draft before a gate may start:\n"
-        f"  caseloop --api-version 2 case acceptance-criteria confirm {revision_id} "
-        f"--proposed-revision-digest {revision_digest}\n"
-    )
-    return {
-        "schema_version": "1.0",
-        "case_id": case_id,
-        "case_revision": case_revision,
-        "case_digest": case_digest,
-        "application_case_binding_id": bind_response["application_case_binding"][
-            "application_case_binding_id"
-        ],
-        "acceptance_criteria_revision_id": revision_id,
-        "acceptance_criteria_revision_digest": revision_digest,
-        "case_readiness": "NEEDS_ACCEPTANCE_CRITERIA",
-        "next_action": {
-            "code": "CONFIRM_ACCEPTANCE_CRITERIA",
-            "command": (
-                f"caseloop --api-version 2 case acceptance-criteria confirm "
-                f"{revision_id} --proposed-revision-digest {revision_digest}"
-            ),
-        },
-    }
 
 
 def _operation_path(operation: CliOperation, **ids: str) -> str:

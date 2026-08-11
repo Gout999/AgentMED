@@ -912,7 +912,9 @@ def test_v5_route_registry_install_hook_passes_silently(capsys) -> None:
     assert capsys.readouterr().err == ""
 
 
-def test_v5_route_registry_install_hook_falls_back_to_legacy(monkeypatch, capsys) -> None:
+def test_v5_route_registry_install_hook_fails_closed_on_mismatch(
+    monkeypatch, capsys
+) -> None:
     def failing_check(*_args, **_kwargs):
         raise RouteManifestMismatchError(
             missing=[("GET", "/api/v2/capabilities", "getV5Capabilities")],
@@ -922,13 +924,12 @@ def test_v5_route_registry_install_hook_falls_back_to_legacy(monkeypatch, capsys
     monkeypatch.setattr(
         v5_route_registry, "check_registered_v5_routes", failing_check
     )
-    install_route_manifest_check(public_v5.router)  # must not raise
-    captured = capsys.readouterr()
-    assert "v5 route registry gate FAILED" in captured.err
-    assert "serving legacy registration" in captured.err
+    with pytest.raises(RouteManifestMismatchError):
+        install_route_manifest_check(public_v5.router)
+    assert capsys.readouterr().err == ""  # fail-closed: nothing is swallowed
 
 
-def test_v5_route_registry_install_hook_falls_back_when_manifest_unavailable(
+def test_v5_route_registry_install_hook_fails_closed_when_manifest_unavailable(
     monkeypatch, capsys
 ) -> None:
     def failing_check(*_args, **_kwargs):
@@ -939,7 +940,6 @@ def test_v5_route_registry_install_hook_falls_back_when_manifest_unavailable(
     monkeypatch.setattr(
         v5_route_registry, "check_registered_v5_routes", failing_check
     )
-    install_route_manifest_check(public_v5.router)  # must not raise
-    captured = capsys.readouterr()
-    assert "v5 route registry gate FAILED" in captured.err
-    assert "serving legacy registration" in captured.err
+    with pytest.raises(V5CapabilitiesManifestError):
+        install_route_manifest_check(public_v5.router)
+    assert capsys.readouterr().err == ""

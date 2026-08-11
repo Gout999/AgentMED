@@ -1,4 +1,4 @@
-.PHONY: demo-b1-replay demo-b1-live
+.PHONY: demo-b1-replay demo-b1-live check-v5
 
 PYTHON ?= control-plane/.venv/bin/python
 EVAL_PYTHON ?= eval-harness/.venv/bin/python
@@ -9,3 +9,6 @@ demo-b1-replay:
 
 demo-b1-live:
 	$(PYTHON) scripts/run_b1_live.py --eval-python $(EVAL_PYTHON)
+
+check-v5:
+	bash scripts/verify_convergence.sh

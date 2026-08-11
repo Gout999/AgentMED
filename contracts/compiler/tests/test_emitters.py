@@ -6,9 +6,9 @@ Run from the repository root with the contracts path on sys.path:
 
 Coverage: deterministic regeneration (bytes), the exact 11-operation
 activated surface with no inactive intent, path/query parameter emission,
-external-schema refs, the omitted securitySchemes (TODO C4), the TS module's
-interface/guard/pattern extraction from the frozen schemas, and the emit()
-artifact set (convergence plan C4 verification list for task A).
+external-schema refs, the omitted securitySchemes (C4 decision), the TS
+module's interface/guard/pattern extraction from the frozen schemas, and the
+emit() artifact set (convergence plan C4 verification list for task A).
 """
 
 from __future__ import annotations
@@ -221,11 +221,15 @@ def test_openapi_schema_refs_and_request_body(openapi_document: dict) -> None:
 
 
 def test_openapi_has_no_security_schemes_yet(openapi_document: dict) -> None:
-    # No components block and no top-level security key; the TODO C4 marker
-    # is carried in the document description instead.
+    # No components block and no top-level security key; the C4 decision to
+    # omit securitySchemes is carried in the document description instead.
     assert "security" not in openapi_document
     assert "components" not in openapi_document
-    assert "TODO C4" in openapi_document["info"]["description"]
+    assert "C4 decision" in openapi_document["info"]["description"]
+    assert (
+        "securitySchemes is intentionally not emitted"
+        in openapi_document["info"]["description"]
+    )
 
 
 def test_ts_module_is_deterministic_and_basic(ts_module: str) -> None:

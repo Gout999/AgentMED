@@ -8,10 +8,11 @@ contract:
    recorded, never leak into the served wire bytes; the legacy capability
    service keeps serving the baseline bytes.
 2. route registration vs operation-manifest — the route-registry judge
-   (``app.api.v5_route_registry``) is monkeypatched to raise; the legacy
-   router keeps serving every route with byte-identical responses and the
-   real import-time hook (``install_route_manifest_check``) logs the failure
-   to stderr instead of taking the surface down.
+   (``app.api.v5_route_registry``) is monkeypatched to raise; the real
+   import-time hook (``install_route_manifest_check``) is fail-closed (C5
+   effective enforcement): a rejected gate raises and aborts the import, and
+   the gate never mutates the route table, so the already-bound legacy router
+   keeps serving every route with byte-identical responses.
 3. CLI derived-table fallback — when the manifest-derived CLI allowlist
    cannot be loaded or disagrees with the frozen parser, the frozen parser
    surface keeps serving (help bytes unchanged) and the failure is recorded.
@@ -20,9 +21,10 @@ contract:
    disagreement is surfaced and recorded while the authoritative
    operation-manifest surface renders unchanged.
 
-Common invariants asserted for every scenario: legacy path continues to
-serve; evidence/log is recorded; the mismatch is never silently coerced into
-success; no wire byte change versus the pre-fault baseline.
+Common invariants asserted for every scenario: the mismatch is never
+silently coerced into success and no wire byte changes versus the pre-fault
+baseline; scenarios 1, 3 and 4 additionally assert the legacy path keeps
+serving and the failure is recorded.
 
 Scenarios 1 and 4 simulate the C4 cutover boundaries with test-local judge
 mirrors (the real capability façade and console guards land with their own
@@ -500,10 +502,15 @@ def test_drill_route_registry_judge_raise_keeps_legacy_routes_serving(
     assert drill_app.get("/api/v2/capabilities").status_code == unauth0
 
 
-def test_drill_install_route_manifest_check_logs_failure_and_keeps_serving(
+def test_drill_install_route_manifest_check_fails_closed_and_legacy_serves(
     drill_app, monkeypatch, capsys
 ) -> None:
-    """The real C4 import-time hook: gate failure logs, legacy registration stays."""
+    """C5 enforcement: the real import-time hook is fail-closed.
+
+    A rejected gate raises (nothing is swallowed or logged-and-served); the
+    gate is a pure check, so the already-bound legacy registration table is
+    untouched and keeps serving byte-identical wire.
+    """
     from app.api import public_v5, v5_route_registry
 
     def _judge_rejects(*_args, **_kwargs):
@@ -516,13 +523,13 @@ def test_drill_install_route_manifest_check_logs_failure_and_keeps_serving(
     )
 
     status0, bytes0 = _capabilities_bytes(drill_app)
-    v5_route_registry.install_route_manifest_check(public_v5.router)  # no raise
+    with pytest.raises(v5_route_registry.RouteManifestMismatchError):
+        v5_route_registry.install_route_manifest_check(public_v5.router)
 
     captured = capsys.readouterr()
-    assert "WARNING: v5 route registry gate FAILED" in captured.err
-    assert "serving legacy registration" in captured.err
-    assert "route.table_vs_manifest_mismatch" not in captured.err  # no false success
-    # Legacy path still serves byte-identical wire (audit_ref masked).
+    assert captured.err == ""  # fail-closed: no warning path, nothing swallowed
+    # The gate never mutates the registration table: legacy routes still
+    # serve byte-identical wire (audit_ref masked).
     status1, bytes1 = _capabilities_bytes(drill_app)
     assert status1 == status0
     assert _masked_canonical(bytes1) == _masked_canonical(bytes0)

@@ -1,9 +1,6 @@
 """SQLAlchemy engine / session。"""
 from __future__ import annotations
 
-from collections.abc import Generator
-from contextlib import contextmanager
-
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session, sessionmaker
@@ -56,17 +53,3 @@ def reset_engine() -> None:
         _engine.dispose()
     _engine = None
     _SessionLocal = None
-
-
-@contextmanager
-def session_scope(factory: sessionmaker[Session] | None = None) -> Generator[Session, None, None]:
-    sf = factory or get_session_factory()
-    session = sf()
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()

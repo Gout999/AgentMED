@@ -22,8 +22,8 @@ OpenAPI choices (also documented inside the emitted document):
   placeholders resolve to the matching ``common.schema.json`` id definition
   (pattern included), query parameters embed the per-property schema of the
   operation's ``$defs/query`` with all ``$ref``s re-based.
-- ``components.securitySchemes`` is intentionally NOT emitted yet
-  (TODO C4: cut the V5 auth surface over before emitting bearer details).
+- ``components.securitySchemes`` is intentionally not emitted (C4 decision:
+  the V5 auth surface is not cut over, so no bearer scheme is documented).
 
 TypeScript module choices:
 
@@ -300,8 +300,9 @@ def emit_v5_openapi(
                 "draft and deferred intents never generate paths. "
                 "request/response/error contracts are external $refs into "
                 "the frozen ../schemas/*.schema.json files. "
-                "components.securitySchemes is intentionally not emitted yet "
-                "(TODO C4: cut the V5 auth surface over)."
+                "components.securitySchemes is intentionally not emitted "
+                "(C4 decision; the V5 auth surface is not cut over, and a "
+                "later wave may add it with the cutover)."
             ),
         },
         "x-caseloop-intent-registry": "../intent-registry.yaml",
