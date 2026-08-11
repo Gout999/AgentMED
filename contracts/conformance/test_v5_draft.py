@@ -431,6 +431,9 @@ def test_draft_intents_disable_every_transport_and_target_owned_commands() -> No
     registry = _load("intent-registry.yaml")
     ownership = _load("aggregate-ownership.yaml")
     v4 = yaml.safe_load(V4_OWNERSHIP.read_text(encoding="utf-8"))
+    r2_intents = set(
+        registry["r2_application_catalog_contract"]["activated_contract_intents"]
+    )
     assert registry["activation_flags"] == {
         "http_routes": False,
         "cli_commands": False,
@@ -460,9 +463,22 @@ def test_draft_intents_disable_every_transport_and_target_owned_commands() -> No
         names.append(intent["name"])
         operation_ids.append(intent["http"]["operation_id"])
         assert intent["contract_major"] == 2
-        assert intent["wire_status"] == "DRAFT"
-        assert intent["implementation_status"] == "NOT_IMPLEMENTED"
-        assert intent["field_contract_ref"] is None
+        if intent["name"] in r2_intents:
+            assert intent["wire_status"] == (
+                "FROZEN_R2_R3_BOOTSTRAP"
+                if intent["name"] == "system-manifests.import"
+                else "FROZEN_R2"
+            )
+            assert intent["implementation_status"] == (
+                "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
+            )
+            assert intent["field_contract_ref"].startswith(
+                "contracts/v5/schema-profiles.yaml#r2_wire_profiles/"
+            )
+        else:
+            assert intent["wire_status"] == "DRAFT"
+            assert intent["implementation_status"] == "NOT_IMPLEMENTED"
+            assert intent["field_contract_ref"] is None
         assert intent["http"]["path"].startswith("/api/v2/")
         assert intent["cli_requires_explicit_api_major"] is True
         if intent["kind"] == "mutation":

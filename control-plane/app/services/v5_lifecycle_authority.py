@@ -278,6 +278,67 @@ class V5LifecycleAuthorityService:
         del kind, envelope_payload
         raise V5LifecycleAuthorityError("v5.lifecycle.composition_required")
 
+    def append_composed_activation_revision(
+        self,
+        *,
+        kind: str,
+        envelope_payload: dict[str, Any],
+        transaction_id: str,
+        composition_capability: object,
+    ) -> V5LifecycleAppendResult:
+        """Append ACTIVE only through R2's transaction-bound manifest permit."""
+
+        spec = _LIFECYCLE_SPECS.get(kind)
+        if spec is None:
+            raise V5LifecycleAuthorityError("v5.lifecycle.kind_invalid")
+        previous_field = spec["previous_attr"]
+        previous = envelope_payload.get(previous_field)
+        record_envelope = envelope_payload.get("record_envelope")
+        subject_id = envelope_payload.get(spec["id_attr"])
+        workspace_id = envelope_payload.get("workspace_id")
+        digest = (
+            record_envelope.get("record_digest")
+            if isinstance(record_envelope, dict)
+            else None
+        )
+        if not all(isinstance(value, str) and value for value in (
+            subject_id, workspace_id, digest, transaction_id
+        )):
+            raise V5LifecycleAuthorityError("v5.lifecycle.envelope_invalid")
+        new_binding = {
+            "kind": kind,
+            "id": subject_id,
+            "revision": 2,
+            "digest": digest,
+        }
+        try:
+            from app.services.v5_manifest_import_coordinator import (
+                ManifestImportCompositionError,
+                _consume_activation_composition_capability,
+            )
+
+            _consume_activation_composition_capability(
+                composition_capability,
+                session=self.session,
+                purpose="STORAGE_ACTIVATE",
+                workspace_id=workspace_id,
+                transaction_id=transaction_id,
+                subject_kind=kind,
+                subject_id=subject_id,
+                previous_binding=previous,
+                new_binding=new_binding,
+                event_type=(
+                    "application.activated"
+                    if kind == "AI_APPLICATION"
+                    else "system_component.activated"
+                ),
+            )
+        except ManifestImportCompositionError as exc:
+            raise V5LifecycleAuthorityError(exc.code) from exc
+        return self._append_activation_revision_for_foundation_test(
+            kind=kind, envelope_payload=envelope_payload
+        )
+
     def _append_activation_revision_for_foundation_test(
         self, *, kind: str, envelope_payload: dict[str, Any]
     ) -> V5LifecycleAppendResult:

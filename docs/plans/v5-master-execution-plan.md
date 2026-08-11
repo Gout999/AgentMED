@@ -299,23 +299,60 @@ route/service 或 evidence 把它表述为 business activation；read path 不�
 
 ### R2 · V5-1A Application Catalog closure
 
+**Current runtime candidate**：上述 11-intent R2 + workspace-initial one-shot R3-bootstrap slice
+为 `IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER`；这不是 `DONE/PASS`，也不改变 R3-full、R4 或
+standalone `system-versions.record/get/diff` 的 `NOT_IMPLEMENTED`/disabled 状态。
+CLI `system-manifest validate` 只是本地文件验证 utility，不是 public intent、transport 或
+capability；`init`/repository discovery 归 R3-full，R2 CLI 与 capability discovery 必须隐藏。
+
 **User outcome**：维护者可在授权 workspace/project 下注册、激活并读取一个 AIApplication、
-Environment、SystemComponent 和 DependencyEdge；系统不宣称 runtime/version/observed。
+Environment、SystemComponent 和 DependencyEdge，并完成一个 initial declared VersionSet 与
+generation-1 desired assignment；系统不宣称第二 VersionSet、diff、observed runtime 或 external
+effect。
 
 **Scope**：Application Catalog service、HTTP/CLI、capabilities、Console Applications read
-model、audit/idempotency/outbox，以及对应 contract overlay。R2 必须实现真实 internal manifest
-activation coordinator/gate：从 exact authenticated `system-manifests.import` 建立不可伪造、
+model、audit/idempotency/outbox，以及对应 contract overlay。为使“激活”在 standalone activation
+全 transport forbidden 的前提下真实可达，R2 与 R3-bootstrap 显式耦合并只激活 11 个 public
+intents：`capabilities.get`，Application/Environment/SystemComponent/DependencyEdge 各自的
+register-or-record + get 共 8 个，scope-filtered `applications.list`，以及 bootstrap-only
+`system-manifests.import`。R2 必须实现
+真实 manifest activation coordinator/gate：从 exact authenticated `system-manifests.import` 建立不可伪造、
 transaction-bound 的 authority context，校验 active `application-catalog-controller` 与 exact
 initiating human-or-service principal，并在同一 PostgreSQL UoW 内完成 lifecycle revision、
 activated event、outbox、controller audit、initiating-principal audit、closed AuthorityReceipt 与
 idempotency terminal result；缺失、错绑或任一写入失败必须整事务 rollback。Standalone public
-activation route 仍 disabled。
+activation route 仍 disabled。Bootstrap import 可完成既有 first-bootstrap graph：catalog、
+ComponentRevision、TopologyRevision、恰好一个 initial SystemVersionSet、BootstrapAttestation 与
+generation-1 desired SystemAssignment；这只证明首次 declared bootstrap，不证明 R3-full、第二
+VersionSet、semantic diff、observed runtime 或 release。
+
+这里采用完整 one-shot R3-bootstrap producer compatibility：每个 ComponentRevision 必须精确绑定
+同事务中从 append-only lifecycle history 锁定并解析出的当前 ACTIVE SystemComponent revision 2，
+TopologyRevision、initial SystemVersionSet、BootstrapAttestation 与 generation-1 SystemAssignment
+全部进入同一原子 response/idempotency replay。这里的 replay 严格限定为同一 idempotency key 与
+同一 canonical request body，返回相同 terminal atomic response 且不创建任何新事实；不同 key
+即使 body 或 manifest digest 相同，也因 workspace-initial one-shot 已消费而稳定返回 CONFLICT，
+且不创建任何新事实。R3-full 仍独占 standalone `system-versions.record`、
+第二 VersionSet、`system-versions.get/diff`；不得另造 catalog-only public manifest 子意图。
 
 **Verification**：duplicate identity、cycle/fan-out、cross-tenant、role/scope、audit rollback、
 same-key conflict、concurrent register/activate、Console loading/empty/error/partial/UNKNOWN；另须
 证明 direct lifecycle/event call、syntactic manifest context、仅格式正确的 audit URI、伪 permit、
 cross-session/transaction、missing controller/initiating audit/receipt/outbox 均 fail closed 且零
 partial row，same-key retry 不产生第二 activation revision。
+
+**R3-bootstrap coupling gate**：`capabilities.get` 只能公布上述 11 intents；bootstrap import 是
+workspace-initial one-shot，只有所有 authoritative V5 domain tables 为空时才可创建或幂等回放
+完整首图与一个 initial VersionSet。任何先行 standalone catalog REGISTERED row 都会关闭该
+one-shot；后续多 Application/Environment/version 组合属于 R3-full。任何 standalone
+`system-versions.record`、第二 VersionSet、diff claim、隐式 observed/effect 或绕开 manifest
+coordinator 的 graph writer 均 fail closed。满足本 gate 只关闭 R2 + R3-bootstrap，不关闭
+R3-full。
+
+**Console/read gate**：Console Applications read model 只能调用 authenticated public
+`applications.list/get`；不得依赖无鉴权 internal `/v1/applications`。`applications.list` 必须在
+workspace/scope/object visibility 过滤后分页，使用 server-issued opaque cursor 与 closed response；
+Console credential 仅由 UI 内存态提供，不进入 bundle、静态配置、日志或持久化状态。
 
 **Evidence**：`evidence/v5/stage-1/application-catalog/<run-id>/`。
 
@@ -325,6 +362,11 @@ partial row，same-key retry 不产生第二 activation revision。
 
 当前 product/JTBD 需要第二个 VersionSet 才能产生真实 diff，但 frozen/current contract 仍把
 standalone `system-versions.record` 标为未授权、未冻结 wire。R3 开工前必须：
+
+R2 的 bootstrap-only `system-manifests.import` 是唯一前置例外：它只可在 authoritative V5
+domain 全空的 workspace 创建或幂等回放第一个完整 declared graph 和 initial VersionSet，不激活
+standalone `system-versions.record`，也不构成第二 VersionSet 或 diff evidence。D2 与 R3-full
+仍负责下面的 standalone wire 和第二 graph 能力。
 
 - 冻结 request/response、scope/principal、idempotency、error、HTTP/CLI/capability mapping；
 - 明确它只引用既有 catalog/revision/topology，不复用 first-import bootstrap authority；

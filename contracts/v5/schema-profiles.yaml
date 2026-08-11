@@ -45,6 +45,235 @@ r1_authority_foundation:
     - public_activation_transport_or_route
     - r2_application_catalog_closure
 
+r2_application_catalog_contract:
+  stage: R2
+  contract_status: FROZEN_FOR_IMPLEMENTATION
+  runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+  bootstrap_system_manifest:
+    contract_status: FROZEN_R2_R3_BOOTSTRAP
+    runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    activation_transaction_profile: lifecycle_activation_transaction_v5
+    required_authority_layers:
+      - closed_controller_authority_receipt
+      - exact_initiating_principal_command_audit
+    all_records_events_outbox_audits_receipts_and_idempotency_share_uow: true
+    complete_first_declared_graph_required: true
+    scope: WORKSPACE_INITIAL_ONE_SHOT
+    precondition: ALL_AUTHORITATIVE_V5_DOMAIN_TABLES_EMPTY
+    prior_standalone_registered_catalog_row: BOOTSTRAP_IMPORT_FORBIDDEN
+    initial_system_version_set_count: 1
+    standalone_system_versions_record: FORBIDDEN
+    second_system_version_set: FORBIDDEN
+    semantic_diff_claim: FORBIDDEN
+  public_register_response_state: {revision: 1, lifecycle_state: REGISTERED}
+  internal_manifest_response_state: {revision: 2, lifecycle_state: ACTIVE}
+  standalone_activation_route_status: FORBIDDEN
+  r3_r4_profiles_runtime_status: NOT_IMPLEMENTED
+
+r2_wire_profiles:
+  capabilities_get:
+    response_required_fields: [schema_version, workspace_id, request_id, audit_ref, data]
+    response_constants: {schema_version: "2.0"}
+    data_required_fields: [server_version, api_major, contract_version, principal, enabled_intents, disabled_intents, generated_at]
+    data_constants: {api_major: 2, contract_version: "2.0", disabled_intents: []}
+    enabled_intent_required_fields: [name, scope, execution_mode, http, cli]
+    contract_allowlist_exact_count: 11
+    contract_allowlist_exact_names: [capabilities.get, applications.register, applications.get, applications.list, environments.register, environments.get, system-components.register, system-components.get, dependency-edges.record, dependency-edges.get, system-manifests.import]
+    scope_filtered: true
+    response_intents: INTERSECTION_OF_CONTRACT_ALLOWLIST_AND_AUTHENTICATED_SCOPE_AUTHORIZED_INTENTS
+    unauthorized_intent_names_omitted: true
+    additional_properties: false
+  applications_register:
+    request_required_fields:
+      - schema_version
+      - project_id
+      - slug
+      - display_name
+      - owner_principal_ids
+      - criticality
+      - data_classification
+      - governance_mode
+    response_required_fields: [schema_version, workspace_id, request_id, audit_ref, application, idempotency]
+    response_field_refs:
+      application: contracts/v5/schema-profiles.yaml#r2_wire_record_shapes/ApplicationRecord
+      idempotency: control-plane/app/public_api/v5_models.py#V5IdempotencyDelivery
+    application_lifecycle_constraint: {record_envelope.revision: 1, lifecycle_state: REGISTERED}
+    additional_properties: false
+  applications_get:
+    response_required_fields: [schema_version, workspace_id, request_id, audit_ref, application]
+    response_field_refs:
+      application: contracts/v5/schema-profiles.yaml#r2_wire_record_shapes/ApplicationRecord
+    application_must_be_exact_current_authoritative_lifecycle_revision: true
+    authorization_before_visibility: true
+    additional_properties: false
+  applications_list:
+    request_required_fields: [project_id]
+    request_optional_fields: [cursor, limit]
+    workspace_source: AUTHENTICATED_HEADER_CONTEXT
+    response_required_fields: [schema_version, workspace_id, request_id, audit_ref, items, next_cursor]
+    response_constants: {schema_version: "2.0"}
+    item_required_fields: [application, environments, system_components, dependency_edges]
+    item_field_refs:
+      application: contracts/v5/schema-profiles.yaml#r2_wire_record_shapes/ApplicationRecord
+      environments: list[contracts/v5/schema-profiles.yaml#r2_wire_record_shapes/EnvironmentRecord]
+      system_components: list[contracts/v5/schema-profiles.yaml#r2_wire_record_shapes/SystemComponentRecord]
+      dependency_edges: list[contracts/v5/schema-profiles.yaml#r2_wire_record_shapes/DependencyEdgeRecord]
+    request_additional_properties: false
+    response_additional_properties: false
+    item_additional_properties: false
+    required_scope: applications:read
+    workspace_and_object_authorization_before_visibility: true
+    visibility_filter_before_page_and_count: true
+    cursor_profile: SERVER_ISSUED_OPAQUE_WORKSPACE_SCOPE_BOUND
+    forged_expired_or_cross_scope_cursor: REQUEST_INVALID_ZERO_ITEMS
+    unauthorized_collection_member_visibility: OMIT_WITHOUT_EXISTENCE_DIGEST_OR_COUNT_LEAK
+    unauthorized_items_are_omitted_without_count_leak: true
+    graph_invariants:
+      - application_record_is_exact_current_authoritative_lifecycle_revision
+      - application_project_id_equals_required_request_project_id
+      - application_and_every_nested_record_share_authenticated_workspace
+      - every_nested_record_application_id_equals_application.application_id
+      - every_nested_record_envelope_is_immutable_and_authority_receipt_bound
+      - each_system_component_record_is_exact_current_authoritative_lifecycle_revision
+      - dependency_edge_endpoints_are_members_of_system_components
+    additional_properties: false
+  environments_register:
+    request_required_fields: [schema_version, application_id, logical_name, risk_classification]
+    response_required_fields: [schema_version, workspace_id, request_id, audit_ref, environment, idempotency]
+    response_field_refs:
+      environment: contracts/v5/schema-profiles.yaml#r2_wire_record_shapes/EnvironmentRecord
+      idempotency: control-plane/app/public_api/v5_models.py#V5IdempotencyDelivery
+    additional_properties: false
+  environments_get:
+    response_required_fields: [schema_version, workspace_id, request_id, audit_ref, environment]
+    response_field_refs:
+      environment: contracts/v5/schema-profiles.yaml#r2_wire_record_shapes/EnvironmentRecord
+    authorization_before_visibility: true
+    additional_properties: false
+  system_components_register:
+    request_required_fields: [schema_version, application_id, component_kind, logical_name, owner_principal_ids, criticality, data_classification, permission_classification, effect_classification]
+    request_optional_fields: [dataset_role]
+    response_required_fields: [schema_version, workspace_id, request_id, audit_ref, component, idempotency]
+    response_field_refs:
+      component: contracts/v5/schema-profiles.yaml#r2_wire_record_shapes/SystemComponentRecord
+      idempotency: control-plane/app/public_api/v5_models.py#V5IdempotencyDelivery
+    component_lifecycle_constraint: {record_envelope.revision: 1, lifecycle_state: REGISTERED}
+    additional_properties: false
+  system_components_get:
+    response_required_fields: [schema_version, workspace_id, request_id, audit_ref, component]
+    response_field_refs:
+      component: contracts/v5/schema-profiles.yaml#r2_wire_record_shapes/SystemComponentRecord
+    component_must_be_exact_current_authoritative_lifecycle_revision: true
+    authorization_before_visibility: true
+    additional_properties: false
+  dependency_edges_record:
+    request_required_fields: [schema_version, application_id, from_component_id, to_component_id, relation, required]
+    response_required_fields: [schema_version, workspace_id, request_id, audit_ref, edge, idempotency]
+    response_field_refs:
+      edge: contracts/v5/schema-profiles.yaml#r2_wire_record_shapes/DependencyEdgeRecord
+      idempotency: control-plane/app/public_api/v5_models.py#V5IdempotencyDelivery
+    additional_properties: false
+  dependency_edges_get:
+    response_required_fields: [schema_version, workspace_id, request_id, audit_ref, edge]
+    response_field_refs:
+      edge: contracts/v5/schema-profiles.yaml#r2_wire_record_shapes/DependencyEdgeRecord
+    authorization_before_visibility: true
+    additional_properties: false
+  bootstrap_system_manifests_import:
+    request_required_fields: [schema_version, application, environment, components]
+    request_optional_fields: [dependency_edges, approver_policy]
+    request_field_refs:
+      application: control-plane/app/public_api/v5_models.py#ManifestApplication
+      environment: control-plane/app/public_api/v5_models.py#ManifestEnvironment
+      components: list[control-plane/app/public_api/v5_models.py#ManifestComponent]
+      dependency_edges: list[control-plane/app/public_api/v5_models.py#ManifestEdge]
+      approver_policy: control-plane/app/public_api/v5_models.py#ManifestComponent|null
+    client_manifest_digest_field: FORBIDDEN_SERVER_COMPUTED
+    response_required_fields:
+      - schema_version
+      - workspace_id
+      - request_id
+      - audit_ref
+      - manifest_id
+      - manifest_digest
+      - application
+      - environment
+      - components
+      - dependency_edges
+      - component_revisions
+      - topology_revision
+      - system_version_set
+      - bootstrap_attestation
+      - system_assignment
+      - idempotency
+    response_optional_fields: [approver_policy_revision]
+    response_field_refs:
+      application: contracts/v5/schema-profiles.yaml#r2_wire_record_shapes/ApplicationRecord
+      environment: contracts/v5/schema-profiles.yaml#r2_wire_record_shapes/EnvironmentRecord
+      components: list[contracts/v5/schema-profiles.yaml#r2_wire_record_shapes/SystemComponentRecord]
+      dependency_edges: list[contracts/v5/schema-profiles.yaml#r2_wire_record_shapes/DependencyEdgeRecord]
+      component_revisions: list[control-plane/app/public_api/v5_models.py#ComponentRevisionRecord]
+      topology_revision: control-plane/app/public_api/v5_models.py#TopologyRevisionRecord
+      system_version_set: control-plane/app/public_api/v5_models.py#SystemVersionSetRecord
+      bootstrap_attestation: control-plane/app/public_api/v5_models.py#BootstrapAttestationRecord
+      system_assignment: control-plane/app/public_api/v5_models.py#SystemAssignmentRecord
+      approver_policy_revision: control-plane/app/public_api/v5_models.py#ComponentRevisionRecord|null
+      idempotency: control-plane/app/public_api/v5_models.py#V5IdempotencyDelivery
+    initial_system_version_set_count: 1
+    scope: WORKSPACE_INITIAL_ONE_SHOT
+    precondition: ALL_AUTHORITATIVE_V5_DOMAIN_TABLES_EMPTY
+    prior_standalone_registered_catalog_row: BOOTSTRAP_IMPORT_FORBIDDEN
+    component_revision_binding_rule:
+      exact_system_component_binding: CURRENT_AUTHORITATIVE_ACTIVE_REVISION_2
+      resolution_source: LOCKED_APPEND_ONLY_LIFECYCLE_HISTORY
+      stale_registered_or_client_supplied_binding: FORBIDDEN
+    same_manifest_replay:
+      precondition: SAME_IDEMPOTENCY_KEY_AND_SAME_CANONICAL_BODY
+      response: IDENTICAL_TERMINAL_ATOMIC_RESPONSE
+      new_revisions_events_outbox_audits_receipts_and_facts: ZERO
+      different_key_even_same_manifest_digest: CONFLICT_WITH_ZERO_NEW_FACTS
+    second_workspace_bootstrap_or_system_version_set: FORBIDDEN
+    semantic_diff_claim: FORBIDDEN
+    additional_properties: false
+  bootstrap_system_manifest_result:
+    required_fields:
+      - exact_application_binding
+      - exact_component_bindings
+      - exact_initial_system_version_set_binding
+      - lifecycle_state
+      - replayed
+    constants: {lifecycle_state: ACTIVE}
+    application_binding_constraint: exact_record_binding_v5:AI_APPLICATION@revision_2
+    component_binding_constraint: list[exact_record_binding_v5:SYSTEM_COMPONENT@revision_2]
+    initial_system_version_set_binding_constraint: exact_record_binding_v5:SYSTEM_VERSION_SET@revision_1
+    additional_properties: false
+
+r2_wire_record_shapes:
+  ApplicationRecord:
+    authority_profile_ref: contracts/v5/schema-profiles.yaml#profiles/ai_application
+    required_base_fields: [record_envelope, application_id, workspace_id, project_id, slug, display_name, owner_principal_ids, criticality, data_classification, governance_mode, lifecycle_state]
+    revision_shape_ref: contracts/v5/schema-profiles.yaml#profiles/ai_application/revision_shape_union
+    exact_current_binding_rule: kind=AI_APPLICATION,id=application_id,revision=record_envelope.revision,digest=record_envelope.record_digest
+    additional_properties: false
+  EnvironmentRecord:
+    required_fields: [record_envelope, environment_id, workspace_id, application_id, logical_name, risk_classification, lifecycle_state]
+    record_envelope_ref: contracts/v5/domain-model.yaml#record_envelope
+    lifecycle_states: [ACTIVE, RETIRED]
+    exact_current_binding_rule: kind=ENVIRONMENT,id=environment_id,revision=record_envelope.revision,digest=record_envelope.record_digest
+    additional_properties: false
+  SystemComponentRecord:
+    authority_profile_ref: contracts/v5/schema-profiles.yaml#profiles/system_component
+    required_base_fields: [record_envelope, component_id, workspace_id, application_id, component_kind, logical_name, owner_principal_ids, criticality, data_classification, permission_classification, effect_classification, dataset_role, lifecycle_state]
+    revision_shape_ref: contracts/v5/schema-profiles.yaml#profiles/system_component/revision_shape_union
+    exact_current_binding_rule: kind=SYSTEM_COMPONENT,id=component_id,revision=record_envelope.revision,digest=record_envelope.record_digest
+    additional_properties: false
+  DependencyEdgeRecord:
+    required_fields: [record_envelope, edge_id, workspace_id, application_id, from_component_id, to_component_id, relation, required, edge_digest]
+    record_envelope_ref: contracts/v5/domain-model.yaml#record_envelope
+    exact_current_binding_rule: kind=DEPENDENCY_EDGE,id=edge_id,revision=record_envelope.revision,digest=record_envelope.record_digest
+    edge_digest_must_match_canonical_record: true
+    additional_properties: false
+
 purpose:
   - define_v5_exact_record_binding_space
   - define_schema_major_2_successors_for_closed_v4_records
@@ -238,9 +467,11 @@ common:
     same_transaction_as_subject_event_and_authority_receipt: true
     additional_properties: false
   lifecycle_activation_transaction_v5:
-    runtime_status: NOT_IMPLEMENTED
+    runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
     owner_stage: R2
-    production_entry_status: DISABLED_UNTIL_R2_COMPOSED_GATE
+    production_entry_status: ENABLED_ONLY_BEHIND_AUTHENTICATED_SYSTEM_MANIFEST_IMPORT
+    r2_contract_status: FROZEN_FOR_INTERNAL_CATALOG_MANIFEST_COORDINATOR
+    r2_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
     r1_available_primitives:
       - closed_authority_receipt_profile
       - initiating_command_audit_profile
@@ -350,7 +581,7 @@ profiles:
       exact_previous_binding_required: true
       authority_profile: lifecycle_activation_transaction_v5
       r1_runtime_scope: NON_PRODUCTION_STORAGE_CAS_HARNESS_ONLY
-      production_runtime_status: NOT_IMPLEMENTED
+      production_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
       production_runtime_owner_stage: R2
     invariants:
       - every_non_initial_revision_exactly_binds_locked_previous_revision
@@ -415,7 +646,7 @@ profiles:
       exact_previous_binding_required: true
       authority_profile: lifecycle_activation_transaction_v5
       r1_runtime_scope: NON_PRODUCTION_STORAGE_CAS_HARNESS_ONLY
-      production_runtime_status: NOT_IMPLEMENTED
+      production_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
       production_runtime_owner_stage: R2
     current_active_rule:
       active_is_authoritative_only_when_revision_is_current_head: true
@@ -468,6 +699,7 @@ profiles:
     writer_validation_owner_stage: R3
     producer_runtime_status: NOT_IMPLEMENTED
     producer_owner_stage: R3
+    r2_r3_bootstrap_producer_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
     r3_required_producer_invariants:
       - exact_system_component_binding_is_revalidated_at_recording
       - exact_system_component_binding_and_new_record_share_workspace_and_application

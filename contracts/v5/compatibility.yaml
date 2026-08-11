@@ -20,6 +20,73 @@ current_implemented_public_slice:
     may_append_lifecycle_events: [triage, resolve, reopen]
     prior_payload_event_and_digest_may_be_rewritten: false
 
+r2_application_catalog_contract:
+  stage: R2
+  contract_status: FROZEN_FOR_IMPLEMENTATION
+  runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+  preserves_v5_0_historical_freeze: true
+  preserves_v3_v4_routes_payloads_events_receipts_and_evidence: true
+  contract_activated_public_intents:
+    - capabilities.get
+    - applications.register
+    - applications.get
+    - applications.list
+    - environments.register
+    - environments.get
+    - system-components.register
+    - system-components.get
+    - dependency-edges.record
+    - dependency-edges.get
+    - system-manifests.import
+  public_transport_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+  private_bootstrap_manifest_composition:
+    contract_status: FROZEN_FOR_IMPLEMENTATION
+    runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    public_route: NONE
+    invoked_only_by_public_root_intent: system-manifests.import
+    catalog_only_public_sub_intent: FORBIDDEN
+    returns:
+      application_lifecycle: {revision: 2, lifecycle_state: ACTIVE}
+      component_lifecycle: {revision: 2, lifecycle_state: ACTIVE}
+  public_bootstrap_manifest:
+    contract_status: FROZEN_R2_R3_BOOTSTRAP
+    runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    creates_exactly_one_initial_system_version_set: true
+    workspace_initial_one_shot_requires_all_v5_domain_tables_empty: true
+    standalone_registered_catalog_row_disables_one_shot: true
+    returns_complete_first_declared_graph: true
+    component_revision_exact_component_binding: CURRENT_AUTHORITATIVE_ACTIVE_REVISION_2
+    same_key_same_body_replay_returns_identical_terminal_atomic_response: true
+    same_key_same_body_replay_creates_zero_new_facts: true
+    different_key_even_same_manifest_digest: CONFLICT_WITH_ZERO_NEW_FACTS
+    does_not_activate_standalone_system_versions_record: true
+    does_not_prove_second_version_or_diff: true
+  public_application_register_response:
+    lifecycle: {revision: 1, lifecycle_state: REGISTERED}
+    activation_side_effect: FORBIDDEN
+  system_manifest_modes:
+    R2_R3_BOOTSTRAP:
+      public_intent: system-manifests.import
+      contract_status: FROZEN
+      runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+      scope: WORKSPACE_INITIAL_ONE_SHOT
+    R3_FULL:
+      standalone_system_versions_record: NOT_IMPLEMENTED
+      second_system_version_set: NOT_IMPLEMENTED
+      system_versions_get: NOT_IMPLEMENTED
+      system_versions_diff: NOT_IMPLEMENTED
+      semantic_diff: NOT_IMPLEMENTED
+  standalone_activation_transports:
+    http: FORBIDDEN
+    cli: FORBIDDEN
+    sdk: FORBIDDEN
+    mcp: FORBIDDEN
+    a2a: FORBIDDEN
+    capability_discovery: FORBIDDEN
+  later_stage_runtime_status:
+    R3_FULL_SYSTEM_VERSION: NOT_IMPLEMENTED
+    R4_FIRST_SYSTEM_CASE: NOT_IMPLEMENTED
+
 v5_target_surface:
   api_prefix: /api/v2
   schema_major: 2

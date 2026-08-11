@@ -43,7 +43,7 @@ _IDS = {
     "digest": re.compile(r"^sha256:[0-9a-f]{64}$"),
 }
 
-_V1_COMMANDS = frozenset({"capabilities", "signal", "report", "evidence"})
+_V1_COMMANDS = frozenset({"signal", "report", "evidence"})
 _V2_COMMANDS = frozenset(
     {
         "application",
@@ -51,15 +51,9 @@ _V2_COMMANDS = frozenset(
         "system-component",
         "dependency-edge",
         "system-manifest",
-        "init",
     }
 )
-# ``case`` carries both v1 (get/timeline) and v2 (binding/acceptance/from-issue)
-# actions; the per-action api-major checks live in run().
 _V1_CASE_ACTIONS = frozenset({"get", "timeline"})
-_V2_CASE_ACTIONS = frozenset(
-    {"bind-application", "application-binding", "acceptance-criteria", "from-issue"}
-)
 
 
 class SafeArgumentParser(argparse.ArgumentParser):
@@ -197,56 +191,6 @@ def build_parser() -> argparse.ArgumentParser:
     timeline.add_argument("--limit", type=int, default=50)
     timeline.add_argument("--cursor")
 
-    # V5-1C case actions (api-major 2).
-    bind_application = case_actions.add_parser("bind-application")
-    bind_application.add_argument("case_id")
-    bind_application.add_argument("--application-id", required=True)
-    bind_application.add_argument("--environment-id", required=True)
-    bind_application.add_argument("--case-revision", type=int, default=1)
-    bind_application.add_argument("--case-digest", required=True)
-    bind_application.add_argument("--system-version-set-id")
-    bind_application.add_argument("--declared-version-unknown", action="store_true")
-    bind_application.add_argument("--issue-snapshot-file")
-    bind_application.add_argument("--idempotency-key")
-
-    application_binding = case_actions.add_parser("application-binding")
-    application_binding_actions = application_binding.add_subparsers(
-        dest="action2", required=True, parser_class=SafeArgumentParser
-    )
-    binding_get = application_binding_actions.add_parser("get")
-    binding_get.add_argument("case_id")
-    binding_get.add_argument("--case-revision", type=int, default=1)
-    binding_get.add_argument("--case-digest", required=True)
-
-    acceptance_criteria = case_actions.add_parser("acceptance-criteria")
-    acceptance_criteria_actions = acceptance_criteria.add_subparsers(
-        dest="action2", required=True, parser_class=SafeArgumentParser
-    )
-    propose = acceptance_criteria_actions.add_parser("propose")
-    propose.add_argument("case_id")
-    propose.add_argument("--case-revision", type=int, default=1)
-    propose.add_argument("--case-digest", required=True)
-    propose.add_argument("--acceptance-json", required=True)
-    propose.add_argument("--idempotency-key")
-    criteria_get = acceptance_criteria_actions.add_parser("get")
-    criteria_get.add_argument("case_id")
-    criteria_get.add_argument("--case-revision", type=int, default=1)
-    confirm = acceptance_criteria_actions.add_parser("confirm")
-    confirm.add_argument("acceptance_criteria_revision_id")
-    confirm.add_argument("--proposed-revision-digest", required=True)
-    confirm.add_argument("--confirmation-note")
-    confirm.add_argument("--idempotency-key")
-
-    from_issue = case_actions.add_parser("from-issue")
-    from_issue.add_argument("github_url")
-    from_issue.add_argument("--application-id", required=True)
-    from_issue.add_argument("--environment-id", required=True)
-    from_issue.add_argument("--snapshot-file")
-    from_issue.add_argument("--refresh", action="store_true")
-    from_issue.add_argument("--source-id")
-    from_issue.add_argument("--reporter-ref")
-    from_issue.add_argument("--idempotency-key")
-
     evidence = commands.add_parser("evidence")
     evidence_get = evidence.add_subparsers(dest="action", required=True, parser_class=SafeArgumentParser).add_parser("get")
     evidence_get.add_argument("receipt_id")
@@ -259,6 +203,10 @@ def build_parser() -> argparse.ArgumentParser:
     _application_options(application_register)
     application_get = application_actions.add_parser("get")
     application_get.add_argument("application_id")
+    application_list = application_actions.add_parser("list")
+    application_list.add_argument("--project-id", required=True)
+    application_list.add_argument("--limit", type=int, default=50)
+    application_list.add_argument("--cursor")
 
     environment = commands.add_parser("environment")
     environment_actions = environment.add_subparsers(
@@ -291,18 +239,11 @@ def build_parser() -> argparse.ArgumentParser:
     manifest_actions = system_manifest.add_subparsers(
         dest="action", required=True, parser_class=SafeArgumentParser
     )
-    for action in ("import", "record", "validate"):
+    for action in ("import", "validate"):
         action_parser = manifest_actions.add_parser(action)
         action_parser.add_argument("--manifest-file", required=True)
         action_parser.add_argument("--idempotency-key")
-    manifest_get = manifest_actions.add_parser("get")
-    manifest_get.add_argument("system_version_set_id")
-    manifest_diff = manifest_actions.add_parser("diff")
-    manifest_diff.add_argument("--base-system-version-set-id", required=True)
-    manifest_diff.add_argument("--target-system-version-set-id", required=True)
 
-    init = commands.add_parser("init")
-    init.add_argument("repo")
     return parser
 
 
@@ -747,12 +688,8 @@ def run(
         if args.command == "case":
             if args.action in _V1_CASE_ACTIONS and api_major != "1":
                 raise CliError("API_MAJOR_MISMATCH", ExitFamily.INPUT)
-            if args.action in _V2_CASE_ACTIONS and api_major != "2":
-                raise CliError("API_VERSION_REQUIRED", ExitFamily.INPUT)
 
         # Local-only commands never need API credentials or a running server.
-        if args.command == "init":
-            return _cmd_init(args, output_stream=output_stream, error_stream=error_stream)
         if args.command == "system-manifest" and args.action == "validate":
             return _cmd_manifest_validate(args, output_stream=output_stream)
 
@@ -783,7 +720,14 @@ def run(
         )
 
         if args.command == "capabilities":
-            result = client.request("GET", "/api/v1/capabilities")
+            capability_path = (
+                "/api/v2/capabilities"
+                if api_major == "2"
+                else "/api/v1/capabilities"
+            )
+            result = client.request(
+                "GET", capability_path, api_major=int(api_major)
+            )
         elif args.command == "application" and args.action == "register":
             idem = args.idempotency_key or f"application-register-{uuid_factory().hex}"
             if not 8 <= len(idem) <= 128:
@@ -816,6 +760,24 @@ def run(
             application_id = _valid_id(args.application_id, "application", required=True)
             result = client.request(
                 "GET", f"/api/v2/applications/{application_id}", api_major=2
+            )
+        elif args.command == "application" and args.action == "list":
+            if args.limit < 1 or args.limit > 100:
+                raise CliError("APPLICATION_INPUT_INVALID", ExitFamily.INPUT)
+            params = [("limit", str(args.limit))]
+            params.append(
+                (
+                    "project_id",
+                    _valid_id(args.project_id, "project", required=True),
+                )
+            )
+            if args.cursor is not None:
+                params.append(("cursor", args.cursor))
+            result = client.request(
+                "GET",
+                "/api/v2/applications",
+                params=params,
+                api_major=2,
             )
         elif args.command == "environment" and args.action == "register":
             idem = args.idempotency_key or f"environment-register-{uuid_factory().hex}"
@@ -908,7 +870,7 @@ def run(
             result = client.request(
                 "GET", f"/api/v2/dependency-edges/{edge_id}", api_major=2
             )
-        elif args.command == "system-manifest" and args.action in ("import", "record"):
+        elif args.command == "system-manifest" and args.action == "import":
             manifest_payload = _load_manifest_payload(args.manifest_file)
             idem = args.idempotency_key or f"system-manifest-import-{uuid_factory().hex}"
             if not 8 <= len(idem) <= 128:
@@ -921,182 +883,6 @@ def run(
                 ).encode("utf-8"),
                 idempotency_key=idem,
                 api_major=2,
-            )
-        elif args.command == "system-manifest" and args.action == "get":
-            system_version_set_id = _valid_id(
-                args.system_version_set_id, "version_set", required=True
-            )
-            result = client.request(
-                "GET", f"/api/v2/system-versions/{system_version_set_id}", api_major=2
-            )
-        elif args.command == "system-manifest" and args.action == "diff":
-            base_id = _valid_id(
-                args.base_system_version_set_id, "version_set", required=True
-            )
-            target_id = _valid_id(
-                args.target_system_version_set_id, "version_set", required=True
-            )
-            result = client.request(
-                "GET",
-                "/api/v2/system-versions:diff",
-                params=[
-                    ("base_system_version_set_id", base_id),
-                    ("target_system_version_set_id", target_id),
-                ],
-                api_major=2,
-            )
-        elif args.command == "case" and args.action == "bind-application":
-            case_id = _valid_id(args.case_id, "case", required=True)
-            case_digest = _valid_id(args.case_digest, "digest", required=True) if args.case_digest else None
-            if case_digest is None or not 1 <= args.case_revision:
-                raise CliError("CASE_BINDING_INPUT_INVALID", ExitFamily.INPUT)
-            idem = args.idempotency_key or f"case-bind-application-{uuid_factory().hex}"
-            if not 8 <= len(idem) <= 128:
-                raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
-            declared = None
-            if args.system_version_set_id is not None:
-                declared = {
-                    "kind": "SYSTEM_VERSION_SET",
-                    "id": _valid_id(args.system_version_set_id, "version_set", required=True),
-                    "materialization": "DECLARED",
-                }
-            elif not args.declared_version_unknown:
-                declared = {"kind": "UNKNOWN", "reason": "NOT_DECLARED"}
-            payload = {
-                "schema_version": "2.0",
-                "case_id": case_id,
-                "case_revision": args.case_revision,
-                "case_digest": case_digest,
-                "application_id": _valid_id(args.application_id, "application", required=True),
-                "environment_id": _valid_id(args.environment_id, "environment", required=True),
-                "declared_system_version_set_binding_or_unknown": declared,
-                "issue_snapshot": None,
-            }
-            result = client.request(
-                "POST",
-                f"/api/v2/cases/{case_id}:bind-application",
-                body=json.dumps(
-                    payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-                ).encode("utf-8"),
-                idempotency_key=idem,
-                api_major=2,
-            )
-        elif (
-            args.command == "case"
-            and args.action == "application-binding"
-            and args.action2 == "get"
-        ):
-            case_id = _valid_id(args.case_id, "case", required=True)
-            case_digest = _valid_id(args.case_digest, "digest", required=True)
-            result = client.request(
-                "GET",
-                f"/api/v2/cases/{case_id}/application-binding",
-                params=[
-                    ("case_revision", str(args.case_revision)),
-                    ("case_digest", case_digest),
-                ],
-                api_major=2,
-            )
-        elif (
-            args.command == "case"
-            and args.action == "acceptance-criteria"
-            and args.action2 == "propose"
-        ):
-            case_id = _valid_id(args.case_id, "case", required=True)
-            case_digest = _valid_id(args.case_digest, "digest", required=True)
-            try:
-                draft = json.loads(args.acceptance_json)
-            except json.JSONDecodeError as exc:
-                raise CliError("ACCEPTANCE_JSON_INVALID", ExitFamily.INPUT) from None
-            if not isinstance(draft, dict):
-                raise CliError("ACCEPTANCE_JSON_INVALID", ExitFamily.INPUT)
-            idem = args.idempotency_key or f"acceptance-propose-{uuid_factory().hex}"
-            if not 8 <= len(idem) <= 128:
-                raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
-            for required in (
-                "acceptance_source",
-                "expected_behavior",
-                "applicable_workload_profile",
-                "applicable_deployment_profile",
-            ):
-                if required not in draft:
-                    raise CliError("ACCEPTANCE_JSON_INVALID", ExitFamily.INPUT)
-            # The request fingerprint must match the server's canonical model
-            # dump, so optional fields are sent explicitly as null.
-            draft.setdefault("reproducer_input", None)
-            draft.setdefault("reproducer_environment", None)
-            draft.setdefault("oracle_or_evaluator", None)
-            payload = {
-                "schema_version": "2.0",
-                "case_id": case_id,
-                "case_revision": args.case_revision,
-                "case_digest": case_digest,
-                **draft,
-            }
-            result = client.request(
-                "POST",
-                f"/api/v2/cases/{case_id}:propose-acceptance-criteria",
-                body=json.dumps(
-                    payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-                ).encode("utf-8"),
-                idempotency_key=idem,
-                api_major=2,
-            )
-        elif (
-            args.command == "case"
-            and args.action == "acceptance-criteria"
-            and args.action2 == "get"
-        ):
-            case_id = _valid_id(args.case_id, "case", required=True)
-            result = client.request(
-                "GET",
-                f"/api/v2/cases/{case_id}/acceptance-criteria",
-                params=[("case_revision", str(args.case_revision))],
-                api_major=2,
-            )
-        elif (
-            args.command == "case"
-            and args.action == "acceptance-criteria"
-            and args.action2 == "confirm"
-        ):
-            revision_id = _valid_id(
-                args.acceptance_criteria_revision_id, "acceptance_revision", required=True
-            )
-            proposed_digest = _valid_id(
-                args.proposed_revision_digest, "digest", required=True
-            )
-            idem = args.idempotency_key or f"acceptance-confirm-{uuid_factory().hex}"
-            if not 8 <= len(idem) <= 128:
-                raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
-            payload = {
-                "schema_version": "2.0",
-                "exact_proposed_revision_binding": {
-                    "kind": "ACCEPTANCE_CRITERIA_REVISION",
-                    "id": revision_id,
-                    "revision": None,
-                    "digest": proposed_digest,
-                },
-                "confirmation_note": args.confirmation_note,
-            }
-            result = client.request(
-                "POST",
-                f"/api/v2/acceptance-criteria/{revision_id}:confirm",
-                body=json.dumps(
-                    payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-                ).encode("utf-8"),
-                idempotency_key=idem,
-                api_major=2,
-            )
-        elif args.command == "case" and args.action == "from-issue":
-            result = _cmd_case_from_issue(
-                args,
-                client=client,
-                env=actual_env,
-                profile=profile,
-                uuid_factory=uuid_factory,
-                clock=clock,
-                output_stream=output_stream,
-                error_stream=error_stream,
             )
         elif args.command == "case" and args.action == "get":
             case_id = _valid_id(args.case_id, "case", required=True)

@@ -177,7 +177,9 @@ def test_application_and_component_activation_events_are_manifest_only() -> None
     )
     for event, previous, new, previous_guard, new_guard in cases:
         assert event["event_version"] == "2.0"
-        assert event["composed_runtime_status"] == "NOT_IMPLEMENTED"
+        assert event["composed_runtime_status"] == (
+            "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
+        )
         assert event["composed_runtime_owner_stage"] == "R2"
         assert event["production_route_status"] == "DISABLED"
         assert event["direct_production_append"] == "FORBIDDEN"
@@ -352,7 +354,7 @@ def test_lifecycle_record_profiles_use_mutually_exclusive_closed_previous_shapes
             "NON_PRODUCTION_STORAGE_CAS_HARNESS_ONLY"
         )
         assert profile["activation_revision_contract"]["production_runtime_status"] == (
-            "NOT_IMPLEMENTED"
+            "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
         )
         assert profile["activation_revision_contract"][
             "production_runtime_owner_stage"

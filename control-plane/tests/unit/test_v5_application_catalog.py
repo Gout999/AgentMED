@@ -20,6 +20,7 @@ from app.models.v4_tables import (
 )
 from app.models.v5_tables import (
     AIApplication,
+    AIApplicationLifecycleRevision,
     DependencyEdge,
     Environment,
     SystemComponent,
@@ -37,10 +38,17 @@ from app.services.application_catalog import (
     V5ReadDenial,
 )
 from app.services.v4_audit import V4AuditService
+from app.services.v4_event_store import V4EventStore, V4EventStoreError
 from app.services.v5_authority import (
+    V5AuthorityService,
     V5_CATALOG_OWNER,
     build_v5_controller_registration_record,
 )
+from app.services.v5_lifecycle_authority import (
+    V5LifecycleAuthorityError,
+    V5LifecycleAuthorityService,
+)
+from app.services.v5_manifest_import_coordinator import V5ManifestImportCoordinator
 from app.utils.ids import (
     new_application_id,
     new_authority_receipt_id,
@@ -48,6 +56,7 @@ from app.utils.ids import (
     new_system_component_id,
 )
 from app.utils.v4_integrity import canonical_digest
+from app.utils.v5_integrity import v5_record_digest
 
 REPO = Path(__file__).resolve().parents[3]
 NOW = datetime(2026, 8, 11, 9, 0, tzinfo=timezone.utc)
@@ -135,6 +144,7 @@ def _seed_principal(
     workspace_id: str = WORKSPACE,
     scopes: list[str] | None = None,
     project_ids: list[str] | None = None,
+    trust_roles: list[str] | None = None,
 ) -> None:
     from app.public_api.credential_resolver import digest_public_subject
 
@@ -151,6 +161,7 @@ def _seed_principal(
             project_ids=project_ids,
             environment_ids=[],
             scopes=list(scopes),
+            trust_roles=list(trust_roles or []),
             claims_digest=_claims(workspace_id, project_ids, scopes),
             revoked_at=None,
         )
@@ -227,7 +238,11 @@ def _seed_v5_controller(session) -> None:
 
 def _seed_env(session) -> None:
     _seed_principal(session, principal_id=OWNER, scopes=["signals:write", "cases:read"])
-    _seed_principal(session, principal_id=CATALOG_PRINCIPAL)
+    _seed_principal(
+        session,
+        principal_id=CATALOG_PRINCIPAL,
+        trust_roles=["catalog_admin"],
+    )
     _seed_v5_controller(session)
     session.commit()
 
@@ -240,6 +255,88 @@ def _count(session, model) -> int:
     from sqlalchemy import func, select
 
     return int(session.scalar(select(func.count()).select_from(model)) or 0)
+
+
+def _activate_registered_application_for_foundation_test(session, application) -> None:
+    """Prepare an ACTIVE prerequisite; this is not a public activation proof."""
+
+    registered = application.model_dump(mode="json")
+    registered_digest = registered["record_envelope"]["record_digest"]
+    registered.pop("exact_previous_application_binding_or_null")
+    registered["lifecycle_state"] = "ACTIVE"
+    registered["exact_previous_application_binding"] = {
+        "kind": "AI_APPLICATION",
+        "id": registered["application_id"],
+        "revision": 1,
+        "digest": registered_digest,
+    }
+    registered["record_envelope"] = {
+        **registered["record_envelope"],
+        "revision": 2,
+        "recorded_at": (NOW + timedelta(microseconds=1)).isoformat().replace(
+            "+00:00", "Z"
+        ),
+        "authority_receipt_id": new_authority_receipt_id(),
+        "record_digest": "",
+    }
+    registered["record_envelope"]["record_digest"] = v5_record_digest(registered)
+    V5LifecycleAuthorityService(
+        session
+    )._append_activation_revision_for_foundation_test(
+        kind="AI_APPLICATION", envelope_payload=registered
+    )
+
+
+def _raw_registered_application_payload(*, application_id: str = _APPLICATION_ID):
+    payload = {
+        "application_id": application_id,
+        "workspace_id": WORKSPACE,
+        "project_id": PROJECT,
+        "slug": "permit-boundary",
+        "display_name": "Permit Boundary",
+        "owner_principal_ids": [OWNER],
+        "criticality": "P1",
+        "data_classification": "INTERNAL",
+        "governance_mode": "MANAGED",
+        "lifecycle_state": "REGISTERED",
+        "exact_previous_application_binding_or_null": None,
+        "record_envelope": {
+            "schema_version": "2.0",
+            "workspace_id": WORKSPACE,
+            "revision": 1,
+            "recorded_by_principal": CONTROLLER_PRINCIPAL,
+            "recorded_at": NOW.isoformat().replace("+00:00", "Z"),
+            "immutable": True,
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "record_digest": "",
+            "authority_receipt_id": new_authority_receipt_id(),
+        },
+    }
+    payload["record_envelope"]["record_digest"] = v5_record_digest(payload)
+    return payload
+
+
+def _raw_activation_payload(registered: dict[str, Any]) -> dict[str, Any]:
+    payload = {
+        key: value
+        for key, value in registered.items()
+        if key not in {"exact_previous_application_binding_or_null", "record_envelope"}
+    }
+    payload["lifecycle_state"] = "ACTIVE"
+    payload["exact_previous_application_binding"] = {
+        "kind": "AI_APPLICATION",
+        "id": registered["application_id"],
+        "revision": 1,
+        "digest": registered["record_envelope"]["record_digest"],
+    }
+    payload["record_envelope"] = {
+        **registered["record_envelope"],
+        "revision": 2,
+        "authority_receipt_id": new_authority_receipt_id(),
+        "record_digest": "",
+    }
+    payload["record_envelope"]["record_digest"] = v5_record_digest(payload)
+    return payload
 
 
 def _app_request(**overrides: Any) -> ApplicationRegisterRequest:
@@ -281,7 +378,7 @@ def test_register_application_creates_exact_slice(sqlite_session) -> None:
     assert response.workspace_id == WORKSPACE
     assert response.application.record_envelope.immutable is True
     assert response.application.record_envelope.revision == 1
-    assert response.application.lifecycle_state == "ACTIVE"
+    assert response.application.lifecycle_state == "REGISTERED"
     assert response.idempotency.replayed is False
     assert response.idempotency.receipt.intent == "applications.register"
     assert response.idempotency.receipt.resource.kind == "ai_application"
@@ -290,6 +387,7 @@ def test_register_application_creates_exact_slice(sqlite_session) -> None:
     app = sqlite_session.get(AIApplication, response.application.application_id)
     assert app is not None and app.record_digest == app.envelope_payload["record_envelope"]["record_digest"]
     assert _count(sqlite_session, AIApplication) == 1
+    assert _count(sqlite_session, AIApplicationLifecycleRevision) == 1
     assert _count(sqlite_session, Event) == 1
     assert _count(sqlite_session, Outbox) == 1
     assert _count(sqlite_session, AuthorityReceipt) == 1
@@ -324,6 +422,88 @@ def test_register_application_replay_same_key(sqlite_session) -> None:
     assert _count(sqlite_session, AIApplication) == 1
     assert _count(sqlite_session, Event) == 1
     assert _count(sqlite_session, AuthorityReceipt) == 1
+
+
+def test_register_application_replay_rechecks_revocation(sqlite_session) -> None:
+    _seed_env(sqlite_session)
+    service = _service(sqlite_session)
+    service.register_application(
+        _app_request(),
+        principal=_principal_context(),
+        idempotency_key="app-register-0001",
+        request_id="req_01J000000000000A",
+    )
+    sqlite_session.commit()
+    principal_row = sqlite_session.get(PublicPrincipal, CATALOG_PRINCIPAL)
+    assert principal_row is not None
+    principal_row.state = "REVOKED"
+    principal_row.revoked_at = NOW
+    sqlite_session.commit()
+
+    with pytest.raises(ApplicationCatalogError) as raised:
+        service.register_application(
+            _app_request(),
+            principal=_principal_context(),
+            idempotency_key="app-register-0001",
+            request_id="req_01J000000000000B",
+        )
+    assert raised.value.code == "TOKEN_INVALID"
+    assert _count(sqlite_session, AIApplication) == 1
+    assert _count(sqlite_session, Event) == 1
+    assert _count(sqlite_session, AuthorityReceipt) == 1
+    assert _count(sqlite_session, PublicCommandIdempotency) == 1
+
+
+def test_register_application_rejects_roleless_principal_before_idempotency(
+    sqlite_session,
+) -> None:
+    _seed_env(sqlite_session)
+    principal_row = sqlite_session.get(PublicPrincipal, CATALOG_PRINCIPAL)
+    assert principal_row is not None
+    principal_row.trust_roles = []
+    sqlite_session.commit()
+
+    with pytest.raises(ApplicationCatalogError) as raised:
+        _service(sqlite_session).register_application(
+            _app_request(),
+            principal=_principal_context(),
+            idempotency_key="app-register-roleless",
+            request_id="req_01J000000000000A",
+        )
+    assert raised.value.code == "SCOPE_FORBIDDEN"
+    assert _count(sqlite_session, AIApplication) == 0
+    assert _count(sqlite_session, PublicCommandIdempotency) == 0
+
+
+def test_register_application_replay_rechecks_project_claims(sqlite_session) -> None:
+    _seed_env(sqlite_session)
+    service = _service(sqlite_session)
+    service.register_application(
+        _app_request(),
+        principal=_principal_context(),
+        idempotency_key="app-register-0001",
+        request_id="req_01J000000000000A",
+    )
+    sqlite_session.commit()
+    changed_context = _principal_context(project_ids=[OTHER_PROJECT])
+    principal_row = sqlite_session.get(PublicPrincipal, CATALOG_PRINCIPAL)
+    assert principal_row is not None
+    principal_row.project_ids = [OTHER_PROJECT]
+    principal_row.claims_digest = changed_context.claims_digest
+    sqlite_session.commit()
+
+    with pytest.raises(ApplicationCatalogError) as raised:
+        service.register_application(
+            _app_request(),
+            principal=changed_context,
+            idempotency_key="app-register-0001",
+            request_id="req_01J000000000000B",
+        )
+    assert raised.value.code == "WORKSPACE_ACCESS_DENIED"
+    assert _count(sqlite_session, AIApplication) == 1
+    assert _count(sqlite_session, Event) == 1
+    assert _count(sqlite_session, AuthorityReceipt) == 1
+    assert _count(sqlite_session, PublicCommandIdempotency) == 1
 
 
 def test_register_application_duplicate_slug_conflicts(sqlite_session) -> None:
@@ -371,6 +551,7 @@ def test_register_application_cross_workspace_denied(sqlite_session) -> None:
         workspace_id=OTHER_WORKSPACE,
         scopes=SCOPES,
         project_ids=[OTHER_PROJECT],
+        trust_roles=["catalog_admin"],
     )
     sqlite_session.commit()
     foreign = _principal_context(
@@ -470,6 +651,7 @@ def test_register_environment_requires_application_and_unique_name(sqlite_sessio
     )
     sqlite_session.commit()
     application_id = app.application.application_id
+    _activate_registered_application_for_foundation_test(sqlite_session, app.application)
     response = service.register_environment(
         _env_request(application_id=application_id),
         principal=_principal_context(),
@@ -477,6 +659,19 @@ def test_register_environment_requires_application_and_unique_name(sqlite_sessio
         request_id="req_01J000000000000B",
     )
     assert response.environment.lifecycle_state == "ACTIVE"
+    event = sqlite_session.scalar(
+        select(Event).where(
+            Event.event_type == "environment.registered",
+            Event.aggregate_id == response.environment.environment_id,
+        )
+    )
+    assert event is not None
+    assert event.contract_version == "v5"
+    assert event.event_contract_major == 2
+    assert event.exact_subject_binding["revision"] == 1
+    receipt = sqlite_session.get(AuthorityReceipt, event.authority_receipt_id)
+    assert receipt is not None and receipt.subject_revision == 1
+    assert receipt.receipt_payload["source_event_id"] == event.event_id
     sqlite_session.commit()
 
     with pytest.raises(ApplicationCatalogError) as raised:
@@ -500,6 +695,35 @@ def test_register_environment_requires_application_and_unique_name(sqlite_sessio
     sqlite_session.rollback()
 
 
+def test_register_component_requires_active_parent_before_idempotency(sqlite_session) -> None:
+    _seed_env(sqlite_session)
+    service = _service(sqlite_session)
+    app = service.register_application(
+        _app_request(),
+        principal=_principal_context(),
+        idempotency_key="app-register-0001",
+        request_id="req_01J000000000000A",
+    )
+    sqlite_session.commit()
+
+    with pytest.raises(ApplicationCatalogError) as raised:
+        service.register_component(
+            _component_request(application_id=app.application.application_id),
+            principal=_principal_context(),
+            idempotency_key="component-register-inactive",
+            request_id="req_01J000000000000B",
+        )
+    assert raised.value.code == "CATALOG_CONFLICT"
+    assert raised.value.details == {"reason": "APPLICATION_NOT_ACTIVE"}
+    assert _count(sqlite_session, SystemComponent) == 0
+    assert sqlite_session.scalar(
+        select(sa.func.count()).select_from(PublicCommandIdempotency).where(
+            PublicCommandIdempotency.intent == "system-components.register"
+        )
+    ) == 0
+    sqlite_session.rollback()
+
+
 def test_register_component_duplicate_identity(sqlite_session) -> None:
     _seed_env(sqlite_session)
     service = _service(sqlite_session)
@@ -511,6 +735,7 @@ def test_register_component_duplicate_identity(sqlite_session) -> None:
     )
     sqlite_session.commit()
     application_id = app.application.application_id
+    _activate_registered_application_for_foundation_test(sqlite_session, app.application)
     service.register_component(
         _component_request(application_id=application_id),
         principal=_principal_context(),
@@ -538,6 +763,7 @@ def _register_full_graph(service, *, session) -> tuple[str, str, str]:
     )
     session.commit()
     application_id = app.application.application_id
+    _activate_registered_application_for_foundation_test(session, app.application)
     first = service.register_component(
         _component_request(
             application_id=application_id,
@@ -582,6 +808,19 @@ def test_record_edge_and_reject_self_missing_cycle(sqlite_session) -> None:
         request_id="req_01J000000000000D",
     )
     assert response.edge.edge_digest.startswith("sha256:")
+    event = sqlite_session.scalar(
+        select(Event).where(
+            Event.event_type == "dependency_edge.recorded",
+            Event.aggregate_id == response.edge.edge_id,
+        )
+    )
+    assert event is not None
+    assert event.contract_version == "v5"
+    assert event.event_contract_major == 2
+    assert event.exact_subject_binding["revision"] == 1
+    receipt = sqlite_session.get(AuthorityReceipt, event.authority_receipt_id)
+    assert receipt is not None and receipt.subject_revision == 1
+    assert receipt.receipt_payload["source_event_id"] == event.event_id
     sqlite_session.commit()
 
     # A -> B already exists; B -> A must cycle.
@@ -750,6 +989,159 @@ def test_audit_failure_rolls_back_everything(sqlite_session) -> None:
         PublicCommandIdempotency,
     ):
         assert _count(sqlite_session, model) == 0
+
+
+def test_activation_storage_rejects_direct_and_forged_callers(sqlite_session) -> None:
+    _seed_env(sqlite_session)
+    registered = _raw_registered_application_payload()
+    lifecycle = V5LifecycleAuthorityService(sqlite_session)
+    lifecycle.append_registration_revision(
+        kind="AI_APPLICATION", envelope_payload=registered
+    )
+    activated = _raw_activation_payload(registered)
+
+    with pytest.raises(V5LifecycleAuthorityError) as direct:
+        lifecycle.append_activation_revision(
+            kind="AI_APPLICATION", envelope_payload=activated
+        )
+    assert direct.value.code == "v5.lifecycle.composition_required"
+
+    with pytest.raises(V5LifecycleAuthorityError) as forged:
+        lifecycle.append_composed_activation_revision(
+            kind="AI_APPLICATION",
+            envelope_payload=activated,
+            transaction_id="txn_manifest_forged",
+            composition_capability=object(),
+        )
+    assert forged.value.code == "v5.manifest.capability_forged"
+    with pytest.raises(V4EventStoreError) as forged_event:
+        V4EventStore(sqlite_session).append_composed_activation_event(
+            workspace_id=WORKSPACE,
+            aggregate_type="ai_application",
+            aggregate_id=_APPLICATION_ID,
+            event_type="application.activated",
+            payload={
+                "exact_previous_application_binding": activated[
+                    "exact_previous_application_binding"
+                ],
+                "exact_application_binding": {
+                    "kind": "AI_APPLICATION",
+                    "id": _APPLICATION_ID,
+                    "revision": 2,
+                    "digest": activated["record_envelope"]["record_digest"],
+                },
+                "lifecycle_state": "ACTIVE",
+                "manifest_activation_context": {},
+                "initiating_command_audit_ref": "audit://aud_forged0001",
+            },
+            causation_id="req_01J00000000000F1",
+            correlation_id=_APPLICATION_ID,
+            actor_principal=CONTROLLER_PRINCIPAL,
+            transaction_id="txn_manifest_forged",
+            occurred_at=NOW,
+            authority_receipt_id=activated["record_envelope"][
+                "authority_receipt_id"
+            ],
+            composition_capability=object(),
+        )
+    assert forged_event.value.code == "v5.manifest.capability_forged"
+    row = sqlite_session.get(AIApplication, _APPLICATION_ID)
+    assert row is not None and row.revision == 1
+    assert row.lifecycle_state == "REGISTERED"
+    assert _count(sqlite_session, AIApplicationLifecycleRevision) == 1
+
+
+def test_activation_permit_cannot_cross_transaction(sqlite_session) -> None:
+    _seed_env(sqlite_session)
+    import_principal_id = "prn_01J000000000000C"
+    import_scopes = ["system_manifests:import"]
+    _seed_principal(
+        sqlite_session,
+        principal_id=import_principal_id,
+        scopes=import_scopes,
+        trust_roles=["integrator"],
+    )
+    principal = _principal_context(
+        principal_id=import_principal_id,
+        scopes=import_scopes,
+        required_scope="system_manifests:import",
+    )
+    registered = _raw_registered_application_payload()
+    lifecycle = V5LifecycleAuthorityService(sqlite_session)
+    lifecycle.append_registration_revision(
+        kind="AI_APPLICATION", envelope_payload=registered
+    )
+    activated = _raw_activation_payload(registered)
+    previous = activated["exact_previous_application_binding"]
+    current = {
+        "kind": "AI_APPLICATION",
+        "id": activated["application_id"],
+        "revision": 2,
+        "digest": activated["record_envelope"]["record_digest"],
+    }
+    transaction_id = "txn_manifest_cross_transaction"
+    request_digest = canonical_digest({"request": "cross-transaction"})
+    manifest_digest = canonical_digest({"manifest": "cross-transaction"})
+    idempotency_key = "manifest-cross-transaction"
+    root_audit = V4AuditService(sqlite_session, clock=lambda: NOW).record(
+        workspace_id=WORKSPACE,
+        actor_principal=import_principal_id,
+        action="system-manifests.import",
+        target="",
+        params={
+            "authenticated_request_digest": request_digest,
+            "manifest_digest": manifest_digest,
+            "idempotency_key": idempotency_key,
+        },
+        transaction_id=transaction_id,
+        evidence_refs={"manifest_digest": manifest_digest},
+        occurred_at=NOW,
+    )
+    coordinator = V5ManifestImportCoordinator(sqlite_session)
+    coordinator.validate_root(
+        principal=principal,
+        project_id=PROJECT,
+        transaction_id=transaction_id,
+        authenticated_request_digest=request_digest,
+        manifest_digest=manifest_digest,
+        idempotency_key=idempotency_key,
+        initiating_audit_ref=root_audit.audit_ref,
+    )
+    controller = V5AuthorityService(sqlite_session).resolve_controller(
+        workspace_id=WORKSPACE,
+        subject_kind="AI_APPLICATION",
+        command="applications.activate",
+        event_type="application.activated",
+        recorded_at=NOW,
+    )
+    permit = coordinator._issue(
+        purpose="STORAGE_ACTIVATE",
+        controller=controller,
+        principal=principal,
+        transaction_id=transaction_id,
+        authenticated_request_digest=request_digest,
+        manifest_digest=manifest_digest,
+        idempotency_key=idempotency_key,
+        initiating_audit_ref=root_audit.audit_ref,
+        subject_kind="AI_APPLICATION",
+        subject_id=activated["application_id"],
+        previous_binding=previous,
+        new_binding=current,
+        event_type="application.activated",
+        recorded_at=NOW,
+    )
+    sqlite_session.commit()
+
+    with pytest.raises(V5LifecycleAuthorityError) as raised:
+        lifecycle.append_composed_activation_revision(
+            kind="AI_APPLICATION",
+            envelope_payload=activated,
+            transaction_id=transaction_id,
+            composition_capability=permit,
+        )
+    assert raised.value.code == "v5.manifest.capability_binding_mismatch"
+    row = sqlite_session.get(AIApplication, _APPLICATION_ID)
+    assert row is not None and row.revision == 1
 
 
 def test_idempotency_conflict_on_different_payload(sqlite_session) -> None:

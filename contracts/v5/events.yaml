@@ -43,6 +43,85 @@ r1_authority_foundation:
     - public_activation_transport_or_route
     - r2_application_catalog_closure
 
+r2_application_catalog_contract:
+  stage: R2
+  contract_status: FROZEN_FOR_IMPLEMENTATION
+  runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+  internal_catalog_manifest_writer:
+    contract_status: ENABLED_ONLY_BEHIND_COORDINATOR
+    runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    workflow_owner: manifest_import_coordinator
+    authenticated_root_intent: system-manifests.import
+    required_event_types:
+      - application.registered
+      - application.activated
+      - environment.registered
+      - system_component.registered
+      - system_component.activated
+      - dependency_edge.recorded
+      - component_revision.recorded
+      - topology_revision.recorded
+      - system_version_set.recorded
+      - bootstrap_attestation.recorded
+      - system_assignment.recorded
+    every_event_uses_major_2_exact_subject_envelope: true
+    activation_event_requires_exact_previous_and_new_binding: true
+    event_outbox_subject_receipt_and_controller_audit_share_transaction: true
+    initiating_principal_audit_shares_root_transaction: true
+    component_revision_bootstrap_producer_guards:
+      exact_system_component_binding: CURRENT_AUTHORITATIVE_ACTIVE_REVISION_2
+      resolution_source: LOCKED_APPEND_ONLY_LIFECYCLE_HISTORY
+      component_revision_event_and_record_share_atomic_transaction: true
+      stale_registered_or_client_supplied_binding: FORBIDDEN
+    bootstrap_only_constraints:
+      scope: WORKSPACE_INITIAL_ONE_SHOT
+      all_authoritative_v5_domain_tables_empty: REQUIRED
+      initial_system_version_set_count: 1
+      system_assignment_generation: 1
+      replay_requires_same_idempotency_key_and_same_canonical_body: true
+      same_key_same_body_replay_emits_zero_new_events_or_facts: true
+      different_key_even_same_manifest_digest: CONFLICT_WITH_ZERO_NEW_FACTS
+      standalone_system_versions_record_event: FORBIDDEN
+      second_workspace_bootstrap_version_or_diff_event_claim: FORBIDDEN
+  production_public_intent_events:
+    capabilities.get: []
+    applications.register: [application.registered]
+    applications.get: []
+    applications.list: []
+    environments.register: [environment.registered]
+    environments.get: []
+    system-components.register: [system_component.registered]
+    system-components.get: []
+    dependency-edges.record: [dependency_edge.recorded]
+    dependency-edges.get: []
+    system-manifests.import:
+      - application.registered
+      - application.activated
+      - environment.registered
+      - system_component.registered
+      - system_component.activated
+      - dependency_edge.recorded
+      - component_revision.recorded
+      - topology_revision.recorded
+      - system_version_set.recorded
+      - bootstrap_attestation.recorded
+      - system_assignment.recorded
+  public_register_event_state: REGISTERED
+  internal_manifest_result_event_state: ACTIVE
+  standalone_activation_event_routes:
+    http: FORBIDDEN
+    cli: FORBIDDEN
+    sdk: FORBIDDEN
+    mcp: FORBIDDEN
+    a2a: FORBIDDEN
+    capability_discovery: FORBIDDEN
+  r3_bootstrap_event_writers:
+    contract_status: FROZEN_ONLY_INSIDE_BOOTSTRAP_SYSTEM_MANIFEST
+    runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    complete_one_shot_first_graph_producer: true
+    component_revision_exact_current_active_component_revision_2_binding: REQUIRED
+  r3_full_and_r4_event_writers_remain: NOT_IMPLEMENTED
+
 event_envelope_v5:
   applies_to: every_event_in_this_major_2_catalog
   required_fields: [event_id, event_type, event_version, event_contract_major, workspace_id, transaction_id, occurred_at, actor_principal, correlation_id, causation_id, routing_key, exact_subject_binding, authority_receipt_id, payload, payload_digest]
@@ -110,11 +189,14 @@ ai_application:
         - event_envelope_exact_subject_binding_equals_exact_application_binding
     application.activated:
       event_version: "2.0"
-      composed_runtime_status: NOT_IMPLEMENTED
+      composed_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
       composed_runtime_owner_stage: R2
       production_route_status: DISABLED
       direct_production_append: FORBIDDEN
       r1_validation_scope: STRUCTURAL_CONTRACT_ONLY_NON_PRODUCTION
+      r2_internal_writer_contract_status: ENABLED_ONLY_BEHIND_COORDINATOR
+      r2_internal_writer_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+      standalone_event_route_status: FORBIDDEN
       payload_required: [exact_previous_application_binding, exact_application_binding, lifecycle_state, manifest_activation_context, initiating_command_audit_ref]
       constants: {lifecycle_state: ACTIVE}
       guards:
@@ -170,11 +252,14 @@ system_component:
         - event_envelope_exact_subject_binding_equals_exact_system_component_binding
     system_component.activated:
       event_version: "2.0"
-      composed_runtime_status: NOT_IMPLEMENTED
+      composed_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
       composed_runtime_owner_stage: R2
       production_route_status: DISABLED
       direct_production_append: FORBIDDEN
       r1_validation_scope: STRUCTURAL_CONTRACT_ONLY_NON_PRODUCTION
+      r2_internal_writer_contract_status: ENABLED_ONLY_BEHIND_COORDINATOR
+      r2_internal_writer_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+      standalone_event_route_status: FORBIDDEN
       payload_required: [exact_previous_system_component_binding, exact_system_component_binding, lifecycle_state, manifest_activation_context, initiating_command_audit_ref]
       constants: {lifecycle_state: ACTIVE}
       guards:
@@ -236,6 +321,9 @@ component_revision:
       writer_validation_owner_stage: R3
       producer_runtime_status: NOT_IMPLEMENTED
       producer_owner_stage: R3
+      r2_r3_bootstrap_writer_contract_status: FROZEN_ONLY_INSIDE_BOOTSTRAP_SYSTEM_MANIFEST
+      r2_r3_bootstrap_writer_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+      standalone_writer_status: FORBIDDEN
       r3_required_producer_guards:
         - exact_system_component_binding_resolves_from_append_only_history
         - exact_system_component_binding_is_current_authoritative_active_at_recording

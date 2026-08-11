@@ -1,5 +1,9 @@
 import type {
-  ApplicationView,
+  ApplicationCatalogItem,
+  ApplicationCatalogListResponse,
+  ApplicationRecord,
+  CatalogEnvironmentRecord,
+  CatalogRecordEnvelope,
   CaseV5Binding,
   CaseV5IssueSnapshot,
   CaseV5Readiness,
@@ -21,6 +25,8 @@ import type {
   ReadViewList,
   ReleaseDetail,
   ReleaseSummary,
+  SystemComponentRecord,
+  DependencyEdgeRecord,
   TrustDenialView,
   TrustLedgerView,
   WorkOrderView,
@@ -29,6 +35,21 @@ import type {
 export type Guard<T> = (value: unknown) => value is T;
 
 const SHA256_DIGEST = /^sha256:[0-9a-f]{64}$/;
+const WORKSPACE_ID = /^ws_[0-9A-Za-z]{8,64}$/;
+const PROJECT_ID = /^proj_[0-9A-Za-z]{8,64}$/;
+const PRINCIPAL_ID = /^prn_[0-9A-Za-z]{8,64}$/;
+const APPLICATION_ID = /^app_[0-9A-Za-z]{8,64}$/;
+const ENVIRONMENT_ID = /^env_[0-9A-Za-z]{8,64}$/;
+const COMPONENT_ID = /^cmp_[0-9A-Za-z]{8,64}$/;
+const EDGE_ID = /^de_[0-9A-Za-z]{8,64}$/;
+const AUTHORITY_RECEIPT_ID = /^arec_[0-9A-Za-z]{8,64}$/;
+const REQUEST_ID = /^req_[0-9A-Za-z]{8,64}$/;
+const AUDIT_REF = /^audit:\/\/aud_[0-9A-Za-z]{8,64}$/;
+const CURSOR = /^cur_[0-9A-Za-z_-]{8,512}$/;
+const SLUG = /^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$/;
+const LOGICAL_NAME = /^[a-z0-9](?:[a-z0-9_-]{0,127})$/;
+const AWARE_DATETIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/;
+const RECORD_HASH_RULE = "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)";
 
 function record(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -40,6 +61,19 @@ function string(value: unknown): value is string {
 
 function nonEmptyString(value: unknown): value is string {
   return string(value) && value.length > 0;
+}
+
+function exactKeys(value: Record<string, unknown>, keys: readonly string[]): boolean {
+  const actual = Object.keys(value).sort();
+  const expected = [...keys].sort();
+  return actual.length === expected.length && actual.every((key, index) => key === expected[index]);
+}
+
+function uniqueStrings(value: unknown, pattern?: RegExp): value is string[] {
+  return Array.isArray(value)
+    && value.length > 0
+    && value.every((item) => typeof item === "string" && (pattern === undefined || pattern.test(item)))
+    && new Set(value).size === value.length;
 }
 
 function nullableString(value: unknown): value is string | null {
@@ -280,31 +314,164 @@ const health: Guard<Healthz> = (value): value is Healthz => record(value)
   && nonEmptyString(value.status)
   && nonEmptyString(value.version);
 
-const application: Guard<ApplicationView> = (value): value is ApplicationView => record(value)
-  && nonEmptyString(value.application_id)
-  && nonEmptyString(value.project_id)
-  && (value.slug === "UNKNOWN" || nonEmptyString(value.slug))
-  && (value.display_name === "UNKNOWN" || nonEmptyString(value.display_name))
-  && Array.isArray(value.owner_principal_ids)
-  && value.owner_principal_ids.every((item) => typeof item === "string")
-  && (value.criticality === "UNKNOWN" || nonEmptyString(value.criticality))
-  && (value.data_classification === "UNKNOWN" || nonEmptyString(value.data_classification))
-  && (value.governance_mode === "UNKNOWN" || nonEmptyString(value.governance_mode))
-  && (value.lifecycle_state === "UNKNOWN" || nonEmptyString(value.lifecycle_state))
-  && integer(value.revision)
-  && typeof value.record_digest === "string"
-  && SHA256_DIGEST.test(value.record_digest)
-  && nonEmptyString(value.recorded_by_principal)
-  && integer(value.environment_count)
-  && integer(value.component_count)
-  && nullableString(value.created_at)
-  && nullableString(value.updated_at)
-  && (value.integrity_status === "verified"
-    || value.integrity_status === "integrity_error"
-    || value.integrity_status === "unknown")
-  && nullableString(value.integrity_error);
+const catalogEnvelope: Guard<CatalogRecordEnvelope> = (value): value is CatalogRecordEnvelope => record(value)
+  && exactKeys(value, [
+    "schema_version", "workspace_id", "revision", "recorded_by_principal", "recorded_at",
+    "immutable", "hash_rule", "record_digest", "authority_receipt_id",
+  ])
+  && value.schema_version === "2.0"
+  && typeof value.workspace_id === "string" && WORKSPACE_ID.test(value.workspace_id)
+  && integer(value.revision) && value.revision >= 1
+  && typeof value.recorded_by_principal === "string" && PRINCIPAL_ID.test(value.recorded_by_principal)
+  && typeof value.recorded_at === "string" && AWARE_DATETIME.test(value.recorded_at)
+  && value.immutable === true
+  && value.hash_rule === RECORD_HASH_RULE
+  && typeof value.record_digest === "string" && SHA256_DIGEST.test(value.record_digest)
+  && typeof value.authority_receipt_id === "string" && AUTHORITY_RECEIPT_ID.test(value.authority_receipt_id);
 
-const applicationList: Guard<ReadViewList<ApplicationView>> = readListGuard(application);
+function exactBinding(
+  value: unknown,
+  kind: "AI_APPLICATION" | "SYSTEM_COMPONENT",
+  idPattern: RegExp,
+): value is Record<string, unknown> {
+  return record(value)
+    && exactKeys(value, ["kind", "id", "revision", "digest"])
+    && value.kind === kind
+    && typeof value.id === "string" && idPattern.test(value.id)
+    && integer(value.revision) && value.revision >= 1
+    && typeof value.digest === "string" && SHA256_DIGEST.test(value.digest);
+}
+
+const applicationRecord: Guard<ApplicationRecord> = (value): value is ApplicationRecord => {
+  if (!record(value) || !catalogEnvelope(value.record_envelope)) return false;
+  const revision = value.record_envelope.revision;
+  const revisionKeys = revision === 1
+    ? ["exact_previous_application_binding_or_null"]
+    : ["exact_previous_application_binding"];
+  const validShape = exactKeys(value, [
+    "record_envelope", "application_id", "workspace_id", "project_id", "slug", "display_name",
+    "owner_principal_ids", "criticality", "data_classification", "governance_mode", "lifecycle_state",
+    ...revisionKeys,
+  ]);
+  if (!validShape
+    || typeof value.application_id !== "string" || !APPLICATION_ID.test(value.application_id)
+    || typeof value.workspace_id !== "string" || !WORKSPACE_ID.test(value.workspace_id)
+    || value.workspace_id !== value.record_envelope.workspace_id
+    || typeof value.project_id !== "string" || !PROJECT_ID.test(value.project_id)
+    || typeof value.slug !== "string" || !SLUG.test(value.slug)
+    || typeof value.display_name !== "string" || value.display_name.length < 1 || value.display_name.length > 256
+    || !uniqueStrings(value.owner_principal_ids, PRINCIPAL_ID)
+    || !["P0", "P1", "P2", "P3"].includes(String(value.criticality))
+    || !["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"].includes(String(value.data_classification))
+    || !["MANAGED", "OBSERVED"].includes(String(value.governance_mode))
+    || !["REGISTERED", "ACTIVE", "ARCHIVED"].includes(String(value.lifecycle_state))) return false;
+  if (revision === 1) {
+    return value.lifecycle_state === "REGISTERED" && value.exact_previous_application_binding_or_null === null;
+  }
+  return exactBinding(value.exact_previous_application_binding, "AI_APPLICATION", APPLICATION_ID)
+    && value.exact_previous_application_binding.id === value.application_id
+    && value.exact_previous_application_binding.revision === revision - 1;
+};
+
+const environmentRecord: Guard<CatalogEnvironmentRecord> = (value): value is CatalogEnvironmentRecord => record(value)
+  && exactKeys(value, [
+    "record_envelope", "environment_id", "workspace_id", "application_id", "logical_name",
+    "risk_classification", "lifecycle_state",
+  ])
+  && catalogEnvelope(value.record_envelope)
+  && typeof value.environment_id === "string" && ENVIRONMENT_ID.test(value.environment_id)
+  && typeof value.workspace_id === "string" && WORKSPACE_ID.test(value.workspace_id)
+  && value.workspace_id === value.record_envelope.workspace_id
+  && typeof value.application_id === "string" && APPLICATION_ID.test(value.application_id)
+  && typeof value.logical_name === "string" && LOGICAL_NAME.test(value.logical_name)
+  && ["LOW", "MEDIUM", "HIGH", "CRITICAL"].includes(String(value.risk_classification))
+  && ["ACTIVE", "RETIRED"].includes(String(value.lifecycle_state));
+
+const COMPONENT_KINDS = [
+  "APPLICATION_CODE", "AGENT", "MODEL_BINDING", "PROMPT", "DATASET", "INDEX", "EMBEDDING",
+  "RETRIEVER", "SKILL", "MCP_SERVER", "TOOL_SCHEMA", "POLICY", "MEMORY_POLICY",
+  "RUNTIME_PROFILE", "CONNECTOR",
+];
+
+const componentRecord: Guard<SystemComponentRecord> = (value): value is SystemComponentRecord => {
+  if (!record(value) || !catalogEnvelope(value.record_envelope)) return false;
+  const revision = value.record_envelope.revision;
+  const revisionKeys = revision === 1
+    ? ["exact_previous_system_component_binding_or_null"]
+    : ["exact_previous_system_component_binding"];
+  if (!exactKeys(value, [
+    "record_envelope", "component_id", "workspace_id", "application_id", "component_kind",
+    "logical_name", "owner_principal_ids", "criticality", "data_classification",
+    "permission_classification", "effect_classification", "dataset_role", "lifecycle_state",
+    ...revisionKeys,
+  ])
+    || typeof value.component_id !== "string" || !COMPONENT_ID.test(value.component_id)
+    || typeof value.workspace_id !== "string" || !WORKSPACE_ID.test(value.workspace_id)
+    || value.workspace_id !== value.record_envelope.workspace_id
+    || typeof value.application_id !== "string" || !APPLICATION_ID.test(value.application_id)
+    || !COMPONENT_KINDS.includes(String(value.component_kind))
+    || typeof value.logical_name !== "string" || !LOGICAL_NAME.test(value.logical_name)
+    || !uniqueStrings(value.owner_principal_ids, PRINCIPAL_ID)
+    || !["P0", "P1", "P2", "P3"].includes(String(value.criticality))
+    || !["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"].includes(String(value.data_classification))
+    || !["READ_ONLY", "READ_WRITE", "ELEVATED"].includes(String(value.permission_classification))
+    || !["NONE", "LOCAL", "EXTERNAL"].includes(String(value.effect_classification))
+    || !(value.dataset_role === null || ["RUNTIME_DATA", "EVALUATION_DATA", "SEALED_HOLDOUT"].includes(String(value.dataset_role)))
+    || !["REGISTERED", "ACTIVE", "DEPRECATED", "RETIRED"].includes(String(value.lifecycle_state))) return false;
+  if (revision === 1) {
+    return value.lifecycle_state === "REGISTERED" && value.exact_previous_system_component_binding_or_null === null;
+  }
+  return exactBinding(value.exact_previous_system_component_binding, "SYSTEM_COMPONENT", COMPONENT_ID)
+    && value.exact_previous_system_component_binding.id === value.component_id
+    && value.exact_previous_system_component_binding.revision === revision - 1;
+};
+
+const edgeRecord: Guard<DependencyEdgeRecord> = (value): value is DependencyEdgeRecord => record(value)
+  && exactKeys(value, [
+    "record_envelope", "edge_id", "workspace_id", "application_id", "from_component_id",
+    "to_component_id", "relation", "required", "edge_digest",
+  ])
+  && catalogEnvelope(value.record_envelope)
+  && typeof value.edge_id === "string" && EDGE_ID.test(value.edge_id)
+  && typeof value.workspace_id === "string" && WORKSPACE_ID.test(value.workspace_id)
+  && value.workspace_id === value.record_envelope.workspace_id
+  && typeof value.application_id === "string" && APPLICATION_ID.test(value.application_id)
+  && typeof value.from_component_id === "string" && COMPONENT_ID.test(value.from_component_id)
+  && typeof value.to_component_id === "string" && COMPONENT_ID.test(value.to_component_id)
+  && value.from_component_id !== value.to_component_id
+  && ["DEPENDS_ON", "INVOKES", "DATA_FLOW", "CONTAINS", "REFERENCES"].includes(String(value.relation))
+  && typeof value.required === "boolean"
+  && typeof value.edge_digest === "string" && SHA256_DIGEST.test(value.edge_digest);
+
+const applicationCatalogItem: Guard<ApplicationCatalogItem> = (value): value is ApplicationCatalogItem => {
+  if (!record(value)
+    || !exactKeys(value, ["application", "environments", "system_components", "dependency_edges"])
+    || !applicationRecord(value.application)
+    || !Array.isArray(value.environments) || !value.environments.every(environmentRecord)
+    || !Array.isArray(value.system_components) || !value.system_components.every(componentRecord)
+    || !Array.isArray(value.dependency_edges) || !value.dependency_edges.every(edgeRecord)) return false;
+  const workspaceId = value.application.workspace_id;
+  const applicationId = value.application.application_id;
+  const componentIds = new Set(value.system_components.map((component) => component.component_id));
+  const records = [...value.environments, ...value.system_components, ...value.dependency_edges];
+  return records.every((item) => item.workspace_id === workspaceId && item.application_id === applicationId)
+    && value.dependency_edges.every((edge) => (
+      componentIds.has(edge.from_component_id) && componentIds.has(edge.to_component_id)
+    ));
+};
+
+const applicationCatalogList: Guard<ApplicationCatalogListResponse> = (value): value is ApplicationCatalogListResponse => {
+  if (!record(value)
+    || !exactKeys(value, ["schema_version", "workspace_id", "request_id", "audit_ref", "items", "next_cursor"])
+    || value.schema_version !== "2.0"
+    || typeof value.workspace_id !== "string" || !WORKSPACE_ID.test(value.workspace_id)
+    || typeof value.request_id !== "string" || !REQUEST_ID.test(value.request_id)
+    || typeof value.audit_ref !== "string" || !AUDIT_REF.test(value.audit_ref)
+    || !Array.isArray(value.items) || !value.items.every(applicationCatalogItem)
+    || !(value.next_cursor === null || (typeof value.next_cursor === "string" && CURSOR.test(value.next_cursor)))) return false;
+  return value.items.every((item) => item.application.workspace_id === value.workspace_id)
+    && new Set(value.items.map((item) => item.application.application_id)).size === value.items.length;
+};
 
 const caseV5Binding: Guard<CaseV5Binding> = (value): value is CaseV5Binding => record(value)
   && nonEmptyString(value.application_case_binding_id)
@@ -363,6 +530,6 @@ export const guards = {
   notificationList: listGuard(notification),
   notification,
   evidenceResponse,
-  applicationList,
+  applicationCatalogList,
   caseV5Readiness,
 };

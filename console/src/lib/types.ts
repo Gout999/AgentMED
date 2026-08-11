@@ -250,23 +250,100 @@ export interface Healthz {
   version: string;
 }
 
-export interface ApplicationView {
-  application_id: string;
-  project_id: string;
-  slug: string | "UNKNOWN";
-  display_name: string | "UNKNOWN";
-  owner_principal_ids: string[];
-  criticality: string | "UNKNOWN";
-  data_classification: string | "UNKNOWN";
-  governance_mode: string | "UNKNOWN";
-  lifecycle_state: string | "UNKNOWN";
+export interface CatalogRecordEnvelope {
+  schema_version: "2.0";
+  workspace_id: string;
   revision: number;
-  record_digest: string;
   recorded_by_principal: string;
-  environment_count: number;
-  component_count: number;
-  created_at: string | null;
-  updated_at: string | null;
-  integrity_status: "verified" | "integrity_error" | "unknown";
-  integrity_error: string | null;
+  recorded_at: string;
+  immutable: true;
+  hash_rule: "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)";
+  record_digest: string;
+  authority_receipt_id: string;
+}
+
+export interface ExactApplicationBinding {
+  kind: "AI_APPLICATION";
+  id: string;
+  revision: number;
+  digest: string;
+}
+
+export interface ExactSystemComponentBinding {
+  kind: "SYSTEM_COMPONENT";
+  id: string;
+  revision: number;
+  digest: string;
+}
+
+export interface ApplicationRecord {
+  record_envelope: CatalogRecordEnvelope;
+  application_id: string;
+  workspace_id: string;
+  project_id: string;
+  slug: string;
+  display_name: string;
+  owner_principal_ids: string[];
+  criticality: "P0" | "P1" | "P2" | "P3";
+  data_classification: "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED";
+  governance_mode: "MANAGED" | "OBSERVED";
+  lifecycle_state: "REGISTERED" | "ACTIVE" | "ARCHIVED";
+  exact_previous_application_binding_or_null?: null;
+  exact_previous_application_binding?: ExactApplicationBinding;
+}
+
+export interface CatalogEnvironmentRecord {
+  record_envelope: CatalogRecordEnvelope;
+  environment_id: string;
+  workspace_id: string;
+  application_id: string;
+  logical_name: string;
+  risk_classification: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  lifecycle_state: "ACTIVE" | "RETIRED";
+}
+
+export interface SystemComponentRecord {
+  record_envelope: CatalogRecordEnvelope;
+  component_id: string;
+  workspace_id: string;
+  application_id: string;
+  component_kind: string;
+  logical_name: string;
+  owner_principal_ids: string[];
+  criticality: "P0" | "P1" | "P2" | "P3";
+  data_classification: "PUBLIC" | "INTERNAL" | "CONFIDENTIAL" | "RESTRICTED";
+  permission_classification: "READ_ONLY" | "READ_WRITE" | "ELEVATED";
+  effect_classification: "NONE" | "LOCAL" | "EXTERNAL";
+  dataset_role: "RUNTIME_DATA" | "EVALUATION_DATA" | "SEALED_HOLDOUT" | null;
+  lifecycle_state: "REGISTERED" | "ACTIVE" | "DEPRECATED" | "RETIRED";
+  exact_previous_system_component_binding_or_null?: null;
+  exact_previous_system_component_binding?: ExactSystemComponentBinding;
+}
+
+export interface DependencyEdgeRecord {
+  record_envelope: CatalogRecordEnvelope;
+  edge_id: string;
+  workspace_id: string;
+  application_id: string;
+  from_component_id: string;
+  to_component_id: string;
+  relation: "DEPENDS_ON" | "INVOKES" | "DATA_FLOW" | "CONTAINS" | "REFERENCES";
+  required: boolean;
+  edge_digest: string;
+}
+
+export interface ApplicationCatalogItem {
+  application: ApplicationRecord;
+  environments: CatalogEnvironmentRecord[];
+  system_components: SystemComponentRecord[];
+  dependency_edges: DependencyEdgeRecord[];
+}
+
+export interface ApplicationCatalogListResponse {
+  schema_version: "2.0";
+  workspace_id: string;
+  request_id: string;
+  audit_ref: string;
+  items: ApplicationCatalogItem[];
+  next_cursor: string | null;
 }

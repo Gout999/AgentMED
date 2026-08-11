@@ -993,16 +993,26 @@ class V5AuthorityService:
             verified_digest = assert_v5_record_digest(envelope)
         except V4IntegrityError as exc:
             raise V5AuthorityError("v5.authority.subject_integrity_invalid") from exc
-        actual_revision = (
-            getattr(row, revision_attr) if revision_attr is not None else None
-        )
+        if revision_attr is not None:
+            actual_revision = getattr(row, revision_attr)
+            revision_matches = actual_revision == subject_revision
+        else:
+            record_envelope = (
+                envelope.get("record_envelope") if isinstance(envelope, dict) else None
+            )
+            envelope_revision = (
+                record_envelope.get("revision")
+                if isinstance(record_envelope, dict)
+                else None
+            )
+            revision_matches = subject_revision in {None, envelope_revision}
         if (
             getattr(row, "workspace_id") != workspace_id
             or getattr(row, id_attr) != subject_id
             or getattr(row, digest_attr) != subject_digest
             or verified_digest != subject_digest
             or getattr(row, receipt_attr) != authority_receipt_id
-            or actual_revision != subject_revision
+            or not revision_matches
         ):
             raise V5AuthorityError("v5.authority.subject_binding_mismatch")
         return row
@@ -1047,6 +1057,96 @@ class V5AuthorityService:
         """Bind frozen major-2 business payload fields back to history."""
 
         if subject_kind not in _V5_LIFECYCLE_BINDINGS:
+            envelope = row.envelope_payload
+            exact = {
+                "kind": subject_kind,
+                "id": event.exact_subject_binding["id"],
+                "revision": event.exact_subject_binding["revision"],
+                "digest": row.record_digest,
+            }
+            expected_by_kind: dict[str, dict[str, Any]] = {
+                "ENVIRONMENT": {
+                    "exact_environment_binding": exact,
+                    "application_id": envelope.get("application_id"),
+                    "logical_name": envelope.get("logical_name"),
+                    "lifecycle_state": envelope.get("lifecycle_state"),
+                },
+                "DEPENDENCY_EDGE": {
+                    "exact_dependency_edge_binding": exact,
+                    "application_id": envelope.get("application_id"),
+                    "from_component_id": envelope.get("from_component_id"),
+                    "to_component_id": envelope.get("to_component_id"),
+                    "relation": envelope.get("relation"),
+                    "edge_digest": envelope.get("edge_digest"),
+                },
+                "COMPONENT_REVISION": {
+                    "exact_component_revision_binding": exact,
+                    "exact_system_component_binding": envelope.get(
+                        "exact_system_component_binding"
+                    ),
+                    "component_kind": envelope.get("component_kind"),
+                    "identity_assurance": envelope.get("identity_assurance"),
+                    "configuration_digest": envelope.get("configuration_digest"),
+                },
+                "TOPOLOGY_REVISION": {
+                    "exact_topology_revision_binding": exact,
+                    "application_id": envelope.get("application_id"),
+                    "exact_edge_revision_bindings": envelope.get(
+                        "exact_edge_revision_bindings"
+                    ),
+                    "topology_digest": envelope.get("topology_digest"),
+                },
+                "SYSTEM_VERSION_SET": {
+                    "exact_system_version_set_binding": exact,
+                    "application_id": envelope.get("application_id"),
+                    "declared_environment_id": envelope.get(
+                        "declared_environment_id"
+                    ),
+                    "exact_component_revision_bindings": envelope.get(
+                        "exact_component_revision_bindings"
+                    ),
+                    "exact_topology_revision_binding": envelope.get(
+                        "exact_topology_revision_binding"
+                    ),
+                    "version_set_digest": envelope.get("version_set_digest"),
+                },
+                "BOOTSTRAP_ATTESTATION": {
+                    "exact_bootstrap_attestation_binding": exact,
+                    "application_id": envelope.get("application_id"),
+                    "environment_id": envelope.get("environment_id"),
+                    "exact_initial_system_version_set_binding": envelope.get(
+                        "exact_initial_system_version_set_binding"
+                    ),
+                    "attester_principal_id": envelope.get("attester_principal_id"),
+                    "attester_trust_role": envelope.get("attester_trust_role"),
+                    "attestation_scope": envelope.get("attestation_scope"),
+                },
+            }
+            if subject_kind == "SYSTEM_ASSIGNMENT":
+                authority = envelope.get("exact_assignment_authority_binding") or {}
+                slots = envelope.get("exact_slot_version_set_bindings") or []
+                initial = (
+                    {key: value for key, value in slots[0].items() if key != "slot"}
+                    if len(slots) == 1 and isinstance(slots[0], dict)
+                    else None
+                )
+                expected_by_kind[subject_kind] = {
+                    "exact_assignment_binding": exact,
+                    "exact_bootstrap_attestation_binding": {
+                        "kind": "BOOTSTRAP_ATTESTATION",
+                        "id": authority.get("id"),
+                        "revision": authority.get("revision"),
+                        "digest": authority.get("digest"),
+                    },
+                    "exact_initial_system_version_set_binding": initial,
+                    "application_id": envelope.get("application_id"),
+                    "environment_id": envelope.get("environment_id"),
+                    "generation": envelope.get("generation"),
+                    "exposure": envelope.get("exposure"),
+                }
+            expected = expected_by_kind.get(subject_kind)
+            if expected is None or event.payload != expected:
+                raise V5AuthorityError("v5.authority.event_binding_mismatch")
             return
         envelope = row.envelope_payload
         id_attr = _V5_LIFECYCLE_BINDINGS[subject_kind][2]
@@ -1292,6 +1392,10 @@ class V5AuthorityService:
         )
 
         registration = resolved.registration
+        persisted_event = self.session.get(Event, event_id)
+        closed_major2 = bool(
+            persisted_event is not None and persisted_event.event_contract_major == 2
+        )
         payload: dict[str, Any] = {
             "schema_version": "2.0",
             "authority_receipt_id": authority_receipt_id,
@@ -1321,7 +1425,7 @@ class V5AuthorityService:
             ),
             "authority_receipt_digest": "",
         }
-        if not lifecycle_history:
+        if not closed_major2:
             # Compatibility shape for existing V5-1A/1B producers.  New
             # lifecycle major-2 receipts use the frozen closed shape above.
             payload.pop("source_event_id")
@@ -1474,7 +1578,11 @@ class V5AuthorityService:
             ),
             "authority_receipt_digest": row.authority_receipt_digest,
         }
-        if not lifecycle_history:
+        persisted_event = self.session.get(Event, row.event_id)
+        closed_major2 = bool(
+            persisted_event is not None and persisted_event.event_contract_major == 2
+        )
+        if not closed_major2:
             expected.pop("source_event_id")
             expected.update(
                 {

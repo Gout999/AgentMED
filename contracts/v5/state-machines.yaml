@@ -35,6 +35,50 @@ r1_authority_foundation:
   public_or_standalone_activation: FORBIDDEN
   does_not_prove: [post_commit_verifier_or_evidence_closure, composed_manifest_activation_runtime, component_revision_major_2_envelope_runtime, component_revision_writer_validation_runtime, component_revision_producer_atomic_enforcement, public_activation_transport_or_route, r2_application_catalog_closure]
 
+r2_application_catalog_contract:
+  stage: R2
+  contract_status: FROZEN_FOR_IMPLEMENTATION
+  runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+  bootstrap_system_manifest:
+    transition_scope:
+      ai_application: REGISTERED_REVISION_1_TO_ACTIVE_REVISION_2
+      system_component: REGISTERED_REVISION_1_TO_ACTIVE_REVISION_2
+    workflow_owner: manifest_import_coordinator
+    authenticated_root_intent: system-manifests.import
+    same_postgresql_unit_of_work: true
+    scope: WORKSPACE_INITIAL_ONE_SHOT
+    precondition: ALL_AUTHORITATIVE_V5_DOMAIN_TABLES_EMPTY
+    prior_standalone_registered_catalog_row: BOOTSTRAP_IMPORT_FORBIDDEN
+    dual_authority_required: true
+    direct_transition_call: FORBIDDEN
+    coupled_immutable_records:
+      - component_revision
+      - topology_revision
+      - system_version_set
+      - bootstrap_attestation
+    component_revision_binding_guard:
+      exact_system_component_binding: CURRENT_AUTHORITATIVE_ACTIVE_REVISION_2
+      source: LOCKED_APPEND_ONLY_LIFECYCLE_HISTORY
+      stale_registered_or_client_supplied_binding: FORBIDDEN
+    coupled_assignment_initial_transition:
+      generation: 1
+      lifecycle_state: ACTIVE
+      proves_desired_not_observed: true
+    initial_system_version_set_count: 1
+    replay_requires_same_idempotency_key_and_same_canonical_body: true
+    same_key_same_body_replay_creates_no_new_transition_record_or_fact: true
+    different_key_even_same_manifest_digest: CONFLICT_WITH_ZERO_NEW_FACTS
+    standalone_system_versions_record: FORBIDDEN
+    second_workspace_bootstrap_or_system_version_set: FORBIDDEN
+    system_versions_get: R3_FULL_NOT_IMPLEMENTED
+    system_versions_diff: R3_FULL_NOT_IMPLEMENTED
+    semantic_diff_claim: FORBIDDEN
+  public_register_terminal_for_response: REGISTERED
+  internal_manifest_terminal_for_response: ACTIVE
+  later_transitions_runtime_status: NOT_IMPLEMENTED
+  standalone_activation_transports: FORBIDDEN
+  r3_full_r4_machines_runtime_status: NOT_IMPLEMENTED
+
 imports:
   v4_state_machines: contracts/v4/events/state-machines.yaml
   imported_without_redefinition:
@@ -65,10 +109,13 @@ machines:
         'on': application.activated
         to: ACTIVE
         guard: exact_registered_revision_1_to_active_revision_2_cas_inside_authenticated_manifest_import
-        composed_runtime_status: NOT_IMPLEMENTED
+        composed_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
         composed_runtime_owner_stage: R2
         r1_harness_status: NON_PRODUCTION_STORAGE_CAS_ONLY
-        production_event_or_append_status: DISABLED
+        production_event_or_append_status: ENABLED_ONLY_BEHIND_AUTHENTICATED_SYSTEM_MANIFEST_IMPORT
+        r2_internal_coordinator_contract_status: FROZEN
+        r2_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+        standalone_transition_call: FORBIDDEN
       - {from: ACTIVE, 'on': application.archived, to: ARCHIVED, guard: exact_locked_current_revision_to_adjacent_revision_cas, runtime_status: NOT_IMPLEMENTED, runtime_owner_stage: R2}
       - {from: ARCHIVED, 'on': application.restored, to: ACTIVE, guard: exact_locked_current_revision_to_adjacent_revision_cas, runtime_status: NOT_IMPLEMENTED, runtime_owner_stage: R2}
     failure_semantics:
@@ -108,10 +155,13 @@ machines:
         'on': system_component.activated
         to: ACTIVE
         guard: exact_registered_revision_1_to_active_revision_2_cas_inside_authenticated_manifest_import
-        composed_runtime_status: NOT_IMPLEMENTED
+        composed_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
         composed_runtime_owner_stage: R2
         r1_harness_status: NON_PRODUCTION_STORAGE_CAS_ONLY
-        production_event_or_append_status: DISABLED
+        production_event_or_append_status: ENABLED_ONLY_BEHIND_AUTHENTICATED_SYSTEM_MANIFEST_IMPORT
+        r2_internal_coordinator_contract_status: FROZEN
+        r2_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+        standalone_transition_call: FORBIDDEN
       - {from: ACTIVE, 'on': system_component.deprecated, to: DEPRECATED, guard: exact_locked_current_revision_to_adjacent_revision_cas, runtime_status: NOT_IMPLEMENTED, runtime_owner_stage: R2}
       - {from: DEPRECATED, 'on': system_component.reactivated, to: ACTIVE, guard: exact_locked_current_revision_to_adjacent_revision_cas, runtime_status: NOT_IMPLEMENTED, runtime_owner_stage: R2}
       - {from: REGISTERED, 'on': system_component.retired, to: RETIRED, guard: exact_locked_current_revision_to_adjacent_revision_cas, runtime_status: NOT_IMPLEMENTED, runtime_owner_stage: R2}

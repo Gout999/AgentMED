@@ -1,15 +1,26 @@
 # CaseLoop CLI
 
-This package is the machine-oriented Stage 1A client for the frozen CaseLoop
-public HTTP contract. It currently exposes only:
+This package is the machine-oriented client for the frozen V4 Stage 1A public
+contract and the explicitly selected R2 V5 overlay.
+
+Default/V1 commands:
 
 - `capabilities get`
 - `signal submit` and its `report` alias
 - `case get` and `case timeline`
 - `evidence get`
 
-It does not advertise project bootstrap, source adapters, S1B operations, or
-later-stage skeleton intents.
+With `--api-version 2`, capability discovery advertises only the implemented
+R2 public surface: Application register/get/list, Environment, SystemComponent
+and DependencyEdge register/get, plus authenticated one-shot SystemManifest import. Local manifest
+validation performs no HTTP request, needs no credential, is not a server capability, and does not
+prove server acceptance.
+
+Standalone Application/SystemComponent activation, standalone second-version
+recording, system-version read/diff discovery, Case/Acceptance workflows,
+V5-2+, approval and release are not R2 capabilities and are not advertised.
+The R2 CLI exposes only `system-manifest validate` and `system-manifest import`;
+the former `record`, version `get`, and `diff` actions are intentionally absent.
 
 ## Install and configure
 
@@ -35,6 +46,11 @@ as an argument or profile field.
 
 ```bash
 caseloop --profile .caseloop/config.yaml capabilities get
+
+caseloop --profile .caseloop/config.yaml --api-version 2 capabilities get
+
+caseloop --profile .caseloop/config.yaml --api-version 2 application list \
+  --project-id proj_... --limit 50
 
 caseloop --profile .caseloop/config.yaml signal submit \
   --summary "The agent chose the wrong tool" \

@@ -19,6 +19,7 @@ from pydantic import (
     StrictInt,
     field_validator,
     model_validator,
+    model_serializer,
 )
 
 from app.models.v5_tables import (
@@ -56,6 +57,7 @@ SystemVersionSetId = Annotated[str, Field(pattern=r"^vset_[0-9A-Za-z]{8,64}$")]
 BootstrapAttestationId = Annotated[str, Field(pattern=r"^batt_[0-9A-Za-z]{8,64}$")]
 AssignmentId = Annotated[str, Field(pattern=r"^asg_[0-9A-Za-z]{8,64}$")]
 SystemManifestId = Annotated[str, Field(pattern=r"^smf_[0-9A-Za-z]{8,64}$")]
+AuthorityReceiptId = Annotated[str, Field(pattern=r"^arec_[0-9A-Za-z]{8,64}$")]
 
 Slug = Annotated[
     str,
@@ -66,9 +68,11 @@ LogicalName = Annotated[
     Field(pattern=r"^[a-z0-9](?:[a-z0-9_-]{0,127})$", min_length=1, max_length=128),
 ]
 
-LifecycleState = Literal["ACTIVE", "ARCHIVED"]
+LifecycleState = Literal["REGISTERED", "ACTIVE", "ARCHIVED"]
 EnvironmentLifecycleState = Literal["ACTIVE", "RETIRED"]
-ComponentLifecycleState = Literal["ACTIVE", "DEPRECATED", "RETIRED"]
+ComponentLifecycleState = Literal[
+    "REGISTERED", "ACTIVE", "DEPRECATED", "RETIRED"
+]
 Criticality = Literal["P0", "P1", "P2", "P3"]
 DataClassification = Literal["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"]
 GovernanceMode = Literal["MANAGED", "OBSERVED"]
@@ -188,6 +192,26 @@ class RecordEnvelope(WireModel):
         return self
 
 
+class ExactApplicationBinding(WireModel):
+    kind: Literal["AI_APPLICATION"]
+    id: ApplicationId
+    revision: Annotated[StrictInt, Field(ge=1)]
+    digest: Digest
+
+    def __getitem__(self, key: str):
+        return getattr(self, key)
+
+
+class ExactSystemComponentBinding(WireModel):
+    kind: Literal["SYSTEM_COMPONENT"]
+    id: ComponentId
+    revision: Annotated[StrictInt, Field(ge=1)]
+    digest: Digest
+
+    def __getitem__(self, key: str):
+        return getattr(self, key)
+
+
 class ApplicationRecord(WireModel):
     record_envelope: RecordEnvelope
     application_id: ApplicationId
@@ -200,11 +224,40 @@ class ApplicationRecord(WireModel):
     data_classification: DataClassification
     governance_mode: GovernanceMode
     lifecycle_state: LifecycleState
+    exact_previous_application_binding_or_null: None = None
+    exact_previous_application_binding: ExactApplicationBinding | None = None
 
     @field_validator("owner_principal_ids")
     @classmethod
     def owner_principals_are_unique(cls, value: list[PrincipalId]) -> list[PrincipalId]:
         return _require_unique(value, "owner_principal_ids")
+
+    @model_validator(mode="after")
+    def previous_binding_matches_revision(self) -> "ApplicationRecord":
+        fields = self.model_fields_set
+        if self.record_envelope.revision == 1:
+            if (
+                self.lifecycle_state != "REGISTERED"
+                or "exact_previous_application_binding_or_null" not in fields
+                or "exact_previous_application_binding" in fields
+            ):
+                raise ValueError("registered application requires the null previous binding")
+        elif (
+            "exact_previous_application_binding" not in fields
+            or self.exact_previous_application_binding is None
+            or "exact_previous_application_binding_or_null" in fields
+        ):
+            raise ValueError("application transition requires an exact previous binding")
+        return self
+
+    @model_serializer(mode="wrap")
+    def serialize_revision_shape(self, handler):
+        payload = handler(self)
+        if self.record_envelope.revision == 1:
+            payload.pop("exact_previous_application_binding", None)
+        else:
+            payload.pop("exact_previous_application_binding_or_null", None)
+        return payload
 
 
 class EnvironmentRecord(WireModel):
@@ -231,11 +284,40 @@ class ComponentRecord(WireModel):
     effect_classification: EffectClassification
     dataset_role: DatasetRole | None
     lifecycle_state: ComponentLifecycleState
+    exact_previous_system_component_binding_or_null: None = None
+    exact_previous_system_component_binding: ExactSystemComponentBinding | None = None
 
     @field_validator("owner_principal_ids")
     @classmethod
     def owner_principals_are_unique(cls, value: list[PrincipalId]) -> list[PrincipalId]:
         return _require_unique(value, "owner_principal_ids")
+
+    @model_validator(mode="after")
+    def previous_binding_matches_revision(self) -> "ComponentRecord":
+        fields = self.model_fields_set
+        if self.record_envelope.revision == 1:
+            if (
+                self.lifecycle_state != "REGISTERED"
+                or "exact_previous_system_component_binding_or_null" not in fields
+                or "exact_previous_system_component_binding" in fields
+            ):
+                raise ValueError("registered component requires the null previous binding")
+        elif (
+            "exact_previous_system_component_binding" not in fields
+            or self.exact_previous_system_component_binding is None
+            or "exact_previous_system_component_binding_or_null" in fields
+        ):
+            raise ValueError("component transition requires an exact previous binding")
+        return self
+
+    @model_serializer(mode="wrap")
+    def serialize_revision_shape(self, handler):
+        payload = handler(self)
+        if self.record_envelope.revision == 1:
+            payload.pop("exact_previous_system_component_binding", None)
+        else:
+            payload.pop("exact_previous_system_component_binding_or_null", None)
+        return payload
 
 
 class DependencyEdgeRecord(WireModel):
@@ -248,6 +330,60 @@ class DependencyEdgeRecord(WireModel):
     relation: DependencyRelation
     required: StrictBool
     edge_digest: Digest
+
+
+ApplicationListCursor = Annotated[
+    str,
+    Field(pattern=r"^cur_[0-9A-Za-z_-]{8,512}$"),
+]
+
+
+class ApplicationListItem(WireModel):
+    application: ApplicationRecord
+    environments: list[EnvironmentRecord]
+    system_components: list[ComponentRecord]
+    dependency_edges: list[DependencyEdgeRecord]
+
+    @model_validator(mode="after")
+    def graph_bindings_match_application(self) -> "ApplicationListItem":
+        application = self.application
+        component_ids = {item.component_id for item in self.system_components}
+        children = [
+            *self.environments,
+            *self.system_components,
+            *self.dependency_edges,
+        ]
+        if any(
+            item.workspace_id != application.workspace_id
+            or item.application_id != application.application_id
+            for item in children
+        ):
+            raise ValueError("application list graph child binding mismatch")
+        if any(
+            edge.from_component_id not in component_ids
+            or edge.to_component_id not in component_ids
+            for edge in self.dependency_edges
+        ):
+            raise ValueError("application list edge endpoint is not in the graph")
+        return self
+
+
+class ApplicationListResponse(WireModel):
+    schema_version: SchemaVersion2
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    items: list[ApplicationListItem]
+    next_cursor: ApplicationListCursor | None
+
+    @model_validator(mode="after")
+    def items_match_workspace_and_are_unique(self) -> "ApplicationListResponse":
+        ids = [item.application.application_id for item in self.items]
+        if any(
+            item.application.workspace_id != self.workspace_id for item in self.items
+        ) or len(ids) != len(set(ids)):
+            raise ValueError("application list item binding mismatch")
+        return self
 
 
 # The V5 idempotency receipt extends the frozen v1 format's intent map with the
@@ -571,24 +707,125 @@ class SystemManifestImportRequest(WireModel):
         return self
 
 
+ExactEvidenceId = Annotated[
+    str, Field(pattern=r"^[a-z][a-z0-9]*_[0-9A-Za-z]{8,64}$")
+]
+
+
+class ExactV4EvidenceBinding(WireModel):
+    contract_major: Literal[1]
+    kind: Literal[
+        "TRACE_EVIDENCE_RECEIPT",
+        "MODEL_CALL_RECEIPT",
+        "RESOLUTION_REVIEW_RECEIPT",
+    ]
+    id: ExactEvidenceId
+    revision: Annotated[StrictInt, Field(ge=1)] | None
+    digest: Digest
+
+
+class ExactV5EvidenceBinding(WireModel):
+    kind: Literal[
+        "SYSTEM_EPISODE_SNAPSHOT",
+        "OBSERVED_STATE_SNAPSHOT",
+        "OPERATION_EXECUTION_RECEIPT",
+        "EXTERNAL_EFFECT_RECEIPT",
+    ]
+    id: ExactEvidenceId
+    revision: Annotated[StrictInt, Field(ge=1)]
+    digest: Digest
+
+
+ExactEvidenceBinding = ExactV4EvidenceBinding | ExactV5EvidenceBinding
+
+
+class ExactDependencyEdgeBinding(WireModel):
+    kind: Literal["DEPENDENCY_EDGE"]
+    id: EdgeId
+    revision: Annotated[StrictInt, Field(ge=1)]
+    digest: Digest
+
+
+class ExactComponentRevisionBinding(WireModel):
+    kind: Literal["COMPONENT_REVISION"]
+    id: ComponentRevisionId
+    revision: Annotated[StrictInt, Field(ge=1)]
+    digest: Digest
+
+
+class ExactTopologyRevisionBinding(WireModel):
+    kind: Literal["TOPOLOGY_REVISION"]
+    id: TopologyRevisionId
+    revision: Annotated[StrictInt, Field(ge=1)]
+    digest: Digest
+
+
+class ExactSystemVersionSetBinding(WireModel):
+    kind: Literal["SYSTEM_VERSION_SET"]
+    id: SystemVersionSetId
+    revision: Annotated[StrictInt, Field(ge=1)]
+    digest: Digest
+
+
+class ExactSystemAssignmentBinding(WireModel):
+    kind: Literal["SYSTEM_ASSIGNMENT"]
+    id: AssignmentId
+    revision: Annotated[StrictInt, Field(ge=1)]
+    digest: Digest
+
+
+class ExactSlotVersionSetBinding(ExactSystemVersionSetBinding):
+    slot: Literal["PRIMARY"]
+
+
+class ExactBootstrapAttestationAuthorityBinding(WireModel):
+    binding_kind: Literal["BOOTSTRAP_ATTESTATION"]
+    id: BootstrapAttestationId
+    revision: Annotated[StrictInt, Field(ge=1)]
+    digest: Digest
+
+
+class IdentityAssuranceEntry(WireModel):
+    component_revision_id: ComponentRevisionId
+    component_id: ComponentId
+    identity_assurance: IdentityAssurance
+
+
+class IdentityAssuranceSummary(WireModel):
+    component_assurances: Annotated[
+        list[IdentityAssuranceEntry], Field(min_length=1)
+    ]
+
+    @model_validator(mode="after")
+    def component_assurances_are_unique(self) -> "IdentityAssuranceSummary":
+        revision_ids = [item.component_revision_id for item in self.component_assurances]
+        component_ids = [item.component_id for item in self.component_assurances]
+        if len(revision_ids) != len(set(revision_ids)) or len(component_ids) != len(
+            set(component_ids)
+        ):
+            raise ValueError("identity assurance summary bindings must be unique")
+        return self
+
+
 class ComponentRevisionRecord(WireModel):
     record_envelope: RecordEnvelope
     component_revision_id: ComponentRevisionId
     workspace_id: WorkspaceId
     application_id: ApplicationId
     component_id: ComponentId
+    exact_system_component_binding: ExactSystemComponentBinding
     component_kind: ComponentKind
     logical_name: LogicalName
     identity_locator: dict[str, Any]
     identity_assurance: IdentityAssurance
     configuration_digest: Digest
-    exact_provenance_receipt_bindings: list[dict[str, Any]]
+    exact_provenance_receipt_bindings: list[ExactEvidenceBinding]
     declared_version: str | None = None
     content_digest: Digest | None = None
     provider_origin: str | None = None
     resolved_at: AwareDatetime | None = None
     immutable_provider_version_attestation: dict[str, Any] | None = None
-    exact_observation_receipt_binding: dict[str, Any] | None = None
+    exact_observation_receipt_binding: ExactV5EvidenceBinding | None = None
     unknown_reason: str | None = None
     interface_schema_digest: Digest | None = None
     permission_manifest_digest: Digest | None = None
@@ -603,9 +840,9 @@ class TopologyRevisionRecord(WireModel):
     workspace_id: WorkspaceId
     application_id: ApplicationId
     component_ids: list[ComponentId]
-    exact_edge_revision_bindings: list[dict[str, Any]]
+    exact_edge_revision_bindings: list[ExactDependencyEdgeBinding]
     topology_digest: Digest
-    provenance_receipt_ids: list[str]
+    provenance_receipt_ids: list[AuthorityReceiptId]
 
 
 class SystemVersionSetRecord(WireModel):
@@ -614,10 +851,10 @@ class SystemVersionSetRecord(WireModel):
     workspace_id: WorkspaceId
     application_id: ApplicationId
     declared_environment_id: CatalogEnvironmentId
-    exact_component_revision_bindings: list[dict[str, Any]]
-    exact_topology_revision_binding: dict[str, Any]
-    identity_assurance_summary: dict[str, Any]
-    provenance_receipt_ids: list[str]
+    exact_component_revision_bindings: list[ExactComponentRevisionBinding]
+    exact_topology_revision_binding: ExactTopologyRevisionBinding
+    identity_assurance_summary: IdentityAssuranceSummary
+    provenance_receipt_ids: list[AuthorityReceiptId]
     version_set_digest: Digest
     manifest_digest: Digest | None = None
     manifest: dict[str, Any] | None = None
@@ -629,7 +866,7 @@ class BootstrapAttestationRecord(WireModel):
     workspace_id: WorkspaceId
     application_id: ApplicationId
     environment_id: CatalogEnvironmentId
-    exact_initial_system_version_set_binding: dict[str, Any]
+    exact_initial_system_version_set_binding: ExactSystemVersionSetBinding
     attester_principal_id: PrincipalId
     attester_trust_role: AttesterTrustRole
     attestation_scope: AttestationScope
@@ -642,16 +879,24 @@ class SystemAssignmentRecord(WireModel):
     application_id: ApplicationId
     environment_id: CatalogEnvironmentId
     generation: Annotated[StrictInt, Field(ge=1)]
-    lifecycle_state: AssignmentLifecycleState
-    transition_kind: AssignmentTransitionKind
-    exact_previous_assignment_binding_or_null: dict[str, Any] | None
-    exact_slot_version_set_bindings: list[dict[str, Any]]
-    exposure: AssignmentExposure
-    expected_previous_generation: StrictInt | None
-    exact_assignment_authority_binding: dict[str, Any]
+    lifecycle_state: Literal["ACTIVE"]
+    transition_kind: Literal["BOOTSTRAP"]
+    exact_previous_assignment_binding_or_null: None
+    exact_slot_version_set_bindings: Annotated[
+        list[ExactSlotVersionSetBinding], Field(min_length=1, max_length=1)
+    ]
+    exposure: Literal["EXPOSED"]
+    expected_previous_generation: None
+    exact_assignment_authority_binding: ExactBootstrapAttestationAuthorityBinding
     requested_by_external_operation_id: Annotated[
         str, Field(pattern=r"^op_[0-9A-Za-z]{8,64}$")
     ] | None = None
+
+    @model_validator(mode="after")
+    def r2_bootstrap_assignment_is_exact(self) -> "SystemAssignmentRecord":
+        if self.generation != 1 or self.requested_by_external_operation_id is not None:
+            raise ValueError("R2 bootstrap assignment must be initial and local")
+        return self
 
 
 class SystemManifestImportResponse(WireModel):
@@ -873,6 +1118,9 @@ __all__ = [
     "ApplicationCaseBindingRecord",
     "ApplicationGetResponse",
     "ApplicationId",
+    "ApplicationListCursor",
+    "ApplicationListItem",
+    "ApplicationListResponse",
     "ApplicationRecord",
     "ApplicationRegisterRequest",
     "ApplicationRegisterResponse",
@@ -905,6 +1153,8 @@ __all__ = [
     "EnvironmentRecord",
     "EnvironmentRegisterRequest",
     "EnvironmentRegisterResponse",
+    "ExactApplicationBinding",
+    "ExactSystemComponentBinding",
     "IdentityAssurance",
     "IssueSnapshotId",
     "IssueSnapshotRequest",

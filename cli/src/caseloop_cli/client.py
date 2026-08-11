@@ -24,6 +24,7 @@ from ._generated.public_v1 import (
 )
 from ._generated.public_v2 import (
     ApplicationGetResponse,
+    ApplicationListResponse,
     ApplicationRegisterResponse,
     ComponentGetResponse,
     ComponentRegisterResponse,
@@ -31,19 +32,9 @@ from ._generated.public_v2 import (
     DependencyEdgeRecordResponse,
     EnvironmentGetResponse,
     EnvironmentRegisterResponse,
+    V5ServerCapabilitiesResponse,
 )
-from ._generated.case_v2 import (
-    AcceptanceCriteriaConfirmResponse,
-    AcceptanceCriteriaGetResponse,
-    AcceptanceCriteriaProposeResponse,
-    ApplicationBindingGetResponse,
-    CaseBindApplicationResponse,
-)
-from ._generated.manifest_v2 import (
-    SystemManifestImportResponse,
-    SystemVersionDiffResponse,
-    SystemVersionGetResponse,
-)
+from ._generated.manifest_v2 import SystemManifestImportResponse
 from .errors import CliError, ExitFamily
 
 
@@ -58,22 +49,6 @@ _APPLICATION_PATH = re.compile(r"^/api/v2/applications/(app_[0-9A-Za-z]{8,64})$"
 _ENVIRONMENT_PATH = re.compile(r"^/api/v2/environments/(env_[0-9A-Za-z]{8,64})$")
 _COMPONENT_PATH = re.compile(r"^/api/v2/system-components/(cmp_[0-9A-Za-z]{8,64})$")
 _EDGE_PATH = re.compile(r"^/api/v2/dependency-edges/(de_[0-9A-Za-z]{8,64})$")
-_VERSION_SET_PATH = re.compile(r"^/api/v2/system-versions/(vset_[0-9A-Za-z]{8,64})$")
-_BIND_APPLICATION_PATH = re.compile(
-    r"^/api/v2/cases/(case_[0-9A-Za-z]{8,64}):bind-application$"
-)
-_APPLICATION_BINDING_PATH = re.compile(
-    r"^/api/v2/cases/(case_[0-9A-Za-z]{8,64})/application-binding$"
-)
-_PROPOSE_ACCEPTANCE_PATH = re.compile(
-    r"^/api/v2/cases/(case_[0-9A-Za-z]{8,64}):propose-acceptance-criteria$"
-)
-_ACCEPTANCE_CRITERIA_PATH = re.compile(
-    r"^/api/v2/cases/(case_[0-9A-Za-z]{8,64})/acceptance-criteria$"
-)
-_CONFIRM_ACCEPTANCE_PATH = re.compile(
-    r"^/api/v2/acceptance-criteria/(acr_[0-9A-Za-z]{8,64}):confirm$"
-)
 _MISSING_NO_TRACE = (
     "trace.input",
     "trace.output",
@@ -187,6 +162,10 @@ def _operation_spec(method: str, path: str) -> _OperationSpec:
     normalized_method = method.upper()
     if normalized_method == "GET" and path == "/api/v1/capabilities":
         return _OperationSpec("capabilities.get", 200, ServerCapabilitiesResponse)
+    if normalized_method == "GET" and path == "/api/v2/capabilities":
+        return _OperationSpec("capabilities.get", 200, V5ServerCapabilitiesResponse)
+    if normalized_method == "GET" and path == "/api/v2/applications":
+        return _OperationSpec("applications.list", 200, ApplicationListResponse)
     if normalized_method == "POST" and path == "/api/v1/signals":
         return _OperationSpec("signals.submit", 201, SignalSubmissionResponse)
     if normalized_method == "GET":
@@ -235,59 +214,6 @@ def _operation_spec(method: str, path: str) -> _OperationSpec:
         if edge:
             return _OperationSpec(
                 "dependency-edges.get", 200, DependencyEdgeGetResponse, edge.group(1)
-            )
-        version_set = _VERSION_SET_PATH.fullmatch(path)
-        if version_set:
-            return _OperationSpec(
-                "system-versions.get",
-                200,
-                SystemVersionGetResponse,
-                version_set.group(1),
-            )
-        if path == "/api/v2/system-versions:diff":
-            return _OperationSpec(
-                "system-versions.diff", 200, SystemVersionDiffResponse
-            )
-        binding = _APPLICATION_BINDING_PATH.fullmatch(path)
-        if binding:
-            return _OperationSpec(
-                "case-application-bindings.get",
-                200,
-                ApplicationBindingGetResponse,
-                binding.group(1),
-            )
-        criteria = _ACCEPTANCE_CRITERIA_PATH.fullmatch(path)
-        if criteria:
-            return _OperationSpec(
-                "acceptance-criteria.get",
-                200,
-                AcceptanceCriteriaGetResponse,
-                criteria.group(1),
-            )
-    if normalized_method == "POST":
-        bind = _BIND_APPLICATION_PATH.fullmatch(path)
-        if bind:
-            return _OperationSpec(
-                "cases.bind-application",
-                201,
-                CaseBindApplicationResponse,
-                bind.group(1),
-            )
-        propose = _PROPOSE_ACCEPTANCE_PATH.fullmatch(path)
-        if propose:
-            return _OperationSpec(
-                "acceptance-criteria.propose",
-                201,
-                AcceptanceCriteriaProposeResponse,
-                propose.group(1),
-            )
-        confirm = _CONFIRM_ACCEPTANCE_PATH.fullmatch(path)
-        if confirm:
-            return _OperationSpec(
-                "acceptance-criteria.confirm",
-                201,
-                AcceptanceCriteriaConfirmResponse,
-                confirm.group(1),
             )
     raise CliError("CLIENT_OPERATION_UNSUPPORTED", ExitFamily.PROTOCOL)
 
@@ -424,6 +350,7 @@ class PublicApiClient:
                 body=body,
                 idempotency_key=idempotency_key,
                 raw_payload=payload,
+                params=params,
             )
             return payload
         try:
@@ -457,6 +384,7 @@ class PublicApiClient:
         body: bytes | None,
         idempotency_key: str | None,
         raw_payload: dict[str, Any],
+        params: list[tuple[str, str]] | None,
     ) -> None:
         if getattr(success, "workspace_id", None) != self._config.workspace_id:
             raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
@@ -474,9 +402,6 @@ class PublicApiClient:
                     ComponentRegisterResponse,
                     DependencyEdgeRecordResponse,
                     SystemManifestImportResponse,
-                    CaseBindApplicationResponse,
-                    AcceptanceCriteriaProposeResponse,
-                    AcceptanceCriteriaConfirmResponse,
                 ),
             )
             and success.idempotency.replayed is True
@@ -487,10 +412,21 @@ class PublicApiClient:
             if success.application.application_id != spec.resource_id:
                 raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
             return
+        if isinstance(success, ApplicationListResponse):
+            requested_projects = [
+                value for name, value in (params or []) if name == "project_id"
+            ]
+            if len(requested_projects) != 1 or any(
+                item.application.project_id != requested_projects[0]
+                for item in success.items
+            ):
+                raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+            return
         if isinstance(success, ApplicationRegisterResponse):
             self._validate_v5_mutation_binding(
                 spec, success, body, idempotency_key, raw_payload,
                 resource_id=success.application.application_id,
+                stable_request_id=stable_request_id,
             )
             return
         if isinstance(success, EnvironmentGetResponse):
@@ -501,6 +437,7 @@ class PublicApiClient:
             self._validate_v5_mutation_binding(
                 spec, success, body, idempotency_key, raw_payload,
                 resource_id=success.environment.environment_id,
+                stable_request_id=stable_request_id,
             )
             return
         if isinstance(success, ComponentGetResponse):
@@ -511,6 +448,7 @@ class PublicApiClient:
             self._validate_v5_mutation_binding(
                 spec, success, body, idempotency_key, raw_payload,
                 resource_id=success.component.component_id,
+                stable_request_id=stable_request_id,
             )
             return
         if isinstance(success, DependencyEdgeGetResponse):
@@ -521,54 +459,15 @@ class PublicApiClient:
             self._validate_v5_mutation_binding(
                 spec, success, body, idempotency_key, raw_payload,
                 resource_id=success.system_version_set.system_version_set_id,
+                stable_request_id=stable_request_id,
             )
-            return
-        if isinstance(success, SystemVersionGetResponse):
-            if success.system_version_set.system_version_set_id != spec.resource_id:
-                raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
-            return
-        if isinstance(success, SystemVersionDiffResponse):
-            # Diff binds two version sets via query params; the shared request
-            # / workspace / audit bindings are already validated above.
             return
         if isinstance(success, DependencyEdgeRecordResponse):
             self._validate_v5_mutation_binding(
                 spec, success, body, idempotency_key, raw_payload,
                 resource_id=success.edge.edge_id,
+                stable_request_id=stable_request_id,
             )
-            return
-        if isinstance(success, CaseBindApplicationResponse):
-            self._validate_v5_mutation_binding(
-                spec, success, body, idempotency_key, raw_payload,
-                resource_id=success.application_case_binding.application_case_binding_id,
-            )
-            return
-        if isinstance(success, ApplicationBindingGetResponse):
-            if (
-                success.application_case_binding.exact_case_binding.get("case_id")
-                != spec.resource_id
-            ):
-                raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
-            return
-        if isinstance(success, AcceptanceCriteriaProposeResponse):
-            self._validate_v5_mutation_binding(
-                spec, success, body, idempotency_key, raw_payload,
-                resource_id=(
-                    success.acceptance_criteria_revision.acceptance_criteria_revision_id
-                ),
-            )
-            return
-        if isinstance(success, AcceptanceCriteriaConfirmResponse):
-            self._validate_v5_mutation_binding(
-                spec, success, body, idempotency_key, raw_payload,
-                resource_id=(
-                    success.acceptance_criteria_revision.acceptance_criteria_revision_id
-                ),
-            )
-            return
-        if isinstance(success, AcceptanceCriteriaGetResponse):
-            if success.case_readiness not in {"NEEDS_ACCEPTANCE_CRITERIA", "READY"}:
-                raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
             return
         if isinstance(success, CaseResponse):
             if success.data.case_id != spec.resource_id:
@@ -666,6 +565,7 @@ class PublicApiClient:
         raw_payload: dict[str, Any],
         *,
         resource_id: str,
+        stable_request_id: str,
     ) -> None:
         if body is None or idempotency_key is None:
             raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
@@ -686,6 +586,23 @@ class PublicApiClient:
         response_without_idempotency.pop("idempotency", None)
         receipt_without_self_digest = dict(raw_receipt)
         receipt_without_self_digest.pop("receipt_digest", None)
+        expected_resource_kinds = {
+            "applications.register": "ai_application",
+            "environments.register": "environment",
+            "system-components.register": "system_component",
+            "dependency-edges.record": "dependency_edge",
+            "system-manifests.import": "system_version_set",
+        }
+        replayed = success.idempotency.replayed is True
+        if isinstance(success, SystemManifestImportResponse):
+            expected_principal = success.bootstrap_attestation.attester_principal_id
+        else:
+            # Catalog records are sealed by the registered authority controller,
+            # while the idempotency receipt names the authenticated caller.  The
+            # opaque CLI credential does not expose a separately trusted caller
+            # principal, so only manifest import has an in-response exact actor
+            # binding (the bootstrap attester).
+            expected_principal = None
         if (
             receipt.request_fingerprint != _canonical_digest(request_payload)
             or receipt.response_digest
@@ -694,6 +611,15 @@ class PublicApiClient:
             != _canonical_digest(receipt_without_self_digest)
             or receipt.workspace_id != self._config.workspace_id
             or receipt.audit_ref != success.audit_ref
+            or receipt.intent != spec.name
+            or receipt.idempotency_key != idempotency_key
+            or receipt.request_id != success.request_id
+            or (not replayed and receipt.request_id != stable_request_id)
+            or (
+                expected_principal is not None
+                and receipt.principal_id != expected_principal
+            )
+            or receipt.resource.kind != expected_resource_kinds.get(spec.name)
             or receipt.resource.id != resource_id
             or receipt.status != "COMPLETED"
             or receipt.operation_id is not None

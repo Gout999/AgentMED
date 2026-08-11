@@ -31,6 +31,58 @@ def _context(request: httpx.Request) -> tuple[str, str]:
 
 def capabilities(request: httpx.Request) -> dict[str, Any]:
     workspace_id, request_id = _context(request)
+    if request.url.path == "/api/v2/capabilities":
+        intents = [
+            ("capabilities.get", "capabilities:read"),
+            ("applications.register", "applications:manage"),
+            ("applications.get", "applications:read"),
+            ("applications.list", "applications:read"),
+            ("environments.register", "applications:manage"),
+            ("environments.get", "applications:read"),
+            ("system-components.register", "applications:manage"),
+            ("system-components.get", "applications:read"),
+            ("dependency-edges.record", "applications:manage"),
+            ("dependency-edges.get", "applications:read"),
+            ("system-manifests.import", "system_manifests:import"),
+        ]
+        return {
+            "schema_version": "2.0",
+            "workspace_id": workspace_id,
+            "request_id": request_id,
+            "audit_ref": "audit://aud_01J0000000000001",
+            "data": {
+                "server_version": "0.1.0+v5-r2",
+                "api_major": 2,
+                "contract_version": "2.0",
+                "principal": {
+                    "principal_id": "prn_01J0000000000001",
+                    "principal_type": "human",
+                    "scopes": [
+                        "capabilities:read",
+                        "applications:manage",
+                        "applications:read",
+                        "system_manifests:import",
+                    ],
+                    "credential_expires_at": "2026-08-12T10:00:00Z",
+                },
+                "enabled_intents": [
+                    {
+                        "name": name,
+                        "scope": scope,
+                        "execution_mode": (
+                            "synchronous_local_transaction"
+                            if name == "system-manifests.import"
+                            else "synchronous"
+                        ),
+                        "http": True,
+                        "cli": True,
+                    }
+                    for name, scope in intents
+                ],
+                "disabled_intents": [],
+                "generated_at": "2026-08-11T10:00:00Z",
+            },
+        }
     payload = fixture("public-server-capabilities-response.json")
     payload["workspace_id"] = workspace_id
     payload["request_id"] = request_id
@@ -47,6 +99,62 @@ def capabilities(request: httpx.Request) -> dict[str, Any]:
         }
     ]
     return payload
+
+
+def application_list(request: httpx.Request) -> dict[str, Any]:
+    workspace_id, request_id = _context(request)
+    return {
+        "schema_version": "2.0",
+        "workspace_id": workspace_id,
+        "request_id": request_id,
+        "audit_ref": "audit://aud_01J0000000000001",
+        "items": [],
+        "next_cursor": None,
+    }
+
+
+def application_register(request: httpx.Request) -> dict[str, Any]:
+    submission = json.loads(request.content)
+    application_id = "app_01J0000000000001"
+    core = {
+        "schema_version": "2.0",
+        "workspace_id": request.headers["x-caseloop-workspace-id"],
+        "request_id": request.headers["x-request-id"],
+        "audit_ref": "audit://aud_01J0000000000007",
+        "application": {
+            "record_envelope": {
+                "schema_version": "2.0",
+                "workspace_id": request.headers["x-caseloop-workspace-id"],
+                "revision": 1,
+                "recorded_by_principal": "prn_01J000000000000A",
+                "recorded_at": "2026-08-11T10:00:00Z",
+                "immutable": True,
+                "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+                "record_digest": "sha256:" + "a" * 64,
+                "authority_receipt_id": "arec_01J0000000000001",
+            },
+            "application_id": application_id,
+            "workspace_id": request.headers["x-caseloop-workspace-id"],
+            "project_id": submission["project_id"],
+            "slug": submission["slug"],
+            "display_name": submission["display_name"],
+            "owner_principal_ids": submission["owner_principal_ids"],
+            "criticality": submission["criticality"],
+            "data_classification": submission["data_classification"],
+            "governance_mode": submission["governance_mode"],
+            "lifecycle_state": "REGISTERED",
+            "exact_previous_application_binding_or_null": None,
+        },
+    }
+    receipt = _case_v2_receipt(
+        request,
+        intent="applications.register",
+        resource_kind="ai_application",
+        resource_id=application_id,
+        audit_ref=core["audit_ref"],
+        core=core,
+    )
+    return {**core, "idempotency": {"receipt": receipt, "replayed": False}}
 
 
 def signal(request: httpx.Request) -> dict[str, Any]:
@@ -209,10 +317,14 @@ def source_query_evidence(request: httpx.Request, receipt_id: str) -> dict[str, 
 
 def success_for(request: httpx.Request) -> dict[str, Any]:
     path = request.url.path
-    if path == "/api/v1/capabilities":
+    if path in {"/api/v1/capabilities", "/api/v2/capabilities"}:
         return capabilities(request)
     if path == "/api/v1/signals":
         return signal(request)
+    if path == "/api/v2/applications" and request.method == "GET":
+        return application_list(request)
+    if path == "/api/v2/applications" and request.method == "POST":
+        return application_register(request)
     if path.endswith("/timeline"):
         return timeline(request, path.split("/")[-2])
     if path.startswith("/api/v1/cases/"):

@@ -34,17 +34,22 @@ from test_stage1a_public_cli_postgres import (
     _loopback_port,
     _safe_process,
 )
-from app.models import Base
+from app.models import Base, Event, Outbox
 from app.models.v4_tables import (
     AuthorityReceipt,
+    PublicCredential,
     PublicCommandIdempotency,
+    PublicPrincipal,
 )
 from app.models.v5_tables import (
     AIApplication,
+    AIApplicationLifecycleRevision,
     DependencyEdge,
     Environment,
     SystemComponent,
+    SystemComponentLifecycleRevision,
 )
+from app.utils.v4_integrity import canonical_digest
 
 pytestmark = pytest.mark.integration
 
@@ -160,7 +165,7 @@ def test_v5_catalog_installed_cli_real_postgres_loopback(
             engine.connect()
             .execute(sa.text("SELECT version_num FROM alembic_version"))
             .scalar_one()
-            == "010"
+            == "012"
         )
 
         cli, pinned_site_packages = _install_cli(repo_root, tmp_path)
@@ -223,6 +228,39 @@ def test_v5_catalog_installed_cli_real_postgres_loopback(
             assert bootstrap_payload["status"] == "CREATED"
             assert bootstrap_payload["controller"]["owner"] == "application-catalog-controller"
 
+            # R2 capability discovery is filtered by authenticated persisted
+            # scope.  Upgrade this legacy catalog-only bootstrap fixture to the
+            # full eleven-intent R2 scope set before exercising the CLI.
+            r2_scopes = [
+                "capabilities:read",
+                "applications:manage",
+                "applications:read",
+                "system_manifests:import",
+            ]
+            r2_claims_digest = canonical_digest(
+                {
+                    "schema_version": "1.0",
+                    "issuer": "https://auth.caseloop.dev",
+                    "subject": CATALOG_SUBJECT,
+                    "principal_type": "human",
+                    "audiences": ["caseloop-public-api"],
+                    "workspace_id": WORKSPACE_ID,
+                    "project_ids": [PROJECT_ID],
+                    "environment_ids": [],
+                    "scopes": r2_scopes,
+                }
+            )
+            with sa.orm.Session(engine) as scope_session:
+                principal_row = scope_session.get(PublicPrincipal, CATALOG_PRINCIPAL_ID)
+                credential_row = scope_session.get(PublicCredential, CREDENTIAL_ID)
+                assert principal_row is not None and credential_row is not None
+                principal_row.scopes = r2_scopes
+                principal_row.trust_roles = ["integrator"]
+                principal_row.claims_digest = r2_claims_digest
+                credential_row.scopes = r2_scopes
+                credential_row.claims_digest = r2_claims_digest
+                scope_session.commit()
+
             cli_env = {
                 "CASELOOP_API_URL": base_url,
                 "CASELOOP_WORKSPACE_ID": WORKSPACE_ID,
@@ -258,16 +296,29 @@ def test_v5_catalog_installed_cli_real_postgres_loopback(
                 expected_exit=2,
             )
             assert api_required["error"]["code"] == "API_VERSION_REQUIRED"
-            # v1 commands reject the v2 flag.
-            major_mismatch = _run_cli(
+            capabilities = _run_cli(
                 cli,
                 env=cli_env,
                 argv=["--api-version", "2", "capabilities", "get"],
                 pinned_site_packages=pinned_site_packages,
                 guarded_secrets=guarded_secrets,
-                expected_exit=2,
             )
-            assert major_mismatch["error"]["code"] == "API_MAJOR_MISMATCH"
+            assert capabilities["data"]["disabled_intents"] == []
+            assert {
+                item["name"] for item in capabilities["data"]["enabled_intents"]
+            } == {
+                "capabilities.get",
+                "applications.register",
+                "applications.get",
+                "applications.list",
+                "environments.register",
+                "environments.get",
+                "system-components.register",
+                "system-components.get",
+                "dependency-edges.record",
+                "dependency-edges.get",
+                "system-manifests.import",
+            }
 
             app_payload = _run_cli(
                     cli,
@@ -304,6 +355,8 @@ def test_v5_catalog_installed_cli_real_postgres_loopback(
             application_digest = app_payload["application"]["record_envelope"]["record_digest"]
             assert application_id.startswith("app_")
             assert application_digest.startswith("sha256:")
+            assert app_payload["application"]["lifecycle_state"] == "REGISTERED"
+            assert app_payload["application"]["record_envelope"]["revision"] == 1
 
             # Replay the same key: same record, replayed flag, no second row.
             replay_payload = _run_cli(
@@ -379,130 +432,6 @@ def test_v5_catalog_installed_cli_real_postgres_loopback(
             environment_id = env_payload["environment"]["environment_id"]
             assert environment_id.startswith("env_")
 
-            comp_payload = _run_cli(
-                cli,
-                env=cli_env,
-                argv=[
-                    "--api-version",
-                    "2",
-                    "system-component",
-                    "register",
-                    "--application-id",
-                    application_id,
-                    "--component-kind",
-                    "AGENT",
-                    "--logical-name",
-                    "triage-agent",
-                    "--owner-principal-id",
-                    OWNER_PRINCIPAL_ID,
-                    "--criticality",
-                    "P1",
-                    "--data-classification",
-                    "INTERNAL",
-                    "--permission-classification",
-                    "READ_WRITE",
-                    "--effect-classification",
-                    "LOCAL",
-                    "--idempotency-key",
-                    "v5-component-register-0001",
-                ],
-                pinned_site_packages=pinned_site_packages,
-                guarded_secrets=guarded_secrets,
-            )
-            component_a = comp_payload["component"]["component_id"]
-            comp_b_payload = _run_cli(
-                cli,
-                env=cli_env,
-                argv=[
-                    "--api-version",
-                    "2",
-                    "system-component",
-                    "register",
-                    "--application-id",
-                    application_id,
-                    "--component-kind",
-                    "SKILL",
-                    "--logical-name",
-                    "triage-skill",
-                    "--owner-principal-id",
-                    OWNER_PRINCIPAL_ID,
-                    "--criticality",
-                    "P2",
-                    "--data-classification",
-                    "INTERNAL",
-                    "--permission-classification",
-                    "READ_ONLY",
-                    "--effect-classification",
-                    "NONE",
-                    "--idempotency-key",
-                    "v5-component-register-0002",
-                ],
-                pinned_site_packages=pinned_site_packages,
-                guarded_secrets=guarded_secrets,
-            )
-            component_b = comp_b_payload["component"]["component_id"]
-
-            edge_payload = _run_cli(
-                cli,
-                env=cli_env,
-                argv=[
-                    "--api-version",
-                    "2",
-                    "dependency-edge",
-                    "record",
-                    "--application-id",
-                    application_id,
-                    "--from-component-id",
-                    component_a,
-                    "--to-component-id",
-                    component_b,
-                    "--relation",
-                    "INVOKES",
-                    "--required",
-                    "--idempotency-key",
-                    "v5-edge-record-0001",
-                ],
-                pinned_site_packages=pinned_site_packages,
-                guarded_secrets=guarded_secrets,
-            )
-            edge_id = edge_payload["edge"]["edge_id"]
-            assert edge_payload["edge"]["required"] is True
-
-            got_edge = _run_cli(
-                cli,
-                env=cli_env,
-                argv=["--api-version", "2", "dependency-edge", "get", edge_id],
-                pinned_site_packages=pinned_site_packages,
-                guarded_secrets=guarded_secrets,
-            )
-            assert got_edge["edge"]["edge_id"] == edge_id
-
-            # A back edge would close a cycle.
-            cycle_error = _run_cli(
-                cli,
-                env=cli_env,
-                argv=[
-                    "--api-version",
-                    "2",
-                    "dependency-edge",
-                    "record",
-                    "--application-id",
-                    application_id,
-                    "--from-component-id",
-                    component_b,
-                    "--to-component-id",
-                    component_a,
-                    "--relation",
-                    "INVOKES",
-                    "--idempotency-key",
-                    "v5-edge-record-0002",
-                ],
-                pinned_site_packages=pinned_site_packages,
-                guarded_secrets=guarded_secrets,
-                expected_exit=2,
-            )
-            assert cycle_error["error"]["code"] == "VALIDATION_FAILED"
-
             # Cross-workspace is denied.
             wrong_env = dict(cli_env, CASELOOP_WORKSPACE_ID=WRONG_WORKSPACE_ID)
             denied = _run_cli(
@@ -525,42 +454,50 @@ def test_v5_catalog_installed_cli_real_postgres_loopback(
             with session_factory() as session:
                 assert session.scalar(sa.select(sa.func.count()).select_from(AIApplication)) == 1
                 assert session.scalar(sa.select(sa.func.count()).select_from(Environment)) == 1
-                assert session.scalar(sa.select(sa.func.count()).select_from(SystemComponent)) == 2
-                assert session.scalar(sa.select(sa.func.count()).select_from(DependencyEdge)) == 1
-                from app.models.tables import Event, Outbox
-
+                assert session.scalar(sa.select(sa.func.count()).select_from(SystemComponent)) == 0
+                assert session.scalar(sa.select(sa.func.count()).select_from(DependencyEdge)) == 0
+                assert session.scalar(
+                    sa.select(sa.func.count()).select_from(AIApplicationLifecycleRevision)
+                ) == 1
                 events = session.scalars(
-                    sa.select(Event).where(Event.contract_version == "v4")
-                ).all()
-                assert len(events) == 5
-                assert {row.event_type for row in events} == {
-                    "application.registered",
-                    "environment.registered",
-                    "system_component.registered",
-                    "dependency_edge.recorded",
-                }
-                assert session.scalar(sa.select(sa.func.count()).select_from(Outbox)) == 5
-                receipts = session.scalars(
-                    sa.select(AuthorityReceipt).where(
-                        AuthorityReceipt.subject_kind.in_(
-                            ["AI_APPLICATION", "ENVIRONMENT", "SYSTEM_COMPONENT", "DEPENDENCY_EDGE"]
+                    sa.select(Event).where(
+                        Event.event_type.in_(
+                            ["application.registered", "environment.registered"]
                         )
                     )
                 ).all()
-                assert len(receipts) == 5
+                assert len(events) == 2
+                assert all(
+                    row.contract_version == "v5"
+                    and row.event_contract_major == 2
+                    and row.exact_subject_binding["revision"] == 1
+                    for row in events
+                )
+                assert session.scalar(sa.select(sa.func.count()).select_from(Outbox)) == 2
+                receipts = session.scalars(
+                    sa.select(AuthorityReceipt).where(
+                        AuthorityReceipt.subject_kind.in_(
+                            ["AI_APPLICATION", "ENVIRONMENT"]
+                        )
+                    )
+                ).all()
+                assert len(receipts) == 2
+                assert all(
+                    row.subject_revision == 1
+                    and row.receipt_payload["source_event_id"] == row.event_id
+                    for row in receipts
+                )
                 idempotency_rows = session.scalars(
                     sa.select(PublicCommandIdempotency).where(
                         PublicCommandIdempotency.intent.in_(
                             [
                                 "applications.register",
                                 "environments.register",
-                                "system-components.register",
-                                "dependency-edges.record",
                             ]
                         )
                     )
                 ).all()
-                assert len(idempotency_rows) == 5
+                assert len(idempotency_rows) == 2
                 assert all(row.state == "COMPLETED" for row in idempotency_rows)
                 app_row = session.get(AIApplication, application_id)
                 assert app_row is not None
@@ -627,6 +564,71 @@ def test_v5_catalog_installed_cli_real_postgres_loopback(
                 assert replayed_flags == {True, False}
                 concurrent_ids = {item["application"]["application_id"] for item in outcomes}
                 assert len(concurrent_ids) == 1
+
+            # A standalone application is intentionally only REGISTERED.  A
+            # child component requires an ACTIVE parent and must be rejected
+            # before idempotency or lifecycle writes, not surfaced as 500.
+            inactive_parent = _run_cli(
+                cli,
+                env=cli_env,
+                argv=[
+                    "--api-version",
+                    "2",
+                    "system-component",
+                    "register",
+                    "--application-id",
+                    application_id,
+                    "--component-kind",
+                    "APPLICATION_CODE",
+                    "--logical-name",
+                    "inactive-parent-component",
+                    "--owner-principal-id",
+                    OWNER_PRINCIPAL_ID,
+                    "--criticality",
+                    "P1",
+                    "--data-classification",
+                    "INTERNAL",
+                    "--permission-classification",
+                    "READ_ONLY",
+                    "--effect-classification",
+                    "NONE",
+                    "--idempotency-key",
+                    "v5-inactive-parent-component",
+                ],
+                pinned_site_packages=pinned_site_packages,
+                guarded_secrets=guarded_secrets,
+                expected_exit=12,
+            )
+            assert inactive_parent["error"]["code"] == "CATALOG_CONFLICT"
+            with session_factory() as session:
+                assert session.scalar(
+                    sa.select(sa.func.count()).select_from(SystemComponent)
+                ) == 0
+                assert session.scalar(
+                    sa.select(sa.func.count()).select_from(
+                        SystemComponentLifecycleRevision
+                    )
+                ) == 0
+                assert session.scalar(
+                    sa.select(sa.func.count()).select_from(PublicCommandIdempotency).where(
+                        PublicCommandIdempotency.intent == "system-components.register"
+                    )
+                ) == 0
+                assert session.scalar(
+                    sa.select(sa.func.count()).select_from(Event).where(
+                        Event.event_type == "system_component.registered"
+                    )
+                ) == 0
+                assert session.scalar(
+                    sa.select(sa.func.count()).select_from(Outbox).where(
+                        Outbox.event_type == "system_component.registered"
+                    )
+                ) == 0
+                assert session.scalar(
+                    sa.select(sa.func.count()).select_from(AuthorityReceipt).where(
+                        AuthorityReceipt.subject_kind == "SYSTEM_COMPONENT"
+                    )
+                ) == 0
         finally:
             server.terminate()
             try:

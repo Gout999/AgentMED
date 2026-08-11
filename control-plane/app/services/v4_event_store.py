@@ -34,6 +34,10 @@ V5_DOMAIN_EVENT_CHANNEL = "v5.domain.events"
 class V4EventStoreError(ValueError):
     """Stable validation failure before a v4 event is persisted."""
 
+    def __init__(self, code: str) -> None:
+        self.code = code
+        super().__init__(code)
+
 
 class V4EventIntegrityError(ValueError):
     """A persisted v4 event or its transactional outbox row is not exact."""
@@ -62,6 +66,8 @@ class _V5Route:
     self_revision: int | None = None
     previous_revision: int | None = None
     manifest_only_activation: bool = False
+    dependent_bindings: tuple[tuple[str, str, int | None], ...] = ()
+    dependent_binding_lists: tuple[tuple[str, str, int | None], ...] = ()
 
 
 _CONTROLLER_FIELDS = frozenset(
@@ -418,6 +424,78 @@ _V5_ROUTES: dict[tuple[str, str], _V5Route] = {
         previous_revision=1,
         manifest_only_activation=True,
     ),
+    ("environment", "environment.registered"): _V5Route(
+        owner="application-catalog-controller",
+        subject_kind="ENVIRONMENT",
+        required=frozenset(
+            {"exact_environment_binding", "application_id", "logical_name", "lifecycle_state"}
+        ),
+        self_binding_field="exact_environment_binding",
+        self_revision=1,
+    ),
+    ("dependency_edge", "dependency_edge.recorded"): _V5Route(
+        owner="application-catalog-controller",
+        subject_kind="DEPENDENCY_EDGE",
+        required=frozenset(
+            {"exact_dependency_edge_binding", "application_id", "from_component_id", "to_component_id", "relation", "edge_digest"}
+        ),
+        self_binding_field="exact_dependency_edge_binding",
+        self_revision=1,
+    ),
+    ("component_revision", "component_revision.recorded"): _V5Route(
+        owner="version-controller",
+        subject_kind="COMPONENT_REVISION",
+        required=frozenset(
+            {"exact_component_revision_binding", "exact_system_component_binding", "component_kind", "identity_assurance", "configuration_digest"}
+        ),
+        self_binding_field="exact_component_revision_binding",
+        self_revision=1,
+        dependent_bindings=(("exact_system_component_binding", "SYSTEM_COMPONENT", 2),),
+    ),
+    ("topology_revision", "topology_revision.recorded"): _V5Route(
+        owner="version-controller",
+        subject_kind="TOPOLOGY_REVISION",
+        required=frozenset(
+            {"exact_topology_revision_binding", "application_id", "exact_edge_revision_bindings", "topology_digest"}
+        ),
+        self_binding_field="exact_topology_revision_binding",
+        self_revision=1,
+        dependent_binding_lists=(("exact_edge_revision_bindings", "DEPENDENCY_EDGE", 1),),
+    ),
+    ("system_version_set", "system_version_set.recorded"): _V5Route(
+        owner="version-controller",
+        subject_kind="SYSTEM_VERSION_SET",
+        required=frozenset(
+            {"exact_system_version_set_binding", "application_id", "declared_environment_id", "exact_component_revision_bindings", "exact_topology_revision_binding", "version_set_digest"}
+        ),
+        self_binding_field="exact_system_version_set_binding",
+        self_revision=1,
+        dependent_bindings=(("exact_topology_revision_binding", "TOPOLOGY_REVISION", 1),),
+        dependent_binding_lists=(("exact_component_revision_bindings", "COMPONENT_REVISION", 1),),
+    ),
+    ("bootstrap_attestation", "bootstrap_attestation.recorded"): _V5Route(
+        owner="version-controller",
+        subject_kind="BOOTSTRAP_ATTESTATION",
+        required=frozenset(
+            {"exact_bootstrap_attestation_binding", "application_id", "environment_id", "exact_initial_system_version_set_binding", "attester_principal_id", "attester_trust_role", "attestation_scope"}
+        ),
+        self_binding_field="exact_bootstrap_attestation_binding",
+        self_revision=1,
+        dependent_bindings=(("exact_initial_system_version_set_binding", "SYSTEM_VERSION_SET", 1),),
+    ),
+    ("system_assignment", "system_assignment.recorded"): _V5Route(
+        owner="version-controller",
+        subject_kind="SYSTEM_ASSIGNMENT",
+        required=frozenset(
+            {"exact_assignment_binding", "exact_bootstrap_attestation_binding", "exact_initial_system_version_set_binding", "application_id", "environment_id", "generation", "exposure"}
+        ),
+        self_binding_field="exact_assignment_binding",
+        self_revision=1,
+        dependent_bindings=(
+            ("exact_bootstrap_attestation_binding", "BOOTSTRAP_ATTESTATION", 1),
+            ("exact_initial_system_version_set_binding", "SYSTEM_VERSION_SET", 1),
+        ),
+    ),
 }
 
 # R1 freezes the major-2 envelope and lifecycle-event foundation only.  The
@@ -497,6 +575,7 @@ def _validate_exact_binding(
     *,
     kind: str,
     revision: int | None = None,
+    allow_null_revision: bool = False,
 ) -> dict[str, Any]:
     if not isinstance(value, dict) or set(value) != _EXACT_BINDING_FIELDS:
         raise V4EventStoreError("v5.exact_binding_fields_mismatch")
@@ -507,12 +586,16 @@ def _validate_exact_binding(
     binding_digest = value.get("digest")
     if not isinstance(binding_id, str) or not binding_id:
         raise V4EventStoreError("v5.exact_binding_id_invalid")
-    if (
-        not isinstance(binding_revision, int)
-        or isinstance(binding_revision, bool)
-        or binding_revision < 1
-        or (revision is not None and binding_revision != revision)
-    ):
+    if allow_null_revision:
+        revision_invalid = binding_revision is not None
+    else:
+        revision_invalid = (
+            not isinstance(binding_revision, int)
+            or isinstance(binding_revision, bool)
+            or binding_revision < 1
+            or (revision is not None and binding_revision != revision)
+        )
+    if revision_invalid:
         raise V4EventStoreError("v5.exact_binding_revision_invalid")
     if (
         not isinstance(binding_digest, str)
@@ -557,6 +640,7 @@ def _validate_v5_route_payload(
         payload.get(route.self_binding_field),
         kind=route.subject_kind,
         revision=route.self_revision,
+        allow_null_revision=route.self_revision is None,
     )
     if route.null_previous_binding_field is not None and payload.get(
         route.null_previous_binding_field
@@ -591,6 +675,26 @@ def _validate_v5_route_payload(
             "initiating_command_audit_ref"
         ) != audit_ref:
             raise V4EventStoreError("v5.event_initiating_command_audit_ref_mismatch")
+    for field, kind, revision in route.dependent_bindings:
+        _validate_exact_binding(
+            payload.get(field),
+            kind=kind,
+            revision=revision,
+            allow_null_revision=revision is None,
+        )
+    for field, kind, revision in route.dependent_binding_lists:
+        bindings = payload.get(field)
+        if not isinstance(bindings, list) or len(
+            {canonical_digest(binding) for binding in bindings}
+        ) != len(bindings):
+            raise V4EventStoreError("v5.event_dependent_binding_list_invalid")
+        for binding in bindings:
+            _validate_exact_binding(
+                binding,
+                kind=kind,
+                revision=revision,
+                allow_null_revision=revision is None,
+            )
     try:
         return canonical_digest(payload), self_binding
     except V4IntegrityError as exc:
@@ -1170,13 +1274,178 @@ class V4EventStore:
         occurred_at: datetime | None = None,
         authority_receipt_id: str | None = None,
     ) -> Event:
+        return self._append_event(
+            workspace_id=workspace_id,
+            aggregate_type=aggregate_type,
+            aggregate_id=aggregate_id,
+            event_type=event_type,
+            payload=payload,
+            causation_id=causation_id,
+            correlation_id=correlation_id,
+            actor_principal=actor_principal,
+            transaction_id=transaction_id,
+            occurred_at=occurred_at,
+            authority_receipt_id=authority_receipt_id,
+            allow_manifest_activation=False,
+        )
+
+    def append_composed_activation_event(
+        self,
+        *,
+        workspace_id: str,
+        aggregate_type: str,
+        aggregate_id: str,
+        event_type: str,
+        payload: dict[str, Any],
+        causation_id: str,
+        correlation_id: str,
+        actor_principal: str,
+        transaction_id: str,
+        occurred_at: datetime | None = None,
+        authority_receipt_id: str | None = None,
+        composition_capability: object,
+    ) -> Event:
         route_key = (aggregate_type, event_type)
-        if route_key in _DISABLED_V5_WRITER_ROUTES:
+        binding_fields = {
+            ("ai_application", "application.activated"): (
+                "AI_APPLICATION",
+                "exact_previous_application_binding",
+                "exact_application_binding",
+            ),
+            ("system_component", "system_component.activated"): (
+                "SYSTEM_COMPONENT",
+                "exact_previous_system_component_binding",
+                "exact_system_component_binding",
+            ),
+        }
+        binding_spec = binding_fields.get(route_key)
+        if binding_spec is None:
+            raise V4EventStoreError("v5.event_route_not_activated")
+        subject_kind, previous_field, new_field = binding_spec
+        previous = payload.get(previous_field)
+        new = payload.get(new_field)
+        if not isinstance(previous, dict) or not isinstance(new, dict):
+            raise V4EventStoreError("v5.event_binding_invalid")
+        try:
+            from app.services.v5_manifest_import_coordinator import (
+                ManifestImportCompositionError,
+                _consume_activation_composition_capability,
+            )
+
+            _consume_activation_composition_capability(
+                composition_capability,
+                session=self.session,
+                purpose="EVENT_ACTIVATE",
+                workspace_id=workspace_id,
+                transaction_id=transaction_id,
+                subject_kind=subject_kind,
+                subject_id=aggregate_id,
+                previous_binding=previous,
+                new_binding=new,
+                event_type=event_type,
+                manifest_activation_context=payload.get("manifest_activation_context"),
+            )
+        except ManifestImportCompositionError as exc:
+            raise V4EventStoreError(exc.code) from exc
+        return self._append_event(
+            workspace_id=workspace_id,
+            aggregate_type=aggregate_type,
+            aggregate_id=aggregate_id,
+            event_type=event_type,
+            payload=payload,
+            causation_id=causation_id,
+            correlation_id=correlation_id,
+            actor_principal=actor_principal,
+            transaction_id=transaction_id,
+            occurred_at=occurred_at,
+            authority_receipt_id=authority_receipt_id,
+            allow_manifest_activation=True,
+        )
+
+    def append_composed_manifest_record_event(
+        self,
+        *,
+        workspace_id: str,
+        aggregate_type: str,
+        aggregate_id: str,
+        event_type: str,
+        payload: dict[str, Any],
+        causation_id: str,
+        correlation_id: str,
+        actor_principal: str,
+        transaction_id: str,
+        occurred_at: datetime | None = None,
+        authority_receipt_id: str,
+        composition_capability: object,
+    ) -> Event:
+        route = _V5_ROUTES.get((aggregate_type, event_type))
+        if route is None:
+            raise V4EventStoreError("v5.event_route_not_activated")
+        exact_subject = payload.get(route.self_binding_field)
+        if not isinstance(exact_subject, dict):
+            raise V4EventStoreError("v5.event_binding_invalid")
+        try:
+            from app.services.v5_manifest_import_coordinator import (
+                ManifestImportCompositionError,
+                _consume_activation_composition_capability,
+            )
+
+            _consume_activation_composition_capability(
+                composition_capability,
+                session=self.session,
+                purpose="EVENT_RECORD",
+                workspace_id=workspace_id,
+                transaction_id=transaction_id,
+                subject_kind=route.subject_kind,
+                subject_id=aggregate_id,
+                previous_binding={},
+                new_binding=exact_subject,
+                event_type=event_type,
+            )
+        except ManifestImportCompositionError as exc:
+            raise V4EventStoreError(exc.code) from exc
+        return self._append_event(
+            workspace_id=workspace_id,
+            aggregate_type=aggregate_type,
+            aggregate_id=aggregate_id,
+            event_type=event_type,
+            payload=payload,
+            causation_id=causation_id,
+            correlation_id=correlation_id,
+            actor_principal=actor_principal,
+            transaction_id=transaction_id,
+            occurred_at=occurred_at,
+            authority_receipt_id=authority_receipt_id,
+            allow_manifest_activation=True,
+        )
+
+    def _append_event(
+        self,
+        *,
+        workspace_id: str,
+        aggregate_type: str,
+        aggregate_id: str,
+        event_type: str,
+        payload: dict[str, Any],
+        causation_id: str,
+        correlation_id: str,
+        actor_principal: str,
+        transaction_id: str,
+        occurred_at: datetime | None,
+        authority_receipt_id: str | None,
+        allow_manifest_activation: bool,
+    ) -> Event:
+        route_key = (aggregate_type, event_type)
+        if route_key in _DISABLED_V5_WRITER_ROUTES and not allow_manifest_activation:
             raise V4EventStoreError("v5.event_route_not_activated")
         disabled_marker = _DISABLED_V5_ROUTE_MARKERS.get(
             route_key
         )
-        if disabled_marker is not None and disabled_marker in payload:
+        if (
+            disabled_marker is not None
+            and disabled_marker in payload
+            and not allow_manifest_activation
+        ):
             raise V4EventStoreError("v5.event_route_not_activated")
         v5_route = _select_v5_route(aggregate_type, event_type, payload)
         v4_route = None if v5_route is not None else _ROUTES.get(

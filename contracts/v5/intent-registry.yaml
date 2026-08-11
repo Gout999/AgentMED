@@ -30,7 +30,7 @@ wire_contract_rules:
 application_component_activation_lifecycle:
   decision_ref: docs/decisions/D-014-v5-application-component-activation-lifecycle.md
   decision: PRESERVE_REGISTERED_TO_ACTIVE
-  runtime_status: NOT_IMPLEMENTED
+  runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
   public_register_result:
     ai_application: {revision: 1, lifecycle_state: REGISTERED}
     system_component: {revision: 1, lifecycle_state: REGISTERED}
@@ -64,6 +64,123 @@ application_component_activation_lifecycle:
     a2a: FORBIDDEN
     capability_discovery: FORBIDDEN
   register_intent_may_silently_activate: false
+
+r2_application_catalog_contract:
+  stage: R2
+  contract_status: FROZEN_FOR_IMPLEMENTATION
+  runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+  activated_contract_intents:
+    - capabilities.get
+    - applications.register
+    - applications.get
+    - applications.list
+    - environments.register
+    - environments.get
+    - system-components.register
+    - system-components.get
+    - dependency-edges.record
+    - dependency-edges.get
+    - system-manifests.import
+  transport_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+  intent_overlays:
+    capabilities.get:
+      wire_contract_status: FROZEN_R2
+      capability_allowlist_exactly_matches_activated_contract_intents: true
+    applications.register:
+      wire_contract_status: FROZEN_R2
+      field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/applications_register
+      response_lifecycle: {revision: 1, lifecycle_state: REGISTERED}
+      silently_invokes_activation: false
+    applications.get:
+      wire_contract_status: FROZEN_R2
+      field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/applications_get
+      returns_exact_current_lifecycle_binding_and_history: true
+    applications.list:
+      wire_contract_status: FROZEN_R2
+      field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/applications_list
+      scope: applications:read
+      required_project_id: true
+      returns_closed_complete_catalog_graph_items: true
+      visibility_filter_before_page_and_count: true
+      unauthorized_resource_visibility: OPAQUE_OMISSION_WITHOUT_EXISTENCE_DIGEST_OR_COUNT_LEAK
+      cursor: SERVER_ISSUED_OPAQUE_WORKSPACE_SCOPE_BOUND
+    environments.register:
+      wire_contract_status: FROZEN_R2
+      field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/environments_register
+    environments.get:
+      wire_contract_status: FROZEN_R2
+      field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/environments_get
+    system-components.register:
+      wire_contract_status: FROZEN_R2
+      field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/system_components_register
+    system-components.get:
+      wire_contract_status: FROZEN_R2
+      field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/system_components_get
+    dependency-edges.record:
+      wire_contract_status: FROZEN_R2
+      field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/dependency_edges_record
+    dependency-edges.get:
+      wire_contract_status: FROZEN_R2
+      field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/dependency_edges_get
+    system-manifests.import:
+      wire_contract_status: FROZEN_R2_R3_BOOTSTRAP
+      field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/bootstrap_system_manifests_import
+      bootstrap_only: true
+  bootstrap_system_manifest:
+    public_intent: true
+    contract_status: FROZEN_R2_R3_BOOTSTRAP
+    runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    workflow_owner: manifest_import_coordinator
+    authenticated_root_intent: system-manifests.import
+    response_lifecycle:
+      ai_application: {revision: 2, lifecycle_state: ACTIVE}
+      each_system_component: {revision: 2, lifecycle_state: ACTIVE}
+      exact_initial_system_version_set_binding: REQUIRED
+    complete_first_declared_graph_required: true
+    scope: WORKSPACE_INITIAL_ONE_SHOT
+    precondition: ALL_AUTHORITATIVE_V5_DOMAIN_TABLES_EMPTY
+    prior_standalone_registered_catalog_row: BOOTSTRAP_IMPORT_FORBIDDEN
+    component_revision_exact_component_binding: CURRENT_AUTHORITATIVE_ACTIVE_REVISION_2
+    component_revision_binding_source: LOCKED_APPEND_ONLY_LIFECYCLE_HISTORY
+    initial_system_version_set_count: 1
+    system_assignment_generation: 1
+    standalone_system_versions_record: FORBIDDEN
+    second_workspace_bootstrap_or_system_version_set: FORBIDDEN
+    semantic_diff_claim: FORBIDDEN
+    same_manifest_replay:
+      precondition: SAME_IDEMPOTENCY_KEY_AND_SAME_CANONICAL_BODY
+      result: IDENTICAL_TERMINAL_ATOMIC_RESPONSE_WITH_ZERO_NEW_FACTS
+      different_key_even_same_manifest_digest: CONFLICT_WITH_ZERO_NEW_FACTS
+  r3_full_boundary:
+    standalone_system_versions_record: NOT_IMPLEMENTED
+    second_system_version_set: NOT_IMPLEMENTED
+    system_versions_get: NOT_IMPLEMENTED
+    system_versions_diff: NOT_IMPLEMENTED
+    semantic_diff: NOT_IMPLEMENTED
+  standalone_activation:
+    public_intent_exists: false
+    http: FORBIDDEN
+    cli: FORBIDDEN
+    sdk: FORBIDDEN
+    mcp: FORBIDDEN
+    a2a: FORBIDDEN
+    capability_discovery: FORBIDDEN
+  excluded_intent_stages: [V5-1C, V5-2, V5-3, V5-4, V5-5, V5-6]
+  console_read_contract:
+    public_intents: [applications.list, applications.get]
+    forbidden_internal_dependency: /v1/applications
+    credential_source: UI_MEMORY_ONLY
+    credential_in_bundle_static_config_log_or_persistence: FORBIDDEN
+  cli_utility_boundary:
+    system-manifest.validate:
+      classification: LOCAL_FILE_VALIDATION_UTILITY
+      public_intent: false
+      transport: NONE
+      capability_discovery: FORBIDDEN
+    init_or_repository_discovery:
+      owner_stage: R3_FULL
+      r2_cli_visibility: HIDDEN
+      capability_discovery: FORBIDDEN
 
 api_major_selection:
   canonical_intent_identity: [api_major, intent_name]
@@ -130,9 +247,9 @@ intents:
   - name: capabilities.get
     contract_major: 2
     delivery_slice: V5-0C
-    wire_status: DRAFT
-    implementation_status: NOT_IMPLEMENTED
-    field_contract_ref: null
+    wire_status: FROZEN_R2
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/capabilities_get
     kind: query
     execution_mode: synchronous
     scope: capabilities:read
@@ -145,9 +262,9 @@ intents:
   - name: applications.register
     contract_major: 2
     delivery_slice: V5-1A
-    wire_status: DRAFT
-    implementation_status: NOT_IMPLEMENTED
-    field_contract_ref: null
+    wire_status: FROZEN_R2
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/applications_register
     kind: mutation
     execution_mode: synchronous
     scope: applications:manage
@@ -163,9 +280,9 @@ intents:
   - name: applications.get
     contract_major: 2
     delivery_slice: V5-1A
-    wire_status: DRAFT
-    implementation_status: NOT_IMPLEMENTED
-    field_contract_ref: null
+    wire_status: FROZEN_R2
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/applications_get
     kind: query
     execution_mode: synchronous
     scope: applications:read
@@ -176,12 +293,136 @@ intents:
     cli: application get
     cli_requires_explicit_api_major: true
 
+  - name: applications.list
+    contract_major: 2
+    delivery_slice: V5-1A
+    wire_status: FROZEN_R2
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/applications_list
+    kind: query
+    execution_mode: synchronous
+    scope: applications:read
+    allowed_principal_types: [human, external_agent, service, connector]
+    authorization_condition: workspace_and_required_project_scoped_application_authorized_reader
+    idempotency: none
+    pagination: {cursor: server_issued_opaque, visibility_filter_before_page_and_count: true}
+    http:
+      method: GET
+      path: /api/v2/applications
+      query_parameters: {required: [project_id], optional: [cursor, limit]}
+      operation_id: listApplications
+    cli: application list
+    cli_requires_explicit_api_major: true
+
+  - name: environments.register
+    contract_major: 2
+    delivery_slice: V5-1A
+    wire_status: FROZEN_R2
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/environments_register
+    kind: mutation
+    execution_mode: synchronous
+    scope: applications:manage
+    allowed_principal_types: [human, service]
+    required_trust_roles_any_of: [integrator, catalog_admin]
+    trust_roles_source: authenticated_server_registration
+    idempotency: required
+    command_target: {resource: environment, command: environments.register}
+    http: {method: POST, path: /api/v2/environments, operation_id: registerEnvironment}
+    cli: environment register
+    cli_requires_explicit_api_major: true
+
+  - name: environments.get
+    contract_major: 2
+    delivery_slice: V5-1A
+    wire_status: FROZEN_R2
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/environments_get
+    kind: query
+    execution_mode: synchronous
+    scope: applications:read
+    allowed_principal_types: [human, external_agent, service, connector]
+    authorization_condition: application_environment_authorized_reader
+    idempotency: none
+    http: {method: GET, path: "/api/v2/environments/{environment_id}", operation_id: getEnvironment}
+    cli: environment get
+    cli_requires_explicit_api_major: true
+
+  - name: system-components.register
+    contract_major: 2
+    delivery_slice: V5-1A
+    wire_status: FROZEN_R2
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/system_components_register
+    kind: mutation
+    execution_mode: synchronous
+    scope: applications:manage
+    allowed_principal_types: [human, service]
+    required_trust_roles_any_of: [integrator, catalog_admin]
+    trust_roles_source: authenticated_server_registration
+    idempotency: required
+    command_target: {resource: system_component, command: system-components.register}
+    http: {method: POST, path: /api/v2/system-components, operation_id: registerSystemComponent}
+    cli: system-component register
+    cli_requires_explicit_api_major: true
+
+  - name: system-components.get
+    contract_major: 2
+    delivery_slice: V5-1A
+    wire_status: FROZEN_R2
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/system_components_get
+    kind: query
+    execution_mode: synchronous
+    scope: applications:read
+    allowed_principal_types: [human, external_agent, service, connector]
+    authorization_condition: application_component_authorized_reader
+    idempotency: none
+    http: {method: GET, path: "/api/v2/system-components/{component_id}", operation_id: getSystemComponent}
+    cli: system-component get
+    cli_requires_explicit_api_major: true
+
+  - name: dependency-edges.record
+    contract_major: 2
+    delivery_slice: V5-1A
+    wire_status: FROZEN_R2
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/dependency_edges_record
+    kind: mutation
+    execution_mode: synchronous
+    scope: applications:manage
+    allowed_principal_types: [human, service]
+    required_trust_roles_any_of: [integrator, catalog_admin]
+    trust_roles_source: authenticated_server_registration
+    idempotency: required
+    command_target: {resource: dependency_edge, command: dependency-edges.record}
+    http: {method: POST, path: /api/v2/dependency-edges, operation_id: recordDependencyEdge}
+    cli: dependency-edge record
+    cli_requires_explicit_api_major: true
+
+  - name: dependency-edges.get
+    contract_major: 2
+    delivery_slice: V5-1A
+    wire_status: FROZEN_R2
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/dependency_edges_get
+    kind: query
+    execution_mode: synchronous
+    scope: applications:read
+    allowed_principal_types: [human, external_agent, service, connector]
+    authorization_condition: application_dependency_edge_authorized_reader
+    idempotency: none
+    http: {method: GET, path: "/api/v2/dependency-edges/{dependency_edge_id}", operation_id: getDependencyEdge}
+    cli: dependency-edge get
+    cli_requires_explicit_api_major: true
+
   - name: system-manifests.import
     contract_major: 2
     delivery_slice: V5-1B
-    wire_status: DRAFT
-    implementation_status: NOT_IMPLEMENTED
-    field_contract_ref: null
+    r2_delivery_mode: R3_BOOTSTRAP_COUPLED_TO_R2
+    wire_status: FROZEN_R2_R3_BOOTSTRAP
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    field_contract_ref: contracts/v5/schema-profiles.yaml#r2_wire_profiles/bootstrap_system_manifests_import
     kind: mutation
     execution_mode: synchronous_local_transaction
     scope: system_manifests:import
@@ -196,6 +437,21 @@ intents:
       exact_initiating_principal_required: true
       same_postgresql_unit_of_work_required: true
       direct_activation_command_invocation: FORBIDDEN
+    bootstrap_only_contract:
+      creates_complete_first_declared_graph: true
+      scope: WORKSPACE_INITIAL_ONE_SHOT
+      precondition: ALL_AUTHORITATIVE_V5_DOMAIN_TABLES_EMPTY
+      prior_standalone_registered_catalog_row: BOOTSTRAP_IMPORT_FORBIDDEN
+      component_revision_exact_component_binding: CURRENT_AUTHORITATIVE_ACTIVE_REVISION_2
+      component_revision_binding_source: LOCKED_APPEND_ONLY_LIFECYCLE_HISTORY
+      initial_system_version_set_count: 1
+      second_workspace_bootstrap_or_system_version_set: FORBIDDEN
+      standalone_system_versions_record: FORBIDDEN
+      semantic_diff_claim: FORBIDDEN
+      observed_or_effect_claim: FORBIDDEN
+      same_manifest_retry_precondition: SAME_IDEMPOTENCY_KEY_AND_SAME_CANONICAL_BODY
+      same_manifest_replay_response: IDENTICAL_TERMINAL_ATOMIC_RESPONSE_WITH_ZERO_NEW_FACTS
+      different_key_even_same_manifest_digest: CONFLICT_WITH_ZERO_NEW_FACTS
     workflow_targets:
       - {resource: ai_application, command: applications.register}
       - {resource: ai_application, command: applications.activate}

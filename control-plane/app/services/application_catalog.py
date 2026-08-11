@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Any, Callable, NoReturn, TypeVar
 
 from pydantic import BaseModel, ValidationError
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -64,6 +64,10 @@ from app.services.v5_authority import (
     V5AuthorityService,
     V5ResolvedController,
 )
+from app.services.v5_lifecycle_authority import (
+    V5LifecycleAuthorityError,
+    V5LifecycleAuthorityService,
+)
 from app.utils.ids import (
     new_application_id,
     new_authority_receipt_id,
@@ -83,6 +87,7 @@ PRINCIPAL_RE = "prn_[0-9A-Za-z]{8,64}"
 _INTENT_SCOPE = "applications:manage"
 _READ_SCOPE = "applications:read"
 _REGISTER_PRINCIPAL_TYPES = frozenset({"human", "service"})
+_CATALOG_TRUST_ROLES = frozenset({"integrator", "catalog_admin"})
 _READ_PRINCIPAL_TYPES = frozenset({"human", "external_agent", "service", "connector"})
 _MUTATION_INTENTS = frozenset(
     {
@@ -222,7 +227,7 @@ _SPECS: dict[str, _CatalogSpec] = {
         event_type="dependency_edge.recorded",
         aggregate_type="dependency_edge",
         subject_kind="DEPENDENCY_EDGE",
-        subject_revisioned=False,
+        subject_revisioned=True,
         resource_kind="dependency_edge",
         resource_field="edge",
         resource_id_field="edge_id",
@@ -279,6 +284,15 @@ class ApplicationCatalogService:
             or row.scopes != principal.scopes
         ):
             raise ApplicationCatalogError("TOKEN_INVALID")
+
+    def _require_catalog_trust_role(
+        self, principal: AcceptedPrincipalContext
+    ) -> None:
+        row = self.session.get(PublicPrincipal, principal.principal_id)
+        if row is None or not set(row.trust_roles or []) & _CATALOG_TRUST_ROLES:
+            raise ApplicationCatalogError(
+                "SCOPE_FORBIDDEN", workspace_id=principal.workspace_id
+            )
 
     def _require_mutation_principal(
         self, principal: AcceptedPrincipalContext
@@ -460,6 +474,23 @@ class ApplicationCatalogService:
         request_id = request_id or new_request_id()
         body = request.model_dump(mode="json")
         request_fingerprint = self.idempotency.fingerprint(body)
+        self._validate_principal_row(principal)
+        self._require_mutation_principal(principal)
+        self._require_catalog_trust_role(principal)
+        if (
+            principal.requested_context.required_scope != _INTENT_SCOPE
+            or _INTENT_SCOPE not in principal.scopes
+        ):
+            raise ApplicationCatalogError(
+                "SCOPE_FORBIDDEN", workspace_id=principal.workspace_id
+            )
+        if request.project_id not in principal.project_ids:
+            raise ApplicationCatalogError(
+                "WORKSPACE_ACCESS_DENIED", workspace_id=principal.workspace_id
+            )
+        self._validate_owner_principals(
+            principal.workspace_id, request.owner_principal_ids
+        )
         try:
             lookup = self.idempotency.acquire(
                 workspace_id=principal.workspace_id,
@@ -485,22 +516,6 @@ class ApplicationCatalogService:
             except PublicIdempotencyError as exc:
                 raise ApplicationCatalogError(exc.code) from exc
 
-        self._validate_principal_row(principal)
-        self._require_mutation_principal(principal)
-        if (
-            principal.requested_context.required_scope != _INTENT_SCOPE
-            or _INTENT_SCOPE not in principal.scopes
-        ):
-            raise ApplicationCatalogError(
-                "SCOPE_FORBIDDEN", workspace_id=principal.workspace_id
-            )
-        if request.project_id not in principal.project_ids:
-            raise ApplicationCatalogError(
-                "WORKSPACE_ACCESS_DENIED", workspace_id=principal.workspace_id
-            )
-        self._validate_owner_principals(
-            principal.workspace_id, request.owner_principal_ids
-        )
         existing = self.session.scalar(
             select(AIApplication).where(
                 AIApplication.workspace_id == principal.workspace_id,
@@ -534,7 +549,7 @@ class ApplicationCatalogService:
                 "application_id": application_id,
                 "project_id": request.project_id,
                 "slug": request.slug,
-                "lifecycle_state": "ACTIVE",
+                "lifecycle_state": "REGISTERED",
             },
             correlation_id=application_id,
             principal=principal,
@@ -557,6 +572,22 @@ class ApplicationCatalogService:
         request_id = request_id or new_request_id()
         body = request.model_dump(mode="json")
         request_fingerprint = self.idempotency.fingerprint(body)
+        self._validate_principal_row(principal)
+        self._require_mutation_principal(principal)
+        self._require_catalog_trust_role(principal)
+        if (
+            principal.requested_context.required_scope != _INTENT_SCOPE
+            or _INTENT_SCOPE not in principal.scopes
+        ):
+            raise ApplicationCatalogError(
+                "SCOPE_FORBIDDEN", workspace_id=principal.workspace_id
+            )
+        application = self._load_application_for_mutation(
+            principal=principal,
+            application_id=request.application_id,
+            request_id=request_id,
+            spec=spec,
+        )
         try:
             lookup = self.idempotency.acquire(
                 workspace_id=principal.workspace_id,
@@ -582,21 +613,6 @@ class ApplicationCatalogService:
             except PublicIdempotencyError as exc:
                 raise ApplicationCatalogError(exc.code) from exc
 
-        self._validate_principal_row(principal)
-        self._require_mutation_principal(principal)
-        if (
-            principal.requested_context.required_scope != _INTENT_SCOPE
-            or _INTENT_SCOPE not in principal.scopes
-        ):
-            raise ApplicationCatalogError(
-                "SCOPE_FORBIDDEN", workspace_id=principal.workspace_id
-            )
-        application = self._load_application_for_mutation(
-            principal=principal,
-            application_id=request.application_id,
-            request_id=request_id,
-            spec=spec,
-        )
         existing = self.session.scalar(
             select(Environment).where(
                 Environment.workspace_id == principal.workspace_id,
@@ -661,6 +677,31 @@ class ApplicationCatalogService:
         request_id = request_id or new_request_id()
         body = request.model_dump(mode="json")
         request_fingerprint = self.idempotency.fingerprint(body)
+        self._validate_principal_row(principal)
+        self._require_mutation_principal(principal)
+        self._require_catalog_trust_role(principal)
+        if (
+            principal.requested_context.required_scope != _INTENT_SCOPE
+            or _INTENT_SCOPE not in principal.scopes
+        ):
+            raise ApplicationCatalogError(
+                "SCOPE_FORBIDDEN", workspace_id=principal.workspace_id
+            )
+        application = self._load_application_for_mutation(
+            principal=principal,
+            application_id=request.application_id,
+            request_id=request_id,
+            spec=spec,
+        )
+        if application.lifecycle_state != "ACTIVE":
+            raise ApplicationCatalogError(
+                "CATALOG_CONFLICT",
+                details={"reason": "APPLICATION_NOT_ACTIVE"},
+                workspace_id=principal.workspace_id,
+            )
+        self._validate_owner_principals(
+            principal.workspace_id, request.owner_principal_ids
+        )
         try:
             lookup = self.idempotency.acquire(
                 workspace_id=principal.workspace_id,
@@ -686,24 +727,6 @@ class ApplicationCatalogService:
             except PublicIdempotencyError as exc:
                 raise ApplicationCatalogError(exc.code) from exc
 
-        self._validate_principal_row(principal)
-        self._require_mutation_principal(principal)
-        if (
-            principal.requested_context.required_scope != _INTENT_SCOPE
-            or _INTENT_SCOPE not in principal.scopes
-        ):
-            raise ApplicationCatalogError(
-                "SCOPE_FORBIDDEN", workspace_id=principal.workspace_id
-            )
-        application = self._load_application_for_mutation(
-            principal=principal,
-            application_id=request.application_id,
-            request_id=request_id,
-            spec=spec,
-        )
-        self._validate_owner_principals(
-            principal.workspace_id, request.owner_principal_ids
-        )
         existing = self.session.scalar(
             select(SystemComponent).where(
                 SystemComponent.workspace_id == principal.workspace_id,
@@ -734,7 +757,8 @@ class ApplicationCatalogService:
             "permission_classification": request.permission_classification,
             "effect_classification": request.effect_classification,
             "dataset_role": request.dataset_role,
-            "lifecycle_state": "ACTIVE",
+            "lifecycle_state": "REGISTERED",
+            "exact_previous_system_component_binding_or_null": None,
             "record_envelope": self._envelope(
                 workspace_id=principal.workspace_id,
                 revision=1,
@@ -753,7 +777,7 @@ class ApplicationCatalogService:
                 "application_id": request.application_id,
                 "component_kind": request.component_kind,
                 "logical_name": request.logical_name,
-                "lifecycle_state": "ACTIVE",
+                "lifecycle_state": "REGISTERED",
             },
             correlation_id=request.application_id,
             principal=principal,
@@ -776,33 +800,9 @@ class ApplicationCatalogService:
         request_id = request_id or new_request_id()
         body = request.model_dump(mode="json")
         request_fingerprint = self.idempotency.fingerprint(body)
-        try:
-            lookup = self.idempotency.acquire(
-                workspace_id=principal.workspace_id,
-                principal_id=principal.principal_id,
-                intent=spec.intent,
-                idempotency_key=idempotency_key,
-                request_fingerprint=request_fingerprint,
-                verify_terminal=PublicIdempotencyService.verify_terminal_presence,
-            )
-        except PublicIdempotencyError as exc:
-            raise ApplicationCatalogError(exc.code) from exc
-        if lookup.record is not None:
-            try:
-                response = self.idempotency.replay_catalog_response(
-                    lookup.record,
-                    response_model=spec.response_model,
-                    receipt_model=V5IdempotencyReceipt,
-                    resource_kind=spec.resource_kind,
-                    resource_field=spec.resource_field,
-                    resource_id_field=spec.resource_id_field,
-                )
-                return response  # type: ignore[return-value]
-            except PublicIdempotencyError as exc:
-                raise ApplicationCatalogError(exc.code) from exc
-
         self._validate_principal_row(principal)
         self._require_mutation_principal(principal)
+        self._require_catalog_trust_role(principal)
         if (
             principal.requested_context.required_scope != _INTENT_SCOPE
             or _INTENT_SCOPE not in principal.scopes
@@ -842,6 +842,10 @@ class ApplicationCatalogService:
                 details={"reason": "SELF_DEPENDENCY"},
                 workspace_id=principal.workspace_id,
             )
+        self._lock_dependency_graph(
+            workspace_id=principal.workspace_id,
+            application_id=request.application_id,
+        )
         if self._would_create_cycle(
             workspace_id=principal.workspace_id,
             application_id=request.application_id,
@@ -853,6 +857,30 @@ class ApplicationCatalogService:
                 details={"reason": "GRAPH_CYCLE"},
                 workspace_id=principal.workspace_id,
             )
+        try:
+            lookup = self.idempotency.acquire(
+                workspace_id=principal.workspace_id,
+                principal_id=principal.principal_id,
+                intent=spec.intent,
+                idempotency_key=idempotency_key,
+                request_fingerprint=request_fingerprint,
+                verify_terminal=PublicIdempotencyService.verify_terminal_presence,
+            )
+        except PublicIdempotencyError as exc:
+            raise ApplicationCatalogError(exc.code) from exc
+        if lookup.record is not None:
+            try:
+                response = self.idempotency.replay_catalog_response(
+                    lookup.record,
+                    response_model=spec.response_model,
+                    receipt_model=V5IdempotencyReceipt,
+                    resource_kind=spec.resource_kind,
+                    resource_field=spec.resource_field,
+                    resource_id_field=spec.resource_id_field,
+                )
+                return response  # type: ignore[return-value]
+            except PublicIdempotencyError as exc:
+                raise ApplicationCatalogError(exc.code) from exc
 
         edge_id = new_dependency_edge_id()
         now = _as_utc(self.clock())
@@ -885,7 +913,7 @@ class ApplicationCatalogService:
         return self._write_catalog_record(
             spec=spec,
             subject_id=edge_id,
-            subject_revision=None,
+            subject_revision=1,
             envelope_payload=payload,
             business_payload={
                 "edge_id": edge_id,
@@ -940,6 +968,14 @@ class ApplicationCatalogService:
             stack.extend(adjacency.get(node, []))
         return False
 
+    def _lock_dependency_graph(self, *, workspace_id: str, application_id: str) -> None:
+        if self.session.get_bind().dialect.name != "postgresql":
+            return
+        self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
+            {"lock_key": f"v5:dependency-graph:{workspace_id}:{application_id}"},
+        )
+
     def _validate_owner_principals(
         self, workspace_id: str, owner_principal_ids: list[str]
     ) -> None:
@@ -988,8 +1024,21 @@ class ApplicationCatalogService:
         self._assert_application_readable(
             principal, application.application_id, action, request_id
         )
-        envelope = self._verified_envelope(
-            application.envelope_payload, application.record_digest
+        envelope = self.verify_authoritative_record(
+            row=application,
+            subject_kind="AI_APPLICATION",
+            id_field="application_id",
+            scalar_fields=(
+                "project_id",
+                "slug",
+                "display_name",
+                "owner_principal_ids",
+                "criticality",
+                "data_classification",
+                "governance_mode",
+                "lifecycle_state",
+            ),
+            lifecycle_history=True,
         )
         return self._read_response(
             spec=_SPECS["application"],
@@ -1027,7 +1076,18 @@ class ApplicationCatalogService:
             )
         assert row is not None
         self._assert_application_readable(principal, row.application_id, action, request_id)
-        envelope = self._verified_envelope(row.envelope_payload, row.record_digest)
+        envelope = self.verify_authoritative_record(
+            row=row,
+            subject_kind="ENVIRONMENT",
+            id_field="environment_id",
+            scalar_fields=(
+                "application_id",
+                "logical_name",
+                "risk_classification",
+                "lifecycle_state",
+            ),
+            lifecycle_history=False,
+        )
         return self._read_response(
             spec=_SPECS["environment"],
             principal=principal,
@@ -1064,7 +1124,24 @@ class ApplicationCatalogService:
             )
         assert row is not None
         self._assert_application_readable(principal, row.application_id, action, request_id)
-        envelope = self._verified_envelope(row.envelope_payload, row.record_digest)
+        envelope = self.verify_authoritative_record(
+            row=row,
+            subject_kind="SYSTEM_COMPONENT",
+            id_field="component_id",
+            scalar_fields=(
+                "application_id",
+                "component_kind",
+                "logical_name",
+                "owner_principal_ids",
+                "criticality",
+                "data_classification",
+                "permission_classification",
+                "effect_classification",
+                "dataset_role",
+                "lifecycle_state",
+            ),
+            lifecycle_history=True,
+        )
         return self._read_response(
             spec=_SPECS["component"],
             principal=principal,
@@ -1101,7 +1178,20 @@ class ApplicationCatalogService:
             )
         assert row is not None
         self._assert_application_readable(principal, row.application_id, action, request_id)
-        envelope = self._verified_envelope(row.envelope_payload, row.record_digest)
+        envelope = self.verify_authoritative_record(
+            row=row,
+            subject_kind="DEPENDENCY_EDGE",
+            id_field="edge_id",
+            scalar_fields=(
+                "application_id",
+                "from_component_id",
+                "to_component_id",
+                "relation",
+                "required",
+                "edge_digest",
+            ),
+            lifecycle_history=False,
+        )
         return self._read_response(
             spec=_SPECS["edge"],
             principal=principal,
@@ -1139,6 +1229,112 @@ class ApplicationCatalogService:
             raise ApplicationCatalogError("INTERNAL_ERROR") from exc
         if verified != stored_digest:
             raise ApplicationCatalogError("INTERNAL_ERROR")
+        return envelope
+
+    def verify_authoritative_record(
+        self,
+        *,
+        row: Any,
+        subject_kind: str,
+        id_field: str,
+        scalar_fields: tuple[str, ...],
+        lifecycle_history: bool,
+    ) -> dict[str, Any]:
+        envelope = self._verified_envelope(row.envelope_payload, row.record_digest)
+        record_envelope = envelope.get("record_envelope")
+        revision = (
+            row.revision
+            if lifecycle_history or subject_kind == "ENVIRONMENT"
+            else 1 if subject_kind == "DEPENDENCY_EDGE" else None
+        )
+        envelope_revision = getattr(row, "revision", 1)
+        if (
+            not isinstance(record_envelope, dict)
+            or envelope.get(id_field) != getattr(row, id_field)
+            or envelope.get("workspace_id") != row.workspace_id
+            or record_envelope.get("revision") != envelope_revision
+            or record_envelope.get("record_digest") != row.record_digest
+            or record_envelope.get("authority_receipt_id") != row.authority_receipt_id
+            or record_envelope.get("recorded_by_principal")
+            != row.recorded_by_principal
+            or any(envelope.get(field) != getattr(row, field) for field in scalar_fields)
+        ):
+            raise ApplicationCatalogError("INTERNAL_ERROR")
+        if subject_kind == "DEPENDENCY_EDGE" and row.edge_digest != canonical_digest(
+            {
+                "from_component_id": row.from_component_id,
+                "to_component_id": row.to_component_id,
+                "relation": row.relation,
+                "required": row.required,
+            }
+        ):
+            raise ApplicationCatalogError("INTERNAL_ERROR")
+        try:
+            if lifecycle_history:
+                binding = {
+                    "kind": subject_kind,
+                    "id": getattr(row, id_field),
+                    "revision": row.revision,
+                    "digest": row.record_digest,
+                }
+                self.authority.validate_exact_lifecycle_binding(
+                    workspace_id=row.workspace_id,
+                    binding=binding,
+                    require_current=True,
+                    require_active=row.lifecycle_state == "ACTIVE",
+                    application_id=(
+                        row.application_id
+                        if subject_kind == "SYSTEM_COMPONENT"
+                        else None
+                    ),
+                )
+                self.authority.validate_receipt_binding(
+                    authority_receipt_id=row.authority_receipt_id,
+                    workspace_id=row.workspace_id,
+                    subject_kind=subject_kind,
+                    subject_id=getattr(row, id_field),
+                    subject_revision=row.revision,
+                    subject_digest=row.record_digest,
+                    lifecycle_history=True,
+                )
+                if row.revision > 1:
+                    previous_field = (
+                        "exact_previous_application_binding"
+                        if subject_kind == "AI_APPLICATION"
+                        else "exact_previous_system_component_binding"
+                    )
+                    previous = envelope.get(previous_field)
+                    if not isinstance(previous, dict):
+                        raise V5AuthorityError("v5.authority.lifecycle_previous_missing")
+                    previous_row = self.authority.validate_exact_lifecycle_binding(
+                        workspace_id=row.workspace_id,
+                        binding=previous,
+                        application_id=(
+                            row.application_id
+                            if subject_kind == "SYSTEM_COMPONENT"
+                            else None
+                        ),
+                    )
+                    self.authority.validate_receipt_binding(
+                        authority_receipt_id=previous_row.authority_receipt_id,
+                        workspace_id=row.workspace_id,
+                        subject_kind=subject_kind,
+                        subject_id=getattr(row, id_field),
+                        subject_revision=previous_row.revision,
+                        subject_digest=previous_row.record_digest,
+                        lifecycle_history=True,
+                    )
+            else:
+                self.authority.validate_receipt_binding(
+                    authority_receipt_id=row.authority_receipt_id,
+                    workspace_id=row.workspace_id,
+                    subject_kind=subject_kind,
+                    subject_id=getattr(row, id_field),
+                    subject_revision=revision,
+                    subject_digest=row.record_digest,
+                )
+        except V5AuthorityError as exc:
+            raise ApplicationCatalogError("INTERNAL_ERROR") from exc
         return envelope
 
     def _read_response(
@@ -1220,7 +1416,8 @@ class ApplicationCatalogService:
             "criticality": request.criticality,
             "data_classification": request.data_classification,
             "governance_mode": request.governance_mode,
-            "lifecycle_state": "ACTIVE",
+            "lifecycle_state": "REGISTERED",
+            "exact_previous_application_binding_or_null": None,
             "record_envelope": self._envelope(
                 workspace_id=workspace_id,
                 revision=1,
@@ -1254,19 +1451,34 @@ class ApplicationCatalogService:
         transaction_id = new_transaction_id()
         controller = self._resolve_controller(spec, principal.workspace_id, now)
         envelope = envelope_payload["record_envelope"]
+        envelope["recorded_by_principal"] = controller.controller_principal
         digest = v5_record_digest(envelope_payload)
         envelope["record_digest"] = digest
 
-        row = self._build_projection_row(
-            spec=spec,
-            subject_id=subject_id,
-            envelope_payload=envelope_payload,
-            digest=digest,
-            now=now,
-        )
-        self.session.add(row)
+        lifecycle_registration = spec.subject_kind in {
+            "AI_APPLICATION",
+            "SYSTEM_COMPONENT",
+        }
         try:
-            self.session.flush()
+            if lifecycle_registration:
+                V5LifecycleAuthorityService(
+                    self.session
+                ).append_registration_revision(
+                    kind=spec.subject_kind,
+                    envelope_payload=envelope_payload,
+                )
+            else:
+                row = self._build_projection_row(
+                    spec=spec,
+                    subject_id=subject_id,
+                    envelope_payload=envelope_payload,
+                    digest=digest,
+                    now=now,
+                )
+                self.session.add(row)
+                self.session.flush()
+        except V5LifecycleAuthorityError as exc:
+            raise ApplicationCatalogError("INTERNAL_ERROR") from exc
         except IntegrityError as exc:
             # Concurrent duplicate identity: the advisory-locked idempotency
             # lookup cannot see the other transaction's uncommitted row, so the
@@ -1277,14 +1489,65 @@ class ApplicationCatalogService:
                 workspace_id=principal.workspace_id,
             ) from exc
 
-        event_payload: dict[str, Any] = {
-            **business_payload,
-            "subject_kind": spec.subject_kind,
-            "subject_id": subject_id,
-            "subject_revision": subject_revision,
-            "subject_digest": digest,
-            "authority_receipt_id": envelope["authority_receipt_id"],
-        }
+        if lifecycle_registration:
+            exact_binding = {
+                "kind": spec.subject_kind,
+                "id": subject_id,
+                "revision": 1,
+                "digest": digest,
+            }
+            if spec.subject_kind == "AI_APPLICATION":
+                event_payload = {
+                    "exact_previous_application_binding_or_null": None,
+                    "exact_application_binding": exact_binding,
+                    "project_id": envelope_payload["project_id"],
+                    "slug": envelope_payload["slug"],
+                    "lifecycle_state": "REGISTERED",
+                }
+            else:
+                event_payload = {
+                    "exact_previous_system_component_binding_or_null": None,
+                    "exact_system_component_binding": exact_binding,
+                    "application_id": envelope_payload["application_id"],
+                    "component_kind": envelope_payload["component_kind"],
+                    "logical_name": envelope_payload["logical_name"],
+                    "lifecycle_state": "REGISTERED",
+                }
+        elif spec.subject_kind == "ENVIRONMENT":
+            event_payload = {
+                "exact_environment_binding": {
+                    "kind": "ENVIRONMENT",
+                    "id": subject_id,
+                    "revision": 1,
+                    "digest": digest,
+                },
+                "application_id": envelope_payload["application_id"],
+                "logical_name": envelope_payload["logical_name"],
+                "lifecycle_state": envelope_payload["lifecycle_state"],
+            }
+        elif spec.subject_kind == "DEPENDENCY_EDGE":
+            event_payload = {
+                "exact_dependency_edge_binding": {
+                    "kind": "DEPENDENCY_EDGE",
+                    "id": subject_id,
+                    "revision": 1,
+                    "digest": digest,
+                },
+                "application_id": envelope_payload["application_id"],
+                "from_component_id": envelope_payload["from_component_id"],
+                "to_component_id": envelope_payload["to_component_id"],
+                "relation": envelope_payload["relation"],
+                "edge_digest": envelope_payload["edge_digest"],
+            }
+        else:
+            event_payload = {
+                **business_payload,
+                "subject_kind": spec.subject_kind,
+                "subject_id": subject_id,
+                "subject_revision": subject_revision,
+                "subject_digest": digest,
+                "authority_receipt_id": envelope["authority_receipt_id"],
+            }
         try:
             event = self.events.append_event(
                 workspace_id=principal.workspace_id,
@@ -1297,6 +1560,12 @@ class ApplicationCatalogService:
                 actor_principal=controller.controller_principal,
                 transaction_id=transaction_id,
                 occurred_at=now,
+                authority_receipt_id=(
+                    envelope["authority_receipt_id"]
+                    if lifecycle_registration
+                    or spec.subject_kind in {"ENVIRONMENT", "DEPENDENCY_EDGE"}
+                    else None
+                ),
             )
             audit = self.audit.record(
                 workspace_id=principal.workspace_id,
@@ -1326,6 +1595,7 @@ class ApplicationCatalogService:
                 transaction_id=transaction_id,
                 audit_ref=audit.audit_ref,
                 recorded_at=now,
+                lifecycle_history=lifecycle_registration,
             )
         except (V4EventStoreError, V5AuthorityError) as exc:
             raise ApplicationCatalogError("INTERNAL_ERROR") from exc

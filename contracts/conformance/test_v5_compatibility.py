@@ -150,12 +150,25 @@ def test_first_wire_slice_matches_registry_and_compatibility() -> None:
     assert compatibility["first_slice"]["count"] == len(FIRST_SLICE)
 
     by_name = {intent["name"]: intent for intent in registry["intents"]}
+    r2_intents = set(
+        registry["r2_application_catalog_contract"]["activated_contract_intents"]
+    )
     assert set(FIRST_SLICE) <= set(by_name)
     for name in FIRST_SLICE:
         intent = by_name[name]
         assert intent["contract_major"] == 2
-        assert intent["wire_status"] == "DRAFT"
-        assert intent["implementation_status"] == "NOT_IMPLEMENTED"
+        if name in r2_intents:
+            assert intent["wire_status"] == (
+                "FROZEN_R2_R3_BOOTSTRAP"
+                if name == "system-manifests.import"
+                else "FROZEN_R2"
+            )
+            assert intent["implementation_status"] == (
+                "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
+            )
+        else:
+            assert intent["wire_status"] == "DRAFT"
+            assert intent["implementation_status"] == "NOT_IMPLEMENTED"
         assert intent["cli_requires_explicit_api_major"] is True
         assert intent["http"]["path"].startswith("/api/v2/")
         fixture_intent = next(i for i in fixture["slice"]["intents"] if i["name"] == name)

@@ -300,10 +300,69 @@ fact_class_non_inference:
     - adapter_receipt_alone_does_not_constitute_release_success
     - direct_assignment_restore_or_resume_is_not_a_second_rollback_authority
 
+r2_application_catalog_contract:
+  stage: R2
+  contract_status: FROZEN_FOR_IMPLEMENTATION
+  runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+  authoritative_resources:
+    - ai_application
+    - environment
+    - system_component
+    - dependency_edge
+  r3_bootstrap_coupled_resources:
+    - component_revision
+    - topology_revision
+    - system_version_set
+    - bootstrap_attestation
+    - system_assignment
+  bootstrap_system_manifest:
+    application_revision_sequence:
+      - {revision: 1, lifecycle_state: REGISTERED}
+      - {revision: 2, lifecycle_state: ACTIVE}
+    component_revision_sequence:
+      - {revision: 1, lifecycle_state: REGISTERED}
+      - {revision: 2, lifecycle_state: ACTIVE}
+    exact_previous_binding_is_server_derived_from_locked_history: true
+    all_revisions_are_immutable_and_independently_digested: true
+    current_head_is_projection_not_history_authority: true
+    same_postgresql_unit_of_work_required: true
+    complete_first_declared_graph_required: true
+    scope: WORKSPACE_INITIAL_ONE_SHOT
+    precondition: ALL_AUTHORITATIVE_V5_DOMAIN_TABLES_EMPTY
+    prior_standalone_registered_catalog_row: BOOTSTRAP_IMPORT_FORBIDDEN
+    component_revision_exact_component_binding:
+      source: SERVER_RESOLVED_FROM_LOCKED_APPEND_ONLY_HISTORY
+      required_lifecycle_state: ACTIVE
+      initial_bootstrap_required_revision: 2
+      mutable_head_or_client_supplied_binding: FORBIDDEN
+    initial_system_version_set_count: 1
+    system_assignment_generation: 1
+    replay_requires_same_idempotency_key_and_same_canonical_body: true
+    same_key_same_body_replay_result: IDENTICAL_TERMINAL_ATOMIC_RESPONSE_ZERO_NEW_FACTS
+    different_key_even_same_manifest_digest: CONFLICT_WITH_ZERO_NEW_FACTS
+    proves: INITIAL_DECLARED_VERSION_AND_DESIRED_ASSIGNMENT_ONLY
+    standalone_system_versions_record: FORBIDDEN
+    second_workspace_bootstrap_or_system_version_set: FORBIDDEN
+    semantic_diff_claim: FORBIDDEN
+  response_contracts:
+    applications_register: {revision: 1, lifecycle_state: REGISTERED}
+    bootstrap_system_manifest:
+      ai_application: {revision: 2, lifecycle_state: ACTIVE}
+      each_system_component: {revision: 2, lifecycle_state: ACTIVE}
+      exact_initial_system_version_set_binding: REQUIRED
+  forbidden_in_r2_catalog_phase:
+    - application_case_binding
+    - acceptance_criteria_revision
+  does_not_prove:
+    - r3_full_second_system_version_or_semantic_diff
+    - observed_runtime_or_external_effect
+    - first_system_case
+    - resolution_or_release
+
 application_component_activation_lifecycle:
   decision_ref: docs/decisions/D-014-v5-application-component-activation-lifecycle.md
   decision: PRESERVE_REGISTERED_TO_ACTIVE
-  runtime_status: NOT_IMPLEMENTED
+  runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
   immutable_revision_history:
     ai_application:
       identity: [workspace_id, application_id, revision]
