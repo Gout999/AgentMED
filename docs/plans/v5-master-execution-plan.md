@@ -85,6 +85,7 @@ migration、tests、evidence、rollback、commit 和 verifier。
 |---|---|---|
 | V5-0A clean-checkout closure | `DONE` | subject `4d15c1c81180386fa4852a53f8b8847e74cda050`；R0 evidence/verifier PASS |
 | V5-0B/0C | `DONE (contract-only)` | 历史 freeze，不重开 |
+| D1 lifecycle decision | `DONE (contract-only)` | subject `798531a`；evidence/verifier PASS；仅解锁 R1 施工，不证明 runtime |
 | V5-1A | `IN_PROGRESS` | D1 + R1/R2 PASS |
 | V5-1B | `IN_PROGRESS` | R3 PASS |
 | V5-1C | `IN_PROGRESS` | R4 PASS |
@@ -242,9 +243,10 @@ flowchart TD
 冻结合同要求 creation=`REGISTERED`，随后独立 `*.activated` 事件进入 `ACTIVE`；当前 runtime
 在 register/import 时直接写 `ACTIVE`。
 
-**Owner decision（2026-08-11）**：产品 owner 已选择方案 A，保留冻结生命周期。D-014
-semantic contract candidate 已形成，但仍在等待 independent verifier；D1 尚未关闭，R1
-保持锁定。
+**Owner decision（2026-08-11）**：产品 owner 已选择方案 A，保留冻结生命周期。D-014、
+semantic series `66052a1` + `798531a`、digest-bearing evidence 与 independent verifier
+已经关闭 D1 contract gate（P0=0/P1=0）。这只解锁 R1 施工，不证明 lifecycle migration、
+runtime、route 或 capability 已实现。
 
 **选择的方案 A**：创建 append-only revision/history，使 register 产生
 revision 1 `REGISTERED`，可信 manifest workflow 在同一受控事务内调用 activate 产生
@@ -260,9 +262,10 @@ trusted manifest workflow；不能只补 `applications.activate`。Public standa
 **拒绝的方案 B**：通过新 ADR/contract migration 把初态改为 `ACTIVE`。该方案实现更小，
 但丢失显式 activation authority，产品 owner 已明确拒绝。
 
-**Decision gate**：owner 选择已完成，但在 independent verifier 对 D-014、合同、fixture 与
-conformance 给出 PASS 前不得实现或解锁 R1；不得只改测试或 overlay 掩盖 frozen/runtime
-差异。
+**Decision gate**：`DONE (contract-only)`；evidence 位于
+`evidence/v5/decision-gates/d1-application-component-lifecycle/d1lifecycle_20260811T123512Z_798531a/`。
+R1 已解锁施工，但在自身 migration/runtime/replay evidence PASS 前不得进入 R2；不得只改
+测试或 overlay 掩盖 frozen/runtime 差异。
 
 ### R1 · V5 authority/event foundation
 
@@ -735,8 +738,8 @@ Evidence commit 只记录对前一个 immutable subject commit 的验证结果�
 
 ## 17. 下一执行队列
 
-1. 完成 D1 semantic commit，随后在 clean subject 上生成 contract evidence、通过 independent verifier，并形成 evidence/status closure commit；在此之前 R1 保持 locked；
-2. 重排未提交 migration 链，确保 R1 authority/event foundation 先于 R4 hardening；
-3. 按 R1→R4 逐包实施、提交、验证；
+1. 重排未提交 migration 链，按 `010 → 011 lifecycle/authority foundation → 012 event envelope → 013 V5-1C hardening` 保持 R1 先于 R4；
+2. 实施并关闭 R1 authority/event foundation，完成 clean migration/replay evidence 和 independent verifier 后才进入 R2；
+3. 按 R2→R4 逐包实施、提交、验证；
 4. D2 冻结完整 version-graph recording bundle，而非只增加一个无法产生第二 graph 的 VersionSet endpoint；
 5. 只有 R4 post-commit verifier PASS 后，重写并冻结 V5-2A 施工 brief。

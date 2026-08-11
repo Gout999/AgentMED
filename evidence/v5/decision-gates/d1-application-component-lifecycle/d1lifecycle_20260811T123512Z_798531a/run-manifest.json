@@ -1,0 +1,126 @@
+{
+  "schema_version": "1.0",
+  "run_id": "d1lifecycle_20260811T123512Z_798531a",
+  "stage": "V5-D1",
+  "slice": "application-component-lifecycle-decision",
+  "started_at": "2026-08-11T12:31:00Z",
+  "completed_at": "2026-08-11T12:41:12Z",
+  "status": "PASS",
+  "subject": {
+    "commit": "798531af539cd37e797723f2985d55c70fa1046e",
+    "parent": "66052a13e9e52ca6d6cf7fc429b99158f5b25144",
+    "tree": "5520376860c4190ae1ba90aaa741182436d7f822",
+    "branch": "codex/v4-foundation",
+    "dirty_before": false,
+    "dirty_after": false,
+    "direct_diff_sha256": "86f919702055c758de5f1563c542196e10a940277aa457ba9f39b3670c2217be",
+    "semantic_series": [
+      "66052a13e9e52ca6d6cf7fc429b99158f5b25144",
+      "798531af539cd37e797723f2985d55c70fa1046e"
+    ],
+    "semantic_series_base": "688e5d91182d73a7c0f0652a16377676602bedd7",
+    "semantic_series_diff_sha256": "af89151fdd649b213a71dd9842a27c97301e0ee38d05997451e635fd81694f20"
+  },
+  "scope": {
+    "included_path_count": 9,
+    "included_paths_ref": "raw/subject-paths.txt",
+    "included_paths_sha256": "1eb71733fb24c52db6f2059030bdfc6be450f91033dc1ffafa41a0e3a91d5993",
+    "direct_fix_path_count": 1,
+    "direct_fix_path_list_sha256": "0e3ca5c7da43b665e37599c1f03b828dccc6a4b0412ffe6933d5e70c899acd74",
+    "allowlist_violations": 0,
+    "mode_symlink_binary_findings": 0,
+    "excluded_groups": [
+      "runtime and API",
+      "database migrations",
+      "CLI and capability activation",
+      "provider/live and Agent execution",
+      "repository sandbox and external side effects",
+      "historical evidence rewrites"
+    ]
+  },
+  "authority_sources_ref": "raw/authority-sources.sha256",
+  "contract_versions": {
+    "status": "PASS",
+    "api_major": 2,
+    "decision": "D-014 Option A",
+    "historical_freezes": ["8dd25ca", "b3727d7"],
+    "runtime_status": "NOT_IMPLEMENTED"
+  },
+  "migration_versions": {
+    "status": "NOT_APPLICABLE",
+    "reason": "D1 freezes lifecycle authority semantics only; R1 owns the actual-head migration and recovery proof."
+  },
+  "environment": {
+    "os": "macOS 26.5 (25F71)",
+    "git": "2.50.1 (Apple Git-155)",
+    "python": "3.14.4",
+    "checkout": "detached temporary worktree",
+    "secrets_recorded": false,
+    "runtime_identities": {
+      "postgresql": "NOT_RUN",
+      "container": "NOT_RUN",
+      "provider": "NOT_RUN",
+      "agent_runtime": "NOT_RUN",
+      "repository_sandbox": "NOT_RUN",
+      "external_target": "NOT_RUN"
+    }
+  },
+  "commands": [
+    {"id": "identity-clean-before", "exit_code": 0, "result": "PASS", "dirty_paths": 0},
+    {"id": "cumulative-path-and-diff-provenance", "exit_code": 0, "result": "PASS", "paths": 9},
+    {"id": "direct-fix-provenance", "exit_code": 0, "result": "PASS", "paths": 1},
+    {"id": "contract-suite", "exit_code": 0, "result": "PASS", "passed": 523},
+    {"id": "focused-d1-contract", "exit_code": 0, "result": "PASS", "passed": 6},
+    {"id": "yaml-duplicate-key", "exit_code": 0, "result": "PASS", "files": 18, "findings": 0},
+    {"id": "markdown-link-scan", "exit_code": 0, "result": "PASS", "files": 146, "local_links": 192, "findings": 0},
+    {"id": "secret-pii-scan", "exit_code": 0, "result": "PASS", "added_lines": 864, "findings": 0},
+    {"id": "diff-check-and-clean-after", "exit_code": 0, "result": "PASS", "dirty_paths": 0}
+  ],
+  "commands_index_ref": "commands/README.md",
+  "commands_ref": "raw/commands.txt",
+  "facets": {
+    "contract": "PASS",
+    "replay": "NOT_RUN",
+    "domain-provider-live": "NOT_RUN",
+    "agentteams-native": "NOT_RUN",
+    "claude-runtime-live": "NOT_RUN",
+    "agent-causal": "NOT_RUN",
+    "repo-sandbox": "NOT_RUN",
+    "human-authorized-external": "NOT_RUN",
+    "production-canary": "NOT_RUN"
+  },
+  "artifacts": [
+    {"kind": "subject-paths", "path": "raw/subject-paths.txt", "sha256": "1eb71733fb24c52db6f2059030bdfc6be450f91033dc1ffafa41a0e3a91d5993", "size": 430},
+    {"kind": "authority-source-digests", "path": "raw/authority-sources.sha256", "sha256": "ed47c2217c394cf5bf4592cd9907fde0ea0a12ac3e3732e31d95456623ab4c2f", "size": 1024},
+    {"kind": "verification-summary", "path": "raw/verification-summary.txt", "sha256": "d877b6d60f1adb82a0d0b0da655fc416633319712368feef3c1b53458412052c", "size": 866},
+    {"kind": "commands", "path": "raw/commands.txt", "sha256": "eca5550429be2e5176489968f41960e103f88be755cbcc0f997588dd03f863a8", "size": 2842},
+    {"kind": "redaction-report", "path": "redaction-report.md", "sha256": "93d4f518fc15c7d19d1ea371b39141260c80b875c45dfb55b32fa4b40eda9867", "size": 688},
+    {"kind": "verification", "path": "verification.md", "sha256": "96e6d3384fc99ce31cebeca9aedd14519b10f74d026ce32c7689c4870f72babb", "size": 1649},
+    {"kind": "independent-verifier-report", "path": "verifier-report.md", "sha256": "4952ad62a223be9e9933c214dfccbfe022f2de38a122ab6ec8cd57b0bda13669", "size": 973},
+    {"kind": "commands-index", "path": "commands/README.md", "sha256": "765a768617d96d9dde7b8b6e89a5bc941367ae8b0b3aad6a8a2b4a56aeb62a3c", "size": 261},
+    {"kind": "receipts-not-applicable", "path": "receipts/NOT_APPLICABLE.md", "sha256": "861ff4c89df4511c9987c6c6b165d2f1d6445fba36ef7a66926acee9f5a6f9a9", "size": 270},
+    {"kind": "runtime-artifacts-not-applicable", "path": "artifacts/NOT_APPLICABLE.md", "sha256": "246883036d13912564aeb34ab0318cbc2a32a54a5335f10d2c86a49db2cf5523", "size": 296}
+  ],
+  "known_gaps": [
+    "D1 proves contract semantics only; lifecycle migration, authority runtime and replay remain R1 work.",
+    "The existing mixed V5-1A/B/C worktree is not D1 evidence and is not accepted stage closure.",
+    "Standalone version-graph recording remains a separate D2 gate before R3-full."
+  ],
+  "stop_gates": {
+    "p0": 0,
+    "p1": 0,
+    "broken_links": 0,
+    "secret_or_pii_findings": 0,
+    "public_activation_advertised": false
+  },
+  "rollback": "Revert the D1 semantic series and this evidence/status closure together; do not reinterpret or rewrite existing V5 lifecycle records.",
+  "verifier": {
+    "identity": "Codex independent sub-agent /root/r0_verifier_prep",
+    "subject_commit": "798531af539cd37e797723f2985d55c70fa1046e",
+    "report_ref": "verifier-report.md",
+    "report_sha256": "4952ad62a223be9e9933c214dfccbfe022f2de38a122ab6ec8cd57b0bda13669",
+    "p0": 0,
+    "p1": 0,
+    "verdict": "PASS"
+  }
+}

@@ -1,0 +1,9 @@
+contracts/conformance/test_v5_lifecycle_decision.py
+contracts/v5/aggregate-ownership.yaml
+contracts/v5/domain-model.yaml
+contracts/v5/fixtures/application-component-activation-lifecycle.yaml
+contracts/v5/fixtures/bootstrap-import-atomic.yaml
+contracts/v5/fixtures/first-system-case.yaml
+contracts/v5/intent-registry.yaml
+docs/decisions/D-014-v5-application-component-activation-lifecycle.md
+docs/plans/v5-master-execution-plan.md

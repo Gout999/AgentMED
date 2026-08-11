@@ -1,0 +1,53 @@
+1. identity-clean-before
+cwd: repository root of detached worktree
+command: git rev-parse HEAD && git rev-parse HEAD^ && git rev-parse HEAD^{tree} && git status --porcelain=v1 --untracked-files=all
+exit_code: 0
+result: PASS; subject=798531af539cd37e797723f2985d55c70fa1046e; direct_parent=66052a13e9e52ca6d6cf7fc429b99158f5b25144; tree=5520376860c4190ae1ba90aaa741182436d7f822; dirty_paths=0
+
+2. cumulative-path-and-diff-provenance
+cwd: repository root of detached worktree
+command: git diff --name-status --no-renames 688e5d91182d73a7c0f0652a16377676602bedd7 798531af539cd37e797723f2985d55c70fa1046e; git diff --binary --no-ext-diff 688e5d91182d73a7c0f0652a16377676602bedd7 798531af539cd37e797723f2985d55c70fa1046e | shasum -a 256
+exit_code: 0
+result: PASS; cumulative_paths=9; path_list_sha256=1eb71733fb24c52db6f2059030bdfc6be450f91033dc1ffafa41a0e3a91d5993; cumulative_diff_sha256=af89151fdd649b213a71dd9842a27c97301e0ee38d05997451e635fd81694f20
+
+3. direct-fix-provenance
+cwd: repository root of detached worktree
+command: git diff --name-status --no-renames HEAD^ HEAD; git diff --binary --no-ext-diff HEAD^ HEAD | shasum -a 256
+exit_code: 0
+result: PASS; paths=1; path_list_sha256=0e3ca5c7da43b665e37599c1f03b828dccc6a4b0412ffe6933d5e70c899acd74; diff_sha256=86f919702055c758de5f1563c542196e10a940277aa457ba9f39b3670c2217be
+
+4. contract-suite
+cwd: contracts
+command: $CASELOOP_SOURCE/eval-harness/.venv/bin/python -m pytest conformance/test_schemas.py conformance/test_wilson.py conformance/test_v4_*.py conformance/test_v5_*.py -q
+exit_code: 0
+result: PASS; 523 passed in 13.39s (independent verifier: 523 passed in 13.31s)
+
+5. focused-d1-contract
+cwd: contracts
+command: $CASELOOP_SOURCE/eval-harness/.venv/bin/python -m pytest conformance/test_v5_lifecycle_decision.py -q
+exit_code: 0
+result: PASS; 6 passed (independent verifier: 0.23s)
+
+6. yaml-duplicate-key
+cwd: repository root of detached worktree
+command: Python unique-key SafeLoader over all contracts/v5 YAML documents
+exit_code: 0
+result: PASS; 18 files; 18 documents; duplicate_keys=0
+
+7. markdown-link-scan
+cwd: repository root of detached worktree
+command: Python tracked Markdown local-link scanner with URL decode, repo-escape and tracked-target checks
+exit_code: 0
+result: PASS; markdown_files=146; local_links=192; broken_missing_untracked_outside=0
+
+8. secret-pii-scan
+cwd: repository root of detached worktree
+command: Python high-confidence secret and PII scanner over cumulative D1 added lines
+exit_code: 0
+result: PASS; added_lines=864; secret_findings=0; pii_findings=0
+
+9. diff-check-and-clean-after
+cwd: repository root of detached worktree
+command: git diff --check 688e5d91182d73a7c0f0652a16377676602bedd7 798531af539cd37e797723f2985d55c70fa1046e && git status --porcelain=v1 --untracked-files=all
+exit_code: 0
+result: PASS; diff_findings=0; dirty_paths=0
