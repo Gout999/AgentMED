@@ -1,6 +1,6 @@
 # Project State
 
-- `repository_snapshot`: `b3727d72e9251bbf4d92047c02512d38eb976cf5`
+- `repository_snapshot`: R0 documentation-authority semantic subject (exact hash is recorded only by the post-commit evidence/status closure); pre-R0 baseline `4a0a421cc669bf98d9b882d149d5d3df4c8dc36e`
 - `last_independently_verified_evidence_subject_commit`: `b3727d72e9251bbf4d92047c02512d38eb976cf5` (V5-0C, contract-only freeze; V5 runtime facets NOT_RUN)
 - `stage0_documentation_commit`: `b7889a7e200f76bd5985188ff6fb7e9e1860fd28`
 - `previous_v3_evidence_commit`: `cef1598b4ac1d42fdd4f206c5747eb89a06f24fc`
@@ -8,8 +8,49 @@
 - `origin/main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `local main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `collaborator_sync_merge`: `4b5377dae317eaeadbf23ab85481881096b6d6d2`
-- `working_tree`: after the V5-0 closure commit, the intended remaining dirty paths are the preserved historical judge/live WIP groups (six tracked eval/live files plus untracked eval test and `scripts/b1_live/`) and any uncommitted working files. V5-0 freeze commits `8dd25ca` + `b3727d7` and the accepted V5 construction baseline documents are committed separately. Do not mix the WIP groups with V5 stage evidence or claim an implementation commit.
+- `working_tree`: large uncommitted V5-1A/B/C review-remediation worktree plus the preserved historical judge/live WIP groups. The repair changes are not a completion commit. D-013/product-principles/document archive/Master Plan belong to the R0 authority-recovery lane; presentation, unrelated eval/live files and `scripts/b1_live/` remain separate and must not be mixed into stage evidence.
 - `last_updated`: `2026-08-11` (Asia/Hong_Kong)
+
+## Current V5 repair truth (supersedes older runtime wording below)
+
+- Current execution orchestration is
+  `docs/plans/v5-master-execution-plan.md`. `docs/README.md` defines the document authority and
+  archive policy; old cumulative handoffs and preconstruction snapshots are historical only. The
+  Master Plan independent static execution review passed on 2026-08-11. The authority package is
+  the R0 semantic subject described here, but R0 remains open until detached clean-checkout
+  verification and a digest-bearing evidence/status closure commit pass.
+
+- Commits through `4a0a421` contain V5-1A/B/C implementation work, but the project-wide review
+  rejected the prior closure, so the tracked 1A/1B/1C bundles are not accepted closure authority.
+  Worktree-only banners and remediation evidence are deliberately excluded from R0; the old raw
+  artifacts remain unchanged until their owning runtime stage records a revocation/index update.
+- The current worktree repairs major-2 V5 event envelopes (migrations 011/012), exact revision and
+  record-digest bindings, server-owned trust roles, project/environment authorization, durable
+  denial audits, version/provenance/dataset validation, fresh post-proposal owner credentials,
+  honest pending ResolutionContract semantics, V5 Case Console visibility, `/api/v2/capabilities`,
+  Compose/readiness/secret defaults, demo-app Alembic ownership and notification DB isolation.
+- The repair worktree includes an R4-owned First System Case local runbook; it is deliberately
+  excluded from R0 and is not yet a clean-checkout capability. Credential issuance remains a local PostgreSQL management
+  operation; it is intentionally not exposed as public HTTP. Confirmation is authoritative human
+  input but remains `NEEDS_ACCEPTANCE_CRITERIA` until V5-4 materializes the exact
+  ResolutionContract.
+- Current transport discovery advertises only the implemented 1A/1B/1C allowlist. Standalone
+  `system-versions.record`, V5-2 durable work/V5 outbox delivery, V5-4 ResolutionContract and all
+  later Agent/MCP/A2A/release stages remain `NOT_IMPLEMENTED`.
+- Known unresolved 1A contract mismatch: frozen AIApplication/SystemComponent state machines create
+  `REGISTERED` then activate, while current register/import runtime writes `ACTIVE` directly. This
+  is recorded in the V5 runtime overlay and must be resolved explicitly; the review did not silently
+  rewrite the frozen target.
+- Current verification is focused/local only. Five V5 PostgreSQL repair journeys now pass in a
+  dedicated ephemeral loopback container, including the installed-CLI First System Case and the
+  concurrent first-import race; the container was removed afterward. An independent verifier passed
+  the final remediation worktree after the scope/type capability filter was repaired. There is still
+  no completion commit, digest-bearing run manifest, per-stage post-commit verifier or live facet.
+  Therefore V5-1A/B/C are `IN_PROGRESS`, not `DONE`.
+- `docs/decisions/D-013-v5-ai-system-governance-and-agent-native-control-plane.md` and its
+  referrers are in the R0 authority-recovery semantic subject. The product-authority chain remains
+  `VERIFYING` until the detached clean-checkout verifier and evidence/status closure commit bind the
+  exact subject hash.
 
 ## Current product and requirements state
 
@@ -24,26 +65,27 @@
   On 2026-08-11 the V5-0 contract baseline was frozen (V5-0B `8dd25ca`, V5-0C `b3727d7`) and
   independently accepted; the V5 stage construction baseline now supersedes `docs/plan-v4.md` for
   V5-stage work only. `docs/plan-v4.md` remains the V4 compatibility baseline; v3
-  code/contracts/migrations/tests remain the implemented Scenario compatibility baseline. V5
-  contract freeze is not runtime implementation: every V5 runtime/live facet stays `NOT_RUN`.
+  code/contracts/migrations/tests remain the implemented Scenario compatibility baseline. V5-0
+  contract freeze itself was not runtime implementation; the later 1A/B/C worktree is described in
+  the repair-truth section above and is not yet accepted closure evidence.
 - Confirmed later requirement, not implemented: CaseLoop self-observability through Langfuse and a pluggable TraceSource that can retrieve a governed Agent's Langfuse input/output/model/tool evidence with explicit completeness state.
 - The first reference workflow remains customer service. The authenticated no-trace Signal intake
-  subset is implemented and locally verified in S1A. V5 acceptance/BadcaseSpec readiness,
-  SystemVersionSet, SystemEpisodeView/Snapshot, durable operations, system Gate, CLI onboarding,
-  Agent-native async transports, local/shadow release and observed runtime verification are all
-  target-only and unimplemented.
+  subset is implemented and locally verified in S1A. V5 Application/SystemVersionSet/Case binding/
+  AcceptanceCriteria and CLI onboarding now have local repair implementations, but no accepted
+  completion commit. BadcaseSpec/ResolutionContract, SystemEpisodeView/Snapshot, durable operations,
+  system Gate, Agent-native async transports, local/shadow release and observed runtime verification
+  remain target-only and unimplemented.
 - `docs/plan-v4.md`, backed by `docs/research/demand/caseloop-v4-small-team-adoption.md`, is approved. Stage 0 and Stage 1 Entry are `DONE (contract-only)`; Stage 1A is `DONE (local runtime)` at `22c23f8`, with independent evidence. All provider, Agent runtime, repository, human-authorized external and production facets are `NOT_RUN`.
-- D-013 has closed the high-level V5 scope decision. The draft defines the proposed
+- D-013 has closed the high-level V5 scope decision. The accepted baseline defines the target
   Desired/Observed/Effect split, schema-major-2 V4 lifecycle reuse, `/api/v2` compatibility boundary, first wire
   slice, CLI-first competition proof, verification-only Candidate path and deployable-service
   local/shadow golden path. The V5-0 contract baseline (V5-0B `8dd25ca`, V5-0C `b3727d7`) is
   frozen and independently accepted; V5-1 and later runtime stages are unfrozen on the local branch
   and proceed one at a time per the blueprint dependency graph. V4 S1B–S7 remain frozen.
-- `contracts/v5/` is deliberately non-routable and non-discoverable; the freeze commits do not add a migration,
-  HTTP route, CLI command, MCP/A2A runtime, Agent execution or live source. The V5 focused suite is
-  68 passed (including 13 adversarial checks added by the verifier); v3/v4 independent is 449
-  passed; the v3/v4/V5 combined offline suite is 517 passed. `test_quality_api.py` needs a live
-  service and is `NOT_RUN`. These are contract evidence only.
+- `contracts/v5/` preserves the historical non-routable V5-0C freeze and now adds a current partial
+  runtime overlay for the implemented 1A/B/C transports. The historical 68/449/517 counts remain
+  V5-0 contract evidence only and do not verify the repair worktree. MCP/A2A, Agent execution and
+  live source remain absent; `test_quality_api.py` is still `NOT_RUN`.
 - The two later independent reports found a real target problem but also showed that acceptance
   criteria, first-use cost and Gate reality validity need to precede governance ceremony. Their
   changes were accepted without deleting the broader V5 target or weakening release authority.
@@ -139,12 +181,11 @@ This is the observed 2026-08-10 local platform snapshot and must be rechecked be
 - Full acceptance criteria, dependencies, evidence, and commits are in
   `PLANS.md`.
 
-Stage 1A is closed. The V5 product boundary, review-driven product adjustments, and the frozen
+V4 Stage 1A is closed. The V5 product boundary, review-driven product adjustments, and the frozen
 V5-0 contract baseline (V5-0B `8dd25ca`, V5-0C `b3727d7`) are recorded and independently accepted.
-V5-1 and later runtime stages are unfrozen on the local branch and proceed one at a time per the
-progressive-delivery dependency graph; the current activity is V5-1A (Application catalog). V4
-S1B through S7 remain frozen, and every V5 runtime/live facet stays `NOT_RUN` until a stage
-produces real evidence. Live-provider calls and external writes remain separately gated.
+V5-1A/B/C closure repairs are the current local activity; they remain `IN_PROGRESS` pending a
+digest-bearing evidence manifest, per-stage post-commit verifier and semantic completion commit. V4 S1B through
+S7 remain frozen. Live-provider calls and external writes remain separately gated.
 
 ## Actual runnable commands
 
@@ -174,7 +215,8 @@ cd ../mcp-servers
 
 cd ../contracts
 ../eval-harness/.venv/bin/python -m pytest \
-  conformance/test_schemas.py conformance/test_wilson.py conformance/test_v4_*.py -q
+  conformance/test_schemas.py conformance/test_wilson.py \
+  conformance/test_v4_*.py conformance/test_v5_*.py -q
 ```
 
 If FileProvider has offloaded an ignored virtual environment, rebuild it under
@@ -193,10 +235,9 @@ If FileProvider has offloaded an ignored virtual environment, rebuild it under
 
 Evidence: freeze commits `8dd25ca2c0876632778827c9cbfb9dc14a169f1a` and
 `b3727d72e9251bbf4d92047c02512d38eb976cf5`. Only `contract=PASS`; every V5
-runtime/provider/Agent/repository/human/production facet is `NOT_RUN`. Known V5-1B
-alignment item: `trusted_attestor` is still dangling in the trust-role lists of
-`system-versions.record` and `bootstrap_attestation`; V5-1B must align it with
-`catalog_admin`.
+runtime/provider/Agent/repository/human/production facet is `NOT_RUN`. The old
+`trusted_attestor` mismatch was a repair finding and is not an open current-state blocker; the
+current runtime/contract allowlists must still be revalidated in each stage's post-commit evidence.
 
 ## Independently verified v4 Stage 0 contract record
 

@@ -1,10 +1,14 @@
 # CaseLoop V5 progressive delivery blueprint
 
-> 状态：**ACCEPTED V5 CONSTRUCTION BASELINE（2026-08-11；freeze: `8dd25ca` + `b3727d7`）**
+> 状态：**ACCEPTED TARGET BLUEPRINT（2026-08-11；freeze: `8dd25ca` + `b3727d7`）**
 >
 > 更新：2026-08-11
 >
 > 目标：从已完成的 V4 Stage 1A 出发，以可独立验证和回滚的步骤建设 AI 应用系统治理与 Agent-native 能力面。
+>
+> 当前施工、work package、stop gate 与提交边界以
+> [`v5-master-execution-plan.md`](v5-master-execution-plan.md) 为准；本文保留目标语义、
+> 历史 freeze 和 stage exit，不作为 current worktree 状态页。
 
 本蓝图面向能够冷启动接手任务的后续 Agent/贡献者。每个步骤都必须先读本文件、
 `AGENTS.md`、`docs/product-principles.md`、`docs/plan-v5.md`、
@@ -46,23 +50,27 @@ V5-0A Product/ADR alignment
 V5-6 operations modules begin only after the relevant V5-5 invariants exist.
 ```
 
-`V5-1A` 与 `V5-2A` 在 V5-0C 通过后可并行；`V5-2C` 与 V5-3、Console read model 可
+目标依赖允许 `V5-1A` 与 `V5-2A` 在 V5-0C 通过后并行；但当前混合 repair worktree 和
+逐 stage completion 纪律要求先关闭 V5-1A/B/C，再启动 V5-2A，详见 Master Plan。
+`V5-2C` 与 V5-3、Console read model 可
 并行，V5-3 不以 A2A/MCP runtime 通过为前置。Attribution 只有在 workload 把它声明为
 required 时才阻塞 Gate；比赛可诚实 abstain 后直接进入独立 Candidate/Gate。所有入口
 均不得复制 application service。
 
 ## 2. V5-0 — 设计、owner 与兼容冻结
 
-> 状态：V5-0A/0B/0C 已于 2026-08-11 关闭（V5-0B `8dd25ca`、V5-0C `b3727d7`
-> 独立验收 PASS；V5 focused 68 / v3v4 449 / combined 517 passed）。本节保留历史
-> context 与 exit 记录；不再作为待施工项。
+> 状态：V5-0B/0C 已于 2026-08-11 关闭（`8dd25ca`、`b3727d7` 独立验收 PASS）。
+> V5-0A 的产品决策已接受，但 D-013/product-principles 的 clean-checkout 文档包装在当前
+> repair 中重新打开；这不改写 0B/0C 历史 freeze。本节保留历史 context 与 exit，当前
+> repair 见 Master Plan R0。
 
 ### V5-0A · Product boundary and supersession
 
 #### Context
 
 V4 S1A 已完成，但 V4 后续顺序不再匹配产品方向。D-013 只接受产品边界；V5 PRD、
-plan 和 contracts 当前仍是 draft。
+plan 和 contracts 在 V5-0A 开工时仍是 draft。以下 Tasks/Verification/Exit 保留当时的
+施工记录；当前 accepted baseline 与 partial runtime 状态见本文件顶部和 Master Plan。
 
 #### Tasks
 
@@ -77,14 +85,14 @@ plan 和 contracts 当前仍是 draft。
 #### Verification
 
 - Markdown links 可解析；
-- 所有 V5 能力均标注 target/not implemented；
+- 当时尚未实现的 V5 能力均标注 target/not implemented；
 - `rg` 不再把 S1B–S7 写成下一施工步骤；
 - 独立产品/评测审阅的成立需求、未验证假设和过重设计已有明确处置；
 
 #### Exit / rollback
 
 - Exit：产品定位、anti-goals、V4→V5 关系和施工暂停无冲突。
-- Rollback：撤销 draft 文档引用；不触碰 S1A runtime/evidence。
+- Rollback：撤销当时的 draft 文档引用；不触碰 S1A runtime/evidence。
 - Commit：`docs(v5): define ai-system governance boundary`
 
 ### V5-0B · Domain, ownership and state contracts
@@ -213,7 +221,8 @@ acceptance-criteria.confirm
 
 ### V5-1A · Application catalog
 
-> 状态：**当前施工 stage**（V5-0C 已于 2026-08-11 关闭，Entry 条件已满足）。
+> 状态：**IN_PROGRESS / CLOSURE REPAIR**。V5-1A/B/C 当前共同处于 repair worktree；
+> 阶段只能按 Master Plan 分别形成 completion commit、evidence 和 verifier 后关闭。
 
 #### Entry
 
@@ -253,7 +262,9 @@ acceptance-criteria.confirm
   `APPLICATION_CODE/PROMPT/MODEL_BINDING/RETRIEVER/INDEX` 的 manifest 草稿；必须人工
   确认后才调用 canonical import，扫描结果不构成 observed runtime；
 - identity assurance 与 semantic diff；
-- manifest CLI：validate/record/get/diff；
+- manifest CLI：validate/import/get/diff；standalone `system-versions.record` 必须先经过
+  Master Plan D2 contract activation，且只引用既有 catalog/revision/topology，不暗建
+  前置对象；
 - first manifest 只包含当前 workload 能可靠确认的组件：至少 application code，以及实际
   存在的 Prompt/model/retriever/index/Agent/tool binding；不为填满枚举制造空资产；
 - 导入一个独立可信的人类 approver policy revision，供后续 Approval exact binding 使用；
@@ -275,8 +286,9 @@ acceptance-criteria.confirm
 
 #### Exit / rollback
 
-- Exit：一个 application/environment 有 exact declared VersionSet 和 desired assignment；
-  不宣称 observed runtime。
+- Target Exit：一个 application/environment 至少有两个可独立记录的 exact declared
+  VersionSet，semantic diff 覆盖真实变更，且 desired assignment 不宣称 observed runtime。
+  若 D2 选择 defer，只能形成 `BOOTSTRAP_ONLY` 限定出口，V5-4 前仍必须补齐 target exit。
 - Evidence：`evidence/v5/stage-1/system-version/<run-id>/`
 - Commit：`feat(v5): add immutable system versions`
 
@@ -300,16 +312,18 @@ acceptance-criteria.confirm
 - issue prompt injection、duplicate webhook、edited/deleted source、malicious attachment；
 - Signal/Case immutable digest 不被 application link 改写；
 - application/version 不可确定时 Case 仍 OPEN；
-- 明确 Issue 可形成 executable badcase；模糊 Issue 显示
-  `NEEDS_ACCEPTANCE_CRITERIA` 并返回下一步，不能启动 Gate；
+- 明确 Issue 可形成 maintainer-confirmed acceptance input；模糊 Issue 显示
+  `NEEDS_ACCEPTANCE_CRITERIA` 并返回下一步。两者在 V5-4 ResolutionContract exact
+  materialization 前都不能启动 Gate；
 - Agent proposal 不能自我确认验收标准，confirmed revision 不能原位改写；
 - no remote comment/claim/fork/push/PR。
 
 #### Exit / rollback
 
 - Exit：一个真实 Issue 或 maintainer report 形成 First System Case，并产生 confirmed
-  executable badcase，或诚实进入 `NEEDS_ACCEPTANCE_CRITERIA`；记录从 source 到该结果的
-  人类时间和阻塞原因。
+  acceptance input 或诚实进入 `NEEDS_ACCEPTANCE_CRITERIA`；confirmed 状态保持
+  `PENDING_MATERIALIZATION`，直到 V5-4 exact ResolutionContract 后才可能 executable。
+  记录从 source 到该结果的人类时间和阻塞原因。
 - Evidence：`evidence/v5/stage-1/first-system-case/<run-id>/`
 - Commit：`feat(v5): bind quality cases to ai applications`
 
@@ -620,6 +634,8 @@ V5-6 不是一个巨型提交，按真实用户需求拆成独立模块：
 - 一个真实外部 Agent 经显式 V2 CLI 调用；
 - `caseloop init`/`case from-issue` 形成经人工确认的 manifest 与 AcceptanceCriteria；若原
   Issue 模糊，必须诚实展示 `NEEDS_ACCEPTANCE_CRITERIA`，不能继续伪造成功路径；
+- V5-4 从 exact Case binding、confirmed AcceptanceCriteria、source snapshot 和 base
+  VersionSet 物化 exact ResolutionContract，再从它产生 executable BadcaseSpec；
 - 一个本地 Candidate 与 repo-sandbox evidence；
 - 单 repo component/单主要变更面；
 - base FAIL/target PASS、repo/历史 regression、sealed holdout/anti-overfit、repo-sandbox
@@ -640,11 +656,12 @@ V5-6 不是一个巨型提交，按真实用户需求拆成独立模块：
 - 用 GitHub Issue 文本授予权限；
 - 把 local assignment 称为 production canary；
 - 把单变更面演示称为完整跨组件自动归因；
-- 把 draft V5 contracts 称为已实现平台治理。
+- 把 target-only/deferred V5 contracts 称为已实现平台治理。
 - 把 library/offline 的本地 assignment drill 称为真实 deployed-service release proof。
 
-建议同时演示一个普通 `CODE_CHANGE`/library Issue 对照路径：confirmed badcase →
-Candidate verification → `VerifiedCandidate / NOT DEPLOYED`。它不进入 V5-5，也不替代
+建议同时演示一个普通 `CODE_CHANGE`/library Issue 对照路径：confirmed AcceptanceCriteria
+→ exact ResolutionContract → executable BadcaseSpec → Candidate verification →
+`VerifiedCandidate / NOT DEPLOYED`。它不进入 V5-5，也不替代
 主路径的 observed/rollback 证明；其作用是诚实展示 CaseLoop 相对 GitHub/CI 的增量与成本。
 
 不作为比赛关门线：generic catalog CRUD/graph、SystemEpisode public endpoint、完整

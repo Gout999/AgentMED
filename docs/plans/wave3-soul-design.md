@@ -1,6 +1,10 @@
 # Wave 3 · 6 SOUL 骨架设计稿（主控设计 → 评审 → Claude 成稿）
 
-> 设计约束来源：spec §8（编制/仲裁三规则/扩缩容口径）、plan-v3（反剧本、AgentTeams v1.2.1 钉版、叙事纪律）、S0-003（交接=taskflow 生命周期+shared/tasks/{task-id}/）、S0-004（MCP 挂载真实路径）、D-001（活跃 worker ≤2、8 RPM、TTL/冷却）、D-002（执行器路由）。
+> **V3 HISTORICAL/FROZEN COMPATIBILITY DESIGN**：本文仍被固定六角色运行资产引用，
+> 因此保留原路径；它不是当前 V5 team、owner 或施工计划。当前 V5 编排见
+> [`v5-master-execution-plan.md`](v5-master-execution-plan.md)。
+>
+> 设计约束来源：spec §8（编制/仲裁三规则/扩缩容口径）、plan-v3（反剧本、AgentTeams v1.2.1 钉版、叙事纪律）、S0-003（交接=taskflow 生命周期+shared/tasks/{task-id}/）、S0-004（MCP 挂载真实路径）、D-001（活跃 worker ≤2、8 RPM、TTL/冷却）、历史 D-002 executor routing（现已归档，不是 active 领域 ADR）。
 
 ## 0. 反剧本总纲（六份 SOUL 共同遵守）
 

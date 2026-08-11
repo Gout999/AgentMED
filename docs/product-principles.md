@@ -1,14 +1,23 @@
 # CaseLoop 产品原则
 
-> 状态：用户已确认 ｜ 生效日期：2026-08-10
+> 状态：**V5 产品边界与施工基线已接受；runtime 分阶段实现中** ｜ 生效日期：2026-08-10 ｜ 基线接受：2026-08-11
 >
-> 本文是产品定位、范围取舍与对外口径的上位原则。v4 新开发以 `docs/plan-v4.md` 和 `contracts/v4/` target contracts 为施工基线；尚未迁移的当前实现仍以 `docs/plan-v3.md`、v3 contracts、migrations 和可执行测试为兼容基线。运行事实以代码、PostgreSQL 权威记录和可复验证据为准。研究报告和比赛材料不能覆盖这些层级。
+> 本文是产品定位、范围取舍与对外口径的上位原则。V5 产品转向由 `docs/decisions/D-013-v5-ai-system-governance-and-agent-native-control-plane.md` 记录；`docs/prd-v5.md`、`docs/plan-v5.md`、`docs/plans/v5-progressive-delivery.md` 与冻结的 `contracts/v5/` 已在 2026-08-11 成为 V5 stage 施工基线。施工基线不证明 runtime、provider、Agent、external 或 production 已实现；当前执行与阻塞以 `docs/plans/v5-master-execution-plan.md`、`PLANS.md` 和 `docs/context/` 为准。v4 已完成边界仍由 `docs/plan-v4.md` 和 `contracts/v4/` 约束；尚未迁移的当前实现继续以 `docs/plan-v3.md`、v3 contracts、migrations 和可执行测试为兼容基线。运行事实以代码、PostgreSQL 权威记录和可复验证据为准。研究报告和比赛材料不能覆盖这些层级。
 
 ## 1. 产品身份
 
-CaseLoop 最终要做成一个长期维护的**开源 AI Agent 质量与变更治理项目**。
+CaseLoop 最终要做成一个长期维护的、**面向 AI 应用的 Agent-native 治理运营控制面**。
 
-它服务的是已经在开发或运行 AI Agent / LLM 应用、需要处理坏结果、验证修复和控制发布风险的团队。小智客服是当前第一个参考工作负载，用来跑通纵向闭环；它不是 CaseLoop 的最终产品边界，也不代表通用 Agent 接入已经完成。
+它服务的是已经在开发或运行 AI Agent / LLM 应用、需要处理坏结果、验证修复和控制发布风险的团队。被治理的顶层对象是完整 `AIApplication`，Agent 是其中一种一等 `SystemComponent`；应用代码、模型、Prompt、RAG、Skill/MCP/tool、Policy、Memory 与 Runtime 都可以成为系统版本、归因、评测和变更的一部分。
+
+它的第一用户价值不是要求维护者先完成一套治理登记，而是把一条模糊反馈或 Issue
+变成**有来源、可复现、可判定的 bad case**：说明当时运行了什么、期望行为由谁确认、
+候选是否真正解决问题，以及下一步还缺什么证据。版本、评测、审批、发布和恢复内核
+都服务于这条用户旅程，不能反过来成为首用门槛。
+
+CaseLoop 同时提供两类产品表面：人类 Console 用于查看、审批、干预、复盘和审计；HTTP、CLI、MCP、A2A 与 SDK 让 CI、客户应用和其他 Agent 把 CaseLoop 作为自身治理能力调用。Console 和 Agent-native 入口必须复用同一 canonical intent 与 PostgreSQL 权威内核，不能形成两套业务语义。
+
+小智客服是当前第一个参考工作负载，用来跑通纵向闭环；它不是 CaseLoop 的最终产品边界，也不代表通用 Agent 或 AI 应用系统接入已经完成。
 
 我们的目标不是击败某个闭源产品，也不是为了寻找“市场空白”而决定功能。需求是否进入 CaseLoop，首先看它是否解决目标用户的真实工作，而不是看同类产品有没有做、会不会功能重叠。
 
@@ -17,15 +26,16 @@ CaseLoop 最终要做成一个长期维护的**开源 AI Agent 质量与变更�
 产品范围按下面的顺序判断：
 
 1. 目标用户是否确实需要这项能力；
-2. 这项能力是否属于从质量信号、取证、归因、候选修复、评测门禁到发布与复盘的治理闭环；
+2. 这项能力是否属于从 AI 应用资产与版本、质量信号、取证、归因、候选修复、评测门禁到发布、恢复与复盘的治理闭环；
 3. 它是否能在开源、自托管和可维护的前提下可靠交付；
-4. 它与现有组件应当集成、复用还是由 CaseLoop 自己实现。
+4. 它是否减少用户定义问题、拼接证据和确认修复的净工作，而不是只增加登记与审批；
+5. 它与现有组件应当集成、复用还是由 CaseLoop 自己实现。
 
 “已有项目做过”不是删除需求的理由。成熟实现可以成为设计参考、兼容对象或依赖；如果目标用户仍需要统一体验、私有部署、国内适配、确定性治理或长期可维护性，CaseLoop 可以实现自己的兼容组件。
 
 ## 3. 与其他项目的关系
 
-Langfuse、OpenTelemetry、Phoenix、各类 eval 框架、Agent runtime、sandbox、身份与策略系统，首先是可学习、可集成的相关项目，不是用来反向定义 CaseLoop 边界的“敌人”。
+Langfuse、OpenTelemetry、Phoenix、各类 eval 框架、Agent runtime、sandbox、身份与策略系统，以及 CMDB、ITSM、SRE、CI/CD、供应链和 FinOps 系统，首先是可学习、可集成的相关项目，不是用来反向定义 CaseLoop 边界的“敌人”。
 
 CaseLoop 应当：
 
@@ -60,26 +70,41 @@ CaseLoop 首先把国内团队的使用条件做好：中文文档、自托管�
 
 - PostgreSQL 控制面持有生命周期、权限、审批、发布与审计的权威状态；
 - LLM 和 Agent 只能产出建议、假设与候选工件，不能自行改写权威状态；
+- 期望配置、实际运行状态和已经发生的外部副作用必须分开记录，任一层都不能由另一层推断为成功；
 - 发布必须绑定确切且不可变的 WorkOrder、审批、GateReport、版本、nonce 与有效期；
-- `FAILED`、`INCONCLUSIVE`、`ERROR`、`UNKNOWN`、缺失或不匹配的证据都必须 fail closed；
+- 对拟创建或执行 WorkOrder 的每项 required/applicable evidence，`FAILED`、
+  `INCONCLUSIVE`、`ERROR`、`UNKNOWN`、缺失或不匹配都必须 fail closed；预先有理由声明的
+  `N/A` 和 optional/advisory Finding 必须单独显示，不能被提升成 required PASS；
+- fail closed 约束的是可执行 WorkOrder 与外部动作授权，不把调查中的 `INCONCLUSIVE/UNKNOWN`
+  伪装成 Case 失败或产品死路；系统必须返回补充验收标准、补证、增加样本或重新评测的
+  明确下一步，人类不能直接覆盖一份失败 Gate 后执行发布；
 - evidence 只使用 `contract`、`replay`、`domain-provider-live`、`agentteams-native`、`claude-runtime-live`、`agent-causal`、`repo-sandbox`、`human-authorized-external`、`production-canary` 这组 canonical facets；mock 和 platform export 不是成功 facet；
 - 证据导出器只能证明它实际观察和导出的事实，不能补造 Agent 执行、人工审批或因果关系。
 
 这些约束不是为了制造产品差异，而是为了让开源项目值得用户信任。
 
-## 7. 当前已确认的通用化方向
+## 7. 当前已确认的 V5 方向
 
 以下是需求讨论已经确认的方向，**不表示仓库已经实现**：
 
-1. CaseLoop 自身应接入标准化可观测链路，并支持把自身运行 trace 发送到 Langfuse；
-2. 治理外部 Agent 时，应能通过可插拔 `TraceSource` 读取该 Agent 在 Langfuse 中的输入、输出、模型调用、工具调用和相关上下文；
-3. Langfuse 是首个适配器，不是唯一后端；OpenTelemetry、Phoenix 或其他符合契约的来源应可接入；
-4. trace 是取证来源，不是 CaseLoop 的权威生命周期数据库；进入案件和门禁的证据需要被固化、去重、校验完整性并绑定 digest；
-5. 不能默认 Langfuse 一定拥有“全部”输入输出。接入契约必须报告采集范围、脱敏、丢失、留存和权限造成的完整性状态；证据不足时返回 `UNKNOWN`；
-6. “被治理的 Agent”和“CaseLoop 内部负责分析/起草的 Agent”是两类身份，后续 PRD 与契约必须分开描述。
-7. 当前 `caseloop-team` 是六个 CoPaw/StepFun 质量治理 Worker，不是专业 coding Team；v4 新增独立 `caseloop-coding-team`，不能通过重命名或事后证据把两者混为一队；
-8. AgentTeams Worker principal、Claude Code runtime session、模型 provider/model、被治理 Agent 与确定性 Controller/Executor 是不同身份，权限、作者与 evidence receipt 必须分别记录；
-9. Claude Code 是首个受控 coding execution harness，GLM-5.2 是目标主模型；二者都必须通过实际 runtime/provider 验证后才能写成已接通能力。
+1. 核心治理层级为 `Workspace → Project → AIApplication → Environment → SystemComponent`；Agent 是组件类型，不再承载完整应用系统边界；
+2. `SystemVersionSet` 必须不可变地绑定会改变 AI 行为、权限或证据解释的组件；无法固定的远程依赖明确标记 assurance 与 `UNKNOWN`，不能伪装成 exact binding；
+3. `SystemEpisodeView` 用于关联一次用户体验或业务过程中的应用、Agent、模型、RAG、工具和外部作用证据；单个 trace/span 只是其来源之一。Gate/归因必须绑定带 exact receipt set、assignment generation 和 watermark 的不可变 `SystemEpisodeSnapshot`，不能绑定会变化的 view；
+4. CaseLoop 自身应接入标准化可观测链路；被治理系统通过可插拔 Evidence Source 读取 Langfuse、OpenTelemetry、Phoenix、CI、repo、runtime 或其他来源。Langfuse 是适配器，不是权威状态库；
+5. 进入 Case、归因和 Gate 的证据需要被固化、去重、校验完整性并绑定 digest。采集范围、脱敏、采样、丢失、留存和权限不足必须显式表达为 `PARTIAL/UNKNOWN`；
+6. 外部 Agent、CaseLoop 内部 Worker、被治理 Agent、runtime session、provider/model、确定性 Controller/Executor 和只读 Exporter 是不同身份，权限、作者和 receipt 必须分别记录；
+7. Canonical HTTP intent 是能力基线；CLI、MCP、A2A、SDK 和 Console 是薄 Adapter。外部 Agent 可以报告、调查、提交候选、请求测评和请求动作，但不能 human approve 或取得内部 release execute authority；
+8. Durable Work、不可变 Candidate/Evaluation/Gate，以及在请求部署时使用的 pre-Gate
+   ReleasePlan、精确 WorkOrder/人类审批、幂等外部动作、`UNKNOWN` reconcile、rollback 和
+   compensation 是 V5 必须继承的治理内核；verification-only PASS 不产生 WorkOrder，
+   V4 closed schema 通过同 owner 的 schema-major-2 system profile 泛化，不能原位继承；
+9. 当前 `caseloop-team`、计划中的 `caseloop-coding-team`、AgentTeams、Claude Code 和具体模型都降为可替换的参考 Worker/Runtime/Client Adapter，不是 V5 内核或用户必装依赖；
+10. 通用 CMDB、观测存储、Agent runtime、CI/CD、IAM、ITSM、账单和 GRC 平台通过 Adapter 对接。CaseLoop 自身持有 AI 系统版本、质量案件、证据绑定、变更授权、执行对账和恢复事实。
+11. First Useful Case 必须记录验收标准来源；来源不足时诚实显示
+    `NEEDS_ACCEPTANCE_CRITERIA`，而不是让 Agent 从 Issue 文本自动制造金标准；
+12. 首批同时支持轻量的代码 Issue 验证路径与完整的 AI 行为治理路径。代码库或离线库可在
+    Verified Candidate 结束；只有存在真实部署面的应用才要求 release、observed 与 rollback
+    证明。两条路径共享 Case、VersionSet、Evidence 和 Gate 内核，不形成两套产品。
 
 ## 8. 文档与对外表述纪律
 
@@ -87,4 +112,4 @@ CaseLoop 首先把国内团队的使用条件做好：中文文档、自托管�
 - 不使用“没人做”“唯一”“全面合规”“所有 Agent 已可接入”等未经验证的绝对表述；
 - 已有项目做得好的能力，应明确写成参考、复用或兼容对象；
 - 当前实现、历史演示、研究推断、已确认需求和待决问题必须分栏表达；
-- 已批准需求进入 `docs/prd-v2.md` 与 `docs/plan-v4.md` 后成为 v4 施工基线；尚未被 migration、contract 和测试替换的运行边界仍以 v3 实现基线为准。
+- V5 产品边界已由 D-013 记录，V5 PRD/plan/blueprint/frozen contracts 已接受为 V5 stage 施工基线；它们只取代 V5 新施工顺序，不追溯改写 v3/v4 兼容事实。尚未被 migration、runtime、测试和证据替换的运行边界仍以 v3/v4 已实现基线为准。

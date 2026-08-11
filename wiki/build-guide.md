@@ -7,7 +7,8 @@
 ## 开工前的权威顺序
 
 1. 产品范围与口径：[产品原则](../docs/product-principles.md)。
-2. 当前 v3 实施：[AGENTS.md](../AGENTS.md)、[plan-v3](../docs/plan-v3.md)、版本化 [`contracts/`](../contracts/) 与可执行测试。
+2. 工程规则与 V5 执行：[AGENTS.md](../AGENTS.md)、[文档索引](../docs/README.md)、
+   [Master Execution Plan](../docs/plans/v5-master-execution-plan.md) 和任务涉及的 contracts。
 3. 当前任务和事实：[PLANS](../PLANS.md)、[PROJECT_STATE](../docs/context/PROJECT_STATE.md)、Git 状态与真实 evidence。
 4. 研究、比赛、Wiki 与交接只提供参考；冲突必须显式提出，不能让 Agent 猜成权威决定。
 
@@ -22,7 +23,10 @@
 
 Stage 1 只有在 S1A 与 S1B 各自满足测试、证据和验收边界后才能整体关闭；本地 PostgreSQL/loopback 通过不等于 `domain-provider-live`。
 
-S1A 封板后暂停 S1B–S7；用户正在盘点从 Agent 治理扩展到 AI-system 治理的 V5 需求，完成兼容性/替代关系裁决前不继续施工。
+V4 S1B–S7 继续冻结。D-013 和 V5 construction baseline 已接受；当前只允许按 Master Plan
+关闭 V5-1 repair。V5-2+ 必须等待 R0–R4 completion commits/evidence/verifier，并另行冻结
+对应 contract/runtime activation；不得从“baseline accepted”推导 route、worker、Adapter
+或 Console 已完成。
 
 ## 工具无关的角色分工
 

@@ -4,26 +4,36 @@
 
 ## 产品定位
 
-CaseLoop 是面向 AI Agent / LLM 应用团队的**开源质量与变更治理控制面**。它帮助团队把坏结果转成可追踪案件，取得运行证据，验证归因和候选修复，并在确定性门禁、审批、发布、回滚与审计约束下完成闭环。
+CaseLoop 是面向 AI 应用团队的**开源 Agent-native 治理运营控制面**。它帮助团队把坏结果转成可追踪案件，绑定完整系统版本和运行证据，验证归因与候选修复，并在确定性门禁、审批、发布、回滚、补偿与审计约束下完成闭环。
 
 目标用户的真实治理任务决定产品范围。已有 trace、eval、runtime、sandbox 和身份系统可以被参考、复用或适配；功能重叠不是删除需求的理由。完整原则见 [CaseLoop 产品原则](../docs/product-principles.md)。
 
 CaseLoop 优先满足国内团队的中文、自托管、私有化、国内模型、云服务与协作渠道需求；核心契约保持 provider-neutral。StepFun、飞书、AgentTeams 和 Langfuse 都是当前或计划中的实现与适配器，不是产品身份。
 
-v4 产品方向和渐进式施工路线已经批准，完整基线见 [CaseLoop v4 全盘计划](../docs/plan-v4.md)。Stage 0、Stage 1 Entry 与 S1A 已封板；S1A 是本地 no-trace intake 子集，不代表完整 v4、provider 或 Agent runtime 已实现。
+V5 产品边界已由 D-013 接受：顶层对象是 `AIApplication`，Agent 是组件；Console 与其他
+Agent 调用同一治理内核。V5 [PRD](../docs/prd-v5.md)、[plan](../docs/plan-v5.md)、blueprint
+和 frozen `contracts/v5/` 已是 V5 stage 施工基线，当前编排见
+[Master Execution Plan](../docs/plans/v5-master-execution-plan.md)。V5-1A/B/C repair 尚未形成
+completion commit；V5-2+ 未实现。plan v4 保留为 V4 兼容性基线。
 
 ## 适用边界
 
 - 当前仓库的第一条参考 workload 是「小智客服」；v3 另选 AgentTeams v1.2.1 作为 CaseLoop 内部协作适配器。两者都用于证明和暴露纵向闭环的工程问题，不等于通用 Agent 接入已经完成。
-- 通用化目标面向能够提供版本、运行证据、评测和发布/回滚接点的 Agent；最小接入合同已冻结，S1A no-trace intake 已实现，其余证据/评测/发布边界仍待后续阶段或 V5 scope 裁决。
+- 通用化目标面向能够提供版本、运行证据、评测和发布/回滚接点的完整 AI 应用；V4 S1A
+  no-trace intake 已完成，V5-1 catalog/version/Case 主体处于 repair/closure，V5-2 durable
+  operation、V5-3 evidence、V5-4 Gate 与 V5-5 release/recovery 未实现。
 - CaseLoop 不取代 Agent runtime，也不把 Langfuse 等 trace 系统当生命周期权威数据库。
 - LLM 与 Agent 只给建议、假设和候选工件；PostgreSQL 控制面持有权限、状态、审批、发布和审计事实。
 
-## 通用核心闭环（已批准目标，S1A 子集已实现）
+## V5 核心闭环（已接受目标；实现按 stage 分栏）
 
 ```text
-质量 Signal → Case → 被治理 Agent Run / Trace 取证 → 归因假设与验证
-  → 候选变更 → Gate → Approval → Release / Rollback
+质量 Signal → Case → confirmed badcase / NEEDS_ACCEPTANCE_CRITERIA
+  → AIApplication / SystemVersionSet / EpisodeSnapshot → 候选变更
+  → Candidate Verification Gate → VerifiedCandidate / NOT DEPLOYED
+  └→ deployable target：pre-Gate ReleasePlan → Release Authorization Gate
+     → SystemWorkOrder → human Approval → Observed
+     → scoped Release / Rollback / Reconcile / Compensate
   → Closure → 回归资产与信任证据
 ```
 
@@ -119,7 +129,9 @@ Claude Code、父 Worker、模型 provider、Controller 与 Repo Executor 是不
 | 真实 GitHub coding case | `NOT RUN`；留言、认领、fork、push、PR 均未授权，执行前逐次询问用户 |
 | 真实 Agent 因果执行 | 在新的 agent-causal 验收口径下，当前快照尚无独立验证的合格证据；更早 live 是否包含真实 Agent 因果参与，只按当时调用链和证据判断，不因本次口径更新被抹除 |
 
-当前活动项是 V5 AI-system-governance 需求盘点；S1B–S7 暂停。每项能力只有在真实调用路径、权威记录、测试与证据齐全后才可标为已实现。
+当前活动项是 V5-1A/B/C closure repair 和文档权威恢复；V4 S1B–S7 冻结，V5-2+ 尚未
+开始。每项能力只有在真实调用路径、权威记录、测试、evidence、semantic commit 和
+post-commit verifier 齐全后才可标为已实现。
 
 ## 统计纪律示例
 

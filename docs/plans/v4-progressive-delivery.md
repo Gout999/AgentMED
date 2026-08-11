@@ -6,6 +6,10 @@
 >
 > 当前施工分支：`codex/v4-foundation`
 >
+> 兼容性提示：本文是 V4 已批准计划与历史施工台账。V4 S1A 保留为已验证的本地
+> compatibility runtime；V5 stage 的当前施工编排以
+> [`v5-master-execution-plan.md`](v5-master-execution-plan.md) 为准。
+>
 > 目的：把已确认的 CaseLoop v4 产品方向拆成可以逐阶段运行、验证、回滚和提交的工程闭环。本文描述目标与施工顺序，不把计划中的能力写成当前实现。
 
 ## 0. 权威边界与台账规则
@@ -23,7 +27,7 @@
 | Stage | 状态 | 完成判据 |
 |---|---|---|
 | Stage 0 · 语言、契约与双 Team 冻结 | `DONE (contract-only)` | 正式文档、ADR、已列明的 Stage 0 contract slices、Intent/transport/OpenAPI skeleton 和 contract tests 通过；不宣称完整 HTTP 字段合同、migration、runtime 或 live 已完成 |
-| Stage 1 · Shadow Signal + Langfuse | `NOT STARTED` | 读取被治理 Agent 与 CaseLoop 自身 OTel 输出/回读两条 Langfuse 链均通过；真实 Signal 形成 First Useful Case；clean-machine 自助激活通过 |
+| Stage 1 · Shadow Signal + Langfuse | `S1A DONE (LOCAL RUNTIME) / S1B PROVIDER-LIVE BLOCKED` | S1A 已完成认证 no-trace intake；S1B 仍需两条 Langfuse 链、First Useful Case 与 clean-machine 自助激活 |
 | Stage 2 · Work Kernel + Claude Code + Coding Team | `NOT STARTED` | 2A/2B/2C 全部通过，形成真实 agent-causal coding receipt chain |
 | Stage 3 · Verified Candidate | `NOT STARTED` | 3A/3B/3C 全部通过，代码与 Prompt 候选复用同一治理内核 |
 | Stage 4 · Guarded External Operations | `NOT STARTED` | 经逐次人批完成一个可对账、可停止的 draft PR 动作 |

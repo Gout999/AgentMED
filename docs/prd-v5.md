@@ -1,6 +1,6 @@
 # CaseLoop 产品需求文档 v5
 
-> 状态：**ACCEPTED V5 CONSTRUCTION BASELINE（2026-08-11；freeze: `8dd25ca` + `b3727d7`）/ NOT IMPLEMENTED**
+> 状态：**ACCEPTED V5 CONSTRUCTION BASELINE（2026-08-11；freeze: `8dd25ca` + `b3727d7`）/ PARTIALLY IMPLEMENTED BY STAGE**
 >
 > 更新：2026-08-11
 >
@@ -24,7 +24,8 @@ CaseLoop V5 是一个**面向 AI 应用的 Agent-native 治理运营控制面**�
 发布和外部作用组织成一条可追踪、可验证、可批准、可恢复的系统治理闭环：
 
 ```text
-Signal → QualityCase → AcceptanceCriteria / executable badcase
+Signal → QualityCase → confirmed AcceptanceCriteria
+       → exact V5-4 ResolutionContract / executable badcase
        → SystemVersionSet / EpisodeSnapshot / evidence
        → optional Attribution → SystemCandidateRevision
        → Candidate Verification Gate → VerifiedCandidate / RegressionAsset (NOT DEPLOYED)
@@ -606,7 +607,7 @@ Incident/SLO、成本与 vendor 治理仍按 P1/P2 继续建设。
 
 ## 14. 成功指标
 
-- Issue/Signal→confirmed executable badcase 的时间、转化率和阻塞原因；
+- Issue/Signal→confirmed AcceptanceCriteria→V5-4 exact executable badcase 的时间、转化率和阻塞原因；
 - time-to-first-system-case，以及 First Case 与后续复用 Case 的人类分钟差异；
 - manifest 自动发现覆盖率、`UNKNOWN` 数量和人工修正量；
 - Signal→Application/SystemVersion/Episode 关联率；

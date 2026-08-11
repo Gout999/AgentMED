@@ -1,6 +1,6 @@
 # CaseLoop V5 总体架构与迁移计划
 
-> 状态：**ACCEPTED V5 CONSTRUCTION BASELINE（2026-08-11；freeze: `8dd25ca` + `b3727d7`）/ NOT IMPLEMENTED**
+> 状态：**ACCEPTED V5 CONSTRUCTION BASELINE（2026-08-11；freeze: `8dd25ca` + `b3727d7`）/ PARTIALLY IMPLEMENTED BY STAGE**
 >
 > 更新：2026-08-11
 >
@@ -8,14 +8,18 @@
 >
 > 边界决策：[`D-013`](decisions/D-013-v5-ai-system-governance-and-agent-native-control-plane.md)
 >
-> 施工草案：[`plans/v5-progressive-delivery.md`](plans/v5-progressive-delivery.md)
+> 目标蓝图：[`plans/v5-progressive-delivery.md`](plans/v5-progressive-delivery.md)
+>
+> 当前执行编排：[`plans/v5-master-execution-plan.md`](plans/v5-master-execution-plan.md)
 
 本文是 V5 的已接受目标架构、兼容规则和依赖顺序，并成为 V5 stage 施工基线。
 它取代 `docs/plan-v4.md` 的已批准边界仅限 V5 stage 施工；v4 仍保留为 V4 兼容性
-基线，v3 仍保留为已实现兼容基线。本文不授权 V5 runtime、provider、
-Agent、repository、external 或 production 施工已擅自完成；绿色 contract 只能证明
-设计可解析，不能证明能力已实现。V5 runtime 按依赖图逐 stage 施工，每 stage 需
-focused tests、verifier、evidence 与 semantic commit。
+基线，v3 仍保留为已实现兼容基线。本文不授权把 V5 runtime、provider、Agent、
+repository、external 或 production 写成已完成；绿色 contract 只能证明设计可解析，
+不能证明能力已实现。当前 V5-1A/B/C 有未提交的 repair worktree 和聚焦本地验证，
+但尚未完成逐 stage semantic commit/evidence closure；V5-2+ 仍未实现。V5 runtime 按
+Master Execution Plan 逐 stage 施工，每 stage 需 focused tests、verifier、evidence 与
+semantic commit。
 
 ## 0. 总裁决
 

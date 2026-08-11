@@ -1,6 +1,7 @@
 # CaseLoop Delivery Plan
 
-Status values: `TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`.
+Status values: `TODO`, `IN_PROGRESS`, `VERIFYING`, `BLOCKED`, `DONE`. `VERIFYING`
+means a semantic subject exists but its post-commit evidence/verifier closure is still pending.
 
 ## Current milestone
 
@@ -14,17 +15,23 @@ target 才进入 release/observed/rollback。
 **V5-0 合同基线已冻结并解冻 runtime 施工**：V5-0B（`8dd25ca`，system governance
 ownership）与 V5-0C（`b3727d7`，first system wire slice）均于 2026-08-11 通过独立
 验收（0B 含验收方补 13 个对抗机检；0C FAIL 清单为空）。离线最终计数：v3+v4+v5 合并
-517 passed；v3/v4 独立 449 passed；V5 focused 68 passed。当前进入 V5-1A（Application
-catalog）。合同冻结 ≠ runtime 已实现：全部 V5 runtime/live facet 仍为 `NOT_RUN`，
-`test_quality_api.py` 需 live 服务属 NOT_RUN。
+517 passed；v3/v4 独立 449 passed；V5 focused 68 passed。此后 1A/1B/1C 已产生 runtime
+提交，但 2026-08-11 的全项目复核否决了原 closure：机器合同、exact binding、服务端
+trust role、fresh reauthentication、CaseReadiness、Console 入口、Compose 和证据台账存在
+断链。当前 repair worktree 已通过独立 verifier，但在新的 completion commit、
+digest-bearing evidence manifest 与逐 stage post-commit verifier 形成前，1A/1B/1C 均保持
+`IN_PROGRESS`，不得从旧 evidence 推导 `DONE`。
+live/provider/Agent/repository/human/production facets 仍为 `NOT_RUN`。
 
-当前真实 runtime 仍停在 V4 Stage 1A：**Stage 0 和 Stage 1 Entry 为
-`DONE (contract-only)`；Stage 1A — authenticated maintainer report without trace —
-为 `DONE (local runtime)`**，commit `22c23f8`。它不证明 provider、Agent、repository、
-human-authorized external 或 production 能力。
+最后有完成提交与独立证据的通用 runtime 仍是 V4 Stage 1A：**Stage 0 和 Stage 1 Entry
+为 `DONE (contract-only)`；Stage 1A — authenticated maintainer report without trace —
+为 `DONE (local runtime)`**，commit `22c23f8`。V5-1A/B/C 的本地代码与聚焦测试存在，
+但仍是未提交的 closure repair，不证明 provider、Agent、repository、human-authorized
+external 或 production 能力。
 
 - Product and scope baseline: `docs/product-principles.md`.
 - V5 stage construction baseline: `docs/plan-v5.md` + `docs/plans/v5-progressive-delivery.md` + 已冻结的 `contracts/v5/`（含 V5-0B/0C 两个 freeze commit）。`docs/plan-v4.md` 保留为 V4 兼容性基线；v3 保留为已实现兼容基线。
+- Current V5 execution orchestration: `docs/plans/v5-master-execution-plan.md`; document authority and archive policy: `docs/README.md` + `docs/archive/README.md`。
 - Current implemented compatibility baseline: `docs/plan-v3.md`, `docs/spec.md`, existing `contracts/`, migrations, and executable tests. The v3 customer-service workload and its evidence remain valid historical assets until explicitly migrated; v4 approval does not make proposed capabilities implemented.
 - D-013 保留 V4 Durable Work、Candidate/Gate/WorkOrder、Approval、ExternalOperation、
   audit 与 recovery 铁律，但把 Langfuse、AgentTeams、Claude Code 和 Coding Team 改为
@@ -37,10 +44,14 @@ human-authorized external 或 production 能力。
 
 | Priority | Work item | Status | Dependencies | Acceptance criteria | Required tests | Evidence | Completion commit |
 |---|---|---|---|---|---|---|---|
-| V5-0A | Product boundary and supersession ADR | DONE | User-confirmed AI-application governance and Agent-native direction | D-013 records `AIApplication` top-level scope, CLI/Console dual surface, V4 safety inheritance, Adapter boundary and no-third-stack rule | Markdown and cross-document review | draft documents only; no runtime facet | pending documentation commit |
+| DOC-R0 | Documentation authority recovery and Master Execution Plan | VERIFYING | Current review findings; preserved dirty WIP inventory | one current handoff; stale status/preconstruction snapshots archived with provenance; active docs agree on V5 accepted baseline vs partial runtime; Master Plan has work packages, stop gates, evidence/commit protocol and independent verifier | semantic subject contains the authority/archive package and exact provenance inventory; clean-checkout link/status/secret scans and independent post-commit verifier must still pass | runtime facets remain `NOT_RUN` | semantic subject is this checkout; exact hash and verdict are recorded only by the later evidence/status closure commit |
+| V5-0A | Product boundary and supersession ADR | VERIFYING | User-confirmed AI-application governance and Agent-native direction | D-013 and its product-principles/plan referrers are part of the R0 semantic subject; clean-checkout verification must prove the chain is reconstructable | Markdown, tracked clean-checkout link and cross-document review | no runtime facet | semantic subject is this checkout; closure remains pending post-commit verification |
 | V5-0B | Domain, owner and lifecycle draft contracts | DONE | V5-0A | Common authority envelope + V5 exact binding; schema-major-2 Candidate/Eval/Gate/WorkOrder/Approval/Operation keep V4 logical owners; additive acceptance/BadcaseSpec owned by ResolutionContract; workload/applicability; verification-only PASS cannot create WorkOrder; release remains ExternalOperation-rooted; Desired/Observed/Effect stay separate | Focused V5 suite 68 passed (incl. 13 adversarial checks added by the verifier); v3+v4 independent 449 passed; v3+v4+v5 combined 517 passed | contract-only freeze; runtime facets `NOT_RUN` | freeze commit `8dd25ca`; independent acceptance PASS 2026-08-11 |
 | V5-0C | Compatibility and first wire slice review | DONE | V5-0B | `/api/v1` history stays unchanged; all V2 transports disabled; explicit CLI/API major; CLI `init`/`case from-issue` only compose canonical intents; trusted atomic manifest import reaches empty V5 domain tables with seeded V4 trust roots and an existing V4 Case; application and acceptance bindings have read/write paths; resource visibility and principal allowlists fail closed | compatibility, bootstrap, acceptance provenance/confirmation, workflow retry, principal, visibility, no-route, A2A/MCP mapping and adversarial binding checks in the revised focused suite | contract-only freeze; no route/migration; runtime facets `NOT_RUN` | freeze commit `b3727d7`; independent acceptance PASS 2026-08-11, FAIL list empty |
-| V5-1+ | V5 runtime implementation | TODO | V5-0B/0C 已关闭；按 blueprint 依赖图逐 stage | Start V5 runtime stages one at a time per the progressive-delivery dependency graph; each stage needs focused tests, verifier, evidence and semantic commit; V4 S1B–S7 remain frozen | stage-specific tests/evidence to be derived from accepted contracts | pending | pending |
+| V5-1A | Application catalog closure repair | IN_PROGRESS | V5-0B/0C | AIApplication/Environment/SystemComponent/DependencyEdge 的 auth、exact binding、major-2 event、read replay、audit 与 transport 一致；当前 frozen lifecycle 的 REGISTERED→ACTIVE 与 runtime 直写 ACTIVE 差异必须在 closure 前决策 | focused service/HTTP/migration/PG + verifier | prior closure bundle is not accepted closure evidence; remediation remains uncommitted WIP | pending |
+| V5-1B | SystemVersionSet closure repair | IN_PROGRESS | V5-1A authority slice；Master Plan D2 | manifest import 的 project/trust-role、digest/provenance、dataset role、GET/diff、并发 bootstrap 均 fail closed；第二 VersionSet 用户价值必须先冻结/激活 standalone `system-versions.record` wire，未通过 D2 时不得宣称真实 diff closure | focused unit/HTTP/diff/discovery + disposable PG race | prior closure bundle is not accepted closure evidence; remediation remains uncommitted WIP | pending |
+| V5-1C | First System Case closure repair | IN_PROGRESS | V5-1A/1B repair interfaces | target local bootstrap→credential rotation→Signal/Case→binding→proposal→fresh owner reauth→confirm；Console 可见；confirm 后仍等待 V5-4 ResolutionContract，不能 READY | focused service/CLI/Console/contracts + disposable PG full journey + verifier | prior closure bundle is not accepted closure evidence; remediation remains uncommitted WIP | pending |
+| V5-2+ | 后续 V5 runtime stages | TODO | R0–R4 各自完成证据与语义提交 | 严格按 Master Plan 和 blueprint 依赖图逐 stage；V5-2 durable work/event delivery 与 V5-4 ResolutionContract 不得被 1C 占位符绕过 | stage-specific | pending | pending |
 
 ## Active v4 delivery
 
