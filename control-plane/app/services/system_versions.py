@@ -554,80 +554,10 @@ class SystemVersionsService:
         self, kind: str, payload: dict[str, Any], digest: str, now: datetime
     ) -> Any:
         envelope = payload["record_envelope"]
-        if kind == "AI_APPLICATION":
-            return AIApplication(
-                application_id=payload["application_id"],
-                workspace_id=payload["workspace_id"],
-                project_id=payload["project_id"],
-                slug=payload["slug"],
-                display_name=payload["display_name"],
-                owner_principal_ids=list(payload["owner_principal_ids"]),
-                criticality=payload["criticality"],
-                data_classification=payload["data_classification"],
-                governance_mode=payload["governance_mode"],
-                lifecycle_state=payload["lifecycle_state"],
-                revision=1,
-                envelope_payload=payload,
-                record_digest=digest,
-                authority_receipt_id=envelope["authority_receipt_id"],
-                recorded_by_principal=envelope["recorded_by_principal"],
-                created_at=now,
-                updated_at=now,
-            )
-        if kind == "ENVIRONMENT":
-            return Environment(
-                environment_id=payload["environment_id"],
-                workspace_id=payload["workspace_id"],
-                application_id=payload["application_id"],
-                logical_name=payload["logical_name"],
-                risk_classification=payload["risk_classification"],
-                lifecycle_state=payload["lifecycle_state"],
-                revision=1,
-                envelope_payload=payload,
-                record_digest=digest,
-                authority_receipt_id=envelope["authority_receipt_id"],
-                recorded_by_principal=envelope["recorded_by_principal"],
-                created_at=now,
-                updated_at=now,
-            )
-        if kind == "SYSTEM_COMPONENT":
-            return SystemComponent(
-                component_id=payload["component_id"],
-                workspace_id=payload["workspace_id"],
-                application_id=payload["application_id"],
-                component_kind=payload["component_kind"],
-                logical_name=payload["logical_name"],
-                owner_principal_ids=list(payload["owner_principal_ids"]),
-                criticality=payload["criticality"],
-                data_classification=payload["data_classification"],
-                permission_classification=payload["permission_classification"],
-                effect_classification=payload["effect_classification"],
-                dataset_role=payload.get("dataset_role"),
-                lifecycle_state=payload["lifecycle_state"],
-                revision=1,
-                envelope_payload=payload,
-                record_digest=digest,
-                authority_receipt_id=envelope["authority_receipt_id"],
-                recorded_by_principal=envelope["recorded_by_principal"],
-                created_at=now,
-                updated_at=now,
-            )
-        if kind == "DEPENDENCY_EDGE":
-            return DependencyEdge(
-                edge_id=payload["edge_id"],
-                workspace_id=payload["workspace_id"],
-                application_id=payload["application_id"],
-                from_component_id=payload["from_component_id"],
-                to_component_id=payload["to_component_id"],
-                relation=payload["relation"],
-                required=payload["required"],
-                edge_digest=payload["edge_digest"],
-                envelope_payload=payload,
-                record_digest=digest,
-                authority_receipt_id=envelope["authority_receipt_id"],
-                recorded_by_principal=envelope["recorded_by_principal"],
-                created_at=now,
-            )
+        # The four V5-1A catalog kinds (AI_APPLICATION, ENVIRONMENT,
+        # SYSTEM_COMPONENT, DEPENDENCY_EDGE) are application-catalog-controller
+        # owned and never reach this version-controller write path: the only
+        # caller (_write_construct) is invoked with the five 1B subject kinds.
         if kind == "COMPONENT_REVISION":
             return ComponentRevision(
                 component_revision_id=payload["component_revision_id"],

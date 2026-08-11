@@ -70,17 +70,3 @@ def session_scope(factory: sessionmaker[Session] | None = None) -> Generator[Ses
         raise
     finally:
         session.close()
-
-
-def get_db() -> Generator[Session, None, None]:
-    """FastAPI 依赖。"""
-    sf = get_session_factory()
-    session = sf()
-    try:
-        yield session
-        session.commit()
-    except Exception:
-        session.rollback()
-        raise
-    finally:
-        session.close()

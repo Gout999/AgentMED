@@ -312,12 +312,12 @@ class V5LifecycleAuthorityService:
             "digest": digest,
         }
         try:
-            from app.services.v5_manifest_import_coordinator import (
+            from app.services.v5_composition import (
                 ManifestImportCompositionError,
-                _consume_activation_composition_capability,
+                consume_activation_composition_capability,
             )
 
-            _consume_activation_composition_capability(
+            consume_activation_composition_capability(
                 composition_capability,
                 session=self.session,
                 purpose="STORAGE_ACTIVATE",

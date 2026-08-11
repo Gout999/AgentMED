@@ -12,7 +12,7 @@ import pytest
 from fastapi.testclient import TestClient
 from pydantic import SecretStr
 from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.main import create_app
 from app.models.tables import Audit, Event, Outbox
@@ -382,6 +382,10 @@ def _streaming_test_app(sqlite_engine, test_settings):
         }
     )
     app = create_app(settings=settings, engine=sqlite_engine, create_tables=True)
+    # 无 lifespan 的裸 ASGI 调用：session_factory 必须显式提供（不再有全局回退）。
+    app.state.session_factory = sessionmaker(
+        bind=sqlite_engine, autoflush=False, autocommit=False, future=True
+    )
     app.state.public_credential_resolver_factory = lambda _session: resolver
     app.state.signal_intake_service_factory = lambda _session: signal
     return app, resolver, signal

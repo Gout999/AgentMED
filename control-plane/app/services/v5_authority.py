@@ -36,7 +36,7 @@ from app.models.v5_tables import (
     TopologyRevision,
 )
 from app.services.v4_audit import V4AuditIntegrityError, validate_v4_audit_row
-from app.services.v4_event_store import (
+from app.foundation.events import (
     V4EventIntegrityError,
     validate_v4_event_row,
     validate_v4_outbox_row,

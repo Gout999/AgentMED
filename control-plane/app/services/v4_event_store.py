@@ -496,12 +496,12 @@ class V4EventStore:
         if not isinstance(previous, dict) or not isinstance(new, dict):
             raise V4EventStoreError("v5.event_binding_invalid")
         try:
-            from app.services.v5_manifest_import_coordinator import (
+            from app.services.v5_composition import (
                 ManifestImportCompositionError,
-                _consume_activation_composition_capability,
+                consume_activation_composition_capability,
             )
 
-            _consume_activation_composition_capability(
+            consume_activation_composition_capability(
                 composition_capability,
                 session=self.session,
                 purpose="EVENT_ACTIVATE",
@@ -554,12 +554,12 @@ class V4EventStore:
         if not isinstance(exact_subject, dict):
             raise V4EventStoreError("v5.event_binding_invalid")
         try:
-            from app.services.v5_manifest_import_coordinator import (
+            from app.services.v5_composition import (
                 ManifestImportCompositionError,
-                _consume_activation_composition_capability,
+                consume_activation_composition_capability,
             )
 
-            _consume_activation_composition_capability(
+            consume_activation_composition_capability(
                 composition_capability,
                 session=self.session,
                 purpose="EVENT_RECORD",

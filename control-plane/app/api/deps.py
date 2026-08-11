@@ -11,7 +11,6 @@ from fastapi import Header, HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
-from app.db import get_session_factory
 from app.quality.client import FakeQualityClient, QualityAPIClient, QualityClientProtocol
 
 
@@ -141,7 +140,7 @@ def require_principal_worker(authority: str, worker_id: str) -> None:
 
 
 def get_db_session(request: Request) -> Generator[Session, None, None]:
-    factory = getattr(request.app.state, "session_factory", None) or get_session_factory()
+    factory = getattr(request.app.state, "session_factory", None)
     session = factory()
     try:
         yield session

@@ -20,7 +20,6 @@ from pydantic import BaseModel, SecretStr, ValidationError
 from sqlalchemy.orm import Session
 
 from app import __version__
-from app.db import get_session_factory
 from app.public_api.auth_contract import (
     AcceptedPrincipalContext,
     HeaderContractViolation,
@@ -296,7 +295,7 @@ def _handle_failure(
 
 
 def _session_for(request: Request) -> Session:
-    factory = getattr(request.app.state, "session_factory", None) or get_session_factory()
+    factory = getattr(request.app.state, "session_factory", None)
     return factory()
 
 
