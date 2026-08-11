@@ -22,9 +22,14 @@ from app.models import Audit, Event, Outbox
 from app.models.v4_tables import AuthorityReceipt, ControllerRegistration
 from app.models.v5_tables import (
     AIApplication,
+    BootstrapAttestation,
+    ComponentRevision,
     DependencyEdge,
     Environment,
+    SystemAssignment,
     SystemComponent,
+    SystemVersionSet,
+    TopologyRevision,
 )
 from app.services.v4_audit import V4AuditIntegrityError, validate_v4_audit_row
 from app.services.v4_event_store import (
@@ -270,6 +275,41 @@ _V5_SUBJECT_BINDINGS: dict[str, tuple[type[Any], str, str, str, str | None]] = {
         "authority_receipt_id",
         None,
     ),
+    "COMPONENT_REVISION": (
+        ComponentRevision,
+        "component_revision_id",
+        "record_digest",
+        "authority_receipt_id",
+        None,
+    ),
+    "TOPOLOGY_REVISION": (
+        TopologyRevision,
+        "topology_revision_id",
+        "record_digest",
+        "authority_receipt_id",
+        None,
+    ),
+    "SYSTEM_VERSION_SET": (
+        SystemVersionSet,
+        "system_version_set_id",
+        "record_digest",
+        "authority_receipt_id",
+        None,
+    ),
+    "BOOTSTRAP_ATTESTATION": (
+        BootstrapAttestation,
+        "bootstrap_attestation_id",
+        "record_digest",
+        "authority_receipt_id",
+        None,
+    ),
+    "SYSTEM_ASSIGNMENT": (
+        SystemAssignment,
+        "assignment_id",
+        "record_digest",
+        "authority_receipt_id",
+        "revision",
+    ),
 }
 
 # Business fields that the registered event payload must carry, extracted from
@@ -291,6 +331,39 @@ _V5_EVENT_BUSINESS_FIELDS: dict[str, tuple[str, ...]] = {
         "to_component_id",
         "relation",
         "edge_digest",
+    ),
+    "COMPONENT_REVISION": (
+        "component_revision_id",
+        "component_id",
+        "component_kind",
+        "identity_assurance",
+        "configuration_digest",
+    ),
+    "TOPOLOGY_REVISION": (
+        "topology_revision_id",
+        "application_id",
+        "topology_digest",
+    ),
+    "SYSTEM_VERSION_SET": (
+        "system_version_set_id",
+        "application_id",
+        "declared_environment_id",
+        "version_set_digest",
+    ),
+    "BOOTSTRAP_ATTESTATION": (
+        "bootstrap_attestation_id",
+        "application_id",
+        "environment_id",
+        "attester_principal_id",
+        "attester_trust_role",
+        "attestation_scope",
+    ),
+    "SYSTEM_ASSIGNMENT": (
+        "assignment_id",
+        "application_id",
+        "environment_id",
+        "generation",
+        "exposure",
     ),
 }
 

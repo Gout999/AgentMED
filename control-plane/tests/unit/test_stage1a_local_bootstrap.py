@@ -392,7 +392,13 @@ def test_alembic_revision_must_be_at_head_and_include_007(sqlite_session) -> Non
         verify_stage1a_alembic_head(sqlite_session, require_postgresql=False)
     assert exc_info.value.code == "bootstrap.schema_revision_not_ready"
 
-    sqlite_session.execute(sa.text("UPDATE alembic_version SET version_num = '008'"))
+    from app.bootstrap.stage1a_local import _alembic_script
+
+    current_head = next(iter(_alembic_script().get_heads()))
+    sqlite_session.execute(
+        sa.text("UPDATE alembic_version SET version_num = :head"),
+        {"head": current_head},
+    )
     sqlite_session.commit()
     verify_stage1a_alembic_head(sqlite_session, require_postgresql=False)
 

@@ -40,7 +40,7 @@ def test_sqlite_upgrade_head_allows_multi_stage_gate_binding(tmp_path: Path) -> 
     with engine.begin() as connection:
         assert (
             connection.execute(sa.text("select version_num from alembic_version")).scalar_one()
-            == "008"
+            == "009"
         )
         base = {
             "workorder_id": "wo-multi-stage",
@@ -148,6 +148,67 @@ def test_sqlite_upgrade_head_allows_multi_stage_gate_binding(tmp_path: Path) -> 
         tuple(item["column_names"]) for item in inspector.get_unique_constraints("system_components")
     }
     assert ("workspace_id", "application_id", "component_kind", "logical_name") in component_unique
+
+    # V5-1B migration 009: the five version tables exist with the version-set
+    # digest/manifest digest uniqueness and the assignment CAS partial index.
+    for table in (
+        "component_revisions",
+        "topology_revisions",
+        "system_version_sets",
+        "bootstrap_attestations",
+        "system_assignments",
+    ):
+        columns = {item["name"] for item in inspector.get_columns(table)}
+        assert {"envelope_payload", "record_digest", "authority_receipt_id"} <= columns, table
+    version_set_unique = {
+        tuple(item["column_names"]) for item in inspector.get_unique_constraints("system_version_sets")
+    }
+    assert ("workspace_id", "version_set_digest") in version_set_unique
+    assert ("workspace_id", "manifest_digest") in version_set_unique
+    assignment_indexes = {
+        item["name"]: item for item in inspector.get_indexes("system_assignments")
+    }
+    assert "uq_system_assignment_active_identity" in assignment_indexes
+
+    # 009 downgrade is blocked while a version record exists.
+    with engine.begin() as connection:
+        connection.execute(
+            sa.text(
+                """INSERT INTO system_version_sets (
+                  system_version_set_id, workspace_id, application_id,
+                  declared_environment_id, exact_component_revision_bindings,
+                  exact_topology_revision_binding, identity_assurance_summary,
+                  provenance_receipt_ids, version_set_digest, manifest_digest,
+                  envelope_payload, record_digest, authority_receipt_id,
+                  recorded_by_principal
+                ) VALUES (
+                  :id, :workspace, :application, :environment, :bindings, :topology,
+                  :summary, :provenance, :digest, NULL, :envelope, :digest,
+                  :receipt, :principal
+                )"""
+            ),
+            {
+                "id": "vset_01J0000000000001",
+                "workspace": "ws_01J0000000000001",
+                "application": "app_01J0000000000001",
+                "environment": "env_01J0000000000001",
+                "bindings": "[]",
+                "topology": "{}",
+                "summary": "{}",
+                "provenance": "[]",
+                "digest": "sha256:" + "a" * 64,
+                "envelope": "{}",
+                "receipt": "arec_01J0000000000001",
+                "principal": "prn_01J0000000000001",
+            },
+        )
+    with pytest.raises(RuntimeError, match="009.downgrade_blocked"):
+        command.downgrade(config, "008")
+    with engine.begin() as connection:
+        connection.execute(
+            sa.text("DELETE FROM system_version_sets WHERE system_version_set_id = :id"),
+            {"id": "vset_01J0000000000001"},
+        )
 
     # 008 downgrade is blocked while catalog records exist.
     with pytest.raises(RuntimeError, match="008.downgrade_blocked"):

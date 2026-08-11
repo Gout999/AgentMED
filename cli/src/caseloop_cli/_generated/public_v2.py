@@ -116,11 +116,18 @@ V5IdempotencyIntent = Literal[
     "environments.register",
     "system-components.register",
     "dependency-edges.record",
+    "system-manifests.import",
 ]
 
 
 class V5IdempotencyResource(WireModel):
-    kind: Literal["ai_application", "environment", "system_component", "dependency_edge"]
+    kind: Literal[
+        "ai_application",
+        "environment",
+        "system_component",
+        "dependency_edge",
+        "system_version_set",
+    ]
     id: Annotated[str, Field(pattern=r"^[a-z][a-z0-9]*_[0-9A-Za-z]{8,64}$")]
 
 
@@ -152,6 +159,7 @@ class V5IdempotencyReceipt(WireModel):
             "environments.register": ("environment", "env_", False, "COMPLETED"),
             "system-components.register": ("system_component", "cmp_", False, "COMPLETED"),
             "dependency-edges.record": ("dependency_edge", "de_", False, "COMPLETED"),
+            "system-manifests.import": ("system_version_set", "vset_", False, "COMPLETED"),
         }
         kind, prefix, operation_required, status = expected[self.intent]
         if self.resource.kind != kind or not self.resource.id.startswith(prefix):

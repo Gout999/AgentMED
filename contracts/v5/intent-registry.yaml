@@ -179,7 +179,7 @@ intents:
     execution_mode: synchronous
     scope: system_versions:record
     allowed_principal_types: [human, service]
-    required_trust_roles_any_of: [integrator, trusted_builder, trusted_attestor]
+    required_trust_roles_any_of: [integrator, trusted_builder]
     trust_roles_source: authenticated_server_registration
     idempotency: required
     command_target: {resource: system_version_set, command: system-versions.record}

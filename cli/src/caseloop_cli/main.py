@@ -8,12 +8,16 @@ import sys
 import time
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Callable, Sequence, TextIO
 
 import httpx
+from pydantic import ValidationError
 
+from ._generated.manifest_v2 import SystemManifestImportRequest
 from .client import PublicApiClient, RuntimeConfig
 from .config import load_profile, read_credential, setting
+from .discovery import DiscoveryError, discover
 from .errors import CliError, ExitFamily
 
 
@@ -29,11 +33,21 @@ _IDS = {
     "application": re.compile(r"^app_[0-9A-Za-z]{8,64}$"),
     "component": re.compile(r"^cmp_[0-9A-Za-z]{8,64}$"),
     "edge": re.compile(r"^de_[0-9A-Za-z]{8,64}$"),
+    "version_set": re.compile(r"^vset_[0-9A-Za-z]{8,64}$"),
     "principal": re.compile(r"^prn_[0-9A-Za-z]{8,64}$"),
 }
 
 _V1_COMMANDS = frozenset({"capabilities", "signal", "report", "case", "evidence"})
-_V2_COMMANDS = frozenset({"application", "environment", "system-component", "dependency-edge"})
+_V2_COMMANDS = frozenset(
+    {
+        "application",
+        "environment",
+        "system-component",
+        "dependency-edge",
+        "system-manifest",
+        "init",
+    }
+)
 
 
 class SafeArgumentParser(argparse.ArgumentParser):
@@ -210,6 +224,23 @@ def build_parser() -> argparse.ArgumentParser:
     _edge_options(edge_record)
     edge_get = edge_actions.add_parser("get")
     edge_get.add_argument("edge_id")
+
+    system_manifest = commands.add_parser("system-manifest")
+    manifest_actions = system_manifest.add_subparsers(
+        dest="action", required=True, parser_class=SafeArgumentParser
+    )
+    for action in ("import", "record", "validate"):
+        action_parser = manifest_actions.add_parser(action)
+        action_parser.add_argument("--manifest-file", required=True)
+        action_parser.add_argument("--idempotency-key")
+    manifest_get = manifest_actions.add_parser("get")
+    manifest_get.add_argument("system_version_set_id")
+    manifest_diff = manifest_actions.add_parser("diff")
+    manifest_diff.add_argument("--base-system-version-set-id", required=True)
+    manifest_diff.add_argument("--target-system-version-set-id", required=True)
+
+    init = commands.add_parser("init")
+    init.add_argument("repo")
     return parser
 
 
@@ -244,6 +275,55 @@ def _write_json(stream: TextIO, payload: object) -> None:
     stream.write(json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")) + "\n")
 
 
+def _load_manifest_payload(path: str) -> dict[str, object]:
+    try:
+        raw = Path(path).read_text(encoding="utf-8")
+    except OSError as exc:
+        raise CliError("MANIFEST_FILE_UNREADABLE", ExitFamily.INPUT) from exc
+    try:
+        payload = json.loads(raw)
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise CliError("MANIFEST_INVALID_JSON", ExitFamily.INPUT) from exc
+    if not isinstance(payload, dict):
+        raise CliError("MANIFEST_INVALID", ExitFamily.INPUT)
+    # ``caseloop init`` drafts carry an informational ``_discovery`` section;
+    # strip underscore-prefixed metadata keys before canonical validation.
+    payload = {key: value for key, value in payload.items() if not key.startswith("_")}
+    try:
+        model = SystemManifestImportRequest.model_validate(payload)
+    except ValidationError as exc:
+        fields = sorted({".".join(str(part) for part in item["loc"]) for item in exc.errors()})
+        raise CliError(
+            "MANIFEST_INVALID",
+            ExitFamily.INPUT,
+            payload={"fields": fields},
+        ) from None
+    # Send the server-identical canonical dump (defaults included) so the
+    # request-fingerprint binding on the import receipt matches exactly.
+    return model.model_dump(mode="json")
+
+
+def _cmd_manifest_validate(args: argparse.Namespace, *, output_stream: TextIO) -> int:
+    _load_manifest_payload(args.manifest_file)
+    _write_json(output_stream, {"schema_version": "1.0", "manifest_valid": True})
+    return int(ExitFamily.OK)
+
+
+def _cmd_init(args: argparse.Namespace, *, output_stream: TextIO, error_stream: TextIO) -> int:
+    try:
+        result = discover(args.repo)
+    except DiscoveryError as exc:
+        raise CliError(exc.code, ExitFamily.INPUT) from None
+    _write_json(output_stream, result.to_manifest_draft())
+    error_stream.write(
+        "caseloop init: draft only; no server state was written.\n"
+        "Complete 'application'/'environment', then run:\n"
+        "  caseloop --api-version 2 system-manifest validate --manifest-file <file>\n"
+        "  caseloop --api-version 2 system-manifest import --manifest-file <file>\n"
+    )
+    return int(ExitFamily.OK)
+
+
 def run(
     argv: Sequence[str] | None = None,
     *,
@@ -268,6 +348,13 @@ def run(
             raise CliError("API_MAJOR_MISMATCH", ExitFamily.INPUT)
         if api_major == "1" and args.command in _V2_COMMANDS:
             raise CliError("API_VERSION_REQUIRED", ExitFamily.INPUT)
+
+        # Local-only commands never need API credentials or a running server.
+        if args.command == "init":
+            return _cmd_init(args, output_stream=output_stream, error_stream=error_stream)
+        if args.command == "system-manifest" and args.action == "validate":
+            return _cmd_manifest_validate(args, output_stream=output_stream)
+
         profile_path = args.profile or actual_env.get("CASELOOP_PROFILE")
         profile = load_profile(profile_path) if profile_path else {}
         api_url = _required(
@@ -419,6 +506,43 @@ def run(
             edge_id = _valid_id(args.edge_id, "edge", required=True)
             result = client.request(
                 "GET", f"/api/v2/dependency-edges/{edge_id}", api_major=2
+            )
+        elif args.command == "system-manifest" and args.action in ("import", "record"):
+            manifest_payload = _load_manifest_payload(args.manifest_file)
+            idem = args.idempotency_key or f"system-manifest-import-{uuid_factory().hex}"
+            if not 8 <= len(idem) <= 128:
+                raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+            result = client.request(
+                "POST",
+                "/api/v2/system-manifests:import",
+                body=json.dumps(
+                    manifest_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                ).encode("utf-8"),
+                idempotency_key=idem,
+                api_major=2,
+            )
+        elif args.command == "system-manifest" and args.action == "get":
+            system_version_set_id = _valid_id(
+                args.system_version_set_id, "version_set", required=True
+            )
+            result = client.request(
+                "GET", f"/api/v2/system-versions/{system_version_set_id}", api_major=2
+            )
+        elif args.command == "system-manifest" and args.action == "diff":
+            base_id = _valid_id(
+                args.base_system_version_set_id, "version_set", required=True
+            )
+            target_id = _valid_id(
+                args.target_system_version_set_id, "version_set", required=True
+            )
+            result = client.request(
+                "GET",
+                "/api/v2/system-versions:diff",
+                params=[
+                    ("base_system_version_set_id", base_id),
+                    ("target_system_version_set_id", target_id),
+                ],
+                api_major=2,
             )
         elif args.command == "case" and args.action == "get":
             case_id = _valid_id(args.case_id, "case", required=True)

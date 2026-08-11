@@ -1,0 +1,343 @@
+FFFFFFFFFFFFFFF......................................................... [ 13%]
+........................................................................ [ 27%]
+........................................................................ [ 40%]
+........................................................................ [ 54%]
+........................................................................ [ 67%]
+........................................................................ [ 81%]
+........................................................................ [ 94%]
+............................                                             [100%]
+=================================== FAILURES ===================================
+_________________________ test_create_draft_versionset _________________________
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+
+    def test_create_draft_versionset(write_session):
+>       body = _create_draft(write_session, "create")
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+conformance/test_quality_api.py:125: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+tag = 'create'
+
+    def _create_draft(write_session, tag: str) -> dict:
+        r = write_session.post(
+            f"{BASE_URL}/v2/versionsets",
+            json=_sample_content(tag),
+            headers={"Idempotency-Key": _key()},
+            timeout=TIMEOUT,
+        )
+>       assert r.status_code == 201, f"创建 VersionSet 应 201，实际 {r.status_code}: {r.text[:300]}"
+E       AssertionError: 创建 VersionSet 应 201，实际 502: 
+E       assert 502 == 201
+E        +  where 502 = <Response [502]>.status_code
+
+conformance/test_quality_api.py:57: AssertionError
+______________ test_idempotency_key_replay_returns_same_resource _______________
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+
+    def test_idempotency_key_replay_returns_same_resource(write_session):
+        content = _sample_content("idem-create")
+        key = _key()
+        r1 = write_session.post(f"{BASE_URL}/v2/versionsets", json=content,
+                                headers={"Idempotency-Key": key}, timeout=TIMEOUT)
+        r2 = write_session.post(f"{BASE_URL}/v2/versionsets", json=content,
+                                headers={"Idempotency-Key": key}, timeout=TIMEOUT)
+>       assert r1.status_code == 201
+E       assert 502 == 201
+E        +  where 502 = <Response [502]>.status_code
+
+conformance/test_quality_api.py:136: AssertionError
+______________ test_idempotency_key_reuse_different_body_rejected ______________
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+
+    def test_idempotency_key_reuse_different_body_rejected(write_session):
+        key = _key()
+        r1 = write_session.post(f"{BASE_URL}/v2/versionsets", json=_sample_content("a"),
+                                headers={"Idempotency-Key": key}, timeout=TIMEOUT)
+>       assert r1.status_code == 201
+E       assert 502 == 201
+E        +  where 502 = <Response [502]>.status_code
+
+conformance/test_quality_api.py:146: AssertionError
+______________________ test_missing_precondition_rejected ______________________
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+
+    def test_missing_precondition_rejected(write_session):
+        """缺 If-Match 且无 expected_revision → 412（或 428）。"""
+>       vs = _create_draft(write_session, "cas-missing")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+conformance/test_quality_api.py:158: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+tag = 'cas-missing'
+
+    def _create_draft(write_session, tag: str) -> dict:
+        r = write_session.post(
+            f"{BASE_URL}/v2/versionsets",
+            json=_sample_content(tag),
+            headers={"Idempotency-Key": _key()},
+            timeout=TIMEOUT,
+        )
+>       assert r.status_code == 201, f"创建 VersionSet 应 201，实际 {r.status_code}: {r.text[:300]}"
+E       AssertionError: 创建 VersionSet 应 201，实际 502: 
+E       assert 502 == 201
+E        +  where 502 = <Response [502]>.status_code
+
+conformance/test_quality_api.py:57: AssertionError
+_________________________ test_stale_revision_conflict _________________________
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+
+    def test_stale_revision_conflict(write_session):
+        """错误 revision → 409 revision_conflict。"""
+>       vs = _create_draft(write_session, "cas-stale")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+conformance/test_quality_api.py:173: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+tag = 'cas-stale'
+
+    def _create_draft(write_session, tag: str) -> dict:
+        r = write_session.post(
+            f"{BASE_URL}/v2/versionsets",
+            json=_sample_content(tag),
+            headers={"Idempotency-Key": _key()},
+            timeout=TIMEOUT,
+        )
+>       assert r.status_code == 201, f"创建 VersionSet 应 201，实际 {r.status_code}: {r.text[:300]}"
+E       AssertionError: 创建 VersionSet 应 201，实际 502: 
+E       assert 502 == 201
+E        +  where 502 = <Response [502]>.status_code
+
+conformance/test_quality_api.py:57: AssertionError
+___________________ test_expected_revision_body_alternative ____________________
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+read_session = <requests.sessions.Session object at 0x10bdf5590>
+
+    def test_expected_revision_body_alternative(write_session, read_session):
+        """body.expected_revision 是 If-Match 的合法替代（不带 If-Match 头也应受理）。"""
+>       vs = _create_draft(write_session, "cas-body")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+conformance/test_quality_api.py:182: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+tag = 'cas-body'
+
+    def _create_draft(write_session, tag: str) -> dict:
+        r = write_session.post(
+            f"{BASE_URL}/v2/versionsets",
+            json=_sample_content(tag),
+            headers={"Idempotency-Key": _key()},
+            timeout=TIMEOUT,
+        )
+>       assert r.status_code == 201, f"创建 VersionSet 应 201，实际 {r.status_code}: {r.text[:300]}"
+E       AssertionError: 创建 VersionSet 应 201，实际 502: 
+E       assert 502 == 201
+E        +  where 502 = <Response [502]>.status_code
+
+conformance/test_quality_api.py:57: AssertionError
+________________ test_full_lifecycle_draft_stage_canary_promote ________________
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+read_session = <requests.sessions.Session object at 0x10bdf5590>
+
+    def test_full_lifecycle_draft_stage_canary_promote(write_session, read_session):
+>       vs = _create_draft(write_session, "lifecycle")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+conformance/test_quality_api.py:191: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+tag = 'lifecycle'
+
+    def _create_draft(write_session, tag: str) -> dict:
+        r = write_session.post(
+            f"{BASE_URL}/v2/versionsets",
+            json=_sample_content(tag),
+            headers={"Idempotency-Key": _key()},
+            timeout=TIMEOUT,
+        )
+>       assert r.status_code == 201, f"创建 VersionSet 应 201，实际 {r.status_code}: {r.text[:300]}"
+E       AssertionError: 创建 VersionSet 应 201，实际 502: 
+E       assert 502 == 201
+E        +  where 502 = <Response [502]>.status_code
+
+conformance/test_quality_api.py:57: AssertionError
+______________________ test_illegal_transitions_rejected _______________________
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+
+    def test_illegal_transitions_rejected(write_session):
+        """非法迁移 → 422 validation_failed（details.subcode=illegal_transition）。"""
+>       vs = _create_draft(write_session, "illegal")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+conformance/test_quality_api.py:219: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+tag = 'illegal'
+
+    def _create_draft(write_session, tag: str) -> dict:
+        r = write_session.post(
+            f"{BASE_URL}/v2/versionsets",
+            json=_sample_content(tag),
+            headers={"Idempotency-Key": _key()},
+            timeout=TIMEOUT,
+        )
+>       assert r.status_code == 201, f"创建 VersionSet 应 201，实际 {r.status_code}: {r.text[:300]}"
+E       AssertionError: 创建 VersionSet 应 201，实际 502: 
+E       assert 502 == 201
+E        +  where 502 = <Response [502]>.status_code
+
+conformance/test_quality_api.py:57: AssertionError
+_______________________ test_rollback_restores_previous ________________________
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+read_session = <requests.sessions.Session object at 0x10bdf5590>
+
+    def test_rollback_restores_previous(write_session, read_session):
+        """v1 promote 后 v2 全量，再 rollback v2 → v1 恢复 active，v2 转 rolled_back。"""
+>       v1 = _create_draft(write_session, "rb-v1")
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+conformance/test_quality_api.py:239: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+write_session = <requests.sessions.Session object at 0x10bba9400>, tag = 'rb-v1'
+
+    def _create_draft(write_session, tag: str) -> dict:
+        r = write_session.post(
+            f"{BASE_URL}/v2/versionsets",
+            json=_sample_content(tag),
+            headers={"Idempotency-Key": _key()},
+            timeout=TIMEOUT,
+        )
+>       assert r.status_code == 201, f"创建 VersionSet 应 201，实际 {r.status_code}: {r.text[:300]}"
+E       AssertionError: 创建 VersionSet 应 201，实际 502: 
+E       assert 502 == 201
+E        +  where 502 = <Response [502]>.status_code
+
+conformance/test_quality_api.py:57: AssertionError
+_______________________ test_write_requires_write_scope ________________________
+
+read_session = <requests.sessions.Session object at 0x10bdf5590>
+
+    def test_write_requires_write_scope(read_session):
+        """持 read scope 调写面 → 401/403。"""
+        r = read_session.post(
+            f"{BASE_URL}/v2/versionsets",
+            json=_sample_content("scope"),
+            headers={"Idempotency-Key": _key()},
+            timeout=TIMEOUT,
+        )
+>       assert r.status_code in (401, 403), \
+            f"read scope 调写面应 401/403，实际 {r.status_code}（写面仅 Release Controller）"
+E       AssertionError: read scope 调写面应 401/403，实际 502（写面仅 Release Controller）
+E       assert 502 in (401, 403)
+E        +  where 502 = <Response [502]>.status_code
+
+conformance/test_quality_api.py:287: AssertionError
+_____________________________ test_read_endpoints ______________________________
+
+read_session = <requests.sessions.Session object at 0x10bdf5590>
+
+    def test_read_endpoints(read_session):
+        """GET /v2/logs 与 GET /v2/feedback 必须可用（分页结构）。"""
+        r = read_session.get(f"{BASE_URL}/v2/logs", params={"limit": 10}, timeout=TIMEOUT)
+>       assert r.status_code == 200, f"GET /v2/logs 应 200，实际 {r.status_code}"
+E       AssertionError: GET /v2/logs 应 200，实际 502
+E       assert 502 == 200
+E        +  where 502 = <Response [502]>.status_code
+
+conformance/test_quality_api.py:294: AssertionError
+______________________ test_fault_injection_endpoints[B1] ______________________
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+fault_id = 'B1'
+
+    @pytest.mark.parametrize("fault_id", ["B1", "B2", "B3", "B4"])
+    def test_fault_injection_endpoints(write_session, fault_id):
+        """B1–B4 注入端点（x-internal，演示用）。"""
+        r = write_session.post(f"{BASE_URL}/admin/inject/{fault_id}", timeout=TIMEOUT)
+>       assert r.status_code == 200, f"注入 {fault_id} 应 200，实际 {r.status_code}"
+E       AssertionError: 注入 B1 应 200，实际 502
+E       assert 502 == 200
+E        +  where 502 = <Response [502]>.status_code
+
+conformance/test_quality_api.py:307: AssertionError
+______________________ test_fault_injection_endpoints[B2] ______________________
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+fault_id = 'B2'
+
+    @pytest.mark.parametrize("fault_id", ["B1", "B2", "B3", "B4"])
+    def test_fault_injection_endpoints(write_session, fault_id):
+        """B1–B4 注入端点（x-internal，演示用）。"""
+        r = write_session.post(f"{BASE_URL}/admin/inject/{fault_id}", timeout=TIMEOUT)
+>       assert r.status_code == 200, f"注入 {fault_id} 应 200，实际 {r.status_code}"
+E       AssertionError: 注入 B2 应 200，实际 502
+E       assert 502 == 200
+E        +  where 502 = <Response [502]>.status_code
+
+conformance/test_quality_api.py:307: AssertionError
+______________________ test_fault_injection_endpoints[B3] ______________________
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+fault_id = 'B3'
+
+    @pytest.mark.parametrize("fault_id", ["B1", "B2", "B3", "B4"])
+    def test_fault_injection_endpoints(write_session, fault_id):
+        """B1–B4 注入端点（x-internal，演示用）。"""
+        r = write_session.post(f"{BASE_URL}/admin/inject/{fault_id}", timeout=TIMEOUT)
+>       assert r.status_code == 200, f"注入 {fault_id} 应 200，实际 {r.status_code}"
+E       AssertionError: 注入 B3 应 200，实际 502
+E       assert 502 == 200
+E        +  where 502 = <Response [502]>.status_code
+
+conformance/test_quality_api.py:307: AssertionError
+______________________ test_fault_injection_endpoints[B4] ______________________
+
+write_session = <requests.sessions.Session object at 0x10bba9400>
+fault_id = 'B4'
+
+    @pytest.mark.parametrize("fault_id", ["B1", "B2", "B3", "B4"])
+    def test_fault_injection_endpoints(write_session, fault_id):
+        """B1–B4 注入端点（x-internal，演示用）。"""
+        r = write_session.post(f"{BASE_URL}/admin/inject/{fault_id}", timeout=TIMEOUT)
+>       assert r.status_code == 200, f"注入 {fault_id} 应 200，实际 {r.status_code}"
+E       AssertionError: 注入 B4 应 200，实际 502
+E       assert 502 == 200
+E        +  where 502 = <Response [502]>.status_code
+
+conformance/test_quality_api.py:307: AssertionError
+=========================== short test summary info ============================
+FAILED conformance/test_quality_api.py::test_create_draft_versionset - Assert...
+FAILED conformance/test_quality_api.py::test_idempotency_key_replay_returns_same_resource
+FAILED conformance/test_quality_api.py::test_idempotency_key_reuse_different_body_rejected
+FAILED conformance/test_quality_api.py::test_missing_precondition_rejected - ...
+FAILED conformance/test_quality_api.py::test_stale_revision_conflict - Assert...
+FAILED conformance/test_quality_api.py::test_expected_revision_body_alternative
+FAILED conformance/test_quality_api.py::test_full_lifecycle_draft_stage_canary_promote
+FAILED conformance/test_quality_api.py::test_illegal_transitions_rejected - A...
+FAILED conformance/test_quality_api.py::test_rollback_restores_previous - Ass...
+FAILED conformance/test_quality_api.py::test_write_requires_write_scope - Ass...
+FAILED conformance/test_quality_api.py::test_read_endpoints - AssertionError:...
+FAILED conformance/test_quality_api.py::test_fault_injection_endpoints[B1] - ...
+FAILED conformance/test_quality_api.py::test_fault_injection_endpoints[B2] - ...
+FAILED conformance/test_quality_api.py::test_fault_injection_endpoints[B3] - ...
+FAILED conformance/test_quality_api.py::test_fault_injection_endpoints[B4] - ...
+15 failed, 517 passed in 15.68s

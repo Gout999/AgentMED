@@ -152,6 +152,88 @@ _ROUTES: dict[tuple[str, str], _Route] = {
         subject_digest_field=None,
         aggregate_id_field="edge_id",
     ),
+    # V5-1B version-controller routes.  The business payload mirrors the
+    # frozen contracts/v5/events.yaml ``payload_required`` fields flattened to
+    # the shared controller fields; ``exact_*_binding`` is a later-slice item.
+    ("component_revision", "component_revision.recorded"): _Route(
+        owner="version-controller",
+        subject_kind="COMPONENT_REVISION",
+        subject_revisioned=False,
+        required=frozenset(
+            {
+                "component_revision_id",
+                "component_id",
+                "component_kind",
+                "identity_assurance",
+                "configuration_digest",
+            }
+        ),
+        subject_id_field="component_revision_id",
+        subject_digest_field=None,
+        aggregate_id_field="component_revision_id",
+    ),
+    ("topology_revision", "topology_revision.recorded"): _Route(
+        owner="version-controller",
+        subject_kind="TOPOLOGY_REVISION",
+        subject_revisioned=False,
+        required=frozenset(
+            {"topology_revision_id", "application_id", "topology_digest"}
+        ),
+        subject_id_field="topology_revision_id",
+        subject_digest_field=None,
+        aggregate_id_field="topology_revision_id",
+    ),
+    ("system_version_set", "system_version_set.recorded"): _Route(
+        owner="version-controller",
+        subject_kind="SYSTEM_VERSION_SET",
+        subject_revisioned=False,
+        required=frozenset(
+            {
+                "system_version_set_id",
+                "application_id",
+                "declared_environment_id",
+                "version_set_digest",
+            }
+        ),
+        subject_id_field="system_version_set_id",
+        subject_digest_field=None,
+        aggregate_id_field="system_version_set_id",
+    ),
+    ("bootstrap_attestation", "bootstrap_attestation.recorded"): _Route(
+        owner="version-controller",
+        subject_kind="BOOTSTRAP_ATTESTATION",
+        subject_revisioned=False,
+        required=frozenset(
+            {
+                "bootstrap_attestation_id",
+                "application_id",
+                "environment_id",
+                "attester_principal_id",
+                "attester_trust_role",
+                "attestation_scope",
+            }
+        ),
+        subject_id_field="bootstrap_attestation_id",
+        subject_digest_field=None,
+        aggregate_id_field="bootstrap_attestation_id",
+    ),
+    ("system_assignment", "system_assignment.recorded"): _Route(
+        owner="version-controller",
+        subject_kind="SYSTEM_ASSIGNMENT",
+        subject_revisioned=True,
+        required=frozenset(
+            {
+                "assignment_id",
+                "application_id",
+                "environment_id",
+                "generation",
+                "exposure",
+            }
+        ),
+        subject_id_field="assignment_id",
+        subject_digest_field=None,
+        aggregate_id_field="assignment_id",
+    ),
 }
 
 _STAGE1_EVENT_TYPES = (

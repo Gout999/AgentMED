@@ -153,6 +153,42 @@ def new_dependency_edge_id() -> str:
     return f"de_{_ulid()}"
 
 
+def new_component_revision_id() -> str:
+    """V5-1B component revision immutable-record ID."""
+
+    return f"crv_{_ulid()}"
+
+
+def new_topology_revision_id() -> str:
+    """V5-1B topology revision immutable-record ID."""
+
+    return f"tpr_{_ulid()}"
+
+
+def new_system_version_set_id() -> str:
+    """V5-1B system version set immutable-record ID."""
+
+    return f"vset_{_ulid()}"
+
+
+def new_bootstrap_attestation_id() -> str:
+    """V5-1B bootstrap attestation immutable-record ID."""
+
+    return f"batt_{_ulid()}"
+
+
+def new_system_assignment_id() -> str:
+    """V5-1B system assignment aggregate ID."""
+
+    return f"asg_{_ulid()}"
+
+
+def new_system_manifest_id() -> str:
+    """V5-1B trusted manifest import record ID."""
+
+    return f"smf_{_ulid()}"
+
+
 def short_token(n: int = 16) -> str:
     alphabet = string.ascii_lowercase + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(n))

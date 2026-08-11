@@ -32,6 +32,11 @@ from ._generated.public_v2 import (
     EnvironmentGetResponse,
     EnvironmentRegisterResponse,
 )
+from ._generated.manifest_v2 import (
+    SystemManifestImportResponse,
+    SystemVersionDiffResponse,
+    SystemVersionGetResponse,
+)
 from .errors import CliError, ExitFamily
 
 
@@ -46,6 +51,7 @@ _APPLICATION_PATH = re.compile(r"^/api/v2/applications/(app_[0-9A-Za-z]{8,64})$"
 _ENVIRONMENT_PATH = re.compile(r"^/api/v2/environments/(env_[0-9A-Za-z]{8,64})$")
 _COMPONENT_PATH = re.compile(r"^/api/v2/system-components/(cmp_[0-9A-Za-z]{8,64})$")
 _EDGE_PATH = re.compile(r"^/api/v2/dependency-edges/(de_[0-9A-Za-z]{8,64})$")
+_VERSION_SET_PATH = re.compile(r"^/api/v2/system-versions/(vset_[0-9A-Za-z]{8,64})$")
 _MISSING_NO_TRACE = (
     "trace.input",
     "trace.output",
@@ -183,6 +189,10 @@ def _operation_spec(method: str, path: str) -> _OperationSpec:
         return _OperationSpec("system-components.register", 201, ComponentRegisterResponse)
     if normalized_method == "POST" and path == "/api/v2/dependency-edges":
         return _OperationSpec("dependency-edges.record", 201, DependencyEdgeRecordResponse)
+    if normalized_method == "POST" and path == "/api/v2/system-manifests:import":
+        return _OperationSpec(
+            "system-manifests.import", 201, SystemManifestImportResponse
+        )
     if normalized_method == "GET":
         application = _APPLICATION_PATH.fullmatch(path)
         if application:
@@ -203,6 +213,18 @@ def _operation_spec(method: str, path: str) -> _OperationSpec:
         if edge:
             return _OperationSpec(
                 "dependency-edges.get", 200, DependencyEdgeGetResponse, edge.group(1)
+            )
+        version_set = _VERSION_SET_PATH.fullmatch(path)
+        if version_set:
+            return _OperationSpec(
+                "system-versions.get",
+                200,
+                SystemVersionGetResponse,
+                version_set.group(1),
+            )
+        if path == "/api/v2/system-versions:diff":
+            return _OperationSpec(
+                "system-versions.diff", 200, SystemVersionDiffResponse
             )
     raise CliError("CLIENT_OPERATION_UNSUPPORTED", ExitFamily.PROTOCOL)
 
@@ -388,6 +410,7 @@ class PublicApiClient:
                     EnvironmentRegisterResponse,
                     ComponentRegisterResponse,
                     DependencyEdgeRecordResponse,
+                    SystemManifestImportResponse,
                 ),
             )
             and success.idempotency.replayed is True
@@ -427,6 +450,20 @@ class PublicApiClient:
         if isinstance(success, DependencyEdgeGetResponse):
             if success.edge.edge_id != spec.resource_id:
                 raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+            return
+        if isinstance(success, SystemManifestImportResponse):
+            self._validate_v5_mutation_binding(
+                spec, success, body, idempotency_key, raw_payload,
+                resource_id=success.system_version_set.system_version_set_id,
+            )
+            return
+        if isinstance(success, SystemVersionGetResponse):
+            if success.system_version_set.system_version_set_id != spec.resource_id:
+                raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+            return
+        if isinstance(success, SystemVersionDiffResponse):
+            # Diff binds two version sets via query params; the shared request
+            # / workspace / audit bindings are already validated above.
             return
         if isinstance(success, DependencyEdgeRecordResponse):
             self._validate_v5_mutation_binding(

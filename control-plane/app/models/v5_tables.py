@@ -11,6 +11,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, Optional
 
+import sqlalchemy as sa
 from sqlalchemy import (
     BigInteger,
     Boolean,
@@ -60,6 +61,24 @@ COMPONENT_KIND_VALUES = (
 )
 DATASET_ROLE_VALUES = ("RUNTIME_DATA", "EVALUATION_DATA", "SEALED_HOLDOUT")
 DEPENDENCY_RELATION_VALUES = ("DEPENDS_ON", "INVOKES", "DATA_FLOW", "CONTAINS", "REFERENCES")
+IDENTITY_ASSURANCE_VALUES = (
+    "IMMUTABLE_DIGEST",
+    "PROVIDER_VERSION",
+    "MUTABLE_ALIAS",
+    "OBSERVED_ONLY",
+    "UNKNOWN",
+)
+ATTESTER_TRUST_ROLE_VALUES = ("integrator", "catalog_admin", "trusted_builder")
+ATTESTATION_SCOPE_VALUES = ("INITIAL_DESIRED_ASSIGNMENT",)
+ASSIGNMENT_TRANSITION_KIND_VALUES = (
+    "BOOTSTRAP",
+    "SET_DESIRED",
+    "FREEZE_EXPOSURE",
+    "RESUME_AFTER_ROLLBACK",
+    "RETIRE",
+)
+ASSIGNMENT_LIFECYCLE_STATE_VALUES = ("ACTIVE", "RETIRED")
+ASSIGNMENT_EXPOSURE_VALUES = ("EXPOSED", "STOPPED")
 
 
 class AIApplication(Base):
@@ -320,6 +339,358 @@ class DependencyEdge(Base):
     )
 
 
+class ComponentRevision(Base):
+    """Immutable component revision (version-controller owned, schema-major-2).
+
+    The identity_assurance discriminator follows
+    ``contracts/v5/domain-model.yaml#identity_assurance``.  ``MUTABLE_ALIAS`` /
+    ``OBSERVED_ONLY`` / ``UNKNOWN`` revisions are recorded honestly at their
+    lower assurance; exact release against them is disallowed by the contract.
+    The table carries the projection columns; the nested envelope payload is
+    the contract-bearing record.
+    """
+
+    __tablename__ = "component_revisions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["workspace_id", "application_id", "component_id"],
+            [
+                "system_components.workspace_id",
+                "system_components.application_id",
+                "system_components.component_id",
+            ],
+            name="fk_component_revision_component",
+        ),
+        UniqueConstraint(
+            "workspace_id", "component_revision_id", name="uq_component_revision_workspace"
+        ),
+        UniqueConstraint("record_digest", name="uq_component_revision_record_digest"),
+        CheckConstraint(
+            "identity_assurance IN ('IMMUTABLE_DIGEST','PROVIDER_VERSION',"
+            "'MUTABLE_ALIAS','OBSERVED_ONLY','UNKNOWN')",
+            name="ck_component_revision_identity_assurance",
+        ),
+        Index(
+            "ix_component_revision_workspace_application",
+            "workspace_id",
+            "application_id",
+            "component_id",
+            "created_at",
+        ),
+    )
+
+    component_revision_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    application_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    component_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    component_kind: Mapped[str] = mapped_column(String(64), nullable=False)
+    identity_locator: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    identity_assurance: Mapped[str] = mapped_column(String(32), nullable=False)
+    configuration_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    exact_provenance_receipt_bindings: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False
+    )
+    declared_version: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    content_digest: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    provider_origin: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    resolved_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    immutable_provider_version_attestation: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSON, nullable=True
+    )
+    exact_observation_receipt_binding: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSON, nullable=True
+    )
+    unknown_reason: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
+    interface_schema_digest: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    permission_manifest_digest: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    dependency_lock_digest: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    dataset_role: Mapped[Optional[str]] = mapped_column(String(32), nullable=True)
+    artifact_refs: Mapped[Optional[list[dict[str, Any]]]] = mapped_column(JSON, nullable=True)
+    envelope_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    record_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    authority_receipt_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    recorded_by_principal: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class TopologyRevision(Base):
+    """Immutable topology revision (version-controller owned).
+
+    ``exact_edge_revision_bindings`` pins the exact dependency-edge records the
+    graph digest was computed over; historical graphs are fixed by this record,
+    never by mutating the current catalog ``dependency_edges`` rows.
+    """
+
+    __tablename__ = "topology_revisions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["workspace_id", "application_id"],
+            ["ai_applications.workspace_id", "ai_applications.application_id"],
+            name="fk_topology_revision_application",
+        ),
+        UniqueConstraint(
+            "workspace_id", "topology_revision_id", name="uq_topology_revision_workspace"
+        ),
+        UniqueConstraint("record_digest", name="uq_topology_revision_record_digest"),
+        UniqueConstraint(
+            "workspace_id", "topology_digest", name="uq_topology_revision_workspace_digest"
+        ),
+        Index(
+            "ix_topology_revision_workspace_application",
+            "workspace_id",
+            "application_id",
+            "created_at",
+        ),
+    )
+
+    topology_revision_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    application_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    component_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    exact_edge_revision_bindings: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False
+    )
+    topology_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    provenance_receipt_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    envelope_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    record_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    authority_receipt_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    recorded_by_principal: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class SystemVersionSet(Base):
+    """Immutable system version set (version-controller owned).
+
+    The graph digest is exactly bound to the topology revision; the version set
+    digest covers application / declared environment / exact component revision
+    bindings / exact topology binding / provenance / derived assurance summary.
+    ``manifest_digest`` is the trusted-import replay key: a replayed manifest
+    with the same digest returns the same record set.
+    """
+
+    __tablename__ = "system_version_sets"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["workspace_id", "application_id"],
+            ["ai_applications.workspace_id", "ai_applications.application_id"],
+            name="fk_system_version_set_application",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "declared_environment_id"],
+            ["environments.workspace_id", "environments.environment_id"],
+            name="fk_system_version_set_environment",
+        ),
+        UniqueConstraint(
+            "workspace_id",
+            "system_version_set_id",
+            name="uq_system_version_set_workspace",
+        ),
+        UniqueConstraint("record_digest", name="uq_system_version_set_record_digest"),
+        UniqueConstraint(
+            "workspace_id",
+            "version_set_digest",
+            name="uq_system_version_set_workspace_digest",
+        ),
+        UniqueConstraint(
+            "workspace_id",
+            "manifest_digest",
+            name="uq_system_version_set_workspace_manifest",
+        ),
+        Index(
+            "ix_system_version_set_workspace_application",
+            "workspace_id",
+            "application_id",
+            "declared_environment_id",
+            "created_at",
+        ),
+    )
+
+    system_version_set_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    application_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    declared_environment_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    exact_component_revision_bindings: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False
+    )
+    exact_topology_revision_binding: Mapped[dict[str, Any]] = mapped_column(
+        JSON, nullable=False
+    )
+    identity_assurance_summary: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    provenance_receipt_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
+    version_set_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    manifest_digest: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    envelope_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    record_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    authority_receipt_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    recorded_by_principal: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class BootstrapAttestation(Base):
+    """Immutable bootstrap attestation (version-controller owned).
+
+    Proves authority to create the initial desired assignment only — never
+    observed runtime, external effect, or gate pass.  The attester trust role
+    is server-derived; the attested scope is the initial desired assignment.
+    """
+
+    __tablename__ = "bootstrap_attestations"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["workspace_id", "application_id"],
+            ["ai_applications.workspace_id", "ai_applications.application_id"],
+            name="fk_bootstrap_attestation_application",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "environment_id"],
+            ["environments.workspace_id", "environments.environment_id"],
+            name="fk_bootstrap_attestation_environment",
+        ),
+        UniqueConstraint(
+            "workspace_id",
+            "bootstrap_attestation_id",
+            name="uq_bootstrap_attestation_workspace",
+        ),
+        UniqueConstraint("record_digest", name="uq_bootstrap_attestation_record_digest"),
+        CheckConstraint(
+            "attester_trust_role IN ('integrator','catalog_admin','trusted_builder')",
+            name="ck_bootstrap_attestation_attester_role",
+        ),
+        CheckConstraint(
+            "attestation_scope IN ('INITIAL_DESIRED_ASSIGNMENT')",
+            name="ck_bootstrap_attestation_scope",
+        ),
+        Index(
+            "ix_bootstrap_attestation_workspace_application",
+            "workspace_id",
+            "application_id",
+            "environment_id",
+            "created_at",
+        ),
+    )
+
+    bootstrap_attestation_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    application_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    environment_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    exact_initial_system_version_set_binding: Mapped[dict[str, Any]] = mapped_column(
+        JSON, nullable=False
+    )
+    attester_principal_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    attester_trust_role: Mapped[str] = mapped_column(String(32), nullable=False)
+    attestation_scope: Mapped[str] = mapped_column(String(64), nullable=False)
+    envelope_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    record_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    authority_receipt_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    recorded_by_principal: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class SystemAssignment(Base):
+    """System desired-assignment aggregate (version-controller owned).
+
+    One non-retired assignment aggregate per (workspace, application,
+    environment) identity key.  The bootstrap transition fixes generation=1,
+    expected_previous_generation=null and an exact BootstrapAttestation
+    authority binding; later transitions are CAS (previous generation + 1) with
+    exact WorkOrder/ExternalOperation authority and are not part of this slice.
+    """
+
+    __tablename__ = "system_assignments"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["workspace_id", "application_id"],
+            ["ai_applications.workspace_id", "ai_applications.application_id"],
+            name="fk_system_assignment_application",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "environment_id"],
+            ["environments.workspace_id", "environments.environment_id"],
+            name="fk_system_assignment_environment",
+        ),
+        UniqueConstraint(
+            "workspace_id", "assignment_id", name="uq_system_assignment_workspace"
+        ),
+        CheckConstraint("generation >= 1", name="ck_system_assignment_generation"),
+        CheckConstraint("revision >= 1", name="ck_system_assignment_revision"),
+        CheckConstraint(
+            "transition_kind IN ('BOOTSTRAP','SET_DESIRED','FREEZE_EXPOSURE',"
+            "'RESUME_AFTER_ROLLBACK','RETIRE')",
+            name="ck_system_assignment_transition_kind",
+        ),
+        CheckConstraint(
+            "lifecycle_state IN ('ACTIVE','RETIRED')",
+            name="ck_system_assignment_lifecycle",
+        ),
+        CheckConstraint(
+            "exposure IN ('EXPOSED','STOPPED')", name="ck_system_assignment_exposure"
+        ),
+        Index(
+            "ix_system_assignment_workspace_application",
+            "workspace_id",
+            "application_id",
+            "environment_id",
+            "lifecycle_state",
+        ),
+        # One non-retired assignment aggregate per identity key (CAS guard).
+        Index(
+            "uq_system_assignment_active_identity",
+            "workspace_id",
+            "application_id",
+            "environment_id",
+            unique=True,
+            sqlite_where=sa.text("lifecycle_state <> 'RETIRED'"),
+            postgresql_where=sa.text("lifecycle_state <> 'RETIRED'"),
+        ),
+    )
+
+    assignment_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    application_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    environment_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    generation: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    lifecycle_state: Mapped[str] = mapped_column(String(32), nullable=False)
+    transition_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=1)
+    exact_previous_assignment_binding_or_null: Mapped[Optional[dict[str, Any]]] = (
+        mapped_column(JSON, nullable=True)
+    )
+    exact_slot_version_set_bindings: Mapped[list[dict[str, Any]]] = mapped_column(
+        JSON, nullable=False
+    )
+    exposure: Mapped[str] = mapped_column(String(32), nullable=False)
+    expected_previous_generation: Mapped[Optional[int]] = mapped_column(
+        BigInteger, nullable=True
+    )
+    exact_assignment_authority_binding: Mapped[dict[str, Any]] = mapped_column(
+        JSON, nullable=False
+    )
+    requested_by_external_operation_id: Mapped[Optional[str]] = mapped_column(
+        String(128), nullable=True
+    )
+    envelope_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    record_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    authority_receipt_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    recorded_by_principal: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+
 def _immutable_write_forbidden(_mapper, _connection, target) -> None:  # type: ignore[no-untyped-def]
     raise RuntimeError(f"v5.immutable_record_update_forbidden:{target.__tablename__}")
 
@@ -333,13 +704,32 @@ for _catalog_model in (
     event.listen(_catalog_model, "before_update", _immutable_write_forbidden)
     event.listen(_catalog_model, "before_delete", _immutable_write_forbidden)
 
+# V5-1B immutable records: no update path.  ``SystemAssignment`` is an aggregate
+# with legitimate CAS transitions in later slices, so it is intentionally not
+# guarded here; its compare-and-swap constraints are enforced by the service.
+for _version_model in (
+    ComponentRevision,
+    TopologyRevision,
+    SystemVersionSet,
+    BootstrapAttestation,
+):
+    event.listen(_version_model, "before_update", _immutable_write_forbidden)
+    event.listen(_version_model, "before_delete", _immutable_write_forbidden)
+
 
 __all__ = [
     "AIApplication",
+    "ASSIGNMENT_EXPOSURE_VALUES",
+    "ASSIGNMENT_LIFECYCLE_STATE_VALUES",
+    "ASSIGNMENT_TRANSITION_KIND_VALUES",
+    "ATTESTATION_SCOPE_VALUES",
+    "ATTESTER_TRUST_ROLE_VALUES",
+    "BootstrapAttestation",
     "CATALOG_LIFECYCLE_STATES",
     "COMPONENT_KIND_VALUES",
     "COMPONENT_LIFECYCLE_STATES",
     "CRITICALITY_VALUES",
+    "ComponentRevision",
     "DATA_CLASSIFICATION_VALUES",
     "DATASET_ROLE_VALUES",
     "DEPENDENCY_RELATION_VALUES",
@@ -348,7 +738,11 @@ __all__ = [
     "ENVIRONMENT_LIFECYCLE_STATES",
     "Environment",
     "GOVERNANCE_MODE_VALUES",
+    "IDENTITY_ASSURANCE_VALUES",
     "PERMISSION_CLASSIFICATION_VALUES",
     "RISK_CLASSIFICATION_VALUES",
+    "SystemAssignment",
     "SystemComponent",
+    "SystemVersionSet",
+    "TopologyRevision",
 ]

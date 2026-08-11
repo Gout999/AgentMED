@@ -38,8 +38,13 @@ from app.public_api.v5_models import (
     EnvironmentGetResponse,
     EnvironmentRegisterRequest,
     EnvironmentRegisterResponse,
+    SystemManifestImportRequest,
+    SystemManifestImportResponse,
+    SystemVersionDiffResponse,
+    SystemVersionGetResponse,
 )
-from app.services.application_catalog import ApplicationCatalogError, V5ReadDenial
+from app.services.application_catalog import ApplicationCatalogError, V5ReadDenial as CatalogReadDenial
+from app.services.system_versions import SystemVersionsError, V5ReadDenial
 
 router = APIRouter(prefix="/api/v2", tags=["public-v5-1a-catalog"])
 
@@ -47,6 +52,7 @@ _APPLICATION_ID = re.compile(r"^app_[0-9A-Za-z]{8,64}$")
 _ENVIRONMENT_ID = re.compile(r"^env_[0-9A-Za-z]{8,64}$")
 _COMPONENT_ID = re.compile(r"^cmp_[0-9A-Za-z]{8,64}$")
 _EDGE_ID = re.compile(r"^de_[0-9A-Za-z]{8,64}$")
+_VERSION_SET_ID = re.compile(r"^vset_[0-9A-Za-z]{8,64}$")
 _REQUEST_ID = re.compile(r"^req_[0-9A-Za-z]{8,64}$")
 _MAX_BODY_BYTES = 256_000
 _PUBLIC_HEADER_NAMES = frozenset(
@@ -189,7 +195,7 @@ def _handle_failure(
         allow_read_denial_commit
         and session is not None
         and principal is not None
-        and isinstance(exc, V5ReadDenial)
+        and isinstance(exc, (V5ReadDenial, CatalogReadDenial))
     ):
         code = getattr(exc, "code", None)
         audit_ref = getattr(exc, "audit_ref", None)
@@ -323,6 +329,16 @@ def _catalog_service(request: Request, session: Session) -> Any:
     from app.services.application_catalog import ApplicationCatalogService
 
     return ApplicationCatalogService(session)
+
+
+def _system_versions_service(request: Request, session: Session) -> Any:
+    factory = getattr(request.app.state, "system_versions_service_factory", None)
+    if factory is not None:
+        return factory(session)
+
+    from app.services.system_versions import SystemVersionsService
+
+    return SystemVersionsService(session)
 
 
 def _authenticate(
@@ -913,6 +929,205 @@ def get_dependency_edge(edge_id: str, request: Request) -> JSONResponse:
             request_id=request_id,
         )
         response = DependencyEdgeGetResponse.model_validate(result)
+        _commit(session)
+        return _json_response(response, status_code=200)
+    except HeaderContractViolation as exc:
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
+            exc,
+            request_id=request_id,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
+        )
+    except Exception as exc:
+        return _handle_failure(
+            session,
+            exc,
+            request_id=request_id,
+            principal=principal,
+            allow_read_denial_commit=True,
+        )
+    finally:
+        if session is not None:
+            _close(session)
+
+
+# ---------------------------------------------------------------------------
+# V5-1B trusted manifest import / system versions (system-manifests.import,
+# system-versions.get, system-versions.diff).
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/system-manifests:import",
+    response_model=SystemManifestImportResponse,
+    status_code=201,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": SystemManifestImportRequest.model_json_schema()
+                }
+            },
+        }
+    },
+)
+async def import_system_manifest(request: Request) -> JSONResponse:
+    request_id = _request_id(request)
+    session: Any | None = None
+    principal: AcceptedPrincipalContext | None = None
+    try:
+        headers = PublicV2RequestHeaders.from_headers(
+            _public_headers(request), mutation=True
+        )
+        submission = await _parse_body(request, SystemManifestImportRequest)
+        session = _session_for(request)
+        principal, resolver = _authenticate(
+            request,
+            session,
+            headers=headers,
+            required_scope="system_manifests:import",
+        )
+        principal = resolver.bind_requested_context(
+            principal,
+            project_id=None,
+            environment_id=None,
+            required_scope="system_manifests:import",
+        )
+        request.state.public_principal = principal
+        service = _system_versions_service(request, session)
+        result = service.import_manifest(
+            submission,
+            principal=principal,
+            idempotency_key=headers.idempotency_key,
+            request_id=request_id,
+        )
+        response = SystemManifestImportResponse.model_validate(result)
+        _commit(session)
+        return _json_response(response, status_code=201)
+    except HeaderContractViolation as exc:
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
+            exc,
+            request_id=request_id,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
+        )
+    except Exception as exc:
+        return _handle_failure(
+            session,
+            exc,
+            request_id=request_id,
+            principal=principal,
+        )
+    finally:
+        if session is not None:
+            _close(session)
+
+
+@router.get(
+    "/system-versions/{system_version_set_id}",
+    response_model=SystemVersionGetResponse,
+)
+def get_system_version(system_version_set_id: str, request: Request) -> JSONResponse:
+    request_id = _request_id(request)
+    session: Any | None = None
+    principal: AcceptedPrincipalContext | None = None
+    try:
+        headers = PublicV2RequestHeaders.from_headers(_public_headers(request))
+        session = _session_for(request)
+        principal, _resolver = _authenticate(
+            request, session, headers=headers, required_scope="system_versions:read"
+        )
+        _validate_path(system_version_set_id, _VERSION_SET_ID, "system_version_set_id")
+        result = _system_versions_service(request, session).get_system_version(
+            system_version_set_id,
+            principal=principal,
+            request_id=request_id,
+        )
+        response = SystemVersionGetResponse.model_validate(result)
+        _commit(session)
+        return _json_response(response, status_code=200)
+    except HeaderContractViolation as exc:
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
+            exc,
+            request_id=request_id,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
+        )
+    except Exception as exc:
+        return _handle_failure(
+            session,
+            exc,
+            request_id=request_id,
+            principal=principal,
+            allow_read_denial_commit=True,
+        )
+    finally:
+        if session is not None:
+            _close(session)
+
+
+@router.get("/system-versions:diff", response_model=SystemVersionDiffResponse)
+def diff_system_versions(
+    base_system_version_set_id: str,
+    target_system_version_set_id: str,
+    request: Request,
+) -> JSONResponse:
+    request_id = _request_id(request)
+    session: Any | None = None
+    principal: AcceptedPrincipalContext | None = None
+    try:
+        headers = PublicV2RequestHeaders.from_headers(_public_headers(request))
+        session = _session_for(request)
+        principal, _resolver = _authenticate(
+            request, session, headers=headers, required_scope="system_versions:read"
+        )
+        _validate_path(
+            base_system_version_set_id, _VERSION_SET_ID, "base_system_version_set_id"
+        )
+        _validate_path(
+            target_system_version_set_id, _VERSION_SET_ID, "target_system_version_set_id"
+        )
+        result = _system_versions_service(request, session).diff_system_versions(
+            base_system_version_set_id,
+            target_system_version_set_id,
+            principal=principal,
+            request_id=request_id,
+        )
+        response = SystemVersionDiffResponse.model_validate(result)
         _commit(session)
         return _json_response(response, status_code=200)
     except HeaderContractViolation as exc:

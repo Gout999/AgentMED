@@ -470,7 +470,7 @@ resources:
       - attester_principal_id
       - attester_trust_role
       - attestation_scope
-    allowed_attester_trust_roles: [integrator, trusted_builder, trusted_attestor]
+    allowed_attester_trust_roles: [integrator, catalog_admin, trusted_builder]
     proves: authority_to_create_initial_desired_assignment_only
     does_not_prove:
       - observed_runtime

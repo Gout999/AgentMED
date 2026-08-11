@@ -113,7 +113,7 @@ contract_grounding:
   domain_model:
     resources:
       bootstrap_attestation:
-        allowed_attester_trust_roles: [integrator, trusted_builder, trusted_attestor]
+        allowed_attester_trust_roles: [integrator, catalog_admin, trusted_builder]
         proves: authority_to_create_initial_desired_assignment_only
       system_assignment:
         bootstrap:
