@@ -27,6 +27,44 @@ wire_contract_rules:
   activation_requires_explicit_contract_freeze_and_runtime_evidence: true
   all_transports_share_application_service: true
 
+application_component_activation_lifecycle:
+  decision_ref: docs/decisions/D-014-v5-application-component-activation-lifecycle.md
+  decision: PRESERVE_REGISTERED_TO_ACTIVE
+  runtime_status: NOT_IMPLEMENTED
+  public_register_result:
+    ai_application: {revision: 1, lifecycle_state: REGISTERED}
+    system_component: {revision: 1, lifecycle_state: REGISTERED}
+  trusted_manifest_result:
+    ai_application: {revision: 2, lifecycle_state: ACTIVE}
+    system_component: {revision: 2, lifecycle_state: ACTIVE}
+  workflow_only_owner_commands: [applications.activate, system-components.activate]
+  activation_authorization:
+    invocation: MANIFEST_IMPORT_COORDINATOR_ONLY_SAME_POSTGRESQL_UOW
+    direct_public_or_internal_controller_invocation: FORBIDDEN
+    exact_authenticated_root_intent: system-manifests.import
+    allowed_initiating_principal_types: [human, service]
+    exact_binding_fields:
+      - authenticated_request_digest
+      - manifest_digest
+      - idempotency_key
+      - workspace_id
+      - initiating_principal_id
+      - initiating_principal_type
+    authority_chain:
+      subject_and_authority_receipt_actor: application-catalog-controller
+      initiating_command_audit_actor: exact_authenticated_initiating_principal
+      both_layers_required_same_transaction: true
+    internal_controller_scope_alone_authorizes_activation: false
+  standalone_public_activation:
+    wire_status: DEFERRED_NOT_FROZEN
+    http: FORBIDDEN
+    cli: FORBIDDEN
+    sdk: FORBIDDEN
+    mcp: FORBIDDEN
+    a2a: FORBIDDEN
+    capability_discovery: FORBIDDEN
+  register_intent_may_silently_activate: false
+
 api_major_selection:
   canonical_intent_identity: [api_major, intent_name]
   default_api_major: 1
@@ -152,11 +190,18 @@ intents:
     trust_roles_source: authenticated_server_registration
     idempotency: required
     workflow_owner: manifest_import_coordinator
+    workflow_activation_authorization:
+      exact_authenticated_request_required: true
+      exact_manifest_digest_required: true
+      exact_initiating_principal_required: true
+      same_postgresql_unit_of_work_required: true
+      direct_activation_command_invocation: FORBIDDEN
     workflow_targets:
       - {resource: ai_application, command: applications.register}
       - {resource: ai_application, command: applications.activate}
       - {resource: environment, command: environments.register}
       - {resource: system_component, command: system-components.register}
+      - {resource: system_component, command: system-components.activate}
       - {resource: dependency_edge, command: dependency-edges.record}
       - {resource: component_revision, command: component-revisions.record}
       - {resource: topology_revision, command: topology-revisions.record}
@@ -545,6 +590,20 @@ intents:
     http: {method: GET, path: "/api/v2/release-operations/{external_operation_id}", operation_id: getReleaseOperation}
     cli: release get
     cli_requires_explicit_api_major: true
+
+workflow_only_command_authorization:
+  applications.activate:
+    owner: application-catalog-controller
+    required_workflow_owner: manifest_import_coordinator
+    required_root_intent: system-manifests.import
+    same_postgresql_unit_of_work: true
+    direct_invocation_by_internal_controller: FORBIDDEN
+  system-components.activate:
+    owner: application-catalog-controller
+    required_workflow_owner: manifest_import_coordinator
+    required_root_intent: system-manifests.import
+    same_postgresql_unit_of_work: true
+    direct_invocation_by_internal_controller: FORBIDDEN
 
 internal_intent_authorization:
   work.claim: {allowed_principal_types: [internal_worker], required_scope: work:claim:internal, owner: work-controller}

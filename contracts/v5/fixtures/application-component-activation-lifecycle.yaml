@@ -1,0 +1,121 @@
+version: "0.1-decision-freeze"
+status: accepted_contract_decision_fixture
+runtime_status: NOT_RUN
+fixture_id: v5-d1-application-component-activation-lifecycle
+decision_ref: docs/decisions/D-014-v5-application-component-activation-lifecycle.md
+decider: product_owner
+selected_option: A_PRESERVE_REGISTERED_TO_ACTIVE
+
+authoritative_sequences:
+  ai_application:
+    identity: app_fixture_d1
+    revisions:
+      - revision: 1
+        lifecycle_state: REGISTERED
+        command: applications.register
+        event: application.registered
+        exact_binding: {kind: AI_APPLICATION, id: app_fixture_d1, revision: 1, digest: "sha256:1111111111111111111111111111111111111111111111111111111111111111"}
+      - revision: 2
+        lifecycle_state: ACTIVE
+        command: applications.activate
+        event: application.activated
+        exact_previous_binding: {kind: AI_APPLICATION, id: app_fixture_d1, revision: 1, digest: "sha256:1111111111111111111111111111111111111111111111111111111111111111"}
+        exact_binding: {kind: AI_APPLICATION, id: app_fixture_d1, revision: 2, digest: "sha256:2222222222222222222222222222222222222222222222222222222222222222"}
+  system_component:
+    identity: cmp_fixture_d1
+    revisions:
+      - revision: 1
+        lifecycle_state: REGISTERED
+        command: system-components.register
+        event: system_component.registered
+        exact_binding: {kind: SYSTEM_COMPONENT, id: cmp_fixture_d1, revision: 1, digest: "sha256:3333333333333333333333333333333333333333333333333333333333333333"}
+      - revision: 2
+        lifecycle_state: ACTIVE
+        command: system-components.activate
+        event: system_component.activated
+        exact_previous_binding: {kind: SYSTEM_COMPONENT, id: cmp_fixture_d1, revision: 1, digest: "sha256:3333333333333333333333333333333333333333333333333333333333333333"}
+        exact_binding: &active_component_binding {kind: SYSTEM_COMPONENT, id: cmp_fixture_d1, revision: 2, digest: "sha256:4444444444444444444444444444444444444444444444444444444444444444"}
+
+component_revision:
+  component_revision_id: crev_fixture_d1
+  exact_system_component_binding: *active_component_binding
+  required_revision_rule: CURRENT_AUTHORITATIVE_ACTIVE_LIFECYCLE_REVISION_AT_RECORDING
+  initial_manifest_expected_revision: 2
+  later_active_revision_after_deprecate_reactivate_is_allowed: true
+  bare_component_id_is_authority: false
+  mutable_current_head_is_authority: false
+  later_reactivation_example:
+    historical_active_binding: {kind: SYSTEM_COMPONENT, id: cmp_fixture_d1, revision: 2, digest: "sha256:4444444444444444444444444444444444444444444444444444444444444444"}
+    deprecated_binding: {kind: SYSTEM_COMPONENT, id: cmp_fixture_d1, revision: 3, digest: "sha256:5555555555555555555555555555555555555555555555555555555555555555"}
+    current_active_binding: {kind: SYSTEM_COMPONENT, id: cmp_fixture_d1, revision: 4, digest: "sha256:6666666666666666666666666666666666666666666666666666666666666666"}
+    component_revision_must_bind: current_active_binding
+
+trusted_manifest:
+  canonical_command_order:
+    - applications.register
+    - applications.activate
+    - environments.register
+    - system-components.register
+    - system-components.activate
+    - dependency-edges.record
+    - component-revisions.record
+    - topology-revisions.record
+    - system-versions.record
+    - bootstrap-attestations.record
+    - system-assignments.record
+  transaction: ALL_OR_NOTHING_LOCAL_POSTGRES
+  retry: IDEMPOTENT_REPLAY_NO_NEW_ACTIVATION_REVISION
+  activation_authorization:
+    workflow_owner: manifest_import_coordinator
+    root_intent: system-manifests.import
+    same_postgresql_unit_of_work: true
+    authenticated_request_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
+    manifest_digest: sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+    idempotency_key: fixture-d1-import
+    workspace_id: ws_fixture_d1
+    initiating_principal: {principal_id: prn_fixture_d1, principal_type: human}
+  authority_chain:
+    subject_and_authority_receipt_actor: application-catalog-controller
+    initiating_command_audit_actor: prn_fixture_d1
+    initiating_command_audit_action: system-manifests.import
+    both_layers_required_same_transaction: true
+
+standalone_public_activation:
+  applications.activate: DEFERRED_NOT_FROZEN
+  system-components.activate: DEFERRED_NOT_FROZEN
+  transports: {http: FORBIDDEN, cli: FORBIDDEN, sdk: FORBIDDEN, mcp: FORBIDDEN, a2a: FORBIDDEN, capability_discovery: FORBIDDEN}
+
+adversarial:
+  - {name: update_revision_1_in_place, expected: REJECT_AND_AUDIT}
+  - {name: activation_without_exact_previous_binding, expected: REJECT_AND_AUDIT}
+  - {name: activate_from_active, expected: REJECT_AND_AUDIT}
+  - {name: concurrent_second_activation, expected: REJECT_AND_AUDIT}
+  - {name: component_revision_binds_registered_revision_1, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+  - {name: component_revision_binds_bare_component_id, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+  - {name: cross_workspace_active_component_binding, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+  - {name: activation_receipt_failure, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+  - {name: internal_controller_with_activation_scope_calls_directly, expected: DENY_AND_AUDIT}
+  - {name: activation_request_digest_or_manifest_digest_mismatch, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+  - {name: controller_receipt_without_initiating_principal_audit, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+  - {name: initiating_principal_audit_without_controller_receipt, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+  - {name: component_revision_binds_stale_active_revision_after_reactivation, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+  - {name: component_revision_binds_deprecated_revision, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+  - {name: component_revision_binds_retired_revision, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+  - {name: reinterpret_legacy_active_revision_1_as_registered, expected: EXPLICIT_RECOVERY_REQUIRED}
+
+recovery:
+  populated_without_v5_catalog_history: UPGRADE_ALLOWED
+  populated_with_direct_active_v5_history: EXPLICIT_RECOVERY_REQUIRED
+  in_place_relabel_or_digest_rewrite: FORBIDDEN
+  disposable_database: REBUILD
+  durable_database: EXPORT_VERIFY_REPLAY_RECONCILE_CUTOVER
+
+does_not_prove:
+  - migration_exists
+  - runtime_path_implemented
+  - activation_route_implemented
+  - cli_or_capability_activation
+  - replay
+  - repo_sandbox
+  - provider_live
+  - production_release

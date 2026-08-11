@@ -52,6 +52,55 @@ rules:
   release_authority_chain_uses_database_uniqueness_and_compare_and_swap: true
   duplicate_outbox_delivery_may_not_mint_new_approval_capability_or_operation: true
 
+application_component_activation_lifecycle:
+  decision_ref: docs/decisions/D-014-v5-application-component-activation-lifecycle.md
+  decision: PRESERVE_REGISTERED_TO_ACTIVE
+  runtime_status: NOT_IMPLEMENTED
+  authoritative_history:
+    append_only: true
+    current_head_is_projection_not_history_authority: true
+    historical_binding_resolution_key: [kind, id, revision, digest]
+    physical_table_names_are_normative: false
+    recommended_implementation_names:
+      ai_application: ai_application_lifecycle_revisions
+      system_component: system_component_lifecycle_revisions
+  revision_sequence:
+    ai_application:
+      - {revision: 1, state: REGISTERED, command: applications.register, event: application.registered}
+      - {revision: 2, state: ACTIVE, command: applications.activate, event: application.activated}
+    system_component:
+      - {revision: 1, state: REGISTERED, command: system-components.register, event: system_component.registered}
+      - {revision: 2, state: ACTIVE, command: system-components.activate, event: system_component.activated}
+  activation:
+    owner: application-catalog-controller
+    invocation: MANIFEST_IMPORT_COORDINATOR_ONLY_SAME_POSTGRESQL_UOW
+    direct_public_or_internal_controller_invocation: FORBIDDEN
+    required_workflow_owner: manifest_import_coordinator
+    required_authenticated_root_intent: system-manifests.import
+    allowed_initiating_principal_types: [human, service]
+    exact_workflow_binding_fields:
+      - authenticated_request_digest
+      - manifest_digest
+      - idempotency_key
+      - workspace_id
+      - initiating_principal_id
+      - initiating_principal_type
+    authority_chain:
+      subject_and_authority_receipt_actor: application-catalog-controller
+      initiating_command_audit_actor: exact_authenticated_initiating_principal
+      both_layers_required_same_transaction: true
+    exact_previous_binding_is_server_derived: true
+    compare_and_swap: {expected_revision: 1, expected_state: REGISTERED, next_revision: 2, next_state: ACTIVE}
+    duplicate_or_stale_or_wrong_state: REJECT_AND_AUDIT
+  component_revision_binding:
+    requires_exact_current_authoritative_lifecycle_revision: true
+    required_state: ACTIVE
+    first_manifest_expected_revision: 2
+    later_active_revision_after_reactivation_is_allowed: true
+    stale_historical_active_revision: REJECT_AND_AUDIT
+    deprecated_or_retired_revision: REJECT_AND_AUDIT
+  legacy_direct_active_revision_1: EXPLICIT_RECOVERY_REQUIRED_NO_IN_PLACE_REINTERPRETATION
+
 record_authority:
   AI_APPLICATION:
     resource: ai_application
@@ -797,6 +846,7 @@ components:
       - applications.activate
       - environments.register
       - system-components.register
+      - system-components.activate
       - dependency-edges.record
       - component-revisions.record
       - topology-revisions.record
@@ -808,6 +858,14 @@ components:
       external_atomicity: NOT_APPLICABLE
       retry: IDEMPOTENT_REPLAY_OF_SAME_MANIFEST_DIGEST
       rollback: ROLLBACK_ENTIRE_LOCAL_BUSINESS_TRANSACTION
+    lifecycle_sequence_semantics:
+      application_register_then_activate_before_dependents: true
+      every_component_register_then_activate_before_component_revision: true
+      component_revision_exact_binds_current_authoritative_active_revision: true
+      initial_manifest_active_component_revision: 2
+      retry_must_not_mint_another_activation_revision: true
+      activation_requires_exact_authenticated_import_request_binding: true
+      controller_scope_without_workflow_root_is_insufficient: true
     must_not:
       - bypass_resource_owner
       - perform_external_side_effect

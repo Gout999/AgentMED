@@ -242,20 +242,27 @@ flowchart TD
 冻结合同要求 creation=`REGISTERED`，随后独立 `*.activated` 事件进入 `ACTIVE`；当前 runtime
 在 register/import 时直接写 `ACTIVE`。
 
-**推荐方案 A**：保留冻结生命周期。创建 append-only revision/history，使 register 产生
+**Owner decision（2026-08-11）**：产品 owner 已选择方案 A，保留冻结生命周期。D-014
+semantic contract candidate 已形成，但仍在等待 independent verifier；D1 尚未关闭，R1
+保持锁定。
+
+**选择的方案 A**：创建 append-only revision/history，使 register 产生
 revision 1 `REGISTERED`，可信 manifest workflow 在同一受控事务内调用 activate 产生
 revision 2 `ACTIVE`；下游 ComponentRevision 在记录时 exact 绑定 active SystemComponent
-revision 2，VersionSet 再绑定该 ComponentRevision。该方案必须修改 migration
+的当时 current authoritative lifecycle revision；initial manifest 是 revision 2，后续
+deprecate/reactivate 后可为 revision 4 或更高，旧的 historical ACTIVE revision 不可复用。
+VersionSet 再绑定该 ComponentRevision。该方案必须修改 migration
 008 之后的 lifecycle constraints（当前 application 不允许 REGISTERED、component 不允许
 REGISTERED），新增 history/constraint migration，并把 `system-components.activate` 纳入
 trusted manifest workflow；不能只补 `applications.activate`。Public standalone activate
 可继续 deferred，但 internal command、event、authority receipt 必须真实存在。
 
-**备选方案 B**：通过新 ADR/contract migration 把初态改为 `ACTIVE`。该方案实现更小，
-但丢失显式 activation authority，只有产品 owner 明确选择时采用。
+**拒绝的方案 B**：通过新 ADR/contract migration 把初态改为 `ACTIVE`。该方案实现更小，
+但丢失显式 activation authority，产品 owner 已明确拒绝。
 
-**Decision gate**：未完成产品/owner/迁移影响复核前不得实现；不得只改测试或 overlay
-掩盖 frozen/runtime 差异。
+**Decision gate**：owner 选择已完成，但在 independent verifier 对 D-014、合同、fixture 与
+conformance 给出 PASS 前不得实现或解锁 R1；不得只改测试或 overlay 掩盖 frozen/runtime
+差异。
 
 ### R1 · V5 authority/event foundation
 
@@ -728,7 +735,7 @@ Evidence commit 只记录对前一个 immutable subject commit 的验证结果�
 
 ## 17. 下一执行队列
 
-1. 由 product owner 记录并裁决 D1；当前推荐保留 `REGISTERED → ACTIVE`，以独立 ADR/semantic subject/verifier 关闭 decision gate；
+1. 完成 D1 semantic commit，随后在 clean subject 上生成 contract evidence、通过 independent verifier，并形成 evidence/status closure commit；在此之前 R1 保持 locked；
 2. 重排未提交 migration 链，确保 R1 authority/event foundation 先于 R4 hardening；
 3. 按 R1→R4 逐包实施、提交、验证；
 4. D2 冻结完整 version-graph recording bundle，而非只增加一个无法产生第二 graph 的 VersionSet endpoint；

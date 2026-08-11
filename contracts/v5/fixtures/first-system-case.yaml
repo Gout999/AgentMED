@@ -21,6 +21,15 @@ preconditions:
 
 manifest_import:
   workspace_id: ws_fixture0001
+  activation_authorization:
+    root_intent: system-manifests.import
+    authenticated_request_digest: sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd
+    manifest_digest: sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee
+    idempotency_key: fixture-first-system-import
+    initiating_principal_id: prn_fixture_integrator0001
+    initiating_principal_type: human
+    same_postgresql_unit_of_work: true
+    direct_internal_controller_invocation: FORBIDDEN
   application:
     application_id: app_fixture0001
     slug: fixture-ai-app
@@ -57,6 +66,7 @@ expected_command_order:
   - applications.activate
   - environments.register
   - system-components.register
+  - system-components.activate
   - dependency-edges.record
   - component-revisions.record
   - topology-revisions.record
@@ -85,6 +95,10 @@ expected_assertions:
   release_success_created: false
   trusted_approver_policy_is_imported_outside_runtime_version_set: true
   case_binding_exact_fields: [case_id, case_revision, case_digest]
+  component_revision_binds_current_authoritative_active_lifecycle_revision: true
+  initial_manifest_component_lifecycle_revision: 2
+  activation_subject_and_authority_receipt_actor: application-catalog-controller
+  activation_has_exact_initiating_principal_command_audit: true
 
 negative_cases:
   - name: missing_component_revision

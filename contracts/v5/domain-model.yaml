@@ -300,6 +300,29 @@ fact_class_non_inference:
     - adapter_receipt_alone_does_not_constitute_release_success
     - direct_assignment_restore_or_resume_is_not_a_second_rollback_authority
 
+application_component_activation_lifecycle:
+  decision_ref: docs/decisions/D-014-v5-application-component-activation-lifecycle.md
+  decision: PRESERVE_REGISTERED_TO_ACTIVE
+  runtime_status: NOT_IMPLEMENTED
+  immutable_revision_history:
+    ai_application:
+      identity: [workspace_id, application_id, revision]
+      sequence:
+        - {revision: 1, lifecycle_state: REGISTERED}
+        - {revision: 2, lifecycle_state: ACTIVE}
+    system_component:
+      identity: [workspace_id, component_id, revision]
+      sequence:
+        - {revision: 1, lifecycle_state: REGISTERED}
+        - {revision: 2, lifecycle_state: ACTIVE}
+    physical_table_names_are_normative: false
+    recommended_implementation_names:
+      ai_application: ai_application_lifecycle_revisions
+      system_component: system_component_lifecycle_revisions
+  current_head_is_projection_not_history_authority: true
+  exact_previous_binding_is_required_on_activation_revision: true
+  legacy_active_revision_1_may_be_reinterpreted: false
+
 resources:
   ai_application:
     kind: aggregate
@@ -314,6 +337,11 @@ resources:
       - data_classification
       - governance_mode
       - lifecycle_state
+    lifecycle_revision_contract:
+      initial: {revision: 1, lifecycle_state: REGISTERED}
+      activation: {revision: 2, lifecycle_state: ACTIVE}
+      exact_previous_binding_required_after_revision_1: true
+      current_head_is_projection_not_history_authority: true
     forbidden_fields:
       - current_system_version_set_id
       - observed_runtime_state
@@ -343,6 +371,11 @@ resources:
       - permission_classification
       - effect_classification
       - lifecycle_state
+    lifecycle_revision_contract:
+      initial: {revision: 1, lifecycle_state: REGISTERED}
+      activation: {revision: 2, lifecycle_state: ACTIVE}
+      exact_previous_binding_required_after_revision_1: true
+      current_head_is_projection_not_history_authority: true
     optional_fields:
       - dataset_role
     forbidden_fields:
@@ -368,6 +401,7 @@ resources:
     uses_record_envelope: true
     required_fields:
       - component_id
+      - exact_system_component_binding
       - component_kind
       - identity_locator
       - identity_assurance
@@ -388,9 +422,20 @@ resources:
       - artifact_refs
     identity_assurance_contract_ref: contracts/v5/domain-model.yaml#identity_assurance/discriminator_union
     identity_assurance_field_refs:
+      exact_system_component_binding: contracts/v5/schema-profiles.yaml#common/exact_record_binding_v5:SYSTEM_COMPONENT
       immutable_provider_version_attestation: PROVIDER_VERSION_ATTESTATION
       exact_observation_receipt_binding: contracts/v5/schema-profiles.yaml#common/exact_evidence_binding_union
       exact_provenance_receipt_bindings: contracts/v5/schema-profiles.yaml#common/exact_evidence_binding_union
+    exact_system_component_binding_contract:
+      required_kind: SYSTEM_COMPONENT
+      required_lifecycle_state: ACTIVE
+      required_revision_rule: CURRENT_AUTHORITATIVE_ACTIVE_LIFECYCLE_REVISION_AT_RECORDING
+      first_manifest_expected_revision: 2
+      later_active_revision_after_deprecate_reactivate_is_allowed: true
+      stale_historical_active_revision_is_forbidden: true
+      deprecated_or_retired_revision_is_forbidden: true
+      same_workspace_and_application_required: true
+      mutable_current_head_or_bare_component_id_is_not_authority: true
     forbidden_fields:
       - deployed
       - healthy

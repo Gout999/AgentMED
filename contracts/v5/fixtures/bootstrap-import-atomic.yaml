@@ -35,6 +35,19 @@ one_local_transaction_constructs:
   - BOOTSTRAP_ATTESTATION
   - SYSTEM_ASSIGNMENT
 
+application_component_lifecycle_revisions:
+  ai_application:
+    - {revision: 1, lifecycle_state: REGISTERED, command: applications.register}
+    - {revision: 2, lifecycle_state: ACTIVE, command: applications.activate}
+  each_system_component:
+    - {revision: 1, lifecycle_state: REGISTERED, command: system-components.register}
+    - {revision: 2, lifecycle_state: ACTIVE, command: system-components.activate}
+  component_revision_exact_component_binding:
+    required_lifecycle_state: ACTIVE
+    required_revision_rule: CURRENT_AUTHORITATIVE_ACTIVE_LIFECYCLE_REVISION_AT_RECORDING
+    initial_manifest_expected_revision: 2
+  any_activation_failure_rolls_back_every_record: true
+
 after_import:
   - APPLICATION_CASE_BINDING  # 由 cases.bind-application 在 import 之后单独创建，不属于 manifest 事务
 
@@ -44,6 +57,16 @@ atomicity:
   authority_receipt_per_subject: true
   external_side_effects: FORBIDDEN
   retry: IDEMPOTENT_REPLAY_OF_SAME_MANIFEST_DIGEST
+
+activation_authorization:
+  invocation: MANIFEST_IMPORT_COORDINATOR_ONLY_SAME_POSTGRESQL_UOW
+  exact_authenticated_root_intent: system-manifests.import
+  exact_binding_fields: [authenticated_request_digest, manifest_digest, idempotency_key, workspace_id, initiating_principal_id, initiating_principal_type]
+  direct_internal_controller_invocation: FORBIDDEN
+  authority_chain:
+    subject_and_authority_receipt_actor: application-catalog-controller
+    initiating_command_audit_actor: exact_authenticated_initiating_principal
+    both_layers_required_same_transaction: true
 
 negative_cases:
   - name: missing_component_revision
@@ -101,6 +124,18 @@ contract_grounding:
   aggregate_ownership:
     components:
       manifest_import_coordinator:
+        canonical_command_order:
+          - applications.register
+          - applications.activate
+          - environments.register
+          - system-components.register
+          - system-components.activate
+          - dependency-edges.record
+          - component-revisions.record
+          - topology-revisions.record
+          - system-versions.record
+          - bootstrap-attestations.record
+          - system-assignments.record
         failure_semantics:
           local_database_atomicity: ALL_OR_NOTHING
           retry: IDEMPOTENT_REPLAY_OF_SAME_MANIFEST_DIGEST
@@ -110,6 +145,12 @@ contract_grounding:
           - perform_external_side_effect
           - create_observed_state
           - infer_release_success
+        activation_authorization:
+          root_intent: system-manifests.import
+          exact_authenticated_request_and_manifest_digest_required: true
+          exact_initiating_human_or_service_principal_required: true
+          same_postgresql_unit_of_work_required: true
+          direct_internal_controller_invocation: FORBIDDEN
   domain_model:
     resources:
       bootstrap_attestation:
