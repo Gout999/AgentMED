@@ -2,6 +2,39 @@ version: "0.2-draft"
 status: draft_target_contract
 runtime_status: NOT_IMPLEMENTED
 
+r1_authority_foundation:
+  stage: R1
+  contract_status: CANDIDATE
+  r1_foundation_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+  revision_2_storage_cas_harness: NON_PRODUCTION_IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+  composed_manifest_activation_runtime: NOT_IMPLEMENTED
+  composed_manifest_activation_owner_stage: R2
+  production_activated_event_routes: DISABLED
+  production_direct_revision_2_append: DENY_ALL
+  component_revision_current_active_resolver_runtime: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+  component_revision_major_2_envelope_runtime: NOT_IMPLEMENTED
+  component_revision_writer_validation_runtime: NOT_IMPLEMENTED
+  component_revision_producer_atomic_enforcement_runtime: NOT_IMPLEMENTED
+  component_revision_producer_owner_stage: R3
+  implemented_lifecycle_primitives:
+    ai_application: [registration_revision_1, revision_2_storage_cas_non_production_harness]
+    system_component: [registration_revision_1, revision_2_storage_cas_non_production_harness]
+  later_lifecycle_transitions_runtime: NOT_IMPLEMENTED
+  later_lifecycle_transitions_owner_stage: R2
+  later_lifecycle_transitions:
+    - application.archived
+    - application.restored
+    - system_component.deprecated
+    - system_component.reactivated
+    - system_component.retired
+  public_activation_routes: DISABLED
+  lifecycle_authority: APPEND_ONLY_POSTGRESQL_REVISION_HISTORY
+  current_head_role: PROJECTION_ONLY_NOT_HISTORICAL_AUTHORITY
+  transition_concurrency: LOCK_CURRENT_HEAD_AND_COMPARE_AND_SWAP
+  activation_invocation: MANIFEST_IMPORT_COORDINATOR_ONLY_SAME_POSTGRESQL_UOW
+  public_or_standalone_activation: FORBIDDEN
+  does_not_prove: [post_commit_verifier_or_evidence_closure, composed_manifest_activation_runtime, component_revision_major_2_envelope_runtime, component_revision_writer_validation_runtime, component_revision_producer_atomic_enforcement, public_activation_transport_or_route, r2_application_catalog_closure]
+
 imports:
   v4_state_machines: contracts/v4/events/state-machines.yaml
   imported_without_redefinition:
@@ -19,12 +52,31 @@ machines:
     initial: REGISTERED
     terminal: []
     states: [REGISTERED, ACTIVE, ARCHIVED]
+    revision_history:
+      storage_semantics: APPEND_ONLY_IMMUTABLE_REVISIONS
+      initial_revision: {revision: 1, state: REGISTERED, exact_previous_binding: null}
+      activation_revision: {revision: 2, state: ACTIVE, exact_previous_revision: 1}
+      exact_resolution_key: [kind, id, revision, digest]
+      current_head_is_projection_not_history_authority: true
+      every_transition_creates_new_adjacent_revision: true
+      every_non_initial_revision_exactly_binds_locked_previous_revision: true
     transitions:
-      - {from: REGISTERED, 'on': application.activated, to: ACTIVE}
-      - {from: ACTIVE, 'on': application.archived, to: ARCHIVED}
-      - {from: ARCHIVED, 'on': application.restored, to: ACTIVE}
+      - from: REGISTERED
+        'on': application.activated
+        to: ACTIVE
+        guard: exact_registered_revision_1_to_active_revision_2_cas_inside_authenticated_manifest_import
+        composed_runtime_status: NOT_IMPLEMENTED
+        composed_runtime_owner_stage: R2
+        r1_harness_status: NON_PRODUCTION_STORAGE_CAS_ONLY
+        production_event_or_append_status: DISABLED
+      - {from: ACTIVE, 'on': application.archived, to: ARCHIVED, guard: exact_locked_current_revision_to_adjacent_revision_cas, runtime_status: NOT_IMPLEMENTED, runtime_owner_stage: R2}
+      - {from: ARCHIVED, 'on': application.restored, to: ACTIVE, guard: exact_locked_current_revision_to_adjacent_revision_cas, runtime_status: NOT_IMPLEMENTED, runtime_owner_stage: R2}
     failure_semantics:
       archived_blocks_new_assignments: true
+      missing_or_stale_previous_binding: REJECT_AND_AUDIT
+      duplicate_or_concurrent_loser: REJECT_AND_AUDIT
+      activation_outside_manifest_transaction: DENY_AND_AUDIT
+      receipt_event_audit_or_revision_failure: ROLLBACK_ENTIRE_TRANSACTION
 
   environment:
     created_by_event: environment.registered
@@ -42,15 +94,35 @@ machines:
     initial: REGISTERED
     terminal: [RETIRED]
     states: [REGISTERED, ACTIVE, DEPRECATED, RETIRED]
+    revision_history:
+      storage_semantics: APPEND_ONLY_IMMUTABLE_REVISIONS
+      initial_revision: {revision: 1, state: REGISTERED, exact_previous_binding: null}
+      activation_revision: {revision: 2, state: ACTIVE, exact_previous_revision: 1}
+      exact_resolution_key: [kind, id, revision, digest]
+      current_head_is_projection_not_history_authority: true
+      every_transition_creates_new_adjacent_revision: true
+      every_non_initial_revision_exactly_binds_locked_previous_revision: true
+      active_revision_is_current_only_when_it_is_the_authoritative_head: true
     transitions:
-      - {from: REGISTERED, 'on': system_component.activated, to: ACTIVE}
-      - {from: ACTIVE, 'on': system_component.deprecated, to: DEPRECATED}
-      - {from: DEPRECATED, 'on': system_component.reactivated, to: ACTIVE}
-      - {from: REGISTERED, 'on': system_component.retired, to: RETIRED}
-      - {from: ACTIVE, 'on': system_component.retired, to: RETIRED}
-      - {from: DEPRECATED, 'on': system_component.retired, to: RETIRED}
+      - from: REGISTERED
+        'on': system_component.activated
+        to: ACTIVE
+        guard: exact_registered_revision_1_to_active_revision_2_cas_inside_authenticated_manifest_import
+        composed_runtime_status: NOT_IMPLEMENTED
+        composed_runtime_owner_stage: R2
+        r1_harness_status: NON_PRODUCTION_STORAGE_CAS_ONLY
+        production_event_or_append_status: DISABLED
+      - {from: ACTIVE, 'on': system_component.deprecated, to: DEPRECATED, guard: exact_locked_current_revision_to_adjacent_revision_cas, runtime_status: NOT_IMPLEMENTED, runtime_owner_stage: R2}
+      - {from: DEPRECATED, 'on': system_component.reactivated, to: ACTIVE, guard: exact_locked_current_revision_to_adjacent_revision_cas, runtime_status: NOT_IMPLEMENTED, runtime_owner_stage: R2}
+      - {from: REGISTERED, 'on': system_component.retired, to: RETIRED, guard: exact_locked_current_revision_to_adjacent_revision_cas, runtime_status: NOT_IMPLEMENTED, runtime_owner_stage: R2}
+      - {from: ACTIVE, 'on': system_component.retired, to: RETIRED, guard: exact_locked_current_revision_to_adjacent_revision_cas, runtime_status: NOT_IMPLEMENTED, runtime_owner_stage: R2}
+      - {from: DEPRECATED, 'on': system_component.retired, to: RETIRED, guard: exact_locked_current_revision_to_adjacent_revision_cas, runtime_status: NOT_IMPLEMENTED, runtime_owner_stage: R2}
     failure_semantics:
       retired_component_cannot_enter_new_version_set: true
+      missing_or_stale_previous_binding: REJECT_AND_AUDIT
+      duplicate_or_concurrent_loser: REJECT_AND_AUDIT
+      activation_outside_manifest_transaction: DENY_AND_AUDIT
+      receipt_event_audit_or_revision_failure: ROLLBACK_ENTIRE_TRANSACTION
 
   system_assignment:
     created_by_event: system_assignment.recorded

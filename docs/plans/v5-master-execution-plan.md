@@ -271,8 +271,11 @@ R1 已解锁施工，但在自身 migration/runtime/replay evidence PASS 前不�
 
 **依赖**：R0 + D1。
 
-**Scope**：生命周期 revision、major-2 event envelope、exact subject/dependent bindings、
-AuthorityReceipt、migration head、read/replay integrity。
+**Scope**：生命周期 revision storage/CAS、major-2 generic event envelope、exact subject/binding
+resolver、AuthorityReceipt generic replay、migration head、read/replay integrity。R1 只实现
+registration revision 1 event，以及 revision 1→2 storage/CAS 的显式 non-production harness；
+它不实现可由 production caller 调用的 `*.activated` event route、direct revision-2 append
+入口或 manifest composition。
 
 **Migration**：当前 WIP head 为 012。若 D1 需要新表/列，使用实际 next head；Master Plan
 不预占硬编码编号。012 本身会拒绝任何已有 V5 authority history；因此对未接受的 disposable
@@ -280,11 +283,19 @@ AuthorityReceipt、migration head、read/replay integrity。
 方案。不能把旧事件重标为 V5 major-2，也不能泛称 populated 010/011→012 upgrade PASS。
 后续 migration 还需覆盖 populated 012 数据的 upgrade/recovery。
 
-**Verification**：状态机 reachability、creation/activation event、receipt replay、tampered
-row/envelope/scalar、fresh/populated migration、PostgreSQL concurrent activation。
+**Verification**：状态机 reachability、registration event、通过显式 non-production harness
+验证 revision 1→2 storage/CAS 与 PostgreSQL concurrent exactly-one、generic envelope/receipt
+replay、tampered row/envelope/scalar、fresh/populated migration。R1 evidence 必须把 revision-2
+harness 标为 storage primitive，不能把它表述为 authenticated business activation replay。
 
-**Stop gate**：历史 ACTIVE row 无法确定性 backfill；activation 可被非 owner 调用；
-read path 不能重建 revision/digest。
+**Exit / unlock R2**：R1 可在上述 foundation scope 内取得 `contract=PASS` 与 `replay=PASS`，
+但所有 production activated-event route 与 direct revision-2 append 必须 deny-all/disabled；
+D-014 的真实 manifest-only dual-authority activation 仍是 R2 的必过 Exit，不因 R1 primitive
+PASS 而降级或视为已实现。
+
+**Stop gate**：历史 ACTIVE row 无法确定性 backfill；任何 production 或通用 internal caller
+可以发出 `*.activated` event 或直接 append revision 2；non-production harness 被导出为 capability/
+route/service 或 evidence 把它表述为 business activation；read path 不能重建 revision/digest。
 
 ### R2 · V5-1A Application Catalog closure
 
@@ -292,10 +303,19 @@ read path 不能重建 revision/digest。
 Environment、SystemComponent 和 DependencyEdge；系统不宣称 runtime/version/observed。
 
 **Scope**：Application Catalog service、HTTP/CLI、capabilities、Console Applications read
-model、audit/idempotency/outbox，以及对应 contract overlay。
+model、audit/idempotency/outbox，以及对应 contract overlay。R2 必须实现真实 internal manifest
+activation coordinator/gate：从 exact authenticated `system-manifests.import` 建立不可伪造、
+transaction-bound 的 authority context，校验 active `application-catalog-controller` 与 exact
+initiating human-or-service principal，并在同一 PostgreSQL UoW 内完成 lifecycle revision、
+activated event、outbox、controller audit、initiating-principal audit、closed AuthorityReceipt 与
+idempotency terminal result；缺失、错绑或任一写入失败必须整事务 rollback。Standalone public
+activation route 仍 disabled。
 
 **Verification**：duplicate identity、cycle/fan-out、cross-tenant、role/scope、audit rollback、
-same-key conflict、concurrent register/activate、Console loading/empty/error/partial/UNKNOWN。
+same-key conflict、concurrent register/activate、Console loading/empty/error/partial/UNKNOWN；另须
+证明 direct lifecycle/event call、syntactic manifest context、仅格式正确的 audit URI、伪 permit、
+cross-session/transaction、missing controller/initiating audit/receipt/outbox 均 fail closed 且零
+partial row，same-key retry 不产生第二 activation revision。
 
 **Evidence**：`evidence/v5/stage-1/application-catalog/<run-id>/`。
 

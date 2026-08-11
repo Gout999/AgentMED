@@ -5,6 +5,46 @@ schema_major: 2
 field_contract_status: DRAFT
 route_status: DISABLED
 
+r1_authority_foundation:
+  stage: R1
+  contract_status: CANDIDATE
+  r1_foundation_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+  revision_2_storage_cas_harness: NON_PRODUCTION_IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+  composed_manifest_activation_runtime: NOT_IMPLEMENTED
+  composed_manifest_activation_owner_stage: R2
+  production_activated_event_routes: DISABLED
+  production_direct_revision_2_append: DENY_ALL
+  component_revision_current_active_resolver_runtime: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+  component_revision_major_2_envelope_runtime: NOT_IMPLEMENTED
+  component_revision_writer_validation_runtime: NOT_IMPLEMENTED
+  component_revision_producer_atomic_enforcement_runtime: NOT_IMPLEMENTED
+  component_revision_producer_owner_stage: R3
+  implemented_lifecycle_primitives:
+    ai_application: [registration_revision_1, revision_2_storage_cas_non_production_harness]
+    system_component: [registration_revision_1, revision_2_storage_cas_non_production_harness]
+  later_lifecycle_transitions_runtime: NOT_IMPLEMENTED
+  later_lifecycle_transitions_owner_stage: R2
+  later_lifecycle_transitions:
+    - application.archived
+    - application.restored
+    - system_component.deprecated
+    - system_component.reactivated
+    - system_component.retired
+  public_activation_routes: DISABLED
+  route_status: DISABLED
+  scope:
+    - lifecycle_revision_record_profiles
+    - activation_authority_receipt_and_initiating_audit_binding
+    - current_authoritative_active_dependent_binding
+  does_not_prove:
+    - post_commit_verifier_or_evidence_closure
+    - composed_manifest_activation_runtime
+    - component_revision_producer_atomic_enforcement
+    - component_revision_major_2_envelope_runtime
+    - component_revision_writer_validation_runtime
+    - public_activation_transport_or_route
+    - r2_application_catalog_closure
+
 purpose:
   - define_v5_exact_record_binding_space
   - define_schema_major_2_successors_for_closed_v4_records
@@ -139,8 +179,305 @@ common:
       - transaction_id_equals_event_envelope_transaction_id
       - authority_receipt_id_equals_subject_envelope_and_event_envelope_authority_receipt_id
     additional_properties: false
+  lifecycle_revision_authority_v5:
+    exact_binding_profile: exact_record_binding_v5
+    authoritative_storage: APPEND_ONLY_IMMUTABLE_HISTORY
+    exact_resolution_key: [kind, id, revision, digest]
+    initial_revision:
+      revision: 1
+      exact_previous_binding: null
+      lifecycle_state: REGISTERED
+    transition_revision:
+      exact_previous_binding_is_server_derived_from_locked_history: true
+      same_kind_id_and_workspace_as_previous: true
+      revision_equals_previous_revision_plus_one: true
+      compare_and_swap_required: true
+      current_head_is_projection_not_history_authority: true
+    digest_rule: each_revision_has_independent_canonical_record_digest
+    overwrite_or_relabel_historical_revision: FORBIDDEN
+  manifest_activation_context_v5:
+    required_fields:
+      - root_intent
+      - workflow_owner
+      - authenticated_request_digest
+      - manifest_digest
+      - idempotency_key
+      - workspace_id
+      - initiating_principal_id
+      - initiating_principal_type
+      - initiating_command_audit_ref
+    constants:
+      root_intent: system-manifests.import
+      workflow_owner: manifest_import_coordinator
+    initiating_principal_type_values: [human, service]
+    invariants:
+      - context_is_server_derived_from_exact_authenticated_import_request
+      - activation_shares_local_postgresql_transaction_with_import
+      - context_workspace_matches_subject_receipt_event_and_audit
+      - application_catalog_controller_is_subject_and_receipt_actor
+      - exact_initiating_principal_is_command_audit_actor
+      - controller_receipt_and_initiating_principal_audit_are_both_required
+      - internal_controller_scope_alone_is_not_authority
+    additional_properties: false
+  initiating_command_audit_v5:
+    required_fields:
+      - audit_id
+      - workspace_id
+      - action
+      - initiating_principal_id
+      - initiating_principal_type
+      - authenticated_request_digest
+      - manifest_digest
+      - idempotency_key
+      - transaction_id
+      - recorded_at
+      - audit_digest
+    constants:
+      action: system-manifests.import
+    digest_rule: jcs-rfc8785-v1+sha256(excluding:/audit_digest)
+    same_transaction_as_subject_event_and_authority_receipt: true
+    additional_properties: false
+  lifecycle_activation_transaction_v5:
+    runtime_status: NOT_IMPLEMENTED
+    owner_stage: R2
+    production_entry_status: DISABLED_UNTIL_R2_COMPOSED_GATE
+    r1_available_primitives:
+      - closed_authority_receipt_profile
+      - initiating_command_audit_profile
+      - major_2_event_envelope
+      - lifecycle_history_compare_and_swap
+    required_artifacts:
+      - exact_new_lifecycle_subject
+      - major_2_event_envelope
+      - controller_authority_receipt
+      - manifest_activation_context
+      - initiating_command_audit
+      - transactional_outbox_record
+    field_refs:
+      controller_authority_receipt: authority_receipt_v5
+      manifest_activation_context: manifest_activation_context_v5
+      initiating_command_audit: initiating_command_audit_v5
+    receipt_constraints:
+      canonical_owner: application-catalog-controller
+      allowed_commands: [applications.activate, system-components.activate]
+      controller_principal: application-catalog-controller
+      receipt_schema_remains_closed_without_activation_context_or_initiating_audit_fields: true
+    audit_constraints:
+      actor: exact_authenticated_initiating_principal
+      action: system-manifests.import
+      distinct_from_controller_authority_receipt: true
+    transaction_constraints:
+      all_required_artifacts_share_transaction_id: true
+      missing_or_mismatched_artifact: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION
+      audit_failure_fails_business_transaction: true
+    invariants:
+      - activation_subject_is_exact_new_active_lifecycle_revision
+      - receipt_event_subject_and_new_lifecycle_revision_are_identical
+      - receipt_actor_is_controller_and_audit_actor_is_exact_initiating_principal
+      - both_authority_layers_share_exact_authenticated_import_transaction
+      - neither_authority_layer_may_substitute_for_the_other
+    additional_properties: false
+  current_authoritative_active_system_component_binding_v5:
+    r1_resolution_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    producer_atomic_enforcement_runtime: NOT_IMPLEMENTED
+    producer_owner_stage: R3
+    base_profile: exact_record_binding_v5:SYSTEM_COMPONENT
+    resolution_source: APPEND_ONLY_LIFECYCLE_HISTORY
+    required_lifecycle_state: ACTIVE
+    required_revision_rule: CURRENT_AUTHORITATIVE_ACTIVE_LIFECYCLE_REVISION_AT_RECORDING
+    first_manifest_expected_revision: 2
+    later_active_revision_after_deprecate_reactivate_is_allowed: true
+    same_workspace_and_application_required: true
+    forbidden:
+      - bare_component_id
+      - mutable_current_head_projection_without_exact_history
+      - registered_revision
+      - stale_historical_active_revision
+      - deprecated_revision
+      - retired_revision
 
 profiles:
+  ai_application:
+    logical_resource: ai_application
+    canonical_owner: application-catalog-controller
+    canonical_commands: [applications.register, applications.activate, applications.archive, applications.restore]
+    adds_business_state_machine: true
+    state_machine_ref: contracts/v5/state-machines.yaml#machines/ai_application
+    authority_profile: lifecycle_revision_authority_v5
+    required_fields:
+      - record_envelope
+      - application_id
+      - project_id
+      - slug
+      - display_name
+      - owner_principal_ids
+      - criticality
+      - data_classification
+      - governance_mode
+      - lifecycle_state
+    field_refs:
+      exact_previous_application_binding_or_null: null_only
+      exact_previous_application_binding: exact_record_binding_v5:AI_APPLICATION
+    revision_shape_union:
+      discriminator: [record_envelope.revision, lifecycle_state]
+      closed_shape_rule: base_required_plus_optional_plus_selected_variant_only
+      one_of:
+        INITIAL_REGISTERED:
+          match: {record_envelope.revision: 1, lifecycle_state: REGISTERED}
+          required_fields: [exact_previous_application_binding_or_null]
+          constants: {exact_previous_application_binding_or_null: null}
+          forbidden_fields: [exact_previous_application_binding]
+          additional_properties: false
+        NON_INITIAL_TRANSITION:
+          match: {record_envelope.revision: integer_min_2}
+          required_fields: [exact_previous_application_binding]
+          field_refs:
+            exact_previous_application_binding: exact_record_binding_v5:AI_APPLICATION
+          forbidden_fields: [exact_previous_application_binding_or_null]
+          additional_properties: false
+    initial_revision_contract:
+      revision: 1
+      lifecycle_state: REGISTERED
+      exact_previous_application_binding_or_null: null
+      command: applications.register
+      event: application.registered
+    activation_revision_contract:
+      revision: 2
+      lifecycle_state: ACTIVE
+      command: applications.activate
+      event: application.activated
+      exact_previous_field: exact_previous_application_binding
+      exact_previous_binding_required: true
+      authority_profile: lifecycle_activation_transaction_v5
+      r1_runtime_scope: NON_PRODUCTION_STORAGE_CAS_HARNESS_ONLY
+      production_runtime_status: NOT_IMPLEMENTED
+      production_runtime_owner_stage: R2
+    invariants:
+      - every_non_initial_revision_exactly_binds_locked_previous_revision
+      - every_transition_uses_same_id_previous_revision_plus_one_and_compare_and_swap
+      - record_event_authority_receipt_outbox_and_audit_share_transaction
+      - revision_1_remains_resolvable_after_activation
+    forbidden_fields: [current_system_version_set_id, observed_runtime_state, release_status]
+    additional_properties: false
+
+  system_component:
+    logical_resource: system_component
+    canonical_owner: application-catalog-controller
+    canonical_commands: [system-components.register, system-components.activate, system-components.deprecate, system-components.reactivate, system-components.retire]
+    adds_business_state_machine: true
+    state_machine_ref: contracts/v5/state-machines.yaml#machines/system_component
+    authority_profile: lifecycle_revision_authority_v5
+    required_fields:
+      - record_envelope
+      - component_id
+      - application_id
+      - component_kind
+      - logical_name
+      - owner_principal_ids
+      - criticality
+      - data_classification
+      - permission_classification
+      - effect_classification
+      - lifecycle_state
+    optional_fields: [dataset_role]
+    field_refs:
+      exact_previous_system_component_binding_or_null: null_only
+      exact_previous_system_component_binding: exact_record_binding_v5:SYSTEM_COMPONENT
+    revision_shape_union:
+      discriminator: [record_envelope.revision, lifecycle_state]
+      closed_shape_rule: base_required_plus_optional_plus_selected_variant_only
+      one_of:
+        INITIAL_REGISTERED:
+          match: {record_envelope.revision: 1, lifecycle_state: REGISTERED}
+          required_fields: [exact_previous_system_component_binding_or_null]
+          constants: {exact_previous_system_component_binding_or_null: null}
+          forbidden_fields: [exact_previous_system_component_binding]
+          additional_properties: false
+        NON_INITIAL_TRANSITION:
+          match: {record_envelope.revision: integer_min_2}
+          required_fields: [exact_previous_system_component_binding]
+          field_refs:
+            exact_previous_system_component_binding: exact_record_binding_v5:SYSTEM_COMPONENT
+          forbidden_fields: [exact_previous_system_component_binding_or_null]
+          additional_properties: false
+    initial_revision_contract:
+      revision: 1
+      lifecycle_state: REGISTERED
+      exact_previous_system_component_binding_or_null: null
+      command: system-components.register
+      event: system_component.registered
+    activation_revision_contract:
+      revision: 2
+      lifecycle_state: ACTIVE
+      command: system-components.activate
+      event: system_component.activated
+      exact_previous_field: exact_previous_system_component_binding
+      exact_previous_binding_required: true
+      authority_profile: lifecycle_activation_transaction_v5
+      r1_runtime_scope: NON_PRODUCTION_STORAGE_CAS_HARNESS_ONLY
+      production_runtime_status: NOT_IMPLEMENTED
+      production_runtime_owner_stage: R2
+    current_active_rule:
+      active_is_authoritative_only_when_revision_is_current_head: true
+      stale_historical_active_is_not_current_authority: true
+    invariants:
+      - every_non_initial_revision_exactly_binds_locked_previous_revision
+      - every_transition_uses_same_id_previous_revision_plus_one_and_compare_and_swap
+      - record_event_authority_receipt_outbox_and_audit_share_transaction
+      - revision_1_and_every_historical_revision_remain_resolvable
+    forbidden_fields: [current_revision_id, observed_identity]
+    additional_properties: false
+
+  component_revision:
+    logical_resource: component_revision
+    canonical_owner: version-controller
+    canonical_command: component-revisions.record
+    adds_business_state_machine: false
+    required_fields:
+      - record_envelope
+      - component_revision_id
+      - component_id
+      - exact_system_component_binding
+      - component_kind
+      - identity_locator
+      - identity_assurance
+      - configuration_digest
+      - exact_provenance_receipt_bindings
+    optional_fields:
+      - declared_version
+      - content_digest
+      - provider_origin
+      - resolved_at
+      - immutable_provider_version_attestation
+      - exact_observation_receipt_binding
+      - unknown_reason
+      - interface_schema_digest
+      - permission_manifest_digest
+      - dependency_lock_digest
+      - dataset_role
+      - artifact_refs
+    field_refs:
+      exact_system_component_binding: current_authoritative_active_system_component_binding_v5
+    r1_available_primitives:
+      - current_authoritative_active_history_resolution
+      - exact_binding_digest_validation
+      - generic_exact_record_binding_validation
+    event_envelope_runtime_status: NOT_IMPLEMENTED
+    event_envelope_owner_stage: R3
+    writer_validation_runtime_status: NOT_IMPLEMENTED
+    writer_validation_owner_stage: R3
+    producer_runtime_status: NOT_IMPLEMENTED
+    producer_owner_stage: R3
+    r3_required_producer_invariants:
+      - exact_system_component_binding_is_revalidated_at_recording
+      - exact_system_component_binding_and_new_record_share_workspace_and_application
+      - initial_manifest_binds_active_revision_2
+      - later_manifest_may_bind_later_current_active_revision
+      - stale_historical_active_or_non_active_binding_fails_closed
+      - dependent_record_event_receipt_and_binding_validation_share_transaction
+    forbidden_fields: [deployed, healthy]
+    additional_properties: false
+
   system_candidate_revision:
     logical_resource: v4.candidate_revision
     semantic_successor_of: contracts/v4/schemas/candidate-revision.schema.json
