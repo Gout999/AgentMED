@@ -2,7 +2,7 @@
 
 > 状态：**ACTIVE LOCAL EXECUTION PLAN / NOT IMPLEMENTATION PROOF**
 >
-> 计划版本：`2026-08-11.3`
+> 计划版本：`2026-08-11.4`
 >
 > 独立计划验收：`PASS`（2026-08-11；只证明依赖、authority、安全、migration、evidence、
 > rollback 和提交编排可执行，不关闭任何 runtime stage）
@@ -12,8 +12,8 @@
 > 基线提交：`c838b2bcefb80c8458aefa17934e190a5d8485f3`
 >
 > 当前事实：D-015 已接受 V5 新开发默认基线，但这不是 runtime/public cutover proof。
-> R2 只可报告 `contract=PASS`、`replay=PASS`；C0 正在施工，C1–C5、D2、R3、R4 与
-> V5-2+ 仍锁定。最终 subject SHA 与 evidence digest 按产品 owner 指示延后至最终项目收口。
+> R2 只可报告 `contract=PASS`、`replay=PASS`；C0 已关闭（semantic series `a14784a` + `903e954`；post-commit verifier PASS，P0=0/P1=0）；C1 `ELIGIBLE / NOT STARTED`；C2–C5、D2、R3、R4 与
+> V5-2+ 继续锁定。最终 subject SHA 与 evidence digest 按产品 owner 指示延后至最终项目收口。
 
 本文把 [`docs/plan-v5.md`](../plan-v5.md) 和
 [`v5-progressive-delivery.md`](v5-progressive-delivery.md) 转成可分派、可停止、可验证、
@@ -79,7 +79,7 @@ migration、tests、evidence、rollback、commit 和 verifier。
 | V5-0B/0C | contract-only freeze 已独立 PASS | 保留历史 freeze；current runtime overlay 另行标注 |
 | D-015 | `ACCEPTED / NOT RUNTIME CUTOVER PROOF`；V5 是新产品/领域开发默认设计与施工基线，V3/V4 是 compatibility lanes | 不改变 public API/CLI 默认 major、active route 或历史 authority |
 | R2 | 只确认 exact scope 的 `contract=PASS`、`replay=PASS` | 不推导完整 runtime；最终 subject SHA/evidence digest 标记 `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE` |
-| C0–C5 | C0 `IN_PROGRESS`；C1–C5 `LOCKED` | 完成模块化单体、单 PostgreSQL UoW 与 compatibility façade 收敛前禁止领域扩张 |
+| C0–C5 | C0 `DONE`；C1 `ELIGIBLE / NOT STARTED`；C2–C5 `LOCKED` | 完成模块化单体、单 PostgreSQL UoW 与 compatibility façade 收敛前禁止领域扩张 |
 | V5-1B/R3-full | standalone `system-versions.record`、第二 VersionSet 与真实 diff 仍未解锁 | 等 C5 后先过 D2 完整 version-graph contract gate |
 | V5-1C/R4 | 仍锁定 | 不得用已有 local repair 或 one-shot bootstrap 提前关闭 |
 | V5-2+ | target/contract 或 skeleton | 不得 advertise 为 runtime；不得混入 C0–C5 structural waves |
@@ -94,8 +94,9 @@ migration、tests、evidence、rollback、commit 和 verifier。
 | D1 lifecycle decision | `DONE (contract-only)` | subject `798531a`；evidence/verifier PASS；仅解锁 R1 施工，不证明 runtime |
 | D-015 baseline decision | `ACCEPTED (decision-only)` | 不证明 runtime/public cutover；只允许 C0 施工 |
 | R2 | `CONTRACT/REPLAY PASS ONLY` | 不等于完整 runtime closure；最终 SHA/evidence digest 延后至最终项目收口 |
-| C0 authority/clean branch/WIP characterization | `IN_PROGRESS` | clean base、WIP inventory、characterization、文档静态复核 + independent P0/P1 review；存在文件不等于关闭 |
-| C1–C5 convergence | `LOCKED` | 前一 wave 独立 Exit；详见 convergence plan |
+| C0 authority/clean branch/WIP characterization | `DONE` | clean base、WIP inventory、characterization、文档静态复核 + independent P0/P1 review；存在文件不等于关闭；semantic series `a14784a` + `903e954`；post-commit verifier PASS P0=0/P1=0 |
+| C1 single-source wire/activated-operation compiler | `ELIGIBLE / NOT STARTED` | 前一 wave 独立 Exit；详见 convergence plan |
+| C2–C5 convergence | `LOCKED` | 前一 wave 独立 Exit；详见 convergence plan |
 | D2 / V5-1B R3-full | `LOCKED` | C5 PASS 后才能冻结完整 second-version graph contract |
 | V5-1C R4 | `LOCKED` | R3-full + 原有 R4 Entry |
 | V5-2A–V5-5 | `TODO` | 前置 stage completion commit + evidence + verifier |
@@ -853,7 +854,7 @@ Evidence commit 只记录对前一个 immutable subject commit 的验证结果�
 
 ## 17. 下一执行队列
 
-1. 完成 C0 authority 文档的静态与 independent P0/P1 review；文件存在不能直接标 C0 DONE；
+1. C0 已关闭（semantic series `a14784a` + `903e954`；post-commit verifier PASS P0=0/P1=0）。先完成 C0 gate review，再开始 C1 single-source wire 与 activated-operation compiler；
 2. 按 convergence plan 依次关闭 C1 single-source wire/activated-operation compiler、C2
    records/event specs/graph verifier foundation、C3 capability/import-cycle elimination 与
    coordinator/service decomposition、C4 generated transport cutover、C5 compatibility cleanup/

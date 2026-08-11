@@ -6,10 +6,12 @@
 - `d1_lifecycle_evidence`: `evidence/v5/decision-gates/d1-application-component-lifecycle/d1lifecycle_20260811T123512Z_798531a/` (`contract=PASS`; other 8 facets `NOT_RUN`)
 - `r1_authority_subject`: `8e216939f9126b0bcef57b8ce9d292c27ba23717` (independent clean post-commit PASS; foundation-scoped `contract/replay=PASS`; other 7 facets `NOT_RUN`)
 - `r2_catalog_bootstrap_subject`: `c838b2bcefb80c8458aefa17934e190a5d8485f3` (independent detached clean post-commit PASS; P0=0/P1=0)
+- `c0_convergence_subject`: `903e954` (semantic series starts at `a14784a`; C0 DONE; independent clean post-commit PASS; P0=0/P1=0; cumulative `c838b2b..903e954` = 2 commits / 17 paths; SHA/evidence digest DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE)
+- `c1_convergence_status`: `ELIGIBLE / NOT STARTED` (C0 gate review 后才开始; C2–C5, D2, R3-full, R4, V5-2+ 继续 LOCKED)
 - `r2_verification`: contracts 541; control-plane unit 876 plus 12 explicitly PG-gated skips; CLI 118; Console 17 plus build; disposable PostgreSQL 17/17
 - `checksum_policy`: SHA-256 and digest-bearing final evidence are deferred by the product owner until final whole-project closure; this deferral does not convert an unrun facet to PASS
 - `pre_r0_baseline`: `4a0a421cc669bf98d9b882d149d5d3df4c8dc36e`
-- `last_independently_verified_semantic_subject_commit`: `c838b2bcefb80c8458aefa17934e190a5d8485f3` (V5-R2; `contract=PASS`, R2-scoped `replay=PASS`, other 7 canonical facets `NOT_RUN`)
+- `last_independently_verified_semantic_subject_commit`: `903e954` (C0 docs status closure)
 - `last_digest_closed_evidence_subject_commit`: `798531af539cd37e797723f2985d55c70fa1046e` (V5-D1 contract-only; retained separately because R1/R2 checksums are owner-deferred)
 - `stage0_documentation_commit`: `b7889a7e200f76bd5985188ff6fb7e9e1860fd28`
 - `previous_v3_evidence_commit`: `cef1598b4ac1d42fdd4f206c5747eb89a06f24fc`
@@ -17,7 +19,7 @@
 - `origin/main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `local main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `collaborator_sync_merge`: `4b5377dae317eaeadbf23ab85481881096b6d6d2`
-- `working_tree`: C0 runs in a clean `codex/v5-convergence` worktree from `c838b2b`. The original `codex/v4-foundation` mixed WIP is preserved and excluded; its exact 144-entry snapshot is recorded in `docs/context/V5_CONVERGENCE_WIP_INVENTORY.md`.
+- `working_tree`: C0 closed at `903e954` (semantic series `a14784a` + `903e954`; post-commit verifier PASS P0=0/P1=0). C1 `ELIGIBLE / NOT STARTED`; C2–C5, D2, R3-full, R4 and V5-2+ remain locked. The original `codex/v4-foundation` mixed WIP is preserved and excluded; its exact 144-entry snapshot is recorded in `docs/context/V5_CONVERGENCE_WIP_INVENTORY.md`.
 - `last_updated`: `2026-08-11` (Asia/Hong_Kong)
 
 ## Current V5 convergence truth (supersedes the historical repair snapshot below)
@@ -44,7 +46,8 @@
 - The current execution baseline is D-015 plus `docs/plans/v5-architecture-convergence.md` and the
   convergence section of `docs/plans/v5-master-execution-plan.md`. C0-C5 execute in order using a
   modular monolith and one PostgreSQL business UoW. D2, R3-full, R4 and V5-2+ are paused until the
-  convergence gate releases them.
+  convergence gate releases them. C0 closed at `903e954` (semantic series `a14784a` + `903e954`;
+  verifier PASS P0=0/P1=0); C1 is `ELIGIBLE / NOT STARTED`.
 - The original dirty worktree is not a candidate baseline. It remains preserved on
   `codex/v4-foundation`; C0 uses `codex/v5-convergence` and exact allowlists. No path from the
   preserved WIP inventory may be promoted without clean-base hunk reconstruction and provenance
@@ -222,7 +225,8 @@ This is the observed 2026-08-10 local platform snapshot and must be rechecked be
 
 V4 Stage 1A is closed. The V5 product boundary, review-driven product adjustments, and the frozen
 V5-0 contract baseline (V5-0B `8dd25ca`, V5-0C `b3727d7`) are recorded and independently accepted.
-C0 architecture-convergence authority is the current local activity. R1/R2 semantic subjects are
+C0 architecture convergence is closed (`903e954`, semantic series `a14784a` + `903e954`, verifier
+PASS P0=0/P1=0); C1 is `ELIGIBLE / NOT STARTED`. R1/R2 semantic subjects are
 clean-verifier PASS but remain `VERIFYING` because checksum-bearing final evidence is owner-deferred.
 D2/R3/R4/V5-2+ and V4 S1B-S7 remain frozen. Live-provider calls and external writes remain
 separately gated.

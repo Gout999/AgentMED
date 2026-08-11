@@ -35,9 +35,13 @@
 - `active_surface`: R2 exposes exactly the frozen 11-intent V2 surface only when V2 is explicitly
   selected. Standalone activation, second VersionSet record/get/diff, R4 Case/Acceptance routes,
   V5-2+, MCP/A2A, provider/live and production surfaces remain hidden or unimplemented.
-- `next_action`: finish C0 semantic commit and detached documentation/contract verifier. After C0
-  closes, stop and review its gate before beginning C1 single-source wire and activated-operation
-  compiler work. D2, R3-full, R4 and V5-2+ remain blocked through convergence.
+- `next_action`: C0 closed: semantic series `a14784a` + `903e954`, independent post-commit
+  verifier PASS (P0=0/P1=0), cumulative `c838b2b..903e954` = 2 commits / 17 paths. Stop and review
+  the C0 gate before beginning C1 (`ELIGIBLE / NOT STARTED`). C2–C5, D2, R3-full, R4 and V5-2+
+  remain blocked through convergence.
+- `c0_closure`: `DONE` at `903e954` (semantic series `a14784a` + `903e954`; post-commit verifier
+  PASS, P0=0/P1=0; not a runtime/public cutover; R2 stays `contract/replay PASS only` /
+  `VERIFYING`; SHA/evidence digest remains `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`).
 - `authorization_boundary`: local documentation, contract, code, test, precise staging and semantic
   commits within the accepted convergence plan are authorized. Push, PR, paid provider calls, live,
   human approval, production or other external writes still require separate authorization.

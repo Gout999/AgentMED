@@ -4,7 +4,7 @@
 >
 > Decision: [D-015](../decisions/D-015-v5-default-development-baseline-and-v3-v4-compatibility-lanes.md)
 >
-> Current wave: **C0 IN PROGRESS**
+> Current wave: **C1 ELIGIBLE / NOT STARTED**（C0 DONE: semantic series `a14784a` + `903e954`, verifier PASS P0=0/P1=0）
 >
 > Locked while C0–C5 remain open: **D2, R3, R4, V5-2+**
 
@@ -107,7 +107,7 @@ the next wave, but cannot edit the next wave's owned paths or claim its Exit.
 
 ### C0 — Authority, clean branch, WIP inventory and characterization
 
-**Status:** `IN_PROGRESS / NOT CLOSED`.
+**Status:** `DONE`. Semantic series `a14784a` + `903e954`; cumulative `c838b2b..903e954` = 2 commits / 17 paths; independent post-commit verifier PASS, P0=0/P1=0; SHA/evidence digest `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`.
 
 **Entry:** D-015 owner decision; current Master and blueprint available; R2 truth limited to
 contract/replay.
@@ -169,7 +169,7 @@ confirm each path through compiler/registration, import and behavior parity befo
 
 ### C1 — Single-source wire and activated-operation compiler
 
-**Status:** `LOCKED UNTIL C0 PASS`.
+**Status:** `ELIGIBLE / NOT STARTED`（unlocked by C0 DONE; 须先完成 C0 gate review 再开工）。
 
 **Scope:** establish JSON Schema 2020-12 plus the intent registry as the canonical source for public
 wire shapes and activated operation metadata. Build a deterministic activated-operation compiler.
@@ -402,7 +402,7 @@ It may not:
 Allowed before C5 closes:
 
 - `D-015 ACCEPTED / NOT RUNTIME CUTOVER PROOF`;
-- `C0 IN_PROGRESS`, or the exact independently verified wave status;
+- `C0 DONE`（semantic series `a14784a` + `903e954`, verifier PASS P0=0/P1=0), or the exact independently verified wave status;
 - `R2 contract/replay PASS only`;
 - `D2/R3/R4/V5-2+ LOCKED`;
 - `SHA/evidence digest DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`.
