@@ -1,0 +1,331 @@
+openapi: 3.1.0
+info:
+  title: CaseLoop V5 Public API
+  version: '2.0'
+  description: 'Generated OpenAPI 3.1 document for the activated V5 wire surface.
+    Contains only activated operations (FROZEN_R2 / FROZEN_R2_R3_BOOTSTRAP intents
+    from the intent registry); draft and deferred intents never generate paths. request/response/error
+    contracts are external $refs into the frozen ../schemas/*.schema.json files. components.securitySchemes
+    is intentionally not emitted yet (TODO C4: cut the V5 auth surface over).'
+x-caseloop-intent-registry: ../intent-registry.yaml
+x-caseloop-operation-manifest: operation-manifest.json
+x-caseloop-generated-by: caseloop-v5-compiler
+servers:
+- url: /
+paths:
+  /api/v2/capabilities:
+    get:
+      operationId: getV5Capabilities
+      x-caseloop-intent: capabilities.get
+      x-caseloop-scope: capabilities:read
+      x-caseloop-wire-status: FROZEN_R2
+      x-caseloop-delivery-slice: V5-0C
+      responses:
+        '200':
+          description: Successful capabilities.get response (contract major 2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/capabilities.get.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for capabilities.get; audit
+            failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/capabilities.get.schema.json#/$defs/error
+  /api/v2/applications:
+    post:
+      operationId: registerApplication
+      x-caseloop-intent: applications.register
+      x-caseloop-scope: applications:manage
+      x-caseloop-wire-status: FROZEN_R2
+      x-caseloop-delivery-slice: V5-1A
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/applications.register.schema.json#/$defs/request
+      responses:
+        '201':
+          description: Successful applications.register response (contract major 2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/applications.register.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for applications.register;
+            audit failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/applications.register.schema.json#/$defs/error
+    get:
+      operationId: listApplications
+      x-caseloop-intent: applications.list
+      x-caseloop-scope: applications:read
+      x-caseloop-wire-status: FROZEN_R2
+      x-caseloop-delivery-slice: V5-1A
+      parameters:
+      - name: project_id
+        in: query
+        required: true
+        description: project_id query parameter of applications.list.
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/idProjectId
+      - name: cursor
+        in: query
+        required: false
+        description: cursor query parameter of applications.list.
+        schema:
+          $ref: ../schemas/records.schema.json#/$defs/applicationListCursor
+      - name: limit
+        in: query
+        required: false
+        description: limit query parameter of applications.list.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+      responses:
+        '200':
+          description: Successful applications.list response (contract major 2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/applications.list.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for applications.list; audit
+            failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/applications.list.schema.json#/$defs/error
+  /api/v2/applications/{application_id}:
+    get:
+      operationId: getApplication
+      x-caseloop-intent: applications.get
+      x-caseloop-scope: applications:read
+      x-caseloop-wire-status: FROZEN_R2
+      x-caseloop-delivery-slice: V5-1A
+      parameters:
+      - name: application_id
+        in: path
+        required: true
+        description: application_id path parameter of applications.get.
+        schema:
+          type: string
+          pattern: ^app_[0-9A-Za-z]{8,64}$
+      responses:
+        '200':
+          description: Successful applications.get response (contract major 2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/applications.get.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for applications.get; audit
+            failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/applications.get.schema.json#/$defs/error
+  /api/v2/environments:
+    post:
+      operationId: registerEnvironment
+      x-caseloop-intent: environments.register
+      x-caseloop-scope: applications:manage
+      x-caseloop-wire-status: FROZEN_R2
+      x-caseloop-delivery-slice: V5-1A
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/environments.register.schema.json#/$defs/request
+      responses:
+        '201':
+          description: Successful environments.register response (contract major 2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/environments.register.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for environments.register;
+            audit failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/environments.register.schema.json#/$defs/error
+  /api/v2/environments/{environment_id}:
+    get:
+      operationId: getEnvironment
+      x-caseloop-intent: environments.get
+      x-caseloop-scope: applications:read
+      x-caseloop-wire-status: FROZEN_R2
+      x-caseloop-delivery-slice: V5-1A
+      parameters:
+      - name: environment_id
+        in: path
+        required: true
+        description: environment_id path parameter of environments.get.
+        schema:
+          type: string
+          pattern: ^env_[0-9A-Za-z]{8,64}$
+      responses:
+        '200':
+          description: Successful environments.get response (contract major 2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/environments.get.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for environments.get; audit
+            failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/environments.get.schema.json#/$defs/error
+  /api/v2/system-components:
+    post:
+      operationId: registerSystemComponent
+      x-caseloop-intent: system-components.register
+      x-caseloop-scope: applications:manage
+      x-caseloop-wire-status: FROZEN_R2
+      x-caseloop-delivery-slice: V5-1A
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/system-components.register.schema.json#/$defs/request
+      responses:
+        '201':
+          description: Successful system-components.register response (contract major
+            2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/system-components.register.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for system-components.register;
+            audit failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/system-components.register.schema.json#/$defs/error
+  /api/v2/system-components/{component_id}:
+    get:
+      operationId: getSystemComponent
+      x-caseloop-intent: system-components.get
+      x-caseloop-scope: applications:read
+      x-caseloop-wire-status: FROZEN_R2
+      x-caseloop-delivery-slice: V5-1A
+      parameters:
+      - name: component_id
+        in: path
+        required: true
+        description: component_id path parameter of system-components.get.
+        schema:
+          type: string
+          pattern: ^cmp_[0-9A-Za-z]{8,64}$
+      responses:
+        '200':
+          description: Successful system-components.get response (contract major 2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/system-components.get.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for system-components.get;
+            audit failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/system-components.get.schema.json#/$defs/error
+  /api/v2/dependency-edges:
+    post:
+      operationId: recordDependencyEdge
+      x-caseloop-intent: dependency-edges.record
+      x-caseloop-scope: applications:manage
+      x-caseloop-wire-status: FROZEN_R2
+      x-caseloop-delivery-slice: V5-1A
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/dependency-edges.record.schema.json#/$defs/request
+      responses:
+        '201':
+          description: Successful dependency-edges.record response (contract major
+            2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/dependency-edges.record.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for dependency-edges.record;
+            audit failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/dependency-edges.record.schema.json#/$defs/error
+  /api/v2/dependency-edges/{dependency_edge_id}:
+    get:
+      operationId: getDependencyEdge
+      x-caseloop-intent: dependency-edges.get
+      x-caseloop-scope: applications:read
+      x-caseloop-wire-status: FROZEN_R2
+      x-caseloop-delivery-slice: V5-1A
+      parameters:
+      - name: dependency_edge_id
+        in: path
+        required: true
+        description: dependency_edge_id path parameter of dependency-edges.get.
+        schema:
+          type: string
+          pattern: ^de_[0-9A-Za-z]{8,64}$
+      responses:
+        '200':
+          description: Successful dependency-edges.get response (contract major 2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/dependency-edges.get.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for dependency-edges.get; audit
+            failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/dependency-edges.get.schema.json#/$defs/error
+  /api/v2/system-manifests:import:
+    post:
+      operationId: importSystemManifest
+      x-caseloop-intent: system-manifests.import
+      x-caseloop-scope: system_manifests:import
+      x-caseloop-wire-status: FROZEN_R2_R3_BOOTSTRAP
+      x-caseloop-delivery-slice: V5-1B
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/system-manifests.import.schema.json#/$defs/request
+      responses:
+        '201':
+          description: Successful system-manifests.import response (contract major
+            2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/system-manifests.import.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for system-manifests.import;
+            audit failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/system-manifests.import.schema.json#/$defs/error

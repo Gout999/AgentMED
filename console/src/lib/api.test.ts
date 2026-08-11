@@ -1,5 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { api } from "./api";
+import { applicationsListGuard } from "./generated/applications.list";
+import { guards } from "./validators";
 
 const fetchMock = vi.fn();
 
@@ -418,5 +420,125 @@ describe("CaseLoop Console API client", () => {
     }];
     fetchMock.mockResolvedValueOnce(jsonResponse(invalidComponent));
     await expect(api.listApplications(credential)).rejects.toMatchObject({ code: "invalid_response" });
+  });
+
+  it("runs the generated and legacy guards to the same verdict on the catalog fixture", () => {
+    const payload = catalogResponse();
+    expect(applicationsListGuard(payload)).toBe(true);
+    expect(guards.applicationCatalogList(payload)).toBe(true);
+    expect(applicationsListGuard(payload)).toBe(guards.applicationCatalogList(payload));
+
+    const malformed = catalogResponse({ unexpected: true });
+    expect(applicationsListGuard(malformed)).toBe(false);
+    expect(guards.applicationCatalogList(malformed)).toBe(false);
+    expect(applicationsListGuard(malformed)).toBe(guards.applicationCatalogList(malformed));
+  });
+
+  it("runs the generated and legacy guards to the same verdict on the revision union", () => {
+    const active = catalogResponse();
+    const application = active.items[0].application as Record<string, unknown>;
+    const activeEnvelope = {
+      ...(application.record_envelope as Record<string, unknown>),
+      revision: 2,
+    };
+    application.record_envelope = activeEnvelope;
+    application.lifecycle_state = "ACTIVE";
+    delete application.exact_previous_application_binding_or_null;
+    application.exact_previous_application_binding = {
+      kind: "AI_APPLICATION",
+      id: applicationId,
+      revision: 1,
+      digest,
+    };
+    (active.items[0] as unknown as Record<string, unknown>).system_components = [{
+      record_envelope: { ...activeEnvelope, revision: 2 },
+      component_id: "cmp_01J0000000000001",
+      workspace_id: workspaceId,
+      application_id: applicationId,
+      component_kind: "AGENT",
+      logical_name: "triage_agent",
+      owner_principal_ids: [principalId],
+      criticality: "P1",
+      data_classification: "INTERNAL",
+      permission_classification: "READ_WRITE",
+      effect_classification: "LOCAL",
+      dataset_role: null,
+      lifecycle_state: "ACTIVE",
+      exact_previous_system_component_binding: {
+        kind: "SYSTEM_COMPONENT",
+        id: "cmp_01J0000000000001",
+        revision: 1,
+        digest,
+      },
+    }];
+    expect(applicationsListGuard(active)).toBe(true);
+    expect(guards.applicationCatalogList(active)).toBe(true);
+    expect(applicationsListGuard(active)).toBe(guards.applicationCatalogList(active));
+
+    const invalidApplication = catalogResponse();
+    (invalidApplication.items[0].application.record_envelope as Record<string, unknown>).revision = 2;
+    (invalidApplication.items[0].application as Record<string, unknown>).lifecycle_state = "ACTIVE";
+    expect(applicationsListGuard(invalidApplication)).toBe(false);
+    expect(guards.applicationCatalogList(invalidApplication)).toBe(false);
+    expect(applicationsListGuard(invalidApplication)).toBe(guards.applicationCatalogList(invalidApplication));
+
+    const invalidComponent = catalogResponse();
+    (invalidComponent.items[0] as unknown as Record<string, unknown>).system_components = [{
+      record_envelope: invalidComponent.items[0].application.record_envelope,
+      component_id: "cmp_01J0000000000001",
+      workspace_id: workspaceId,
+      application_id: applicationId,
+      component_kind: "AGENT",
+      logical_name: "triage_agent",
+      owner_principal_ids: [principalId],
+      criticality: "P1",
+      data_classification: "INTERNAL",
+      permission_classification: "READ_WRITE",
+      effect_classification: "LOCAL",
+      dataset_role: null,
+      lifecycle_state: "REGISTERED",
+      exact_previous_system_component_binding_or_null: null,
+      exact_previous_system_component_binding: {
+        kind: "SYSTEM_COMPONENT",
+        id: "cmp_01J0000000000001",
+        revision: 1,
+        digest,
+      },
+    }];
+    expect(applicationsListGuard(invalidComponent)).toBe(false);
+    expect(guards.applicationCatalogList(invalidComponent)).toBe(false);
+    expect(applicationsListGuard(invalidComponent)).toBe(guards.applicationCatalogList(invalidComponent));
+  });
+
+  it("falls back to the legacy guard result on generated/legacy disagreement", async () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const credential = { workspaceId, projectId, bearerToken: "opaque-shadow-token" };
+
+      // Generated accepts (schema-valid envelope), legacy rejects the
+      // cross-record workspace mismatch → legacy wins → invalid_response.
+      fetchMock.mockResolvedValueOnce(jsonResponse(catalogResponse({
+        workspace_id: "ws_01J0000000000002",
+      })));
+      await expect(api.listApplications(credential)).rejects.toMatchObject({
+        status: 200,
+        code: "invalid_response",
+      });
+      expect(errorSpy).toHaveBeenCalled();
+
+      // Generated rejects (owner list beyond schema maxItems 32), legacy
+      // accepts → legacy wins → request succeeds.
+      errorSpy.mockClear();
+      const overfull = catalogResponse();
+      (overfull.items[0].application as Record<string, unknown>).owner_principal_ids =
+        Array.from({ length: 33 }, (_, index) => `prn_01J0000000${String(index).padStart(4, "0")}`);
+      fetchMock.mockResolvedValueOnce(jsonResponse(overfull));
+      await expect(api.listApplications(credential)).resolves.toMatchObject({
+        workspace_id: workspaceId,
+      });
+      expect(errorSpy).toHaveBeenCalled();
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 });

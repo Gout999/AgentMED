@@ -35,6 +35,10 @@ from ._generated.public_v2 import (
     V5ServerCapabilitiesResponse,
 )
 from ._generated.manifest_v2 import SystemManifestImportResponse
+from ._generated.operation_manifest import (
+    CliOperationManifestError,
+    V2_CLI_OPERATIONS,
+)
 from .errors import CliError, ExitFamily
 
 
@@ -45,16 +49,39 @@ _TIMELINE_PATH = re.compile(
     r"^/api/v1/cases/(case_[0-9A-Za-z]{8,64})/timeline$"
 )
 _EVIDENCE_PATH = re.compile(r"^/api/v1/evidence/(ter_[0-9A-Za-z]{8,64})$")
-_APPLICATION_PATH = re.compile(r"^/api/v2/applications/(app_[0-9A-Za-z]{8,64})$")
-_ENVIRONMENT_PATH = re.compile(r"^/api/v2/environments/(env_[0-9A-Za-z]{8,64})$")
-_COMPONENT_PATH = re.compile(r"^/api/v2/system-components/(cmp_[0-9A-Za-z]{8,64})$")
-_EDGE_PATH = re.compile(r"^/api/v2/dependency-edges/(de_[0-9A-Za-z]{8,64})$")
 _MISSING_NO_TRACE = (
     "trace.input",
     "trace.output",
     "observations.model",
     "observations.tools",
 )
+
+# Hand-written response-model mapping, kept as the source of truth: the CLI
+# validates v2 success payloads with the hand-copied ``_generated`` models,
+# keyed by the activated intent from the C1 operation manifest.
+_V2_RESPONSE_MODELS: dict[str, SuccessModel] = {
+    "capabilities.get": V5ServerCapabilitiesResponse,
+    "applications.register": ApplicationRegisterResponse,
+    "applications.get": ApplicationGetResponse,
+    "applications.list": ApplicationListResponse,
+    "environments.register": EnvironmentRegisterResponse,
+    "environments.get": EnvironmentGetResponse,
+    "system-components.register": ComponentRegisterResponse,
+    "system-components.get": ComponentGetResponse,
+    "dependency-edges.record": DependencyEdgeRecordResponse,
+    "dependency-edges.get": DependencyEdgeGetResponse,
+    "system-manifests.import": SystemManifestImportResponse,
+}
+
+# Strict id pattern per manifest path parameter.  Preserving the exact
+# pre-cutover matchers keeps malformed ids on the unsupported path
+# (CLIENT_OPERATION_UNSUPPORTED before any HTTP).
+_V2_PATH_PARAM_ID_PATTERN: dict[str, str] = {
+    "application_id": "app_[0-9A-Za-z]{8,64}",
+    "environment_id": "env_[0-9A-Za-z]{8,64}",
+    "component_id": "cmp_[0-9A-Za-z]{8,64}",
+    "dependency_edge_id": "de_[0-9A-Za-z]{8,64}",
+}
 
 SuccessModel: TypeAlias = type[BaseModel]
 
@@ -158,14 +185,80 @@ def _exit_for_status(status: int) -> ExitFamily:
     return ExitFamily.REMOTE
 
 
+_PATH_TEMPLATE_PARAM = re.compile(r"^([^{}]*)\{([A-Za-z_][A-Za-z0-9_]*)\}([^{}]*)$")
+
+
+def _compile_v2_path_specs() -> (
+    tuple[tuple[re.Pattern[str], _OperationSpec, str | None], ...]
+):
+    """Compile the v2 (method, path) matchers from the C1 manifest.
+
+    One matcher per activated intent; an intent without a hand-written
+    response model or with an unrecognized path parameter fails closed at
+    import time instead of degrading to stale matching.
+    """
+    compiled: list[tuple[re.Pattern[str], _OperationSpec, str | None]] = []
+    for operation in V2_CLI_OPERATIONS:
+        model = _V2_RESPONSE_MODELS.get(operation.intent)
+        if model is None:
+            raise CliOperationManifestError(
+                f"v5.cli.response_model_unregistered: {operation.intent}"
+            )
+        spec = _OperationSpec(operation.intent, operation.status_code, model)
+        resource_param: str | None = None
+        if "{" in operation.path:
+            match = _PATH_TEMPLATE_PARAM.fullmatch(operation.path)
+            if match is None:
+                raise CliOperationManifestError(
+                    f"v5.cli.invalid_path_template: {operation.path}"
+                )
+            param = match.group(2)
+            id_pattern = _V2_PATH_PARAM_ID_PATTERN.get(param)
+            if id_pattern is None:
+                raise CliOperationManifestError(
+                    f"v5.cli.unknown_path_param: {operation.intent} {param}"
+                )
+            pattern = re.compile(
+                "^"
+                + re.escape(operation.method)
+                + " "
+                + re.escape(match.group(1))
+                + f"(?P<resource_id>{id_pattern})"
+                + re.escape(match.group(3))
+                + "$"
+            )
+            resource_param = param
+        else:
+            pattern = re.compile(
+                "^"
+                + re.escape(operation.method)
+                + " "
+                + re.escape(operation.path)
+                + "$"
+            )
+        compiled.append((pattern, spec, resource_param))
+    return tuple(compiled)
+
+
+_V2_PATH_SPECS = _compile_v2_path_specs()
+
+# Receipt resource kinds derived from the manifest ``command_target.resource``
+# for the catalog mutations; the manifest import operation carries no
+# command_target, and its receipt names the created system version set
+# (hand-written, frozen, byte-identical to the pre-cutover literal).
+_V2_RECEIPT_RESOURCE_KINDS: dict[str, str] = {
+    operation.intent: operation.command_target_resource
+    for operation in V2_CLI_OPERATIONS
+    if operation.command_target_resource is not None
+}
+_V2_RECEIPT_RESOURCE_KINDS["system-manifests.import"] = "system_version_set"
+
+
 def _operation_spec(method: str, path: str) -> _OperationSpec:
     normalized_method = method.upper()
+    # v1 frozen surface (not part of the C1 activated-operation manifest).
     if normalized_method == "GET" and path == "/api/v1/capabilities":
         return _OperationSpec("capabilities.get", 200, ServerCapabilitiesResponse)
-    if normalized_method == "GET" and path == "/api/v2/capabilities":
-        return _OperationSpec("capabilities.get", 200, V5ServerCapabilitiesResponse)
-    if normalized_method == "GET" and path == "/api/v2/applications":
-        return _OperationSpec("applications.list", 200, ApplicationListResponse)
     if normalized_method == "POST" and path == "/api/v1/signals":
         return _OperationSpec("signals.submit", 201, SignalSubmissionResponse)
     if normalized_method == "GET":
@@ -182,39 +275,19 @@ def _operation_spec(method: str, path: str) -> _OperationSpec:
             return _OperationSpec(
                 "evidence.get", 200, EvidenceResponse, evidence.group(1)
             )
-    if normalized_method == "POST" and path == "/api/v2/applications":
-        return _OperationSpec("applications.register", 201, ApplicationRegisterResponse)
-    if normalized_method == "POST" and path == "/api/v2/environments":
-        return _OperationSpec("environments.register", 201, EnvironmentRegisterResponse)
-    if normalized_method == "POST" and path == "/api/v2/system-components":
-        return _OperationSpec("system-components.register", 201, ComponentRegisterResponse)
-    if normalized_method == "POST" and path == "/api/v2/dependency-edges":
-        return _OperationSpec("dependency-edges.record", 201, DependencyEdgeRecordResponse)
-    if normalized_method == "POST" and path == "/api/v2/system-manifests:import":
+    # v2 surface derived from the C1 activated-operation manifest.
+    for pattern, spec, resource_param in _V2_PATH_SPECS:
+        match = pattern.fullmatch(f"{normalized_method} {path}")
+        if match is None:
+            continue
+        if resource_param is None:
+            return spec
         return _OperationSpec(
-            "system-manifests.import", 201, SystemManifestImportResponse
+            spec.name,
+            spec.status_code,
+            spec.response_model,
+            match.group("resource_id"),
         )
-    if normalized_method == "GET":
-        application = _APPLICATION_PATH.fullmatch(path)
-        if application:
-            return _OperationSpec(
-                "applications.get", 200, ApplicationGetResponse, application.group(1)
-            )
-        environment = _ENVIRONMENT_PATH.fullmatch(path)
-        if environment:
-            return _OperationSpec(
-                "environments.get", 200, EnvironmentGetResponse, environment.group(1)
-            )
-        component = _COMPONENT_PATH.fullmatch(path)
-        if component:
-            return _OperationSpec(
-                "system-components.get", 200, ComponentGetResponse, component.group(1)
-            )
-        edge = _EDGE_PATH.fullmatch(path)
-        if edge:
-            return _OperationSpec(
-                "dependency-edges.get", 200, DependencyEdgeGetResponse, edge.group(1)
-            )
     raise CliError("CLIENT_OPERATION_UNSUPPORTED", ExitFamily.PROTOCOL)
 
 
@@ -586,13 +659,6 @@ class PublicApiClient:
         response_without_idempotency.pop("idempotency", None)
         receipt_without_self_digest = dict(raw_receipt)
         receipt_without_self_digest.pop("receipt_digest", None)
-        expected_resource_kinds = {
-            "applications.register": "ai_application",
-            "environments.register": "environment",
-            "system-components.register": "system_component",
-            "dependency-edges.record": "dependency_edge",
-            "system-manifests.import": "system_version_set",
-        }
         replayed = success.idempotency.replayed is True
         if isinstance(success, SystemManifestImportResponse):
             expected_principal = success.bootstrap_attestation.attester_principal_id
@@ -619,7 +685,7 @@ class PublicApiClient:
                 expected_principal is not None
                 and receipt.principal_id != expected_principal
             )
-            or receipt.resource.kind != expected_resource_kinds.get(spec.name)
+            or receipt.resource.kind != _V2_RECEIPT_RESOURCE_KINDS.get(spec.name)
             or receipt.resource.id != resource_id
             or receipt.status != "COMPLETED"
             or receipt.operation_id is not None

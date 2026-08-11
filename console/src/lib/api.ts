@@ -21,6 +21,7 @@ import type {
   WorkOrderView,
 } from "./types";
 import { guards, type Guard } from "./validators";
+import { applicationsListGuard } from "./generated/applications.list";
 
 /** API calls use /api so Vite/nginx is always part of the Console data path. */
 
@@ -144,6 +145,26 @@ function qs(params: Record<string, string | number | undefined>): string {
   return encoded ? `?${encoded}` : "";
 }
 
+/**
+ * C4 generated-transport shadow for the applications.list response.
+ *
+ * The generated guard (contracts/v5/generated/ts/applications.list.ts static
+ * copy) runs first, then the legacy validator. On disagreement the mismatch is
+ * logged and the legacy result wins (explicit per-surface fallback during the
+ * C4 cutover); on agreement the shared result is used.
+ */
+function applicationCatalogListShadowGuard(value: unknown): value is ApplicationCatalogListResponse {
+  const generatedValid = applicationsListGuard(value);
+  const legacyValid = guards.applicationCatalogList(value);
+  if (generatedValid !== legacyValid) {
+    console.error(
+      "[catalog-shadow] applications.list generated/legacy guard disagreement; falling back to the legacy validator.",
+      { generated: generatedValid, legacy: legacyValid },
+    );
+  }
+  return legacyValid;
+}
+
 export const api = {
   healthz: (signal?: AbortSignal) => request<Healthz>("/healthz", guards.health, { signal }),
   getEnvironment: (signal?: AbortSignal) => request<EnvironmentStatus>("/v1/env", guards.environment, { signal }),
@@ -200,7 +221,7 @@ export const api = {
         limit: query.limit ?? 25,
         cursor: query.cursor,
       })}`,
-      guards.applicationCatalogList,
+      applicationCatalogListShadowGuard,
       {
         method: "GET",
         signal,

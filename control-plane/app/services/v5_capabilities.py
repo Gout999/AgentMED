@@ -44,10 +44,27 @@ class V5CapabilitiesManifestError(RuntimeError):
 
 
 @dataclass(frozen=True)
+class V5ManifestHttpRoute:
+    """A C1 activated operation's http surface (method/path/operation_id).
+
+    Added for the C4 route registry gate (``app.api.v5_route_registry``):
+    these entries are the canonical transport facts the public_v5 router
+    table must match exactly.  ``query_parameters`` mirrors the optional
+    manifest field and is not part of the route identity.
+    """
+
+    method: str
+    path: str
+    operation_id: str
+    query_parameters: dict[str, object] | None = None
+
+
+@dataclass(frozen=True)
 class V5OperationManifest:
     catalog_trust_roles: tuple[str, ...]
     manifest_trust_roles: tuple[str, ...]
     implemented_intents: tuple[dict[str, object], ...]
+    http_entries: tuple[V5ManifestHttpRoute, ...] = ()
 
 
 def _manifest_invalid(detail: str) -> V5CapabilitiesManifestError:
@@ -117,6 +134,21 @@ def _validated_operation(operation: object) -> dict[str, Any]:
         raise _manifest_invalid(
             f"{name}: required_trust_roles_any_of must be a non-empty string list"
         )
+    http = operation.get("http")
+    if http is not None:
+        if not isinstance(http, dict):
+            raise _manifest_invalid(f"{name}: http must be an object")
+        for field in ("method", "path", "operation_id"):
+            value = http.get(field)
+            if not isinstance(value, str) or not value:
+                raise _manifest_invalid(
+                    f"{name}: http.{field} must be a non-empty string"
+                )
+        query_parameters = http.get("query_parameters")
+        if query_parameters is not None and not isinstance(query_parameters, dict):
+            raise _manifest_invalid(
+                f"{name}: http.query_parameters must be an object"
+            )
     return operation
 
 
@@ -212,6 +244,24 @@ def _load_operation_manifest_cached(manifest_path: str) -> V5OperationManifest:
     names = [operation["intent"] for operation in validated]
     if len(names) != len(set(names)):
         raise _manifest_invalid("duplicate activated intent names")
+    http_entries: list[V5ManifestHttpRoute] = []
+    seen_http: set[tuple[str, str, str]] = set()
+    for operation in validated:
+        http = operation.get("http")
+        if http is None:
+            continue
+        key = (http["method"].upper(), http["path"], http["operation_id"])
+        if key in seen_http:
+            raise _manifest_invalid(f"duplicate activated http surface: {key}")
+        seen_http.add(key)
+        http_entries.append(
+            V5ManifestHttpRoute(
+                method=http["method"],
+                path=http["path"],
+                operation_id=http["operation_id"],
+                query_parameters=http.get("query_parameters"),
+            )
+        )
     catalog_trust_roles, manifest_trust_roles = _derive_trust_roles(validated)
     implemented_intents = tuple(
         _derive_intent(
@@ -225,6 +275,7 @@ def _load_operation_manifest_cached(manifest_path: str) -> V5OperationManifest:
         catalog_trust_roles=catalog_trust_roles,
         manifest_trust_roles=manifest_trust_roles,
         implemented_intents=implemented_intents,
+        http_entries=tuple(http_entries),
     )
 
 
@@ -402,6 +453,7 @@ __all__ = [
     "V5CapabilitiesError",
     "V5CapabilitiesManifestError",
     "V5CapabilitiesService",
+    "V5ManifestHttpRoute",
     "V5OperationManifest",
     "load_v5_operation_manifest",
 ]

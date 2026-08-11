@@ -112,6 +112,7 @@ MODULE_LANES: dict[str, str] = {
     "app.api.public_v5": LANE_TRANSPORT,
     "app.api.read_views": LANE_TRANSPORT,
     "app.api.releases": LANE_TRANSPORT,
+    "app.api.v5_route_registry": LANE_TRANSPORT,
     "app.foundation": LANE_SHARED_FOUNDATION,
     "app.foundation.bindings": LANE_SHARED_FOUNDATION,
     "app.foundation.events": LANE_SHARED_FOUNDATION,

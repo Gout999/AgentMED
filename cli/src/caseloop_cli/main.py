@@ -18,6 +18,11 @@ import rfc8785
 from pydantic import ValidationError
 
 from ._generated.manifest_v2 import SystemManifestImportRequest
+from ._generated.operation_manifest import (
+    CliOperation,
+    CliOperationManifestError,
+    V2_CLI_OPERATIONS,
+)
 from .client import PublicApiClient, RuntimeConfig
 from .config import load_profile, read_credential, setting
 from .discovery import DiscoveryError, discover
@@ -44,15 +49,21 @@ _IDS = {
 }
 
 _V1_COMMANDS = frozenset({"signal", "report", "evidence"})
+# v2-gated command names derived from the C1 activated-operation manifest
+# (``contracts/v5/generated/operation-manifest.json``).  ``capabilities``
+# stays a default-major v1 command that additionally supports explicit
+# --api-version 2, so it is deliberately not part of the gate set.
 _V2_COMMANDS = frozenset(
-    {
-        "application",
-        "environment",
-        "system-component",
-        "dependency-edge",
-        "system-manifest",
-    }
+    operation.command
+    for operation in V2_CLI_OPERATIONS
+    if operation.command != "capabilities"
 )
+# (command, action) -> operation metadata for every v2-gated intent.
+_V2_OPERATIONS: dict[tuple[str, str], CliOperation] = {
+    (operation.command, operation.action): operation
+    for operation in V2_CLI_OPERATIONS
+    if operation.command != "capabilities"
+}
 _V1_CASE_ACTIONS = frozenset({"get", "timeline"})
 
 
@@ -157,6 +168,46 @@ def _edge_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--idempotency-key")
 
 
+def _application_list_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--project-id", required=True)
+    parser.add_argument("--limit", type=int, default=50)
+    parser.add_argument("--cursor")
+
+
+def _manifest_import_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--manifest-file", required=True)
+    parser.add_argument("--idempotency-key")
+
+
+def _id_positional(argument: str) -> Callable[[argparse.ArgumentParser], None]:
+    def _add(parser: argparse.ArgumentParser) -> None:
+        parser.add_argument(argument)
+
+    return _add
+
+
+# Hand-written parser registration for each activated (command, action) pair:
+# the option shapes are CLI payload concerns the C1 manifest does not carry.
+# A manifest entry without a registration fails closed at parser build time.
+_V2_ACTION_OPTIONS: dict[
+    tuple[str, str], Callable[[argparse.ArgumentParser], None]
+] = {
+    ("application", "register"): _application_options,
+    ("application", "get"): _id_positional("application_id"),
+    ("application", "list"): _application_list_options,
+    ("environment", "register"): _environment_options,
+    ("environment", "get"): _id_positional("environment_id"),
+    ("system-component", "register"): _component_options,
+    ("system-component", "get"): _id_positional("component_id"),
+    ("dependency-edge", "record"): _edge_options,
+    ("dependency-edge", "get"): _id_positional("edge_id"),
+    ("system-manifest", "import"): _manifest_import_options,
+    # ``validate`` is a local-only command, not an activated operation; it
+    # stays registered beside the derived ``import`` action.
+    ("system-manifest", "validate"): _manifest_import_options,
+}
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = SafeArgumentParser(prog="caseloop")
     parser.add_argument("--profile")
@@ -195,54 +246,31 @@ def build_parser() -> argparse.ArgumentParser:
     evidence_get = evidence.add_subparsers(dest="action", required=True, parser_class=SafeArgumentParser).add_parser("get")
     evidence_get.add_argument("receipt_id")
 
-    application = commands.add_parser("application")
-    application_actions = application.add_subparsers(
-        dest="action", required=True, parser_class=SafeArgumentParser
-    )
-    application_register = application_actions.add_parser("register")
-    _application_options(application_register)
-    application_get = application_actions.add_parser("get")
-    application_get.add_argument("application_id")
-    application_list = application_actions.add_parser("list")
-    application_list.add_argument("--project-id", required=True)
-    application_list.add_argument("--limit", type=int, default=50)
-    application_list.add_argument("--cursor")
-
-    environment = commands.add_parser("environment")
-    environment_actions = environment.add_subparsers(
-        dest="action", required=True, parser_class=SafeArgumentParser
-    )
-    environment_register = environment_actions.add_parser("register")
-    _environment_options(environment_register)
-    environment_get = environment_actions.add_parser("get")
-    environment_get.add_argument("environment_id")
-
-    component = commands.add_parser("system-component")
-    component_actions = component.add_subparsers(
-        dest="action", required=True, parser_class=SafeArgumentParser
-    )
-    component_register = component_actions.add_parser("register")
-    _component_options(component_register)
-    component_get = component_actions.add_parser("get")
-    component_get.add_argument("component_id")
-
-    edge = commands.add_parser("dependency-edge")
-    edge_actions = edge.add_subparsers(
-        dest="action", required=True, parser_class=SafeArgumentParser
-    )
-    edge_record = edge_actions.add_parser("record")
-    _edge_options(edge_record)
-    edge_get = edge_actions.add_parser("get")
-    edge_get.add_argument("edge_id")
-
-    system_manifest = commands.add_parser("system-manifest")
-    manifest_actions = system_manifest.add_subparsers(
-        dest="action", required=True, parser_class=SafeArgumentParser
-    )
-    for action in ("import", "validate"):
-        action_parser = manifest_actions.add_parser(action)
-        action_parser.add_argument("--manifest-file", required=True)
-        action_parser.add_argument("--idempotency-key")
+    # v2 command surface derived from the C1 activated-operation manifest:
+    # only activated intents produce subcommands, actions and help entries.
+    # ``capabilities`` is a v1 command with explicit v2 support and stays on
+    # the hand-written v1 surface above.
+    v2_actions: dict[str, list[str]] = {}
+    for operation in V2_CLI_OPERATIONS:
+        if operation.command == "capabilities":
+            continue
+        v2_actions.setdefault(operation.command, []).append(operation.action)
+    # ``system-manifest validate`` is a local-only command (no HTTP operation)
+    # and must remain available beside the derived ``import`` action.
+    v2_actions.setdefault("system-manifest", []).append("validate")
+    for command in sorted(v2_actions):
+        group = commands.add_parser(command)
+        actions = group.add_subparsers(
+            dest="action", required=True, parser_class=SafeArgumentParser
+        )
+        for action in sorted(v2_actions[command]):
+            options = _V2_ACTION_OPTIONS.get((command, action))
+            if options is None:
+                raise CliOperationManifestError(
+                    "v5.cli.operation_manifest_invalid: "
+                    f"no CLI parser registration for activated intent {command} {action}"
+                )
+            options(actions.add_parser(action))
 
     return parser
 
@@ -661,6 +689,18 @@ def _cmd_case_from_issue(
     }
 
 
+def _operation_path(operation: CliOperation, **ids: str) -> str:
+    """Render a manifest path template with the validated resource id.
+
+    A template/parameter mismatch means the frozen manifest drifted from the
+    CLI handlers; fail closed instead of emitting a malformed URL.
+    """
+    try:
+        return operation.path.format(**ids)
+    except (KeyError, ValueError) as exc:
+        raise CliError("CLI_USAGE_INVALID", ExitFamily.INPUT) from exc
+
+
 def run(
     argv: Sequence[str] | None = None,
     *,
@@ -728,162 +768,176 @@ def run(
             result = client.request(
                 "GET", capability_path, api_major=int(api_major)
             )
-        elif args.command == "application" and args.action == "register":
-            idem = args.idempotency_key or f"application-register-{uuid_factory().hex}"
-            if not 8 <= len(idem) <= 128:
-                raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
-            if len(args.slug) > 64 or len(args.display_name) > 256:
-                raise CliError("APPLICATION_INPUT_INVALID", ExitFamily.INPUT)
-            payload = {
-                "schema_version": "2.0",
-                "project_id": _valid_id(args.project_id, "project", required=True),
-                "slug": args.slug,
-                "display_name": args.display_name,
-                "owner_principal_ids": [
-                    _valid_id(item, "principal", required=True)
-                    for item in args.owner_principal_id
-                ],
-                "criticality": args.criticality,
-                "data_classification": args.data_classification,
-                "governance_mode": args.governance_mode,
-            }
-            result = client.request(
-                "POST",
-                "/api/v2/applications",
-                body=json.dumps(
-                    payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-                ).encode("utf-8"),
-                idempotency_key=idem,
-                api_major=2,
-            )
-        elif args.command == "application" and args.action == "get":
-            application_id = _valid_id(args.application_id, "application", required=True)
-            result = client.request(
-                "GET", f"/api/v2/applications/{application_id}", api_major=2
-            )
-        elif args.command == "application" and args.action == "list":
-            if args.limit < 1 or args.limit > 100:
-                raise CliError("APPLICATION_INPUT_INVALID", ExitFamily.INPUT)
-            params = [("limit", str(args.limit))]
-            params.append(
-                (
-                    "project_id",
-                    _valid_id(args.project_id, "project", required=True),
+        elif args.command in _V2_COMMANDS:
+            operation = _V2_OPERATIONS.get((args.command, args.action))
+            if operation is None:
+                raise CliError("CLI_USAGE_INVALID", ExitFamily.INPUT)
+            if args.command == "application" and args.action == "register":
+                idem = args.idempotency_key or f"application-register-{uuid_factory().hex}"
+                if not 8 <= len(idem) <= 128:
+                    raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+                if len(args.slug) > 64 or len(args.display_name) > 256:
+                    raise CliError("APPLICATION_INPUT_INVALID", ExitFamily.INPUT)
+                payload = {
+                    "schema_version": "2.0",
+                    "project_id": _valid_id(args.project_id, "project", required=True),
+                    "slug": args.slug,
+                    "display_name": args.display_name,
+                    "owner_principal_ids": [
+                        _valid_id(item, "principal", required=True)
+                        for item in args.owner_principal_id
+                    ],
+                    "criticality": args.criticality,
+                    "data_classification": args.data_classification,
+                    "governance_mode": args.governance_mode,
+                }
+                result = client.request(
+                    operation.method,
+                    operation.path,
+                    body=json.dumps(
+                        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                    ).encode("utf-8"),
+                    idempotency_key=idem,
+                    api_major=2,
                 )
-            )
-            if args.cursor is not None:
-                params.append(("cursor", args.cursor))
-            result = client.request(
-                "GET",
-                "/api/v2/applications",
-                params=params,
-                api_major=2,
-            )
-        elif args.command == "environment" and args.action == "register":
-            idem = args.idempotency_key or f"environment-register-{uuid_factory().hex}"
-            if not 8 <= len(idem) <= 128:
-                raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
-            if len(args.logical_name) > 128:
-                raise CliError("ENVIRONMENT_INPUT_INVALID", ExitFamily.INPUT)
-            payload = {
-                "schema_version": "2.0",
-                "application_id": _valid_id(args.application_id, "application", required=True),
-                "logical_name": args.logical_name,
-                "risk_classification": args.risk_classification,
-            }
-            result = client.request(
-                "POST",
-                "/api/v2/environments",
-                body=json.dumps(
-                    payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-                ).encode("utf-8"),
-                idempotency_key=idem,
-                api_major=2,
-            )
-        elif args.command == "environment" and args.action == "get":
-            environment_id = _valid_id(args.environment_id, "environment", required=True)
-            result = client.request(
-                "GET", f"/api/v2/environments/{environment_id}", api_major=2
-            )
-        elif args.command == "system-component" and args.action == "register":
-            idem = args.idempotency_key or f"component-register-{uuid_factory().hex}"
-            if not 8 <= len(idem) <= 128:
-                raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
-            if len(args.logical_name) > 128:
-                raise CliError("COMPONENT_INPUT_INVALID", ExitFamily.INPUT)
-            payload = {
-                "schema_version": "2.0",
-                "application_id": _valid_id(args.application_id, "application", required=True),
-                "component_kind": args.component_kind,
-                "logical_name": args.logical_name,
-                "owner_principal_ids": [
-                    _valid_id(item, "principal", required=True)
-                    for item in args.owner_principal_id
-                ],
-                "criticality": args.criticality,
-                "data_classification": args.data_classification,
-                "permission_classification": args.permission_classification,
-                "effect_classification": args.effect_classification,
-                # Always present so the request fingerprint covers the same
-                # canonical fields as the server-side model dump.
-                "dataset_role": args.dataset_role,
-            }
-            result = client.request(
-                "POST",
-                "/api/v2/system-components",
-                body=json.dumps(
-                    payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-                ).encode("utf-8"),
-                idempotency_key=idem,
-                api_major=2,
-            )
-        elif args.command == "system-component" and args.action == "get":
-            component_id = _valid_id(args.component_id, "component", required=True)
-            result = client.request(
-                "GET", f"/api/v2/system-components/{component_id}", api_major=2
-            )
-        elif args.command == "dependency-edge" and args.action == "record":
-            idem = args.idempotency_key or f"edge-record-{uuid_factory().hex}"
-            if not 8 <= len(idem) <= 128:
-                raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
-            payload = {
-                "schema_version": "2.0",
-                "application_id": _valid_id(args.application_id, "application", required=True),
-                "from_component_id": _valid_id(
-                    args.from_component_id, "component", required=True
-                ),
-                "to_component_id": _valid_id(args.to_component_id, "component", required=True),
-                "relation": args.relation,
-                "required": args.required,
-            }
-            result = client.request(
-                "POST",
-                "/api/v2/dependency-edges",
-                body=json.dumps(
-                    payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-                ).encode("utf-8"),
-                idempotency_key=idem,
-                api_major=2,
-            )
-        elif args.command == "dependency-edge" and args.action == "get":
-            edge_id = _valid_id(args.edge_id, "edge", required=True)
-            result = client.request(
-                "GET", f"/api/v2/dependency-edges/{edge_id}", api_major=2
-            )
-        elif args.command == "system-manifest" and args.action == "import":
-            manifest_payload = _load_manifest_payload(args.manifest_file)
-            idem = args.idempotency_key or f"system-manifest-import-{uuid_factory().hex}"
-            if not 8 <= len(idem) <= 128:
-                raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
-            result = client.request(
-                "POST",
-                "/api/v2/system-manifests:import",
-                body=json.dumps(
-                    manifest_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
-                ).encode("utf-8"),
-                idempotency_key=idem,
-                api_major=2,
-            )
+            elif args.command == "application" and args.action == "get":
+                application_id = _valid_id(args.application_id, "application", required=True)
+                result = client.request(
+                    operation.method,
+                    _operation_path(operation, application_id=application_id),
+                    api_major=2,
+                )
+            elif args.command == "application" and args.action == "list":
+                if args.limit < 1 or args.limit > 100:
+                    raise CliError("APPLICATION_INPUT_INVALID", ExitFamily.INPUT)
+                params = [("limit", str(args.limit))]
+                params.append(
+                    (
+                        "project_id",
+                        _valid_id(args.project_id, "project", required=True),
+                    )
+                )
+                if args.cursor is not None:
+                    params.append(("cursor", args.cursor))
+                result = client.request(
+                    operation.method,
+                    operation.path,
+                    params=params,
+                    api_major=2,
+                )
+            elif args.command == "environment" and args.action == "register":
+                idem = args.idempotency_key or f"environment-register-{uuid_factory().hex}"
+                if not 8 <= len(idem) <= 128:
+                    raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+                if len(args.logical_name) > 128:
+                    raise CliError("ENVIRONMENT_INPUT_INVALID", ExitFamily.INPUT)
+                payload = {
+                    "schema_version": "2.0",
+                    "application_id": _valid_id(args.application_id, "application", required=True),
+                    "logical_name": args.logical_name,
+                    "risk_classification": args.risk_classification,
+                }
+                result = client.request(
+                    operation.method,
+                    operation.path,
+                    body=json.dumps(
+                        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                    ).encode("utf-8"),
+                    idempotency_key=idem,
+                    api_major=2,
+                )
+            elif args.command == "environment" and args.action == "get":
+                environment_id = _valid_id(args.environment_id, "environment", required=True)
+                result = client.request(
+                    operation.method,
+                    _operation_path(operation, environment_id=environment_id),
+                    api_major=2,
+                )
+            elif args.command == "system-component" and args.action == "register":
+                idem = args.idempotency_key or f"component-register-{uuid_factory().hex}"
+                if not 8 <= len(idem) <= 128:
+                    raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+                if len(args.logical_name) > 128:
+                    raise CliError("COMPONENT_INPUT_INVALID", ExitFamily.INPUT)
+                payload = {
+                    "schema_version": "2.0",
+                    "application_id": _valid_id(args.application_id, "application", required=True),
+                    "component_kind": args.component_kind,
+                    "logical_name": args.logical_name,
+                    "owner_principal_ids": [
+                        _valid_id(item, "principal", required=True)
+                        for item in args.owner_principal_id
+                    ],
+                    "criticality": args.criticality,
+                    "data_classification": args.data_classification,
+                    "permission_classification": args.permission_classification,
+                    "effect_classification": args.effect_classification,
+                    # Always present so the request fingerprint covers the same
+                    # canonical fields as the server-side model dump.
+                    "dataset_role": args.dataset_role,
+                }
+                result = client.request(
+                    operation.method,
+                    operation.path,
+                    body=json.dumps(
+                        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                    ).encode("utf-8"),
+                    idempotency_key=idem,
+                    api_major=2,
+                )
+            elif args.command == "system-component" and args.action == "get":
+                component_id = _valid_id(args.component_id, "component", required=True)
+                result = client.request(
+                    operation.method,
+                    _operation_path(operation, component_id=component_id),
+                    api_major=2,
+                )
+            elif args.command == "dependency-edge" and args.action == "record":
+                idem = args.idempotency_key or f"edge-record-{uuid_factory().hex}"
+                if not 8 <= len(idem) <= 128:
+                    raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+                payload = {
+                    "schema_version": "2.0",
+                    "application_id": _valid_id(args.application_id, "application", required=True),
+                    "from_component_id": _valid_id(
+                        args.from_component_id, "component", required=True
+                    ),
+                    "to_component_id": _valid_id(args.to_component_id, "component", required=True),
+                    "relation": args.relation,
+                    "required": args.required,
+                }
+                result = client.request(
+                    operation.method,
+                    operation.path,
+                    body=json.dumps(
+                        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                    ).encode("utf-8"),
+                    idempotency_key=idem,
+                    api_major=2,
+                )
+            elif args.command == "dependency-edge" and args.action == "get":
+                edge_id = _valid_id(args.edge_id, "edge", required=True)
+                result = client.request(
+                    operation.method,
+                    _operation_path(operation, dependency_edge_id=edge_id),
+                    api_major=2,
+                )
+            elif args.command == "system-manifest" and args.action == "import":
+                manifest_payload = _load_manifest_payload(args.manifest_file)
+                idem = args.idempotency_key or f"system-manifest-import-{uuid_factory().hex}"
+                if not 8 <= len(idem) <= 128:
+                    raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+                result = client.request(
+                    operation.method,
+                    operation.path,
+                    body=json.dumps(
+                        manifest_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                    ).encode("utf-8"),
+                    idempotency_key=idem,
+                    api_major=2,
+                )
+            else:
+                raise CliError("CLI_USAGE_INVALID", ExitFamily.INPUT)
         elif args.command == "case" and args.action == "get":
             case_id = _valid_id(args.case_id, "case", required=True)
             result = client.request("GET", f"/api/v1/cases/{case_id}")

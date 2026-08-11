@@ -5,6 +5,13 @@ closure.  Authoritative lifecycle work stays in the injected service; the
 router never recreates its state machines or invents audit/evidence records.
 The helper set mirrors the frozen ``public_v4`` boundary but pins the contract
 version to 2.0 and never falls back to v1.
+
+C4 route-manifest gate: ``v5_route_registry.install_route_manifest_check`` runs
+at import time and asserts the registered (method, path, operation_id) table is
+exactly the C1 activated-operation manifest's http entries.  Registration facts
+(decorators below) remain legacy authority: on gate rejection the module prints
+a clear error and keeps serving the legacy registration (discovery-side
+fail-closed).
 """
 from __future__ import annotations
 
@@ -21,6 +28,7 @@ from pydantic import BaseModel, SecretStr, ValidationError
 from sqlalchemy.orm import Session
 
 from app import __version__
+from app.api.v5_route_registry import install_route_manifest_check
 from app.public_api.auth_contract import AcceptedPrincipalContext, HeaderContractViolation
 from app.public_api.errors import map_public_error
 from app.public_api.v2_contract import PublicV2RequestHeaders
@@ -1680,6 +1688,13 @@ async def _unregistered_confirm_acceptance_criteria(
     finally:
         if session is not None:
             _close(session)
+
+
+# ---------------------------------------------------------------------------
+# C4 route↔manifest gate: fail-closed discovery check, legacy-authority
+# fallback (see module docstring and v5_route_registry).
+# ---------------------------------------------------------------------------
+install_route_manifest_check(router)
 
 
 __all__ = ["router"]

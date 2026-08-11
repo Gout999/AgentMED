@@ -1,14 +1,27 @@
-"""V5-1A /api/v2 public route tests (TestClient + real credential resolver)."""
+"""V5-1A /api/v2 public route tests (TestClient + real credential resolver),
+plus the C4 route↔manifest registry gate (real-manifest match and tamper
+fail-closed cases).
+"""
 from __future__ import annotations
 
+import dataclasses
 import json
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 
 import pytest
+from fastapi.routing import APIRoute
 from fastapi.testclient import TestClient
 from pydantic import SecretStr, ValidationError
 from sqlalchemy import select
 
+from app.api import public_v5
+from app.api import v5_route_registry
+from app.api.v5_route_registry import (
+    RouteManifestMismatchError,
+    check_registered_v5_routes,
+    install_route_manifest_check,
+)
 from app.main import create_app
 from app.models import Audit
 from app.models.v4_tables import PublicCredential
@@ -27,6 +40,11 @@ from app.public_api.v5_models import (
     SystemAssignmentRecord,
 )
 from app.services.v4_audit import V4AuditService, V4AuditUnavailable
+from app.services.v5_capabilities import (
+    V5CapabilitiesManifestError,
+    V5ManifestHttpRoute,
+    load_v5_operation_manifest,
+)
 
 from test_v5_application_catalog import (
     _FIXTURE,
@@ -755,3 +773,173 @@ def test_environment_and_component_registration_v2(client) -> None:
     registered_component = component.json()
     registered_component["component"]["lifecycle_state"] = "REGISTERED"
     ComponentRegisterResponse.model_validate(registered_component)
+
+
+# ---------------------------------------------------------------------------
+# C4 route↔manifest registry gate (app.api.v5_route_registry).
+# ---------------------------------------------------------------------------
+
+
+def _registered_route_keys(router) -> set[tuple[str, str, str]]:
+    return {
+        (method, route.path, route.operation_id)
+        for route in router.routes
+        if isinstance(route, APIRoute)
+        for method in route.methods or set()
+        if method not in {"HEAD", "OPTIONS"}
+    }
+
+
+def test_v5_route_registry_matches_operation_manifest_exactly() -> None:
+    manifest = load_v5_operation_manifest()
+    http_entries = manifest.http_entries
+    assert len(http_entries) == 11
+    check_registered_v5_routes(public_v5.router)  # must not raise
+    expected = {
+        (entry.method.upper(), entry.path, entry.operation_id)
+        for entry in http_entries
+    }
+    registered = _registered_route_keys(public_v5.router)
+    assert len(registered) == 11
+    assert registered == expected
+
+
+@pytest.mark.parametrize(
+    ("tamper", "expected_missing", "expected_extra"),
+    [
+        (
+            "drop",
+            [],
+            [("POST", "/api/v2/system-manifests:import", "importSystemManifest")],
+        ),
+        (
+            "add",
+            [("POST", "/api/v2/system-versions", "createSystemVersion")],
+            [],
+        ),
+        (
+            "path",
+            [("GET", "/api/v2/capabilities-renamed", "getV5Capabilities")],
+            [("GET", "/api/v2/capabilities", "getV5Capabilities")],
+        ),
+        (
+            "method",
+            [("POST", "/api/v2/capabilities", "getV5Capabilities")],
+            [("GET", "/api/v2/capabilities", "getV5Capabilities")],
+        ),
+        (
+            "operation_id",
+            [("GET", "/api/v2/capabilities", "tamperedOperationId")],
+            [("GET", "/api/v2/capabilities", "getV5Capabilities")],
+        ),
+    ],
+)
+def test_v5_route_registry_tampered_manifest_fails_closed(
+    tamper: str,
+    expected_missing: list[tuple[str, str, str]],
+    expected_extra: list[tuple[str, str, str]],
+) -> None:
+    real = load_v5_operation_manifest()
+    entries = list(real.http_entries)
+    if tamper == "drop":
+        mutated = dataclasses.replace(real, http_entries=tuple(entries[:-1]))
+    elif tamper == "add":
+        mutated = dataclasses.replace(
+            real,
+            http_entries=tuple(entries)
+            + (
+                V5ManifestHttpRoute(
+                    method="POST",
+                    path="/api/v2/system-versions",
+                    operation_id="createSystemVersion",
+                ),
+            ),
+        )
+    else:
+        first = entries[0]
+        replacement = {
+            "path": V5ManifestHttpRoute(
+                method=first.method,
+                path="/api/v2/capabilities-renamed",
+                operation_id=first.operation_id,
+            ),
+            "method": V5ManifestHttpRoute(
+                method="POST",
+                path=first.path,
+                operation_id=first.operation_id,
+            ),
+            "operation_id": V5ManifestHttpRoute(
+                method=first.method,
+                path=first.path,
+                operation_id="tamperedOperationId",
+            ),
+        }[tamper]
+        mutated = dataclasses.replace(real, http_entries=(replacement, *entries[1:]))
+
+    with pytest.raises(RouteManifestMismatchError) as excinfo:
+        check_registered_v5_routes(public_v5.router, manifest=mutated)
+    error = excinfo.value
+    assert "v5.route_registry.mismatch" in str(error)
+    assert set(error.missing) == set(expected_missing)
+    assert set(error.extra) == set(expected_extra)
+    assert error.details["missing"] == [list(key) for key in sorted(expected_missing)]
+    assert error.details["extra"] == [list(key) for key in sorted(expected_extra)]
+
+
+def test_v5_route_registry_tampered_manifest_file_fails_closed(tmp_path) -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    manifest_source = (
+        repo_root / "contracts/v5/generated/operation-manifest.json"
+    )
+    document = json.loads(manifest_source.read_text(encoding="utf-8"))
+    for operation in document["operations"]:
+        if operation.get("intent") == "capabilities.get":
+            operation["http"]["operation_id"] = "tamperedOperationId"
+    generated = tmp_path / "generated"
+    generated.mkdir()
+    (generated / "operation-manifest.json").write_text(
+        json.dumps(document, sort_keys=True), encoding="utf-8"
+    )
+
+    with pytest.raises(RouteManifestMismatchError) as excinfo:
+        check_registered_v5_routes(public_v5.router, manifest_path=tmp_path)
+    assert ("GET", "/api/v2/capabilities", "tamperedOperationId") in excinfo.value.missing
+    assert ("GET", "/api/v2/capabilities", "getV5Capabilities") in excinfo.value.extra
+
+
+def test_v5_route_registry_install_hook_passes_silently(capsys) -> None:
+    install_route_manifest_check(public_v5.router)
+    assert capsys.readouterr().err == ""
+
+
+def test_v5_route_registry_install_hook_falls_back_to_legacy(monkeypatch, capsys) -> None:
+    def failing_check(*_args, **_kwargs):
+        raise RouteManifestMismatchError(
+            missing=[("GET", "/api/v2/capabilities", "getV5Capabilities")],
+            extra=[],
+        )
+
+    monkeypatch.setattr(
+        v5_route_registry, "check_registered_v5_routes", failing_check
+    )
+    install_route_manifest_check(public_v5.router)  # must not raise
+    captured = capsys.readouterr()
+    assert "v5 route registry gate FAILED" in captured.err
+    assert "serving legacy registration" in captured.err
+
+
+def test_v5_route_registry_install_hook_falls_back_when_manifest_unavailable(
+    monkeypatch, capsys
+) -> None:
+    def failing_check(*_args, **_kwargs):
+        raise V5CapabilitiesManifestError(
+            "v5.capabilities.operation_manifest_unavailable"
+        )
+
+    monkeypatch.setattr(
+        v5_route_registry, "check_registered_v5_routes", failing_check
+    )
+    install_route_manifest_check(public_v5.router)  # must not raise
+    captured = capsys.readouterr()
+    assert "v5 route registry gate FAILED" in captured.err
+    assert "serving legacy registration" in captured.err
