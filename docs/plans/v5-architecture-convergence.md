@@ -4,7 +4,7 @@
 >
 > Decision: [D-015](../decisions/D-015-v5-default-development-baseline-and-v3-v4-compatibility-lanes.md)
 >
-> Current wave: **C4 ELIGIBLE / NOT STARTED**（C0–C3 DONE: `a14784a`+`903e954`; `3dc7339`; `d2c3f18`; `3adaac0`, verifier PASS P0=0/P1=0）
+> Current wave: **C5 ELIGIBLE / NOT STARTED**（C0–C4 DONE: `a14784a`+`903e954`; `3dc7339`; `d2c3f18`; `3adaac0`; `1d7b59c`, verifier PASS P0=0/P1=0）
 >
 > Locked while C0–C5 remain open: **D2, R3, R4, V5-2+**
 
@@ -271,7 +271,7 @@ append-only facts and disable affected V5 mutations if parity cannot be restored
 
 ### C4 — Generated transport cutover
 
-**Status:** `ELIGIBLE / NOT STARTED`（unlocked by C3 DONE; 须先完成 C3 gate review 再开工）。
+**Status:** `DONE`. Semantic subject `1d7b59c`; post-commit verifier PASS, P0=0/P1=0; unit 886 + 12 PG-gated skips; conformance 547; CLI 118; compiler 18; findings in contracts/v5/c4-transport-cutover-adjudication.md; SHA/evidence digest `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`.
 
 **Scope:** cut OpenAPI, Python models/client surface, TypeScript models/validators, CLI commands,
 router registration and capability façades to C1's generated activated-operation artifacts and C3's
@@ -302,7 +302,7 @@ entry/capability and preserve mismatch evidence; do not rewrite domain facts.
 
 ### C5 — Compatibility cleanup, effective enforcement and recovery verification
 
-**Status:** `LOCKED UNTIL C4 PASS`.
+**Status:** `ELIGIBLE / NOT STARTED`（unlocked by C4 DONE; 须先完成 C4 gate review 再开工）。
 
 **Scope:** remove only compatibility duplication proven obsolete by C4, turn shadow-only boundary
 rules into effective import/registration enforcement, perform cross-wave integration and recovery
@@ -402,7 +402,7 @@ It may not:
 Allowed before C5 closes:
 
 - `D-015 ACCEPTED / NOT RUNTIME CUTOVER PROOF`;
-- `C0 DONE` (`a14784a`+`903e954`) / `C1 DONE` (`3dc7339`) / `C2 DONE` (`d2c3f18`) / `C3 DONE` (`3adaac0`), or the exact independently verified wave status;
+- `C0 DONE` (`a14784a`+`903e954`) / `C1 DONE` (`3dc7339`) / `C2 DONE` (`d2c3f18`) / `C3 DONE` (`3adaac0`) / `C4 DONE` (`1d7b59c`), or the exact independently verified wave status;
 - `R2 contract/replay PASS only`;
 - `D2/R3/R4/V5-2+ LOCKED`;
 - `SHA/evidence digest DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`.

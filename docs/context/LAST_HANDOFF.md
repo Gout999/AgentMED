@@ -35,11 +35,11 @@
 - `active_surface`: R2 exposes exactly the frozen 11-intent V2 surface only when V2 is explicitly
   selected. Standalone activation, second VersionSet record/get/diff, R4 Case/Acceptance routes,
   V5-2+, MCP/A2A, provider/live and production surfaces remain hidden or unimplemented.
-- `next_action`: C3 closed: semantic subject `3adaac0` (import cycles broken via v5_composition;
-  capability decisions wired to the C1 operation-manifest; import-graph checker PASS: 0 cycles, lane
-  coverage 100%, 0 direct-table-access violations), post-commit verifier PASS (P0=0/P1=0). Stop and
-  review the C3 gate before beginning C4 (`ELIGIBLE / NOT STARTED`). C5, D2, R3-full, R4 and V5-2+
-  remain blocked through convergence.
+- `next_action`: C4 closed: semantic subject `1d7b59c` (transports cut to generated artifacts:
+  OpenAPI 3.1 document, TS module, route-registry gate, CLI manifest-derived commands, console
+  dual-guard shadow; Python parity extended to 11 ops/103 cases), post-commit verifier PASS
+  (P0=0/P1=0). Stop and review the C4 gate before beginning C5 (`ELIGIBLE / NOT STARTED`). D2,
+  R3-full, R4 and V5-2+ remain blocked through convergence.
 - `c0_closure`: `DONE` at `903e954` (semantic series `a14784a` + `903e954`; post-commit verifier
   PASS, P0=0/P1=0; not a runtime/public cutover; R2 stays `contract/replay PASS only` /
   `VERIFYING`; SHA/evidence digest remains `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`).
@@ -57,6 +57,10 @@
   scripts/check_import_graph.py; adjudication recorded in
   contracts/v5/c3-capability-import-adjudication.md; post-commit verifier PASS, P0=0/P1=0;
   SHA/evidence digest remains `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`).
+- `c4_closure`: `DONE` at `1d7b59c` (generated transports authoritative; per-surface fallback
+  verified by drills; findings in contracts/v5/c4-transport-cutover-adjudication.md; post-commit
+  verifier PASS, P0=0/P1=0; SHA/evidence digest remains
+  `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`).
 - `authorization_boundary`: local documentation, contract, code, test, precise staging and semantic
   commits within the accepted convergence plan are authorized. Push, PR, paid provider calls, live,
   human approval, production or other external writes still require separate authorization.

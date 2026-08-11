@@ -19,11 +19,11 @@ R2 的当前冻结结果包括 contracts 541、control-plane unit 876（另 12 �
 CLI 118、Console 17 + build、disposable PostgreSQL 17/17。仅 `contract` 与限定范围内的
 `replay` 为 PASS；其余七个 canonical facets 均为 `NOT_RUN`。产品 owner 要求 SHA-256 与
 digest-bearing final evidence 延后到全项目最终收口，因此 R1/R2 仍记为 `VERIFYING`，不能
-据此宣称 runtime 全量 DONE、live 或 production。C0 已关闭（semantic series `a14784a` + `903e954`）、C1 已关闭（semantic subject `3dc7339`）、C2 已关闭（`d2c3f18`）、C3 已关闭（`3adaac0`），post-commit verifier PASS（P0=0/P1=0）；C4 为 `ELIGIBLE / NOT STARTED`，须先完成 C3 gate review。
+据此宣称 runtime 全量 DONE、live 或 production。C0 已关闭（semantic series `a14784a` + `903e954`）、C1 已关闭（semantic subject `3dc7339`）、C2 已关闭（`d2c3f18`）、C3 已关闭（`3adaac0`），post-commit verifier PASS（P0=0/P1=0）；C4 已关闭（semantic subject `1d7b59c`，post-commit verifier PASS，P0=0/P1=0）；C5 为 `ELIGIBLE / NOT STARTED`，须先完成 C4 gate review。
 
 D-015 接受 V5 为所有新产品/领域开发的默认设计与施工基线，并把 V3/V4 固定为兼容
 lane；这不改变 public API/CLI 默认 major，不激活新 route/capability，也不追溯改写既有
-事实。当前执行焦点是 C0–C5 architecture convergence；C0–C3 已关闭，下一 wave 是 C4（generated transport cutover）。D2、R3-full、R4 与 V5-2+ 在
+事实。当前执行焦点是 C0–C5 architecture convergence；C0–C4 已关闭，下一 wave 是 C5（compatibility cleanup、effective enforcement 与 recovery verification）。D2、R3-full、R4 与 V5-2+ 在
 收敛 gate 前暂停，禁止继续跨层堆叠。
 
 - Product and scope baseline: `docs/product-principles.md` + D-013 + D-015.
@@ -52,8 +52,8 @@ lane；这不改变 public API/CLI 默认 major，不激活新 route/capability�
 | V5-C1 | Single-source wire and activated-operation compiler | DONE | V5-C0 DONE | JSON Schema + intent registry become non-overlapping sources；generated Python/TS/OpenAPI/route/capability/CLI manifests shadow old validators with exact parity | golden wire corpus；negative corpus；deterministic regeneration；V3/V4/V5 regressions | post-commit verifier PASS P0=0/P1=0；determinism PASS；shadow parity 103 cases | `3dc7339` |
 | V5-C2 | Foundation extraction | DONE | previous convergence wave DONE | modular monolith；single PG UoW；no local import cycles；compat facades preserve signatures/errors/bytes；no new product capability | per-wave characterization + offline/PG parity + verifier | post-commit verifier PASS P0=0/P1=0；unit 876+12 skip；conformance 547 | `d2c3f18` |
 | V5-C3 | Capability/import-cycle elimination and coordinator/service decomposition | DONE | previous convergence wave DONE | modular monolith；single PG UoW；no local import cycles；compat facades preserve signatures/errors/bytes；no new product capability | per-wave characterization + offline/PG parity + verifier | post-commit verifier PASS P0=0/P1=0；import-graph checker PASS（0 cycles/lane 100%）；unit 876+12 skip；conformance 547 | 3adaac0 |
-| V5-C4 | Generated transport cutover | ELIGIBLE / NOT STARTED | previous convergence wave DONE | modular monolith；single PG UoW；no local import cycles；compat facades preserve signatures/errors/bytes；no new product capability | per-wave characterization + offline/PG parity + verifier | pending | pending |
-| V5-C5 | Compatibility cleanup, effective enforcement and recovery verification | TODO | previous convergence wave DONE | modular monolith；single PG UoW；no local import cycles；compat facades preserve signatures/errors/bytes；no new product capability | per-wave characterization + offline/PG parity + verifier | pending | pending |
+| V5-C4 | Generated transport cutover | DONE | previous convergence wave DONE | modular monolith；single PG UoW；no local import cycles；compat facades preserve signatures/errors/bytes；no new product capability | per-wave characterization + offline/PG parity + verifier | post-commit verifier PASS P0=0/P1=0；unit 886+12 skip；conformance 547；CLI 118；compiler 18 | 1d7b59c |
+| V5-C5 | Compatibility cleanup, effective enforcement and recovery verification | ELIGIBLE / NOT STARTED | previous convergence wave DONE | modular monolith；single PG UoW；no local import cycles；compat facades preserve signatures/errors/bytes；no new product capability | per-wave characterization + offline/PG parity + verifier | pending | pending |
 | V5-D2 / R3-full / R4 / V5-2+ | Feature progression after convergence | BLOCKED | V5-C0..C5 DONE；stage-specific decision/contract gate | resume only from the accepted Master dependency graph；no dormant route/capability or dirty WIP promotion | stage-specific | pending | pending |
 
 ## Active v4 delivery
