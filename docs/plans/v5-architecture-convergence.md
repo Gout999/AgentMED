@@ -4,7 +4,7 @@
 >
 > Decision: [D-015](../decisions/D-015-v5-default-development-baseline-and-v3-v4-compatibility-lanes.md)
 >
-> Current wave: **C3 ELIGIBLE / NOT STARTED**（C0 `a14784a`+`903e954`; C1 `3dc7339`; C2 `d2c3f18`, verifier PASS P0=0/P1=0）
+> Current wave: **C4 ELIGIBLE / NOT STARTED**（C0–C3 DONE: `a14784a`+`903e954`; `3dc7339`; `d2c3f18`; `3adaac0`, verifier PASS P0=0/P1=0）
 >
 > Locked while C0–C5 remain open: **D2, R3, R4, V5-2+**
 
@@ -237,7 +237,7 @@ fixtures and preserve all committed facts.
 
 ### C3 — Capability/import-cycle elimination and coordinator/service decomposition
 
-**Status:** `ELIGIBLE / NOT STARTED`（unlocked by C2 DONE; 须先完成 C2 gate review 再开工）。
+**Status:** `DONE`. Semantic subject `3adaac0`; post-commit verifier PASS, P0=0/P1=0; import-graph checker PASS (0 cycles, lane coverage 100%, 0 direct-table-access violations); unit 876 + 12 PG-gated skips; conformance 547; findings in contracts/v5/c3-capability-import-adjudication.md; SHA/evidence digest `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`.
 
 **Scope:** eliminate capability and import cycles exposed by C0–C2, classify every module/lane and
 decompose oversized coordinators/services into owner-local application, domain and repository
@@ -271,7 +271,7 @@ append-only facts and disable affected V5 mutations if parity cannot be restored
 
 ### C4 — Generated transport cutover
 
-**Status:** `LOCKED UNTIL C3 PASS`.
+**Status:** `ELIGIBLE / NOT STARTED`（unlocked by C3 DONE; 须先完成 C3 gate review 再开工）。
 
 **Scope:** cut OpenAPI, Python models/client surface, TypeScript models/validators, CLI commands,
 router registration and capability façades to C1's generated activated-operation artifacts and C3's
@@ -402,7 +402,7 @@ It may not:
 Allowed before C5 closes:
 
 - `D-015 ACCEPTED / NOT RUNTIME CUTOVER PROOF`;
-- `C0 DONE` (`a14784a`+`903e954`) / `C1 DONE` (`3dc7339`) / `C2 DONE` (`d2c3f18`), or the exact independently verified wave status;
+- `C0 DONE` (`a14784a`+`903e954`) / `C1 DONE` (`3dc7339`) / `C2 DONE` (`d2c3f18`) / `C3 DONE` (`3adaac0`), or the exact independently verified wave status;
 - `R2 contract/replay PASS only`;
 - `D2/R3/R4/V5-2+ LOCKED`;
 - `SHA/evidence digest DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`.

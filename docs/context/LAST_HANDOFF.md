@@ -35,11 +35,11 @@
 - `active_surface`: R2 exposes exactly the frozen 11-intent V2 surface only when V2 is explicitly
   selected. Standalone activation, second VersionSet record/get/diff, R4 Case/Acceptance routes,
   V5-2+, MCP/A2A, provider/live and production surfaces remain hidden or unimplemented.
-- `next_action`: C2 closed: semantic subject `d2c3f18` (foundation
-  records/events/bindings/receipts/graph; import-safe, no domain imports), post-commit verifier
-  PASS (P0=0/P1=0), unit 876 + 12 PG-gated skips, conformance 547. Stop and review the C2 gate
-  before beginning C3 (`ELIGIBLE / NOT STARTED`). C4–C5, D2, R3-full, R4 and V5-2+ remain blocked
-  through convergence.
+- `next_action`: C3 closed: semantic subject `3adaac0` (import cycles broken via v5_composition;
+  capability decisions wired to the C1 operation-manifest; import-graph checker PASS: 0 cycles, lane
+  coverage 100%, 0 direct-table-access violations), post-commit verifier PASS (P0=0/P1=0). Stop and
+  review the C3 gate before beginning C4 (`ELIGIBLE / NOT STARTED`). C5, D2, R3-full, R4 and V5-2+
+  remain blocked through convergence.
 - `c0_closure`: `DONE` at `903e954` (semantic series `a14784a` + `903e954`; post-commit verifier
   PASS, P0=0/P1=0; not a runtime/public cutover; R2 stays `contract/replay PASS only` /
   `VERIFYING`; SHA/evidence digest remains `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`).
@@ -53,6 +53,10 @@
   graph checks retained and recorded in contracts/v5/c2-foundation-findings.md; post-commit
   verifier PASS, P0=0/P1=0; SHA/evidence digest remains
   `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`).
+- `c3_closure`: `DONE` at `3adaac0` (SCC broken; capability manifest-derived;
+  scripts/check_import_graph.py; adjudication recorded in
+  contracts/v5/c3-capability-import-adjudication.md; post-commit verifier PASS, P0=0/P1=0;
+  SHA/evidence digest remains `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`).
 - `authorization_boundary`: local documentation, contract, code, test, precise staging and semantic
   commits within the accepted convergence plan are authorized. Push, PR, paid provider calls, live,
   human approval, production or other external writes still require separate authorization.
