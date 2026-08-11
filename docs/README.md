@@ -38,7 +38,8 @@
 - V4 Stage 0/Stage 1 Entry 是 contract-only，V4 S1A 是已验证的本地 runtime；
 - V5-0B/0C 是已接受的 contract freeze；R1/R2 semantic subjects 已通过 clean verifier，
   但 checksum-bearing final evidence 依 owner 指示延后，因此保持 `VERIFYING`；
-- C0-C5 architecture convergence 是当前执行序列，D2/R3/R4/V5-2+ 保持锁定；
+- C0-C5 architecture convergence 已完成并由 `b6fa629` remediation 重验；当前唯一执行入口
+  是 Master §17 的 D2，R3/R4/V5-2+ 继续按 predecessor 锁定；
 - V5-2+ 在对应 stage 产生 runtime、证据和 completion commit 前保持未实现。
 
 ## 文档生命周期

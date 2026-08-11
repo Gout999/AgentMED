@@ -4,7 +4,7 @@
 > [`docs/archive/context/LAST_HANDOFF-history-through-2026-08-11.md`](../archive/context/LAST_HANDOFF-history-through-2026-08-11.md)。
 > 本文件只保留一个 current handoff。
 
-## 2026-08-11 V5 default-development baseline and convergence handoff (current)
+## 2026-08-12 V5 post-convergence execution handoff (current)
 
 - `decision`: product owner accepted D-015. V5 is now the default design and construction baseline
   for every new product/domain change. V3 is the implemented compatibility lane; V4 is the V4
@@ -24,8 +24,9 @@
   `IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER` describe the R1/R2 semantic subject before its verifier
   ran. Their current verifier truth is PASS/P0=0/P1=0 above; C1 owns status/activation metadata
   single-sourcing and must not change the 11-intent surface while doing so.
-- `execution_baseline`: branch `codex/v5-convergence`; D-015;
-  `docs/plans/v5-architecture-convergence.md`; and the convergence gate in the Master Plan. The
+- `execution_baseline`: branch `codex/v5-convergence`; D-015; and
+  `docs/plans/v5-master-execution-plan.md` version `2026-08-12.10`, especially §17. The Master is
+  the single highest engineering execution orchestration below AGENTS/product/ADR/contracts. The
   architecture remains a modular monolith with one PostgreSQL business UoW. Compatibility/shared
   infrastructure has no independent domain-success authority.
 - `preserved_wip`: the original `codex/v4-foundation` worktree remains untouched with 144 mixed
@@ -35,17 +36,16 @@
 - `active_surface`: R2 exposes exactly the frozen 11-intent V2 surface only when V2 is explicitly
   selected. Standalone activation, second VersionSet record/get/diff, R4 Case/Acceptance routes,
   V5-2+, MCP/A2A, provider/live and production surfaces remain hidden or unimplemented.
-- `next_action`: **Architecture convergence series C0–C5 is COMPLETE**: C5 closed at `19f26bf`
-  (cleanup, effective enforcement, recovery; verify_convergence.sh ALL SECTIONS PASS), post-commit
-  verifier PASS (P0=0/P1=0). Stop and review the C5 (series) gate before beginning D2
-  (`ELIGIBLE / NOT STARTED` — complete version-graph contract or explicit R3-bootstrap-only defer).
-  R3-full, R4 and V5-2+ remain blocked through the D2 gate.
+- `next_action`: begin D2 Entry audit and contract-only implementation from clean `b6fa629` plus
+  this status/plan commit. D2 must freeze the complete `system-versions.record/get/diff` bundle and
+  a non-trivial two-VersionSet fixture; the current execution path no longer uses the defer branch.
+  R3-full, R4 and V5-2+ remain blocked by the exact Master §17 predecessor chain.
 - `c0_closure`: `DONE` at `903e954` (semantic series `a14784a` + `903e954`; post-commit verifier
   PASS, P0=0/P1=0; not a runtime/public cutover; R2 stays `contract/replay PASS only` /
   `VERIFYING`; SHA/evidence digest remains `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`).
 - `c1_closure`: `DONE` at `3dc7339` (JSON Schema 2020-12 wire contracts + compiler + generated
-  manifests + corpus; post-commit verifier PASS, P0=0/P1=0; determinism PASS; legacy validators
-  and routes remain authoritative until C4; SHA/evidence digest remains
+  manifests + corpus; post-commit verifier PASS, P0=0/P1=0; determinism PASS; C4/C5 remediation
+  now requires generated structural and semantic validation to both accept; SHA/evidence digest remains
   `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`; divergences recorded in
   contracts/v5/c1-shadow-findings.md).
 - `c2_closure`: `DONE` at `d2c3f18` (foundation records/events/bindings/receipts/graph extracted
@@ -57,16 +57,19 @@
   scripts/check_import_graph.py; adjudication recorded in
   contracts/v5/c3-capability-import-adjudication.md; post-commit verifier PASS, P0=0/P1=0;
   SHA/evidence digest remains `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`).
-- `c4_closure`: `DONE` at `1d7b59c` (generated transports authoritative; per-surface fallback
-  verified by drills; findings in contracts/v5/c4-transport-cutover-adjudication.md; post-commit
+- `c4_closure`: `DONE` at `1d7b59c`; `b6fa629` removes winner/fallback ambiguity so generated
+  structural and semantic validation must both accept. Findings in
+  contracts/v5/c4-transport-cutover-adjudication.md; post-commit
   verifier PASS, P0=0/P1=0; SHA/evidence digest remains
   `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`).
-- `c5_closure`: `DONE` at `19f26bf` (obsolete duplication removed with reachability proof;
-  enforcement fail-closed + verify_convergence.sh entry; migration recovery guide; rollback drill;
-  findings in contracts/v5/c5-cleanup-enforcement-adjudication.md; post-commit verifier PASS,
-  P0=0/P1=0).
-- `convergence_series`: `COMPLETE` (C0 `a14784a`+`903e954`/`e809d5c`, C1 `3dc7339`/`e120f98`,
-  C2 `d2c3f18`/`8e60134`, C3 `3adaac0`/`fdf57d7`, C4 `1d7b59c`/`eed1a37`, C5 `19f26bf`;
+- `c5_closure`: original semantic package `19f26bf`, repaired at `b6fa629`. Remediation removes
+  duplicate manifest catalog construction, makes generated structural + semantic validation jointly
+  fail-closed, adds the real `ENABLE_PUBLIC_V5` rollback switch, and makes the unified gate include
+  Console and explicit disposable PostgreSQL. Detached clean `verify_convergence.sh` is 8/8 PASS:
+  compiler 18, contracts 547, control-plane 998 collected/12 safety skip, CLI 118, Console 20+build,
+  PostgreSQL 17/17.
+- `convergence_series`: `COMPLETE / REMEDIATED` (C0 `a14784a`+`903e954`/`e809d5c`, C1 `3dc7339`/`e120f98`,
+  C2 `d2c3f18`/`8e60134`, C3 `3adaac0`/`fdf57d7`, C4 `1d7b59c`/`eed1a37`, C5 `19f26bf` + `b6fa629`;
   SHA/evidence digest remains `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`).
 - `authorization_boundary`: local documentation, contract, code, test, precise staging and semantic
   commits within the accepted convergence plan are authorized. Push, PR, paid provider calls, live,

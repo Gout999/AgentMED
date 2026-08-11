@@ -4,7 +4,9 @@
 >
 > Decision: [D-015](../decisions/D-015-v5-default-development-baseline-and-v3-v4-compatibility-lanes.md)
 >
-> Current wave: **D2 ELIGIBLE / NOT STARTED**（**C0–C5 convergence COMPLETE**: `a14784a`+`903e954`; `3dc7339`; `d2c3f18`; `3adaac0`; `1d7b59c`; `19f26bf`, verifier PASS P0=0/P1=0 each）
+> Current wave: **D2 ELIGIBLE / NOT STARTED**（**C0–C5 convergence COMPLETE / REMEDIATED**:
+> original series through `19f26bf`; execution baseline repair `b6fa629`; detached clean unified
+> gate 8/8 PASS）
 >
 > Locked while convergence waves remain open: **R3, R4, V5-2+**（D2 unlocked to `ELIGIBLE / NOT STARTED` after C5）
 
@@ -275,7 +277,8 @@ append-only facts and disable affected V5 mutations if parity cannot be restored
 
 **Scope:** cut OpenAPI, Python models/client surface, TypeScript models/validators, CLI commands,
 router registration and capability façades to C1's generated activated-operation artifacts and C3's
-canonical services. Keep shadow comparison and an explicit per-surface fallback during cutover.
+canonical services. During cutover shadow comparison may diagnose drift, but the effective C5
+boundary has no winner/fallback: generated structural and semantic validation must both accept.
 MCP/A2A/SDK remain disabled unless already admitted by a separate stage.
 
 **Required result:**
@@ -302,7 +305,11 @@ entry/capability and preserve mismatch evidence; do not rewrite domain facts.
 
 ### C5 — Compatibility cleanup, effective enforcement and recovery verification
 
-**Status:** `DONE`. Semantic subject `19f26bf`; post-commit verifier PASS, P0=0/P1=0; verify_convergence.sh ALL SECTIONS PASS; unit 982 + 12 PG-gated skips; conformance 547; CLI 118; compiler 18; findings in contracts/v5/c5-cleanup-enforcement-adjudication.md; SHA/evidence digest `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`. **C0–C5 architecture convergence series COMPLETE.**
+**Status:** `DONE / REMEDIATED`. Original semantic subject `19f26bf`; execution baseline repair
+`b6fa629`; detached clean `verify_convergence.sh` 8/8 PASS; compiler 18; conformance 547;
+control-plane 998 collected/12 PG safety skip; CLI 118; Console 20+build; disposable PG 17/17;
+findings in contracts/v5/c5-cleanup-enforcement-adjudication.md; SHA/evidence digest
+`DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`. **C0–C5 architecture convergence series COMPLETE.**
 
 **Scope:** remove only compatibility duplication proven obsolete by C4, turn shadow-only boundary
 rules into effective import/registration enforcement, perform cross-wave integration and recovery
@@ -334,7 +341,8 @@ later-stage implementation mixed into the convergence series.
 **Rollback:** keep D2 and later stages locked, disable affected V5 mutation/dispatcher paths,
 continue safe V3/V4 compatibility service, and reopen the earliest failed wave.
 
-**Unlock:** D2 decision work only. D2 is now `ELIGIBLE / NOT STARTED` after the C5 gate review.
+**Unlock:** D2 decision work only. D2 is `ELIGIBLE / NOT STARTED` after remediation `b6fa629`
+passed the detached clean unified gate.
 
 ## 6. Cross-wave hard gates
 
@@ -402,7 +410,7 @@ It may not:
 Allowed only after the named wave has its own semantic and status closure:
 
 - `D-015 ACCEPTED / NOT RUNTIME CUTOVER PROOF`;
-- `C0 DONE` (`a14784a`+`903e954`) / `C1 DONE` (`3dc7339`) / `C2 DONE` (`d2c3f18`) / `C3 DONE` (`3adaac0`) / `C4 DONE` (`1d7b59c`) / `C5 DONE` (`19f26bf`), or the exact independently verified wave status;
+- `C0 DONE` (`a14784a`+`903e954`) / `C1 DONE` (`3dc7339`) / `C2 DONE` (`d2c3f18`) / `C3 DONE` (`3adaac0`) / `C4 DONE` (`1d7b59c`) / `C5 DONE` (`19f26bf` + remediation `b6fa629`), or the exact verified wave status;
 - `R2 contract/replay PASS only`;
 - `D2/R3/R4/V5-2+ LOCKED`;
 - `SHA/evidence digest DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`.

@@ -13,9 +13,9 @@
 > D-015 已接受 V5 为新产品/领域开发默认设计与施工基线，V3/V4 为 compatibility lanes；
 > 这不是 runtime/public cutover proof。当前执行必须先完成
 > [`v5-architecture-convergence.md`](v5-architecture-convergence.md) 的 C0–C5，D2、R3、
-> R4 与 V5-2+ 在此之前保持锁定。**C0–C5 架构收敛系列已全部关闭**（C0 `a14784a`+`903e954`；C1
-> `3dc7339`；C2 `d2c3f18`；C3 `3adaac0`；C4 `1d7b59c`；C5 `19f26bf`，cleanup/enforcement/recovery，
-> post-commit verifier PASS，P0=0/P1=0）；D2 `ELIGIBLE / NOT STARTED`；R3-full、R4、
+> R4 与 V5-2+ 在此之前保持锁定。**C0–C5 架构收敛系列已全部关闭并由 `b6fa629`
+> remediation 重验**（原 C5 `19f26bf`；detached clean unified gate 8/8 PASS）。D2
+> `ELIGIBLE / NOT STARTED`，且当前执行裁决要求完整 `record/get/diff` bundle；R3-full、R4、
 > V5-2+ 继续锁定；SHA/evidence digest 保持 `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`。
 
 本蓝图面向能够冷启动接手任务的后续 Agent/贡献者。每个步骤都必须先读本文件、
@@ -74,8 +74,9 @@ V5-6 operations modules begin only after the relevant V5-5 invariants exist.
 
 历史目标依赖曾允许 `V5-1A` 与 `V5-2A` 在 V5-0C 后并行；D-015 的当前执行裁决不采用该
 并行入口。必须先按 `R2 → C0 → C1 → C2 → C3 → C4 → C5 → D2 → R3-full → R4` 关闭
-authority、module、transaction 与 compatibility 收敛，之后才允许 V5-2A。R3-bootstrap
-只是 one-shot holding lane，不能从它推导 R4 或 V5-2A 解锁。
+authority、module、transaction 与 compatibility 收敛，之后才允许 V5-2A。现有
+R3-bootstrap 只是首次图兼容事实；Master §17 已取消把它作为 D2 defer 出口，不能从它
+推导 R4 或 V5-2A 解锁。
 `V5-2C` 与 V5-3、Console read model 可
 并行，V5-3 不以 A2A/MCP runtime 通过为前置。Attribution 只有在 workload 把它声明为
 required 时才阻塞 Gate；比赛可诚实 abstain 后直接进入独立 Candidate/Gate。所有入口
@@ -96,13 +97,13 @@ required 时才阻塞 Gate；比赛可诚实 abstain 后直接进入独立 Candi
 - C3 消除 capability/import cycles，并按 canonical owner 拆 coordinator/service/repository，
   保持一个 PostgreSQL UoW，不增加 D2/R3/R4 行为；（C3 已于 2026-08-11 关闭：semantic
   subject `3adaac0`，post-commit verifier PASS，P0=0/P1=0；D2 现为 `ELIGIBLE / NOT STARTED`）。
-- C4 将 OpenAPI/Python/TypeScript/CLI/router/capability façades切到 generated artifacts，保留
-  shadow parity、per-surface fallback，默认 major 不变；（C4 已于 2026-08-11 关闭：semantic
+- C4 将 OpenAPI/Python/TypeScript/CLI/router/capability façades切到 generated artifacts；
+  remediation 后 generated structural 与 semantic validator 必须同时接受，默认 major 不变；（C4 已于 2026-08-11 关闭：semantic
   subject `1d7b59c`，post-commit verifier PASS，P0=0/P1=0；D2 现为 `ELIGIBLE / NOT STARTED`）。
 - C5 只在 C4 parity 后清理已证明 obsolete 的 compatibility duplication，启用 effective
   boundary enforcement，完成 recovery 与 independent P0/P1 review，只解锁 D2。
-  （C5 已于 2026-08-11 关闭：semantic subject `19f26bf`，post-commit verifier PASS，
-  P0=0/P1=0；**C0–C5 收敛系列完成**，D2 现为 `ELIGIBLE / NOT STARTED`）。
+  （原 C5 semantic subject `19f26bf`，执行基线 remediation `b6fa629` detached clean gate
+  8/8 PASS；**C0–C5 收敛系列完成并修正**，D2 现为 `ELIGIBLE / NOT STARTED`）。
 
 不能把 C1 改成纯 module inventory，也不能在 C1 wire 单一来源之前启动 shared foundation
 或业务 decomposition。C0 characterization 的 LOC/model/handler 数只定义结构风险和范围，
@@ -352,7 +353,8 @@ acceptance-criteria.confirm
 
 - Target Exit：一个 application/environment 至少有两个可独立记录的 exact declared
   VersionSet，semantic diff 覆盖真实变更，且 desired assignment 不宣称 observed runtime。
-  若 D2 选择 defer，只能形成 `BOOTSTRAP_ONLY` 限定出口，V5-4 前仍必须补齐 target exit。
+  当前 Master 不允许 defer；one-shot bootstrap 只保留为 `BOOTSTRAP_ONLY` 兼容事实，不能
+  代替第二 VersionSet 与真实 semantic diff。
 - Evidence：`evidence/v5/stage-1/system-version/<run-id>/`
 - Commit：`feat(v5): add immutable system versions`
 

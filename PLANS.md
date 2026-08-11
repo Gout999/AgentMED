@@ -19,12 +19,21 @@ R2 的当前冻结结果包括 contracts 541、control-plane unit 876（另 12 �
 CLI 118、Console 17 + build、disposable PostgreSQL 17/17。仅 `contract` 与限定范围内的
 `replay` 为 PASS；其余七个 canonical facets 均为 `NOT_RUN`。产品 owner 要求 SHA-256 与
 digest-bearing final evidence 延后到全项目最终收口，因此 R1/R2 仍记为 `VERIFYING`，不能
-据此宣称 runtime 全量 DONE、live 或 production。C0 已关闭（semantic series `a14784a` + `903e954`）、C1 已关闭（semantic subject `3dc7339`）、C2 已关闭（`d2c3f18`）、C3 已关闭（`3adaac0`），post-commit verifier PASS（P0=0/P1=0）；C4 已关闭（semantic subject `1d7b59c`，post-commit verifier PASS，P0=0/P1=0）；C5 已关闭（semantic subject `19f26bf`，post-commit verifier PASS，P0=0/P1=0）——**C0–C5 架构收敛系列全部完成**。D2 为 `ELIGIBLE / NOT STARTED`，须先完成 C5 gate review；R3-full、R4、V5-2+ 继续锁定。
+据此宣称 runtime 全量 DONE、live 或 production。C0 已关闭（semantic series `a14784a` +
+`903e954`）、C1 已关闭（`3dc7339`）、C2 已关闭（`d2c3f18`）、C3 已关闭
+（`3adaac0`）、C4 已关闭（`1d7b59c`）、C5 原语义包为 `19f26bf`；最终复核发现的 owner、
+generated-wire、rollback 与 final-PG gate 缺口已由 remediation subject `b6fa629` 关闭。
+`b6fa629` detached clean 统一门禁 8/8 PASS（compiler 18、contracts 547、control-plane
+998 collected/12 safety skip、CLI 118、Console 20+build、disposable PG 17/17）。
+**C0–C5 架构收敛系列现在具备真实可执行基线。** D2 为唯一 `ELIGIBLE / NOT STARTED`
+package；R3-full、R4、V5-2+ 继续按 Master 锁定。
 
 D-015 接受 V5 为所有新产品/领域开发的默认设计与施工基线，并把 V3/V4 固定为兼容
 lane；这不改变 public API/CLI 默认 major，不激活新 route/capability，也不追溯改写既有
-事实。**C0–C5 architecture convergence 系列已完成**（verify_convergence.sh 全段 PASS）。下一执行焦点是 D2 完整 version-graph contract gate。D2、R3-full、R4 与 V5-2+ 在
-收敛 gate 前暂停，禁止继续跨层堆叠。
+事实。**C0–C5 architecture convergence 系列已完成并经 `b6fa629` remediation 重验**。
+下一执行焦点是 D2 完整 version-graph contract gate：一次冻结
+`system-versions.record/get/diff`，不再采用 bootstrap-only defer 分支。R3-full、R4 与 V5-2+
+仍按 Master 的单一依赖链锁定，禁止跨层堆叠。
 
 - Product and scope baseline: `docs/product-principles.md` + D-013 + D-015.
 - V5 new-development baseline: `docs/plan-v5.md` + `docs/plans/v5-progressive-delivery.md` + `docs/plans/v5-architecture-convergence.md` + 已冻结的 `contracts/v5/`。`docs/plan-v4.md` 只保留为 V4 兼容性基线；v3 保留为已实现兼容基线。
@@ -34,7 +43,7 @@ lane；这不改变 public API/CLI 默认 major，不激活新 route/capability�
   audit 与 recovery 铁律，但把 Langfuse、AgentTeams、Claude Code 和 Coding Team 改为
   可插拔 Adapter；真实外部 Agent 经 CLI 调用即可满足比赛首条 Agent-native 证明。
 - Local branch, document, contract, code, and test construction is authorized. Push, PR, paid provider calls, human approvals, and production or other external writes still require their own authorization.
-- V5 feature progression is paused at the convergence gate: C0-C5 must complete in order before D2/R3/R4/V5-2+ resume. Each convergence wave uses a clean worktree, exact allowlist, behavior-preserving tests, semantic commit and verifier. V4 S1B-S7 remain frozen.
+- V5 feature progression now follows Master §17. D2 is the only open package; every later package remains locked until its exact predecessor has a semantic commit, clean verifier and status closure. V4 S1B-S7 remain frozen.
 - Security prerequisite for the next live/provider run: rotate the potentially exposed StepFun, Feishu, and internal authority/read/write/role credentials after a resolved Compose configuration expanded values into a private tool log. No secret value may enter Git or evidence. Rotation is not part of Stage 0 and remains unperformed; live execution is blocked until it is complete and a redacted preflight passes.
 
 ## V5 design preparation
@@ -53,8 +62,8 @@ lane；这不改变 public API/CLI 默认 major，不激活新 route/capability�
 | V5-C2 | Foundation extraction | DONE | previous convergence wave DONE | modular monolith；single PG UoW；no local import cycles；compat facades preserve signatures/errors/bytes；no new product capability | per-wave characterization + offline/PG parity + verifier | post-commit verifier PASS P0=0/P1=0；unit 876+12 skip；conformance 547 | `d2c3f18` |
 | V5-C3 | Capability/import-cycle elimination and coordinator/service decomposition | DONE | previous convergence wave DONE | modular monolith；single PG UoW；no local import cycles；compat facades preserve signatures/errors/bytes；no new product capability | per-wave characterization + offline/PG parity + verifier | post-commit verifier PASS P0=0/P1=0；import-graph checker PASS（0 cycles/lane 100%）；unit 876+12 skip；conformance 547 | 3adaac0 |
 | V5-C4 | Generated transport cutover | DONE | previous convergence wave DONE | modular monolith；single PG UoW；no local import cycles；compat facades preserve signatures/errors/bytes；no new product capability | per-wave characterization + offline/PG parity + verifier | post-commit verifier PASS P0=0/P1=0；unit 886+12 skip；conformance 547；CLI 118；compiler 18 | 1d7b59c |
-| V5-C5 | Compatibility cleanup, effective enforcement and recovery verification | DONE | previous convergence wave DONE | modular monolith；single PG UoW；no local import cycles；compat facades preserve signatures/errors/bytes；no new product capability | per-wave characterization + offline/PG parity + verifier | post-commit verifier PASS P0=0/P1=0；verify_convergence.sh ALL SECTIONS PASS | 19f26bf |
-| V5-D2 | Complete version-graph contract | ELIGIBLE / NOT STARTED | C5 DONE | 冻结 standalone system-versions.record wire/scope/idempotency 或显式 defer 为 R3-bootstrap-only | stage-specific | pending | pending |
+| V5-C5 | Compatibility cleanup, effective enforcement and recovery verification | DONE | previous convergence wave DONE | canonical catalog owner port；generated structural + semantic fail-closed；real V5 route switch；single reproducible offline/Console/PG gate | detached clean unified gate 8/8；compiler 18；contracts 547；control 998 collected/12 safety skip；CLI 118；Console 20+build；PG 17/17 | SHA/evidence digest deferred；P0=0/P1=0 | `19f26bf` + remediation `b6fa629` |
+| V5-D2 | Complete version-graph contract | ELIGIBLE / NOT STARTED | C5 remediation/status DONE | 一次冻结 standalone `system-versions.record/get/diff` 的完整 wire、authority、idempotency、lineage、generated transport 与 non-trivial two-VersionSet diff；不再保留 defer 分支 | Master §17.3 exact contract/fixture/conformance/verifier matrix | pending；contract-only | pending |
 | V5-R3-full / R4 / V5-2+ | Feature progression after convergence | BLOCKED | stage-specific decision/contract gate | resume only from the accepted Master dependency graph；no dormant route/capability or dirty WIP promotion | stage-specific | pending | pending |
 
 ## Active v4 delivery

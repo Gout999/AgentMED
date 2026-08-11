@@ -10,13 +10,14 @@
 - `c1_wire_subject`: `3dc7339` (C1 DONE; single-source wire + activated-operation compiler; post-commit verifier PASS; determinism PASS; shadow parity 103 corpus cases legacy<->generated agree; full conformance 547; control-plane unit 876 + 12 PG-gated skips)
 - `c2_foundation_subject`: `d2c3f18` (C2 DONE; foundation records/events/bindings/receipts/graph; import-safe no domain imports; post-commit verifier PASS; unit 876 + 12 PG-gated skips; conformance 547; findings in contracts/v5/c2-foundation-findings.md)
 - `c3_import_capability_subject`: `3adaac0` (C3 DONE; SCC broken via v5_composition; capability derives from C1 operation-manifest; scripts/check_import_graph.py PASS: 0 cycles, lane coverage 100%, 0 direct-table violations; post-commit verifier PASS; findings in contracts/v5/c3-capability-import-adjudication.md)
-- `c4_transport_subject`: `1d7b59c` (C4 DONE; generated openapi.yaml + TS module; route-registry gate; CLI manifest-derived; console dual-guard shadow+fallback; Python parity extended 11 ops/103 cases; post-commit verifier PASS; findings in contracts/v5/c4-transport-cutover-adjudication.md)
-- `c5_cleanup_subject`: `19f26bf` (C5 DONE; cleanup/enforcement/recovery; verify_convergence.sh ALL SECTIONS PASS; unit 982 + 12 PG-gated skips; conformance 547; CLI 118; compiler 18; findings in contracts/v5/c5-cleanup-enforcement-adjudication.md)
-- `convergence_series`: `COMPLETE` (C0–C5 closed; D2 `ELIGIBLE / NOT STARTED` after C5 gate review; R3-full, R4, V5-2+ remain LOCKED)
+- `c4_transport_subject`: `1d7b59c` (C4 original cutover; `b6fa629` remediation makes generated structural + semantic validation jointly mandatory and fail-closed; Python parity covers 11 ops/103 cases)
+- `c5_cleanup_subject`: `19f26bf` (original C5 semantic package; superseded for execution by the remediation below)
+- `c5_remediation_subject`: `b6fa629` (owner port, generated structural+semantic fail-closed, real V5 route switch, unified Console/PG gate; detached clean `verify_convergence.sh` 8/8 PASS; compiler 18; conformance 547; control-plane 998 collected/12 PG safety skip; CLI 118; Console 20+build; disposable PG 17/17)
+- `convergence_series`: `COMPLETE / REMEDIATED` (D2 is the only `ELIGIBLE / NOT STARTED` package; R3-full, R4, V5-2+ remain LOCKED by Master §17)
 - `r2_verification`: contracts 541; control-plane unit 876 plus 12 explicitly PG-gated skips; CLI 118; Console 17 plus build; disposable PostgreSQL 17/17
 - `checksum_policy`: SHA-256 and digest-bearing final evidence are deferred by the product owner until final whole-project closure; this deferral does not convert an unrun facet to PASS
 - `pre_r0_baseline`: `4a0a421cc669bf98d9b882d149d5d3df4c8dc36e`
-- `last_independently_verified_semantic_subject_commit`: `19f26bf` (C5 cleanup/enforcement subject)
+- `last_clean_verified_semantic_subject_commit`: `b6fa629` (C5 remediation; detached clean unified gate PASS; the receiving Agent must still perform the normal independent Entry audit before closing D2)
 - `last_digest_closed_evidence_subject_commit`: `798531af539cd37e797723f2985d55c70fa1046e` (V5-D1 contract-only; retained separately because R1/R2 checksums are owner-deferred)
 - `stage0_documentation_commit`: `b7889a7e200f76bd5985188ff6fb7e9e1860fd28`
 - `previous_v3_evidence_commit`: `cef1598b4ac1d42fdd4f206c5747eb89a06f24fc`
@@ -24,8 +25,8 @@
 - `origin/main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `local main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `collaborator_sync_merge`: `4b5377dae317eaeadbf23ab85481881096b6d6d2`
-- `working_tree`: C0 closed at `903e954` (semantic series `a14784a` + `903e954`); C1 closed at `3dc7339` (single-source wire + activated-operation compiler; post-commit verifier PASS P0=0/P1=0). C2 closed at `d2c3f18` (foundation records/events/bindings/receipts/graph; post-commit verifier PASS P0=0/P1=0). C3 closed at `3adaac0` (import cycles broken; capability wired to C1 output; import-graph checker PASS). C4 closed at `1d7b59c` (transports cut to generated artifacts; route-registry gate; CLI/TS/OpenAPI shadow+fallback). C5 closed at `19f26bf` (cleanup, effective enforcement, recovery; verify_convergence.sh ALL SECTIONS PASS). **Architecture convergence series C0–C5 COMPLETE.** D2 `ELIGIBLE / NOT STARTED`; R3-full, R4 and V5-2+ remain locked. The original `codex/v4-foundation` mixed WIP is preserved and excluded; its exact 144-entry snapshot is recorded in `docs/context/V5_CONVERGENCE_WIP_INVENTORY.md`.
-- `last_updated`: `2026-08-11` (Asia/Hong_Kong)
+- `working_tree`: branch `codex/v5-convergence`; C0–C5 semantic series retained; execution baseline repaired at `b6fa629`. The Master is version `2026-08-12.10`; D2 `ELIGIBLE / NOT STARTED` is the only next package and must freeze the complete `record/get/diff` bundle. The original `codex/v4-foundation` mixed WIP is preserved and excluded; its exact 144-entry snapshot is recorded in `docs/context/V5_CONVERGENCE_WIP_INVENTORY.md`.
+- `last_updated`: `2026-08-12` (Asia/Hong_Kong)
 
 ## Current V5 convergence truth (supersedes the historical repair snapshot below)
 
@@ -48,10 +49,10 @@
   current project status is this file, `PLANS.md` and `LAST_HANDOFF.md`. C0 does not rewrite runtime
   overlays merely to change a status label; C1 must make status/activation metadata mechanically
   single-sourced without changing the exact 11-intent surface.
-- The current execution baseline is D-015 plus `docs/plans/v5-architecture-convergence.md` and the
-  convergence section of `docs/plans/v5-master-execution-plan.md`. C0-C5 execute in order using a
-  modular monolith and one PostgreSQL business UoW. D2, R3-full, R4 and V5-2+ are paused until the
-  convergence gate releases them. **Architecture convergence C0–C5 is COMPLETE** (`903e954`, `3dc7339`, `d2c3f18`, `3adaac0`, `1d7b59c`, `19f26bf`; verifier PASS each; verify_convergence.sh ALL SECTIONS PASS). D2 is `ELIGIBLE / NOT STARTED`; R3-full, R4, V5-2+ remain locked.
+- The current execution baseline is D-015 plus Master version `2026-08-12.10`, especially §17.
+  Architecture convergence is `COMPLETE / REMEDIATED` at `b6fa629`; D2 is the only
+  `ELIGIBLE / NOT STARTED` package and must activate the complete record/get/diff contract bundle.
+  R3-full, R4 and V5-2+ remain locked behind the exact predecessor chain.
 - The original dirty worktree is not a candidate baseline. It remains preserved on
   `codex/v4-foundation`; C0 uses `codex/v5-convergence` and exact allowlists. No path from the
   preserved WIP inventory may be promoted without clean-base hunk reconstruction and provenance
@@ -229,7 +230,7 @@ This is the observed 2026-08-10 local platform snapshot and must be rechecked be
 
 V4 Stage 1A is closed. The V5 product boundary, review-driven product adjustments, and the frozen
 V5-0 contract baseline (V5-0B `8dd25ca`, V5-0C `b3727d7`) are recorded and independently accepted.
-**Architecture convergence series C0–C5 is complete** (`903e954`, `3dc7339`, `d2c3f18`, `3adaac0`, `1d7b59c`, `19f26bf`; verifier PASS P0=0/P1=0 each). D2 is `ELIGIBLE / NOT STARTED`; R3-full, R4 and V5-2+ remain locked. R1/R2 semantic subjects are
+**Architecture convergence series C0–C5 is complete and remediated** (`903e954`, `3dc7339`, `d2c3f18`, `3adaac0`, `1d7b59c`, `19f26bf` + `b6fa629`). D2 is the only `ELIGIBLE / NOT STARTED` package; R3-full, R4 and V5-2+ remain locked. R1/R2 semantic subjects are
 clean-verifier PASS but remain `VERIFYING` because checksum-bearing final evidence is owner-deferred.
 D2/R3/R4/V5-2+ and V4 S1B-S7 remain frozen. Live-provider calls and external writes remain
 separately gated.

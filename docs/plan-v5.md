@@ -20,9 +20,11 @@ production 写成已完成。绿色 contract 只能证明设计可解析，不�
 runtime 事实仍需 migration、真实调用路径、focused tests、verifier、evidence 与 semantic
 commit 独立闭合。
 
-## 当前架构收敛前置门
+## 当前架构收敛与 re-entry
 
-D2、R3、R4 与 V5-2+ 在架构收敛完成前暂停，不得以“V5 已成为默认基线”为由绕过。
+C0–C5 已完成并由 remediation subject `b6fa629` 通过 detached clean unified gate。D2 是当前
+唯一施工入口，必须按 Master §17 冻结完整 `system-versions.record/get/diff` bundle；R3、R4
+与 V5-2+ 仍不得以“V5 已成为默认基线”为由绕过 predecessor。
 收敛后的 control plane 仍是模块化单体：一个权威业务事务由一个 PostgreSQL unit of
 work 持有原子边界；domain owner 决定领域成功，compat/shared/facade/projection、
 transport 与 adapter 都不得创建第二套成功 authority。

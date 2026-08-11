@@ -2,18 +2,24 @@
 
 > 状态：**ACTIVE LOCAL EXECUTION PLAN / NOT IMPLEMENTATION PROOF**
 >
-> 计划版本：`2026-08-11.9`
+> 计划版本：`2026-08-12.10`
 >
-> 独立计划验收：`PASS`（2026-08-11；只证明依赖、authority、安全、migration、evidence、
-> rollback 和提交编排可执行，不关闭任何 runtime stage）
+> 当前计划验收：`PASS`（2026-08-12；full V3/V4/V5 conformance 547、9 个 active 文档
+> 53 个 local links/0 broken、diff-check PASS；只证明执行编排完整，不关闭后续 runtime stage）
 >
 > 当前分支：`codex/v5-convergence`
 >
-> 基线提交：`c838b2bcefb80c8458aefa17934e190a5d8485f3`
+> 当前施工基线：`b6fa629`（C5 remediation semantic subject；状态收口提交在其后）
 >
 > 当前事实：D-015 已接受 V5 新开发默认基线，但这不是 runtime/public cutover proof。
-> R2 只可报告 `contract=PASS`、`replay=PASS`；**C0–C5 架构收敛系列已全部关闭**（C0 `a14784a`+`903e954`；C1 `3dc7339`；C2 `d2c3f18`；C3 `3adaac0`；C4 `1d7b59c`；C5 `19f26bf`，cleanup/enforcement/recovery，verify_convergence.sh 全段 PASS）；D2 `ELIGIBLE / NOT STARTED`；R3-full、R4 与
-> V5-2+ 继续锁定。最终 subject SHA 与 evidence digest 按产品 owner 指示延后至最终项目收口。
+> R2 只可报告 `contract=PASS`、`replay=PASS`。C0–C5 原关闭结论经复核后在
+> `b6fa629` 修正 owner、generated-wire、rollback 与最终 PostgreSQL gate；统一门禁 8/8
+> PASS。D2 是唯一下一施工入口；R3-full、R4 与 V5-2+ 继续锁定。最终 subject SHA-256
+> 与 evidence digest 按产品 owner 指示延后至最终项目收口。
+
+> **执行优先级**：在不覆盖 AGENTS、产品原则、ADR 与 frozen contract 的前提下，本文是
+> 唯一最高工程执行编排。其他 blueprint、brief、handoff 或历史 stage 文档与本文冲突时，
+> 以本文的当前 Entry、顺序、owner、Exit、stop gate 和 unlock 为准，并在施工前修正文档漂移。
 
 本文把 [`docs/plan-v5.md`](../plan-v5.md) 和
 [`v5-progressive-delivery.md`](v5-progressive-delivery.md) 转成可分派、可停止、可验证、
@@ -74,12 +80,12 @@ migration、tests、evidence、rollback、commit 和 verifier。
 
 | 项目 | 当前事实 | 执行影响 |
 |---|---|---|
-| Git | R2 subject=`c838b2bcefb80c8458aefa17934e190a5d8485f3` 已 detached clean-checkout PASS；C0 在 clean `codex/v5-convergence` worktree 施工；原 `codex/v4-foundation` 的 144-entry mixed WIP 已登记并隔离 | 继续禁止 `git add -A`；每个后续 package 使用独立 provenance inventory 和精确 allowlist |
+| Git | C5 remediation subject=`b6fa629` 已 detached clean unified-gate PASS；当前在 `codex/v5-convergence` 写入 Master/status；原 `codex/v4-foundation` 的 144-entry mixed WIP 已登记并隔离 | D2 从本次 plan/status clean subject 开工；继续禁止 `git add -A`；每个 package 使用精确 allowlist |
 | V5-0A | 产品决策、D-013/产品原则 clean-checkout authority 已由 R0 关闭 | 不回写 V5-0B/0C 历史 freeze；不从文档 PASS 推导 runtime |
 | V5-0B/0C | contract-only freeze 已独立 PASS | 保留历史 freeze；current runtime overlay 另行标注 |
 | D-015 | `ACCEPTED / NOT RUNTIME CUTOVER PROOF`；V5 是新产品/领域开发默认设计与施工基线，V3/V4 是 compatibility lanes | 不改变 public API/CLI 默认 major、active route 或历史 authority |
 | R2 | 只确认 exact scope 的 `contract=PASS`、`replay=PASS` | 不推导完整 runtime；最终 subject SHA/evidence digest 标记 `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE` |
-| C0–C5 | **C0–C5 收敛系列 `DONE`（COMPLETE）**；D2 `ELIGIBLE / NOT STARTED`；R3-full 及后续 `LOCKED` | 完成模块化单体、单 PostgreSQL UoW 与 compatibility façade 收敛前禁止领域扩张 |
+| C0–C5 | **`COMPLETE / REMEDIATED`** at `b6fa629`；D2 `ELIGIBLE / NOT STARTED`；R3-full 及后续 `LOCKED` | detached clean unified gate 8/8 PASS；后续严格按 §17 |
 | V5-1B/R3-full | standalone `system-versions.record`、第二 VersionSet 与真实 diff 仍未解锁 | 等 C5 后先过 D2 完整 version-graph contract gate |
 | V5-1C/R4 | 仍锁定 | 不得用已有 local repair 或 one-shot bootstrap 提前关闭 |
 | V5-2+ | target/contract 或 skeleton | 不得 advertise 为 runtime；不得混入 C0–C5 structural waves |
@@ -92,15 +98,15 @@ migration、tests、evidence、rollback、commit 和 verifier。
 | V5-0A clean-checkout closure | `DONE` | subject `4d15c1c81180386fa4852a53f8b8847e74cda050`；R0 evidence/verifier PASS |
 | V5-0B/0C | `DONE (contract-only)` | 历史 freeze，不重开 |
 | D1 lifecycle decision | `DONE (contract-only)` | subject `798531a`；evidence/verifier PASS；仅解锁 R1 施工，不证明 runtime |
-| D-015 baseline decision | `ACCEPTED (decision-only)` | 不证明 runtime/public cutover；只允许 C0 施工 |
+| D-015 baseline decision | `ACCEPTED (decision-only)` | 不证明 runtime/public cutover；当前按 Master §17 只允许 D2 施工 |
 | R2 | `CONTRACT/REPLAY PASS ONLY` | 不等于完整 runtime closure；最终 SHA/evidence digest 延后至最终项目收口 |
 | C0 authority/clean branch/WIP characterization | `DONE` | clean base、WIP inventory、characterization、文档静态复核 + independent P0/P1 review；存在文件不等于关闭；semantic series `a14784a` + `903e954`；post-commit verifier PASS P0=0/P1=0 |
 | C1 single-source wire/activated-operation compiler | `DONE` | semantic subject `3dc7339`；post-commit verifier PASS P0=0/P1=0；determinism/shadow parity PASS |
 | C2 records/event specs/graph verifier foundation | `DONE` | semantic subject `d2c3f18`；post-commit verifier PASS P0=0/P1=0 |
 | C3 convergence | `DONE` | semantic subject `3adaac0`；import-graph checker PASS |
 | C4 convergence | `DONE` | 前一 wave 独立 Exit；详见 convergence plan；semantic subject `1d7b59c`；generated transport cutover |
-| C5 convergence | `DONE` | 前一 wave 独立 Exit；详见 convergence plan；semantic subject `19f26bf`；verify_convergence.sh ALL SECTIONS PASS |
-| D2 / V5-1B R3-full | D2 `ELIGIBLE / NOT STARTED`；R3-full `LOCKED` | C5 gate review 通过后 |
+| C5 convergence | `DONE / REMEDIATED` | original `19f26bf` + remediation `b6fa629`；detached clean unified gate 8/8 PASS |
+| D2 / V5-1B R3-full | D2 `ELIGIBLE / NOT STARTED`；R3-full `LOCKED` | D2 complete `record/get/diff` contract PASS 后解锁 R3-full |
 | V5-1C R4 | `LOCKED` | R3-full + 原有 R4 Entry |
 | V5-2A–V5-5 | `TODO` | 前置 stage completion commit + evidence + verifier |
 | V5-6 slices | `TODO / independently admitted after V5-5` | V5-5 completion evidence + 对应 slice Entry |
@@ -119,8 +125,7 @@ flowchart TD
   C3 --> C4["C4 generated transport cutover"]
   C4 --> C5["C5 compatibility cleanup / enforcement / recovery"]
   C5 --> D2{"D2 complete version-graph contract activation"}
-  D2 -->|activate| R3["R3-full V5-1B second VersionSet / diff closure"]
-  D2 -->|defer| R3B["R3-bootstrap holding lane only"]
+  D2 --> R3["R3-full V5-1B second VersionSet / diff closure"]
   R3 --> R4["R4 V5-1C first-case closure"]
   R4 --> K20["V5-2A contract and migration freeze"]
   K20 --> K21["V5-2A Work Kernel"]
@@ -141,9 +146,9 @@ flowchart TD
 
 冻结蓝图曾允许 V5-1A 与 V5-2A 在 V5-0C 后并行。D-015 接受后的当前执行图选择更严格的
 顺序：**R2 后先完成 C0–C5 收敛，再进入 D2/R3/R4，最后才启动 V5-2A**。C0–C5 是
-structural convergence，不得夹带行为功能。D2 defer 只保留 R3-bootstrap holding lane，
-不再从 holding lane 推导 R4 或 V5-2A 解锁。任何重新并行都必须新增或 supersede ADR，更新
-依赖与 rollback，并由 independent verifier 批准。
+structural convergence，不得夹带行为功能。现有 R3-bootstrap 只保留为首次图兼容事实，
+不再是执行分支，也不能推导 R4 或 V5-2A 解锁。任何重新并行或恢复 defer 都必须新增或
+supersede ADR，更新依赖与 rollback，并由 independent verifier 批准。
 
 ### 3.1 C0–C5 收敛门
 
@@ -407,8 +412,8 @@ Console credential 仅由 UI 内存态提供，不进入 bundle、静态配置�
 
 ### D2 · standalone `system-versions.record` contract activation
 
-> 状态：**LOCKED UNTIL C0–C5 CONVERGENCE PASS**。C0 文档存在、R2 contract/replay PASS 或
-> compatibility façade 完成，均不能单独解锁 D2。
+> 状态：**ELIGIBLE / NOT STARTED**。当前唯一目标是一次冻结完整
+> `system-versions.record/get/diff` bundle；详细验收以 §17.3 为准。
 
 当前 product/JTBD 需要第二个 VersionSet 才能产生真实 diff，但 frozen/current contract 仍把
 standalone `system-versions.record` 标为未授权、未冻结 wire。R3 开工前必须：
@@ -421,9 +426,7 @@ standalone `system-versions.record`，也不构成第二 VersionSet 或 diff evi
 - 冻结 request/response、scope/principal、idempotency、error、HTTP/CLI/capability mapping；
 - 明确它只引用既有 catalog/revision/topology，不复用 first-import bootstrap authority；
 - 更新 compatibility/intent registry/conformance，并由独立 verifier 通过；
-- 若决定继续 defer，则只允许形成 `R3-bootstrap` 限定出口：one-shot bootstrap VersionSet，
-  不得宣称可记录第二版本或完成真实 version diff 用户价值；`R3-full` 保持 TODO，并成为
-  V5-4 Candidate base/target 施工的硬 Entry。
+- D2 不允许只冻结一个 record endpoint 或继续 defer；one-shot bootstrap 仅作为现有兼容事实。
 
 ### R3-full · V5-1B SystemVersionSet closure
 
@@ -449,12 +452,11 @@ cross-application/environment binding。
 
 **Commit**：`feat(v5): record and compare immutable system versions`
 
-### R3-bootstrap · 限定 one-shot 出口
+### R3-bootstrap · 历史 one-shot 兼容事实
 
-只在 D2 明确选择 defer 时使用。它可关闭 manifest atomic bootstrap、GET 和 self-integrity
-验证，但必须在 status/capabilities/evidence 中标为 `BOOTSTRAP_ONLY`：没有第二
-VersionSet、没有真实 semantic diff、不能进入 V5-4 Candidate base/target。该限定出口不
-得复用 `R3-full` completion message，也不得把缺失 standalone record 隐藏为“后续优化”。
+现有 manifest atomic bootstrap 继续保持 `BOOTSTRAP_ONLY` provenance，但不是 D2 之后的施工
+出口：它没有第二 VersionSet、没有真实 semantic diff，不能进入 R4、V5-2A 或 V5-4
+Candidate base/target。任何 Agent 不得复用 `R3-full` completion message 描述它。
 
 ### R4 · V5-1C First System Case closure
 
@@ -855,16 +857,244 @@ Evidence commit 只记录对前一个 immutable subject commit 的验证结果�
 每次 handoff 只保留一个 current section。旧 handoff 移入 `docs/archive/context/`，并记录
 原路径、适用 commit/date、superseded-by 和禁止推导的能力。
 
-## 17. 下一执行队列
+## 17. Post-convergence Master Execution Baseline
 
-1. **C0–C5 架构收敛系列全部完成**（C0 `a14784a`+`903e954`、C1 `3dc7339`、C2 `d2c3f18`、C3 `3adaac0`、C4 `1d7b59c`、C5 `19f26bf`；verify_convergence.sh ALL SECTIONS PASS）。先完成 C5（系列）gate review，再开始 D2 完整 version-graph contract gate（冻结 standalone system-versions.record wire 或显式 defer 为 R3-bootstrap-only）。
-2. 按 convergence plan 依次关闭 C2
-   records/event specs/graph verifier foundation、C3 capability/import-cycle elimination 与
-   coordinator/service decomposition、C4 generated transport cutover、C5 compatibility cleanup/
-   effective enforcement/recovery verification；
-3. 每个 wave 保持结构行为分离、单 PostgreSQL UoW、compatibility parity 和精确 rollback；
-4. C5 PASS 后才恢复 D2，冻结完整 version-graph recording bundle，而非只增加一个无法产生
-   第二 graph 的 VersionSet endpoint；
-5. D2 PASS 后实施 R3-full，R3-full 与原 R4 Entry 均 PASS 后才重写并冻结 V5-2A 施工 brief；
-6. R2/C0–C5 的最终 subject SHA 与 evidence digest 按 owner 指示延后最终项目收口，中间阶段
-   保持 `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`，不得伪造或提前补记。
+本节是 C5 后唯一可直接交给施工 Agent 的执行队列。它取代本文更早的候选顺序、defer
+分支与历史 completion wording；上文仍提供领域背景，但发生歧义时以本节为准。
+
+### 17.1 执行姿态与唯一顺序
+
+默认顺序固定为：
+
+```text
+C5-remediation/status
+  → D2 complete version-graph contract
+  → R3-full second VersionSet + GET/diff runtime
+  → R4 First System Case closure
+  → V5-2A Work Kernel
+  → V5-2B async public operations
+  → {V5-2C agent transport, V5-3A-core evidence}
+  → [V5-3A-adapter optional, V5-3B attribution conditional]
+  → V5-4A materialization
+  → V5-4B/C/D candidate/evaluation/gate
+  → V5-5 release/recovery
+  → FINAL-CHECKSUM-CLOSURE
+  → independently admitted V5-6 slices
+```
+
+当前执行不再采用 `D2 defer → R3-bootstrap holding lane`。产品目标要求可记录第二个
+VersionSet 和真实 diff，因此 D2 必须冻结并激活完整 `record/get/diff` contract bundle。
+只有发现会改变产品范围、不可恢复历史、外部权限或迁移恢复策略的证据时，才允许通过新
+ADR 修改这一裁决。普通文件拆分、命名、测试组织和内部接口选择由施工 Agent 在既有
+owner/contract 内合理决定，不因可逆实现细节反复停工请示。
+
+### 17.2 每个 package 的统一施工协议
+
+每个 package 严格执行以下状态机：
+
+1. `ENTRY_AUDIT`：从 clean subject 开工；记录 branch、HEAD、dirty inventory、实际 Alembic
+   head、已激活 intent 与本 package 精确 path/hunk allowlist。
+2. `CONTRACT_FREEZE`：凡新增 public intent、状态、event、authority binding、error 或 migration
+   语义，先更新 frozen/current contract、fixture、generated artifact 和 conformance；独立
+   verifier `P0=0/P1=0` 后才进 runtime。纯内部机械重构不制造伪 contract gate。
+3. `RUNTIME_SEMANTIC`：实现 canonical owner 的真实 call path；adapter/transport/projection 只
+   调 owner；所有必需 facts 在同一 PostgreSQL UoW；auth 在 idempotency acquire/replay 前。
+4. `FOCUSED_VERIFY`：static、unit、contract、migration、disposable PG、HTTP/CLI/Console、replay
+   按适用矩阵全部运行。未适用项写 `NOT_APPLICABLE` 并给机器可核依据；未运行写 `NOT_RUN`。
+5. `SEMANTIC_COMMIT`：只提交该 package allowlist；不得混 evidence/status、下一 package 或
+   unrelated WIP；不 amend 已被 verifier 引用的 subject。
+6. `POST_COMMIT_VERIFY`：detached clean checkout 重跑 required gates；P0/P1 任一非零不得关闭。
+7. `STATUS_COMMIT`：只更新 Master、blueprint、`PLANS.md`、`PROJECT_STATE.md`、
+   `LAST_HANDOFF.md` 与该 stage verification record；然后才解锁唯一后继。
+
+中间 stage 记录 command、exit、passed/failed/skipped、环境类型、commit 和 facet；按 owner
+指示不得生成文件 SHA-256 或 evidence digest。它们统一留到
+`FINAL-CHECKSUM-CLOSURE`，中途必须写 `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`。
+
+### 17.3 D2 — complete version-graph contract gate（下一 package）
+
+**Entry**：C5 remediation `b6fa629` 及其 status commit clean；统一 convergence gate 8/8
+PASS；R3-full routes/capabilities 仍不可发现。
+
+**唯一目标**：一次冻结三个不可拆分 intent：
+
+- `system-versions.record`：只引用已存在且 authority-valid 的 ACTIVE Application、Environment、
+  exact ComponentRevision 集与 TopologyRevision；创建 immutable next SystemVersionSet；
+- `system-versions.get`：每次重新鉴权并递归验证 record/envelope/digest/event/outbox/audit/
+  AuthorityReceipt 后返回；
+- `system-versions.diff`：只比较同 workspace、同 Application 的两个 exact VersionSet，输出
+  deterministic added/removed/changed components、topology/edge change 与 assurance delta。
+
+**D2 必须冻结**：JSON Schema 2020-12 request/response/error；Pydantic/TS/CLI semantic layer；
+HTTP method/path/operationId；scope、principal type、project/environment visibility、server-owned
+trust role；idempotency key/body binding；exact current/previous lineage 与 CAS；major-2 event、
+outbox、controller audit、AuthorityReceipt；capability discovery；generated artifact；V3/V4
+compatibility；rollback 与 recovery。D2 不改 model/service/migration/API/CLI runtime。
+
+**D2 fixture**：同一 Application/Environment 至少两个 VersionSet，组件输入顺序非字典序，
+包含一个 changed、一个 added/removed 或 topology edge change；diff 不能是 self-diff。负例至少
+覆盖 stale component/topology、cross-workspace/application、非 ACTIVE component、裸 ID、错
+previous binding、same-key drift、错误 trust role、tampered receipt 和 reverse diff equivocation。
+
+**D2 Exit**：三 intent 状态为 `FROZEN_FOR_IMPLEMENTATION / NOT_IMPLEMENTED`；生成 compiler
+deterministic；focused conformance、full V3/V4/V5、wire model parity、duplicate-key/link/static
+全部 PASS；独立 verifier `P0=0/P1=0`；只有 `contract=PASS`，其余 facets `NOT_RUN`。Exit 只
+解锁 R3-full。
+
+### 17.4 R3-full — second VersionSet and semantic diff runtime
+
+**Owned outcome**：Version Controller 成为唯一 `system-versions.record/get/diff` success owner。
+首次 bootstrap 保持一套事实；standalone record 从现有 authority graph 产生第二及后续 immutable
+VersionSet，不暗建 Application/Environment/ComponentRevision/Topology。
+
+**Runtime acceptance**：
+
+- record 在一个 PG UoW 内写 VersionSet、major-2 Event、exactly-one Outbox、controller Audit、
+  closed AuthorityReceipt、success idempotency；任一步失败零 partial；
+- current lineage 在 workspace/application/environment 级加锁并 CAS；并发两个 next-record
+  恰好一个 canonical winner，loser 稳定 conflict 或 exact replay；
+- same key/same body 返回原 terminal response 且零新事实；same key/body drift、different key
+  same intended revision、unknown commit outcome 均不铸造重复版本；
+- GET/diff 递归重验所有 exact dependencies、receipt/event/outbox/audit 与 scalar↔envelope；
+  tamper、缺 row、跨 transaction rebind、stale current pointer 全 fail closed；
+- generated route/capability/OpenAPI、installed CLI 和 malicious-response validation 一致；
+  public/CLI default major 仍为 1，V2 仍显式选择；
+- fresh、populated previous head、legacy ambiguity preflight、downgrade guard 和 roll-forward
+  recovery 均由 disposable PostgreSQL 证明；禁止 `create_all` 代替 migration。
+
+**Required tests**：新增 focused contract/runtime/PG/CLI 文件；至少跑 full conformance、full
+control-plane unit、compiler determinism、import graph、CLI、Console build 与 PG migration+
+R1/R2/R3 matrix。`get/diff` 只有 mock 或只有一个 VersionSet 即 `NO-GO`。
+
+**Exit**：真实 HTTP + installed CLI + PostgreSQL journey 完成 bootstrap→record second→GET both→
+non-trivial diff→same-key replay→tamper rejection；`contract=PASS`、R3 scope `replay=PASS`；live/
+Agent/external/production facets保持 `NOT_RUN`。只解锁 R4。
+
+### 17.5 R4 — First System Case closure
+
+**Owned outcome**：从已验证的 IssueSource 和 exact VersionSet 建立 Case/application binding，
+记录、读取、确认 AcceptanceCriteria，并提供 authenticated Case read model/CLI/Console。Case
+Controller 不创建 VersionSet，不把 acceptance CONFIRMED 冒充 executable readiness。
+
+**Acceptance**：
+
+- canonical intents、major-2 wire、scope/role/idempotency/error/capability 全部先冻结；
+- IssueSource、Case binding、AcceptanceProposal/Revision/Confirmation 各自 immutable authority，
+  owner/event/outbox/audit/receipt 同 PG UoW；
+- cross-workspace/project、stale VersionSet/source、wrong proposer/confirmer、expired credential、
+  duplicate confirmation、audit/outbox failure 与 concurrent confirm 全 fail closed；
+- read model 对 partial/tampered graph 显示 integrity error/UNKNOWN，不隐藏坏行；
+- readiness 最大到 `NEEDS_ACCEPTANCE_CRITERIA` 或 `PENDING_MATERIALIZATION`；只有 V5-4A exact
+  ResolutionContract + executable BadcaseSpec 才能 READY；
+- disposable PG 完成 source→case→bind→propose→confirm journey；V3/V4/R1-R3 全回归。
+
+**Exit**：R4 `contract/replay=PASS`；不宣称 Candidate/Gate、provider/live 或 release；解锁 2A。
+
+### 17.6 V5-2A — Durable Work Kernel
+
+先独立关闭 `2A-0` contract/owner/migration freeze，再施工 runtime。Work Controller 独占
+WorkOrder/Task/Attempt/Decision/Reaction；dispatcher、worker、Agent、adapter 均无 success authority。
+
+**Acceptance**：claim 使用 lease+fence+attempt；过期 worker 永远不能 commit；业务 command
+transaction 与 attempt completion transaction 分离但各自内部原子；outbox/reaction ledger
+exactly-once effect + at-least-once delivery 可重放；restart、duplicate delivery、cancel race、
+audit failure、poison payload、UNKNOWN child、lease steal、clock boundary 和并发 claim 有真实 PG
+覆盖。Deterministic fixture executor 只证明 contract/replay。
+
+**Exit**：worker restart 后 durable task 可恢复且 canonical artifact 不重复；无 public async
+route、Agent transport、Gate/release。解锁 2B。
+
+### 17.7 V5-2B / V5-2C — public operations and first Agent transport
+
+**2B**：激活 `investigations.start`、`operations.get/list/cancel-request` 与 CLI
+`wait/follow/json`。detach 只停止客户端等待；cancel 只记录 stop request；Operation COMPLETED
+只表示可信 artifact 已产生。验收 timeout/reconnect/stale cursor/cross-tenant/same-key replay/
+restart/cancel race/UNKNOWN；HTTP、CLI、capability、generated wire 必须 exact parity。
+
+**2C**：在 2B canonical intents 上增加一个最小 Public MCP 或 A2A adapter。protocol 当期版本
+需开工时复核；principal/audience/scope/resource visibility 逐请求重验；transport task 不复制
+领域状态；disconnect/duplicate/status equivocation/downgrade 全 fail closed。真实外部 Agent 只
+能启动并观察 operation，不能 approve、Gate、release 或 internal execute。
+
+2B 完成后可并行 2C 与 3A-core；并行只允许不同 worktree/allowlist，shared path 冲突即串行。
+
+### 17.8 V5-3 — System evidence
+
+**3A-core**：实现 source-neutral receipt graph、coverage/completeness、mutable EpisodeView、
+immutable EpisodeSnapshot、ObservedStateSnapshot 与 ExternalEffectReceipt。declared/observed/
+effect 分栏；Gate 只能绑定 immutable snapshot；missing、sampling、masking、retention gap 必须
+PARTIAL/UNKNOWN。验收 exporter fabrication、cursor replay、cross-tenant、concurrent ingest、
+projection rebuild 与 immutable snapshot replay。
+
+**3A-adapter（optional）**：每个真实 source 独立 package；无合法隔离 credential 或现场回读
+保持 `NOT_RUN`，不阻塞 Core。不得把 repo-sandbox 或 recorded fixture 写成 provider-live。
+
+**3B（conditional）**：只有 workload 声明 attribution required 才进入 Core Gate；低功效、
+污染 control、multi-change、rollback unavailable 输出 INCONCLUSIVE/CONFOUNDED，不制造 root cause。
+
+### 17.9 V5-4 — Resolution, Candidate, Evaluation and Gate
+
+顺序固定为 `4A-0 contract → 4A runtime → 4B assets → 4C Gate → 4D self-test`。
+
+- 4A materialize exact ResolutionContract，再记录绑定 Case/Resolution/confirmed Acceptance 的
+  BadcaseSpec；并发最多一个 canonical result；stale 任一 dependency 均拒绝；
+- readiness 只有两者 authority 完整才 READY；
+- Candidate exact-bind base/target VersionSet；EvaluationBundle sealed，holdout 不泄漏；
+- `CANDIDATE_VERIFICATION` PASS 只产生 VerifiedCandidate；`RELEASE_AUTHORIZATION` 必须另绑定
+  pre-Gate ReleasePlan；required hard failure 不得被总分/Judge 覆盖；
+- self-test 至少回放一例“测试通过但未修好”的无效 Candidate 和一例已接受修复，报告
+  false-pass、false-block、maintainer agreement 与分母。
+
+**Exit**：真实外部 Coding Agent 经 CLI 或已验证 Agent transport 提交 exact Candidate；Gate
+结果可解释且与 confirmed acceptance 一致；不自动 release。解锁 release-applicable 5。
+
+### 17.10 V5-5 — Guarded release and recovery
+
+只为 `DEPLOYED_SERVICE` workload 启用。实现 schema-major-2 ApprovalGrant、CapabilityLease、
+ReleasePlan、WorkOrder、ExternalOperation、desired assignment、independent observation、post-release
+Gate 与 RecoveryWorkOrder。human reauth、nonce、expiry、exact hashes、base drift 全重验；Agent
+token 不能 approve/execute；Executor 不直写 Version/Assignment。
+
+**Acceptance**：provider response loss/timeout/ambiguous outcome 使用 exact resource reconcile；
+desired 回读不算 observed；partial/UNKNOWN 必须阻断；rollback 使用 fresh break-glass plan、fresh
+human approval 和新的 rollback operation，按 stop exposure→restore desired→verify observed→
+reconcile/compensate→resume。没有外部授权时只跑 local/shadow 并写
+`NO REMOTE WRITE PERFORMED`，不得冒充 external/production PASS。
+
+**Exit**：LIBRARY_OR_OFFLINE 出口已在 V5-4 关闭；DEPLOYED_SERVICE 的 local/shadow release、
+independent observed digest、post-release Gate 和 rollback drill 全部通过后，才可称 Core V5
+runtime complete。production canary 仍需独立授权和证据。
+
+### 17.11 统一验收与 P0 stop gates
+
+以下任一项成立，当前 package 立即 `NO-GO`，但不因普通可逆实现选择停工：
+
+- canonical command 存在两个 success owner，或 facade/adapter/projection 可直接写 owner facts；
+- generated structural wire、semantic validator、OpenAPI、router、capability、CLI/Console 不一致；
+- auth/trust/object visibility 在 idempotency replay 之后才检查；
+- required row/event/outbox/audit/receipt/idempotency 不同 UoW，或 failure 留 partial success；
+- mutable/current row 被用来证明 immutable historical binding，或 `UNKNOWN` 被转成 success；
+- migration 不是单 head、legacy ambiguity 在 DDL 后才失败、downgrade 会删除 append-only facts；
+- public/CLI default major 被隐式改为 V2，或 future intent 提前可发现；
+- focused test 只用 SQLite/mock 证明 PG lock/concurrency/transaction；
+- 删除/减弱断言来过测试，借用其他 subject 的 PG/live 结果，或把 skip/连接失败计 PASS；
+- worktree 出现 allowlist 外 path、mixed stage、未登记 WIP 或未解决 P0/P1。
+
+每个 runtime package 的最低总门禁为：compiler determinism、full V3/V4/V5 conformance、full
+control-plane unit、import graph、stage focused、migration offline、disposable PG、CLI、Console
+test/build、`git diff --check`、local-link/secret/PII 静态检查。conditional-live 只在该 package
+需要且获得授权时运行。
+
+### 17.12 Final checksum/evidence closure
+
+仅在 Core V5 目标 stage 全部结束或产品 owner 明确宣布项目最终收口时执行：
+
+1. 对 R1、R2、C0–C5 与后续 stage 的 clean semantic/status subjects 建统一 evidence index；
+2. 此时才生成 owner 延后的文件 SHA-256、raw/artifact/receipt digest 与 subject manifests；
+3. 独立复核所有 commands、exit/count、migration head、dirty state、authority source 和九 facets；
+4. `contract/replay` 只按实际 scope PASS；其余 facets 无真实证据保持 `NOT_RUN`；
+5. 更新 `PLANS.md`、`PROJECT_STATE.md`、`LAST_HANDOFF.md` 和 Master 的最终 commit/evidence refs；
+6. independent verifier `P0=0/P1=0` 后，才允许最终 completion wording。
+
+V5-6 不作为一个 mega-stage 纳入 Core completion。每个 slice 在 V5-5 后按第 10 节独立准入、
+施工和验收。
