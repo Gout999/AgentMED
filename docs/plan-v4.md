@@ -1,5 +1,7 @@
 # CaseLoop v4 全盘计划（批准施工基线）
 
+> **当前权威提示（D-015，2026-08-11）**：本文现仅作为 V4 兼容基线，不再是新产品或领域开发的默认设计/施工基线；所有新开发转向 `docs/plan-v5.md`、`docs/plans/v5-progressive-delivery.md` 与冻结的 `contracts/v5/`。这一权威更新不改变 public API/CLI 默认 major，不自动启用任何 V5 route/capability，也不证明完整 V5 runtime。下方正文保留 V4 当时获批目标与施工历史，其中“新开发基线”等表述须按本 banner 的 V4 历史范围阅读。
+
 > 状态：**APPROVED TARGET / IMPLEMENTATION IN PROGRESS**
 >
 > 更新：2026-08-10

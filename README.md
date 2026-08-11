@@ -6,15 +6,18 @@
 
 CaseLoop 希望把这件事变成一个可审计的治理流程：接收质量信号，把模糊反馈变成有来源、经维护者确认的 AcceptanceCriteria 和可判定 bad-case input，绑定完整 AI 应用版本与运行证据，再由 V5-4 exact ResolutionContract 物化 executable BadcaseSpec，验证归因和候选修复。代码库或离线任务可以在 Verified Candidate 结束；需要部署的 AI 应用才经过 release-authorizing Gate、人工审批、观察、回滚或补偿。AI 负责分析与起草，确定性控制面掌握状态、权限、审批、执行对账与恢复。
 
-当前仓库用「小智客服」跑第一条纵向参考链路。投诉、飞书回复、prompt/知识库/模型三层归因和固定六角色都是这个场景的实现，**不是 CaseLoop 的最终产品边界，也不是通用 AI 应用治理已经完成的证明**。V4 S1A 的五个认证 HTTP/CLI intent 和 no-trace `Signal → QualityCase → UNKNOWN evidence` 本地链路已实现；当前工作区正在收口 V5-1A/1B/1C 的 Application、SystemVersionSet、Case binding 与 AcceptanceCriteria 切片。在形成 completion commit、证据 manifest 和状态台账之前，这些 V5 切片仍不能标为 stage `DONE`，V5-2+ 仍未实现。
+当前仓库用「小智客服」跑第一条纵向参考链路。投诉、飞书回复、prompt/知识库/模型三层归因和固定六角色都是这个场景的实现，**不是 CaseLoop 的最终产品边界，也不是通用 AI 应用治理已经完成的证明**。V4 S1A 的五个认证 HTTP/CLI intent 和 no-trace `Signal → QualityCase → UNKNOWN evidence` 本地链路已实现；R1 authority/event foundation 与 R2 exact 11-intent Application Catalog + bootstrap-only first graph 已提交并通过 clean verifier，但 checksum-bearing final evidence 按 owner 指示延后，故保持 `VERIFYING`。当前工作区执行 C0 architecture convergence；C1-C5、D2、R3-full、R4 与 V5-2+ 均保持锁定。
 
 CaseLoop 不以击败某个闭源产品为目标。Langfuse、OpenTelemetry、Phoenix、eval 框架、Agent runtime 和 sandbox 都可以是参考或适配对象；是否集成、复用或自行实现，以目标用户需求、可靠性、私有部署、许可证和维护成本决定。完整原则见 [`docs/product-principles.md`](docs/product-principles.md)。
 
-V5 产品、架构与冻结合同已被接受为 V5 stage 施工基线：[PRD v5](docs/prd-v5.md)、
+V5 产品、架构与冻结合同已被接受为所有新产品/领域开发的默认设计与施工基线：[PRD v5](docs/prd-v5.md)、
 [plan v5](docs/plan-v5.md) 和 [V5 目标蓝图](docs/plans/v5-progressive-delivery.md)。当前
 work package、stop gate 和提交边界见 [Master Execution Plan](docs/plans/v5-master-execution-plan.md)。
-施工基线不证明 runtime 已实现；[plan v4](docs/plan-v4.md) 保留为 V4 兼容性基线，
-v3 contracts/migrations/tests 继续约束尚未迁移的实现面。
+默认开发基线与 V3/V4 兼容 lane 的权威裁决见
+[D-015](docs/decisions/D-015-v5-default-development-baseline-and-v3-v4-compatibility-lanes.md)，
+跨层协议收敛的施工入口见
+[V5 Architecture Convergence](docs/plans/v5-architecture-convergence.md)。施工基线不证明
+runtime 或 cutover 已完成。
 
 ### 现在 AgentTeams 里是什么
 

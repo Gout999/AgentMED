@@ -1,8 +1,15 @@
 # CaseLoop 产品原则
 
-> 状态：**V5 产品边界与施工基线已接受；runtime 分阶段实现中** ｜ 生效日期：2026-08-10 ｜ 基线接受：2026-08-11
+> 状态：**V5 是全部新产品/领域开发的默认设计与施工基线；runtime 仅按证据分阶段成立** ｜ 生效日期：2026-08-10 ｜ D-015 当前裁决：2026-08-11
 >
-> 本文是产品定位、范围取舍与对外口径的上位原则。V5 产品转向由 `docs/decisions/D-013-v5-ai-system-governance-and-agent-native-control-plane.md` 记录；`docs/prd-v5.md`、`docs/plan-v5.md`、`docs/plans/v5-progressive-delivery.md` 与冻结的 `contracts/v5/` 已在 2026-08-11 成为 V5 stage 施工基线。施工基线不证明 runtime、provider、Agent、external 或 production 已实现；当前执行与阻塞以 `docs/plans/v5-master-execution-plan.md`、`PLANS.md` 和 `docs/context/` 为准。v4 已完成边界仍由 `docs/plan-v4.md` 和 `contracts/v4/` 约束；尚未迁移的当前实现继续以 `docs/plan-v3.md`、v3 contracts、migrations 和可执行测试为兼容基线。运行事实以代码、PostgreSQL 权威记录和可复验证据为准。研究报告和比赛材料不能覆盖这些层级。
+> 本文是产品定位、范围取舍与对外口径的上位原则。V5 产品转向由 `docs/decisions/D-013-v5-ai-system-governance-and-agent-native-control-plane.md` 记录；D-015 进一步裁决 `docs/prd-v5.md`、`docs/plan-v5.md`、`docs/plans/v5-progressive-delivery.md` 与冻结的 `contracts/v5/` 为全部新产品和领域开发的默认设计与施工基线。V4 只保留为兼容基线，V3 是已实现兼容 lane。该裁决不改变 public API/CLI 的默认 major，不自动启用 route/capability，也不证明完整 V5 runtime、provider、Agent、external 或 production 已实现。当前执行与阻塞以 `docs/plans/v5-master-execution-plan.md`、`PLANS.md` 和 `docs/context/` 为准；运行事实只由代码、PostgreSQL 权威记录和可复验证据证明。研究报告和比赛材料不能覆盖这些层级。
+
+## 当前开发权威与收敛前置门
+
+- 所有新的产品边界、领域模型、权威写路径和公共 intent 都必须先按 V5 基线设计，再按显式 migration、route、capability、测试和证据施工；不得从 V3/V4 历史正文继续派生新的默认领域语义。
+- V4 继续约束仍在服务的 V4 compatibility surface；V3 contracts、migrations、runtime 和可执行测试继续约束已实现兼容 lane。兼容事实只有在对应边界被显式替换后才退出，不能由计划文字追溯改写。
+- 在架构收敛关闭前暂停 D2、R3、R4 与 V5-2+。收敛目标是模块化单体，每个权威业务事务只使用一个 PostgreSQL unit of work；compat/shared/facade/projection/transport/adapter 只能复用、翻译或投影，不能拥有领域成功。
+- 每一轮收敛必须行为保持：public wire、默认 major、route/capability 开关、授权顺序、错误、事务、event/outbox/receipt/audit、幂等与 replay 语义不得漂移。结构迁移与新领域能力、contract 变更必须分轮施工和验收。
 
 ## 1. 产品身份
 
@@ -112,4 +119,4 @@ CaseLoop 首先把国内团队的使用条件做好：中文文档、自托管�
 - 不使用“没人做”“唯一”“全面合规”“所有 Agent 已可接入”等未经验证的绝对表述；
 - 已有项目做得好的能力，应明确写成参考、复用或兼容对象；
 - 当前实现、历史演示、研究推断、已确认需求和待决问题必须分栏表达；
-- V5 产品边界已由 D-013 记录，V5 PRD/plan/blueprint/frozen contracts 已接受为 V5 stage 施工基线；它们只取代 V5 新施工顺序，不追溯改写 v3/v4 兼容事实。尚未被 migration、runtime、测试和证据替换的运行边界仍以 v3/v4 已实现基线为准。
+- V5 产品边界已由 D-013 记录；D-015 将 V5 PRD/plan/blueprint/frozen contracts 确立为全部新产品与领域开发的默认设计和施工基线。该裁决不追溯改写 V3/V4 兼容事实，也不自动改变 public default、启用 route/capability 或证明 runtime 已完成；尚未被 migration、runtime、测试和证据替换的运行边界仍由对应兼容 lane 约束。

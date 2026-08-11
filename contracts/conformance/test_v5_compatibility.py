@@ -42,6 +42,20 @@ FIRST_SLICE = [
     "acceptance-criteria.confirm",
 ]
 
+R2_ACTIVATED_PUBLIC_SURFACE = [
+    "capabilities.get",
+    "applications.register",
+    "applications.get",
+    "applications.list",
+    "environments.register",
+    "environments.get",
+    "system-components.register",
+    "system-components.get",
+    "dependency-edges.record",
+    "dependency-edges.get",
+    "system-manifests.import",
+]
+
 
 class _UniqueKeyLoader(yaml.SafeLoader):
     """Reject duplicate YAML keys instead of silently keeping the last value."""
@@ -84,6 +98,66 @@ def test_new_0c_fixtures_are_valid_and_draft_not_run() -> None:
         assert document["runtime_status"] == "NOT_RUN", path
         assert "fixture_id" in document, path
         assert document["does_not_prove"], path
+
+
+def test_d015_switches_new_development_baseline_without_cutting_over_compatibility() -> None:
+    compatibility = _load("compatibility.yaml")
+    registry = _load("intent-registry.yaml")
+    lanes = compatibility["d015_development_and_compatibility_lanes"]
+
+    assert lanes["decision_ref"] == (
+        "docs/decisions/"
+        "D-015-v5-default-development-baseline-and-v3-v4-compatibility-lanes.md"
+    )
+    assert lanes["architecture_convergence_ref"] == (
+        "docs/plans/v5-architecture-convergence.md"
+    )
+    assert lanes["new_development_lane"] == {
+        "default_design_and_construction_baseline": "V5",
+        "applies_to": "NEW_DEVELOPMENT_ONLY",
+        "retroactively_reinterprets_v3_or_v4": False,
+    }
+    assert lanes["compatibility_lanes"]["v3"]["behavior"] == "UNCHANGED"
+    assert lanes["compatibility_lanes"]["v4"]["behavior"] == "UNCHANGED"
+
+    selection = lanes["public_contract_selection"]
+    assert selection == {
+        "default_public_api_major": 1,
+        "default_cli_api_major": 1,
+        "v2_requires_explicit_selection": True,
+        "baseline_switch_changes_public_or_default_major": False,
+    }
+    assert selection["default_cli_api_major"] == compatibility["schema_major_rules"][
+        "default_cli_api_major"
+    ]
+    assert selection["default_public_api_major"] == compatibility[
+        "current_implemented_public_slice"
+    ]["schema_major"]
+    assert registry["api_major_selection"]["default_api_major"] == 1
+    assert registry["api_major_selection"]["v2_requires_explicit_selection"] is True
+
+    r2_surface = lanes["r2_activated_public_surface"]
+    assert r2_surface["exact_count"] == len(R2_ACTIVATED_PUBLIC_SURFACE)
+    assert r2_surface["exact_intents"] == R2_ACTIVATED_PUBLIC_SURFACE
+    assert r2_surface["changed_by_baseline_switch"] is False
+    assert compatibility["r2_application_catalog_contract"][
+        "contract_activated_public_intents"
+    ] == R2_ACTIVATED_PUBLIC_SURFACE
+    assert registry["r2_application_catalog_contract"][
+        "activated_contract_intents"
+    ] == R2_ACTIVATED_PUBLIC_SURFACE
+
+    hidden_surface = {
+        "public_http": "HIDDEN_NOT_ACTIVATED",
+        "public_cli": "HIDDEN_NOT_ACTIVATED",
+        "capability_discovery": "HIDDEN_NOT_ACTIVATED",
+    }
+    assert lanes["hidden_future_surfaces"] == {
+        "R3_FULL_SYSTEM_VERSION": hidden_surface,
+        "R4_FIRST_SYSTEM_CASE": hidden_surface,
+        "V5_2_PLUS": hidden_surface,
+    }
+    assert all(value is False for value in lanes["baseline_switch_non_proof"].values())
 
 
 def test_s1a_receipt_fixtures_are_byte_for_byte_unchanged() -> None:

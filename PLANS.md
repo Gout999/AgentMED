@@ -12,32 +12,29 @@ CaseLoop 的 V5 产品边界已经由 D-013 接受：产品升级为**面向 AI 
 代码与 AI 行为 workload，CLI 降低接入成本，Gate 要经真实反例/正例验证，只有可部署
 target 才进入 release/observed/rollback。
 
-**V5-0 合同基线已冻结并解冻 runtime 施工**：V5-0B（`8dd25ca`，system governance
-ownership）与 V5-0C（`b3727d7`，first system wire slice）均于 2026-08-11 通过独立
-验收（0B 含验收方补 13 个对抗机检；0C FAIL 清单为空）。离线最终计数：v3+v4+v5 合并
-517 passed；v3/v4 独立 449 passed；V5 focused 68 passed。此后 1A/1B/1C 已产生 runtime
-提交，但 2026-08-11 的全项目复核否决了原 closure：机器合同、exact binding、服务端
-trust role、fresh reauthentication、CaseReadiness、Console 入口、Compose 和证据台账存在
-断链。当前 repair worktree 已通过独立 verifier，但在新的 completion commit、
-digest-bearing evidence manifest 与逐 stage post-commit verifier 形成前，1A/1B/1C 均保持
-`IN_PROGRESS`，不得从旧 evidence 推导 `DONE`。
-live/provider/Agent/repository/human/production facets 仍为 `NOT_RUN`。
+**V5 新开发基线已由产品 owner 裁决切换，operational cutover 未发生**：R0 与 D1 已按
+各自证据闭合；R1 authority/event foundation semantic subject `8e21693` 与 R2
+application-catalog/bootstrap semantic subject `c838b2b` 均通过 post-commit clean verifier。
+R2 的当前冻结结果包括 contracts 541、control-plane unit 876（另 12 个 PG safety skip）、
+CLI 118、Console 17 + build、disposable PostgreSQL 17/17。仅 `contract` 与限定范围内的
+`replay` 为 PASS；其余七个 canonical facets 均为 `NOT_RUN`。产品 owner 要求 SHA-256 与
+digest-bearing final evidence 延后到全项目最终收口，因此 R1/R2 仍记为 `VERIFYING`，不能
+据此宣称 runtime 全量 DONE、live 或 production。
 
-最后有完成提交与独立证据的通用 runtime 仍是 V4 Stage 1A：**Stage 0 和 Stage 1 Entry
-为 `DONE (contract-only)`；Stage 1A — authenticated maintainer report without trace —
-为 `DONE (local runtime)`**，commit `22c23f8`。V5-1A/B/C 的本地代码与聚焦测试存在，
-但仍是未提交的 closure repair，不证明 provider、Agent、repository、human-authorized
-external 或 production 能力。
+D-015 接受 V5 为所有新产品/领域开发的默认设计与施工基线，并把 V3/V4 固定为兼容
+lane；这不改变 public API/CLI 默认 major，不激活新 route/capability，也不追溯改写既有
+事实。当前执行焦点是 C0-C5 architecture convergence。D2、R3-full、R4 与 V5-2+ 在
+收敛 gate 前暂停，禁止继续跨层堆叠。
 
-- Product and scope baseline: `docs/product-principles.md`.
-- V5 stage construction baseline: `docs/plan-v5.md` + `docs/plans/v5-progressive-delivery.md` + 已冻结的 `contracts/v5/`（含 V5-0B/0C 两个 freeze commit）。`docs/plan-v4.md` 保留为 V4 兼容性基线；v3 保留为已实现兼容基线。
+- Product and scope baseline: `docs/product-principles.md` + D-013 + D-015.
+- V5 new-development baseline: `docs/plan-v5.md` + `docs/plans/v5-progressive-delivery.md` + `docs/plans/v5-architecture-convergence.md` + 已冻结的 `contracts/v5/`。`docs/plan-v4.md` 只保留为 V4 兼容性基线；v3 保留为已实现兼容基线。
 - Current V5 execution orchestration: `docs/plans/v5-master-execution-plan.md`; document authority and archive policy: `docs/README.md` + `docs/archive/README.md`。
 - Current implemented compatibility baseline: `docs/plan-v3.md`, `docs/spec.md`, existing `contracts/`, migrations, and executable tests. The v3 customer-service workload and its evidence remain valid historical assets until explicitly migrated; v4 approval does not make proposed capabilities implemented.
 - D-013 保留 V4 Durable Work、Candidate/Gate/WorkOrder、Approval、ExternalOperation、
   audit 与 recovery 铁律，但把 Langfuse、AgentTeams、Claude Code 和 Coding Team 改为
   可插拔 Adapter；真实外部 Agent 经 CLI 调用即可满足比赛首条 Agent-native 证明。
 - Local branch, document, contract, code, and test construction is authorized. Push, PR, paid provider calls, human approvals, and production or other external writes still require their own authorization.
-- V5 stage 施工已解冻：V5-1 及之后 stage 在本地分支按 blueprint 依赖图逐 stage 施工，每 stage 需 focused tests + verifier + evidence + semantic commit。V4 S1B–S7 仍冻结。
+- V5 feature progression is paused at the convergence gate: C0-C5 must complete in order before D2/R3/R4/V5-2+ resume. Each convergence wave uses a clean worktree, exact allowlist, behavior-preserving tests, semantic commit and verifier. V4 S1B-S7 remain frozen.
 - Security prerequisite for the next live/provider run: rotate the potentially exposed StepFun, Feishu, and internal authority/read/write/role credentials after a resolved Compose configuration expanded values into a private tool log. No secret value may enter Git or evidence. Rotation is not part of Stage 0 and remains unperformed; live execution is blocked until it is complete and a redacted preflight passes.
 
 ## V5 design preparation
@@ -49,10 +46,12 @@ external 或 production 能力。
 | V5-0B | Domain, owner and lifecycle draft contracts | DONE | V5-0A | Common authority envelope + V5 exact binding; schema-major-2 Candidate/Eval/Gate/WorkOrder/Approval/Operation keep V4 logical owners; additive acceptance/BadcaseSpec owned by ResolutionContract; workload/applicability; verification-only PASS cannot create WorkOrder; release remains ExternalOperation-rooted; Desired/Observed/Effect stay separate | Focused V5 suite 68 passed (incl. 13 adversarial checks added by the verifier); v3+v4 independent 449 passed; v3+v4+v5 combined 517 passed | contract-only freeze; runtime facets `NOT_RUN` | freeze commit `8dd25ca`; independent acceptance PASS 2026-08-11 |
 | V5-0C | Compatibility and first wire slice review | DONE | V5-0B | `/api/v1` history stays unchanged; all V2 transports disabled; explicit CLI/API major; CLI `init`/`case from-issue` only compose canonical intents; trusted atomic manifest import reaches empty V5 domain tables with seeded V4 trust roots and an existing V4 Case; application and acceptance bindings have read/write paths; resource visibility and principal allowlists fail closed | compatibility, bootstrap, acceptance provenance/confirmation, workflow retry, principal, visibility, no-route, A2A/MCP mapping and adversarial binding checks in the revised focused suite | contract-only freeze; no route/migration; runtime facets `NOT_RUN` | freeze commit `b3727d7`; independent acceptance PASS 2026-08-11, FAIL list empty |
 | V5-D1 | Application/SystemComponent lifecycle decision | DONE (contract-only) | DOC-R0；产品 owner Option A | D-014 冻结 immutable `REGISTERED→ACTIVE`、manifest-only activation causation、controller/initiator 双层 authority、exact CAS、ComponentRevision 当时 current ACTIVE binding 与 legacy recovery；不宣称 migration/runtime | D1 6；V5 74；v3/v4 449；combined 523；YAML/link/secret/PII；independent PASS P0=0/P1=0 | [`d1lifecycle_20260811T123512Z_798531a`](evidence/v5/decision-gates/d1-application-component-lifecycle/d1lifecycle_20260811T123512Z_798531a/)；仅 `contract=PASS` | semantic series `66052a1` + `798531a` |
-| V5-1A | Application catalog closure repair | IN_PROGRESS | V5-0B/0C；V5-D1 DONE；R1/R2 | AIApplication/Environment/SystemComponent/DependencyEdge 的 auth、exact binding、major-2 event、read replay、audit 与 transport 一致；实现 D-014 lifecycle authority，不得用 direct ACTIVE overlay 规避 | focused service/HTTP/migration/PG + verifier | prior closure bundle is not accepted closure evidence; remediation remains uncommitted WIP | pending |
-| V5-1B | SystemVersionSet closure repair | IN_PROGRESS | V5-1A authority slice；Master Plan D2 | manifest import 的 project/trust-role、digest/provenance、dataset role、GET/diff、并发 bootstrap 均 fail closed；第二 VersionSet 用户价值必须先冻结/激活 standalone `system-versions.record` wire，未通过 D2 时不得宣称真实 diff closure | focused unit/HTTP/diff/discovery + disposable PG race | prior closure bundle is not accepted closure evidence; remediation remains uncommitted WIP | pending |
-| V5-1C | First System Case closure repair | IN_PROGRESS | V5-1A/1B repair interfaces | target local bootstrap→credential rotation→Signal/Case→binding→proposal→fresh owner reauth→confirm；Console 可见；confirm 后仍等待 V5-4 ResolutionContract，不能 READY | focused service/CLI/Console/contracts + disposable PG full journey + verifier | prior closure bundle is not accepted closure evidence; remediation remains uncommitted WIP | pending |
-| V5-2+ | 后续 V5 runtime stages | TODO | R0–R4 各自完成证据与语义提交 | 严格按 Master Plan 和 blueprint 依赖图逐 stage；V5-2 durable work/event delivery 与 V5-4 ResolutionContract 不得被 1C 占位符绕过 | stage-specific | pending | pending |
+| V5-R1 | Authority and event foundation | VERIFYING | V5-D1 | append-only lifecycle history、REGISTERED rev1、non-production rev2 CAS harness、major-2 event/receipt replay primitives；production activation deny-all | clean post-commit verifier PASS；R1 focused/migration/PG matrix | checksum/evidence digest deferred by product owner to final whole-project closure；only scoped `contract/replay=PASS` | `8e216939f9126b0bcef57b8ce9d292c27ba23717` |
+| V5-R2 | Application catalog and bootstrap-only first graph | VERIFYING | V5-R1 | exact 11 public intents；standalone register stays REGISTERED；manifest-only dual-authority activation；one-shot atomic first graph；R3-full get/diff/second VersionSet hidden | contracts 541；control unit 876 + 12 safety skip；CLI 118；Console 17 + build；disposable PG 17/17；post-commit verifier P0=0/P1=0 | checksum/evidence digest deferred by product owner；`contract=PASS`；R2-scoped `replay=PASS`；other 7 facets `NOT_RUN` | `c838b2bcefb80c8458aefa17934e190a5d8485f3` |
+| V5-C0 | Default-development baseline and convergence authority | IN_PROGRESS | V5-R2 semantic verifier；product-owner D-015 decision | D-015 tracked；V5 default-development baseline、V3/V4 compatibility lanes、clean convergence branch、preserved WIP inventory、Master/blueprint/status/contract navigation agree；no runtime/schema change | focused compatibility conformance；Markdown links/status drift；independent clean post-commit verifier | no checksum at this stage；all runtime facets `NOT_RUN` | pending |
+| V5-C1 | Single-source wire and activated-operation compiler | TODO | V5-C0 DONE | JSON Schema + intent registry become non-overlapping sources；generated Python/TS/OpenAPI/route/capability/CLI manifests shadow old validators with exact parity | golden wire corpus；negative corpus；deterministic regeneration；V3/V4/V5 regressions | pending | pending |
+| V5-C2..C5 | Foundation extraction, dependency untangling, transport cutover and compatibility cleanup | TODO | previous convergence wave DONE | modular monolith；single PG UoW；no local import cycles；compat facades preserve signatures/errors/bytes；no new product capability | per-wave characterization + offline/PG parity + verifier | pending | pending |
+| V5-D2 / R3-full / R4 / V5-2+ | Feature progression after convergence | BLOCKED | V5-C0..C5 DONE；stage-specific decision/contract gate | resume only from the accepted Master dependency graph；no dormant route/capability or dirty WIP promotion | stage-specific | pending | pending |
 
 ## Active v4 delivery
 

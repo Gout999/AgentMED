@@ -4,18 +4,53 @@
 - `r0_evidence`: `evidence/v5/stage-0/documentation-authority/r0docs_20260811T104032Z_4d15c1c/`
 - `d1_lifecycle_subject`: `798531af539cd37e797723f2985d55c70fa1046e` (semantic series starts at `66052a1`; independent detached-checkout PASS; P0=0/P1=0)
 - `d1_lifecycle_evidence`: `evidence/v5/decision-gates/d1-application-component-lifecycle/d1lifecycle_20260811T123512Z_798531a/` (`contract=PASS`; other 8 facets `NOT_RUN`)
+- `r1_authority_subject`: `8e216939f9126b0bcef57b8ce9d292c27ba23717` (independent clean post-commit PASS; foundation-scoped `contract/replay=PASS`; other 7 facets `NOT_RUN`)
+- `r2_catalog_bootstrap_subject`: `c838b2bcefb80c8458aefa17934e190a5d8485f3` (independent detached clean post-commit PASS; P0=0/P1=0)
+- `r2_verification`: contracts 541; control-plane unit 876 plus 12 explicitly PG-gated skips; CLI 118; Console 17 plus build; disposable PostgreSQL 17/17
+- `checksum_policy`: SHA-256 and digest-bearing final evidence are deferred by the product owner until final whole-project closure; this deferral does not convert an unrun facet to PASS
 - `pre_r0_baseline`: `4a0a421cc669bf98d9b882d149d5d3df4c8dc36e`
-- `last_independently_verified_evidence_subject_commit`: `798531af539cd37e797723f2985d55c70fa1046e` (V5-D1, contract-only; other 8 canonical facets `NOT_RUN`)
+- `last_independently_verified_semantic_subject_commit`: `c838b2bcefb80c8458aefa17934e190a5d8485f3` (V5-R2; `contract=PASS`, R2-scoped `replay=PASS`, other 7 canonical facets `NOT_RUN`)
+- `last_digest_closed_evidence_subject_commit`: `798531af539cd37e797723f2985d55c70fa1046e` (V5-D1 contract-only; retained separately because R1/R2 checksums are owner-deferred)
 - `stage0_documentation_commit`: `b7889a7e200f76bd5985188ff6fb7e9e1860fd28`
 - `previous_v3_evidence_commit`: `cef1598b4ac1d42fdd4f206c5747eb89a06f24fc`
-- `active_branch`: `codex/v4-foundation`
+- `active_branch`: `codex/v5-convergence`
 - `origin/main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `local main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `collaborator_sync_merge`: `4b5377dae317eaeadbf23ab85481881096b6d6d2`
-- `working_tree`: large uncommitted V5-1A/B/C review-remediation worktree plus the preserved historical judge/live WIP groups. The repair changes are not a completion commit. D-013/product-principles/document archive/Master Plan belong to the R0 authority-recovery lane; presentation, unrelated eval/live files and `scripts/b1_live/` remain separate and must not be mixed into stage evidence.
+- `working_tree`: C0 runs in a clean `codex/v5-convergence` worktree from `c838b2b`. The original `codex/v4-foundation` mixed WIP is preserved and excluded; its exact 144-entry snapshot is recorded in `docs/context/V5_CONVERGENCE_WIP_INVENTORY.md`.
 - `last_updated`: `2026-08-11` (Asia/Hong_Kong)
 
-## Current V5 repair truth (supersedes older runtime wording below)
+## Current V5 convergence truth (supersedes the historical repair snapshot below)
+
+- D-015 is the product-owner decision that makes V5 the default design and construction baseline
+  for all new product/domain work. V3 and V4 remain explicit compatibility lanes. This is a
+  development-authority switch, not an operational runtime cutover.
+- The public and CLI default major remains unchanged. Existing V1/V3/V4 behavior remains a
+  compatibility boundary; `/api/v2` remains explicit. D-015 does not activate any route,
+  capability, migration, provider, Agent, external write or production surface.
+- R1 is committed at `8e21693` and independently verified within its authority/event-foundation
+  scope. R2 is committed at `c838b2b` and independently verified for the exact 11-intent catalog
+  and bootstrap-only first graph. R2 does not implement R3-full second VersionSet, get/diff, R4,
+  V5-2+, observed runtime or release.
+- R1/R2 checksum-bearing evidence remains intentionally deferred to final whole-project closure by
+  owner decision. Until then both remain `VERIFYING`, even though their clean post-commit verifier
+  findings are P0=0/P1=0. Only `contract` and the explicitly bounded `replay` facet are PASS; the
+  other seven canonical facets remain `NOT_RUN`.
+- R1/R2 contract-overlay fields that still say `IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER` are
+  subject-time metadata frozen inside those semantic commits. The verifier has since passed; the
+  current project status is this file, `PLANS.md` and `LAST_HANDOFF.md`. C0 does not rewrite runtime
+  overlays merely to change a status label; C1 must make status/activation metadata mechanically
+  single-sourced without changing the exact 11-intent surface.
+- The current execution baseline is D-015 plus `docs/plans/v5-architecture-convergence.md` and the
+  convergence section of `docs/plans/v5-master-execution-plan.md`. C0-C5 execute in order using a
+  modular monolith and one PostgreSQL business UoW. D2, R3-full, R4 and V5-2+ are paused until the
+  convergence gate releases them.
+- The original dirty worktree is not a candidate baseline. It remains preserved on
+  `codex/v4-foundation`; C0 uses `codex/v5-convergence` and exact allowlists. No path from the
+  preserved WIP inventory may be promoted without clean-base hunk reconstruction and provenance
+  review.
+
+## Historical pre-R1 repair snapshot (superseded; provenance only)
 
 - Current execution orchestration is
   `docs/plans/v5-master-execution-plan.md`. `docs/README.md` defines the document authority and
@@ -67,29 +102,29 @@
   profiles, CLI-first onboarding, Gate reality checks, and release only for deployable targets.
   `docs/prd-v5.md`, `docs/plan-v5.md` and the progressive blueprint record that direction.
   On 2026-08-11 the V5-0 contract baseline was frozen (V5-0B `8dd25ca`, V5-0C `b3727d7`) and
-  independently accepted; the V5 stage construction baseline now supersedes `docs/plan-v4.md` for
-  V5-stage work only. `docs/plan-v4.md` remains the V4 compatibility baseline; v3
-  code/contracts/migrations/tests remain the implemented Scenario compatibility baseline. V5-0
-  contract freeze itself was not runtime implementation; the later 1A/B/C worktree is described in
-  the repair-truth section above and is not yet accepted closure evidence.
+  independently accepted. D-015 now makes the V5 authority chain the default for all new
+  product/domain design and construction. `docs/plan-v4.md` remains the V4 compatibility baseline;
+  v3 code/contracts/migrations/tests remain the implemented Scenario compatibility baseline. This
+  does not make unfinished V5 stages implemented or change an operational default major.
 - Confirmed later requirement, not implemented: CaseLoop self-observability through Langfuse and a pluggable TraceSource that can retrieve a governed Agent's Langfuse input/output/model/tool evidence with explicit completeness state.
 - The first reference workflow remains customer service. The authenticated no-trace Signal intake
-  subset is implemented and locally verified in S1A. V5 Application/SystemVersionSet/Case binding/
-  AcceptanceCriteria and CLI onboarding now have local repair implementations, but no accepted
-  completion commit. BadcaseSpec/ResolutionContract, SystemEpisodeView/Snapshot, durable operations,
-  system Gate, Agent-native async transports, local/shadow release and observed runtime verification
-  remain target-only and unimplemented.
+  subset is implemented and locally verified in S1A. R2 now provides the independently verified
+  V5 Application Catalog and bootstrap-only first declared graph at `c838b2b`. Standalone second
+  VersionSet/get/diff, Case binding/Acceptance closure, BadcaseSpec/ResolutionContract,
+  SystemEpisodeView/Snapshot, durable operations, system Gate, Agent-native async transports,
+  local/shadow release and observed-runtime verification remain target-only and unimplemented.
 - `docs/plan-v4.md`, backed by `docs/research/demand/caseloop-v4-small-team-adoption.md`, is approved. Stage 0 and Stage 1 Entry are `DONE (contract-only)`; Stage 1A is `DONE (local runtime)` at `22c23f8`, with independent evidence. All provider, Agent runtime, repository, human-authorized external and production facets are `NOT_RUN`.
 - D-013 has closed the high-level V5 scope decision. The accepted baseline defines the target
   Desired/Observed/Effect split, schema-major-2 V4 lifecycle reuse, `/api/v2` compatibility boundary, first wire
   slice, CLI-first competition proof, verification-only Candidate path and deployable-service
   local/shadow golden path. The V5-0 contract baseline (V5-0B `8dd25ca`, V5-0C `b3727d7`) is
-  frozen and independently accepted; V5-1 and later runtime stages are unfrozen on the local branch
-  and proceed one at a time per the blueprint dependency graph. V4 S1B–S7 remain frozen.
-- `contracts/v5/` preserves the historical non-routable V5-0C freeze and now adds a current partial
-  runtime overlay for the implemented 1A/B/C transports. The historical 68/449/517 counts remain
-  V5-0 contract evidence only and do not verify the repair worktree. MCP/A2A, Agent execution and
-  live source remain absent; `test_quality_api.py` is still `NOT_RUN`.
+  frozen and independently accepted. Feature progression is now paused behind C0-C5 architecture
+  convergence; D2/R3/R4 and V5-2+ resume only after the convergence gates. V4 S1B–S7 remain frozen.
+- `contracts/v5/` preserves the historical non-routable V5-0C freeze and adds the exact current R1
+  foundation/R2 11-intent overlay plus D-015 compatibility-lane semantics. The historical
+  68/449/517 counts remain V5-0 evidence only; the current R2 verification counts are recorded at
+  the top of this file. MCP/A2A, Agent execution and live source remain absent;
+  `test_quality_api.py` is still `NOT_RUN`.
 - The two later independent reports found a real target problem but also showed that acceptance
   criteria, first-use cost and Gate reality validity need to precede governance ceremony. Their
   changes were accepted without deleting the broader V5 target or weakening release authority.
@@ -187,9 +222,10 @@ This is the observed 2026-08-10 local platform snapshot and must be rechecked be
 
 V4 Stage 1A is closed. The V5 product boundary, review-driven product adjustments, and the frozen
 V5-0 contract baseline (V5-0B `8dd25ca`, V5-0C `b3727d7`) are recorded and independently accepted.
-V5-1A/B/C closure repairs are the current local activity; they remain `IN_PROGRESS` pending a
-digest-bearing evidence manifest, per-stage post-commit verifier and semantic completion commit. V4 S1B through
-S7 remain frozen. Live-provider calls and external writes remain separately gated.
+C0 architecture-convergence authority is the current local activity. R1/R2 semantic subjects are
+clean-verifier PASS but remain `VERIFYING` because checksum-bearing final evidence is owner-deferred.
+D2/R3/R4/V5-2+ and V4 S1B-S7 remain frozen. Live-provider calls and external writes remain
+separately gated.
 
 ## Actual runnable commands
 

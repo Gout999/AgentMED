@@ -1,6 +1,6 @@
 # CaseLoop V5 总体架构与迁移计划
 
-> 状态：**ACCEPTED V5 CONSTRUCTION BASELINE（2026-08-11；freeze: `8dd25ca` + `b3727d7`）/ PARTIALLY IMPLEMENTED BY STAGE**
+> 状态：**DEFAULT BASELINE FOR ALL NEW PRODUCT/DOMAIN DEVELOPMENT（D-015，2026-08-11）/ PARTIALLY IMPLEMENTED BY EVIDENCE**
 >
 > 更新：2026-08-11
 >
@@ -12,14 +12,26 @@
 >
 > 当前执行编排：[`plans/v5-master-execution-plan.md`](plans/v5-master-execution-plan.md)
 
-本文是 V5 的已接受目标架构、兼容规则和依赖顺序，并成为 V5 stage 施工基线。
-它取代 `docs/plan-v4.md` 的已批准边界仅限 V5 stage 施工；v4 仍保留为 V4 兼容性
-基线，v3 仍保留为已实现兼容基线。本文不授权把 V5 runtime、provider、Agent、
-repository、external 或 production 写成已完成；绿色 contract 只能证明设计可解析，
-不能证明能力已实现。当前 V5-1A/B/C 有未提交的 repair worktree 和聚焦本地验证，
-但尚未完成逐 stage semantic commit/evidence closure；V5-2+ 仍未实现。V5 runtime 按
-Master Execution Plan 逐 stage 施工，每 stage 需 focused tests、verifier、evidence 与
-semantic commit。
+本文是 V5 的已接受目标架构、兼容规则和依赖顺序。按 D-015，它是所有新产品与领域
+开发的默认设计和施工基线；`docs/plan-v4.md` 只保留为 V4 兼容基线，v3 保留为已实现
+兼容 lane。该默认权威不改变 public API/CLI 的默认 major，不自动激活 route 或
+capability，也不授权把完整 V5 runtime、provider、Agent、repository、external 或
+production 写成已完成。绿色 contract 只能证明设计可解析，不能证明能力已实现；每项
+runtime 事实仍需 migration、真实调用路径、focused tests、verifier、evidence 与 semantic
+commit 独立闭合。
+
+## 当前架构收敛前置门
+
+D2、R3、R4 与 V5-2+ 在架构收敛完成前暂停，不得以“V5 已成为默认基线”为由绕过。
+收敛后的 control plane 仍是模块化单体：一个权威业务事务由一个 PostgreSQL unit of
+work 持有原子边界；domain owner 决定领域成功，compat/shared/facade/projection、
+transport 与 adapter 都不得创建第二套成功 authority。
+
+收敛按独立 wave 进行，每一 wave 必须保持既有行为：public wire 与默认 major、route/
+capability 开关、auth-before-replay 顺序、稳定错误、transaction boundary、event/outbox/
+receipt/audit bytes 与 cardinality、idempotency 和 replay 都不得漂移。模块搬迁不得与新
+领域能力、contract shape 或持久化语义变更混在同一 wave；任一行为保持 gate 失败即停止
+该 wave。收敛关闭后，后续 V5 stage 仍按 Master Execution Plan 的证据门逐项施工。
 
 ## 0. 总裁决
 

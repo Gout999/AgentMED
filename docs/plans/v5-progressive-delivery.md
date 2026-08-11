@@ -9,19 +9,31 @@
 > 当前施工、work package、stop gate 与提交边界以
 > [`v5-master-execution-plan.md`](v5-master-execution-plan.md) 为准；本文保留目标语义、
 > 历史 freeze 和 stage exit，不作为 current worktree 状态页。
+>
+> D-015 已接受 V5 为新产品/领域开发默认设计与施工基线，V3/V4 为 compatibility lanes；
+> 这不是 runtime/public cutover proof。当前执行必须先完成
+> [`v5-architecture-convergence.md`](v5-architecture-convergence.md) 的 C0–C5，D2、R3、
+> R4 与 V5-2+ 在此之前保持锁定。
 
 本蓝图面向能够冷启动接手任务的后续 Agent/贡献者。每个步骤都必须先读本文件、
 `AGENTS.md`、`docs/product-principles.md`、`docs/plan-v5.md`、
 `docs/context/PROJECT_STATE.md` 和 `docs/context/LAST_HANDOFF.md`。V5-0 契约
-基线已于 2026-08-11 冻结并接受；V5-1 及之后 stage 按下面的依赖图逐 stage 施工，
+基线已于 2026-08-11 冻结并接受；D-015 进一步确定默认开发 lane。当前先按 C0–C5
+收敛模块化单体与 compatibility façades，收敛完成后 V5 stages 再按下面更新后的依赖图施工，
 每个 stage 完成 focused tests、verifier、evidence 与 semantic commit 后才能进入
 下一 stage。V4 S1B–S7 仍冻结。接受契约不等于实现 runtime：每个 stage 的 runtime
 facet 只有在真实 evidence 出现后才可标记。
 
 ## 0. 全局规则
 
-- 当前分支是 `codex/v4-foundation`；现有 judge/live WIP 属于独立历史工作，不混入 V5。
+- 当前收敛分支是 `codex/v5-convergence`；原 `codex/v4-foundation` 的 mixed judge/live/R3+
+  WIP 已登记并隔离，不混入 C0-C5。
 - V4 S1A public routes、payload、digest、authority receipt 和 evidence 保持兼容。
+- V3/V4 是显式 compatibility lanes；compatibility façade 可验证、翻译与调度，但没有
+  domain success authority。
+- public API/CLI 默认 major 与 active routes 不因 D-015 或 C0–C5 改变。
+- authoritative core 是模块化单体；每个 authoritative business transaction 使用一个
+  PostgreSQL unit of work，required row/event/outbox/audit/receipt/idempotency 一起提交或回滚。
 - 新持久化状态必须走 Alembic migration；禁止 `create_all`。
 - 每个 Stage 使用自己的 focused tests、verifier、evidence 和 semantic commit。
 - external write、付费 provider、真人审批和 production action 仍逐次授权。
@@ -35,27 +47,64 @@ facet 只有在真实 evidence 出现后才可标记。
 V5-0A Product/ADR alignment
   └── V5-0B Domain/ownership contracts
        ├── V5-0C Compatibility + wire slice
-       │    └── V5-1A Application catalog
-       │          └── V5-1B System manifest/version + atomic import
-       │                └── V5-1C First System Case
-       └── V5-2A Durable Work Kernel
-             └── V5-2B Async public intents
-                   ├── V5-2C Agent-native transport
-                   └── V5-3 Evidence/Episode
-                         ├── V5-3 Attribution（可选/并行）
-                         └── V5-4 Candidate/Evaluation/Gate
-                               ├── verification-only → VerifiedCandidate / NOT DEPLOYED
-                               └── release-applicable → V5-5 External operations/recovery
+       │    └── R2 Application catalog contract/replay boundary
+       │          └── C0 Authority/clean branch/WIP characterization
+       │                └── C1 Single-source wire + activated-operation compiler
+       │                      └── C2 Records/event specs/graph verifier foundation
+       │                            └── C3 Capability/import-cycle/service decomposition
+       │                                  └── C4 Generated transport cutover
+       │                                        └── C5 Compatibility cleanup/enforcement/recovery
+       │                                              └── D2 Complete version-graph contract
+       │                                                    └── R3-full System version/diff
+       │                                                          └── R4 First System Case
+       │                                                                └── V5-2A Durable Work Kernel
+       │                                                                      └── V5-2B Async public intents
+       │                                                                            ├── V5-2C Agent-native transport
+       │                                                                            └── V5-3 Evidence/Episode
+       │                                                                                  ├── V5-3 Attribution（可选/并行）
+       │                                                                                  └── V5-4 Candidate/Evaluation/Gate
+       │                                                                                        ├── verification-only → VerifiedCandidate / NOT DEPLOYED
+       │                                                                                        └── release-applicable → V5-5 External operations/recovery
 
 V5-6 operations modules begin only after the relevant V5-5 invariants exist.
 ```
 
-目标依赖允许 `V5-1A` 与 `V5-2A` 在 V5-0C 通过后并行；但当前混合 repair worktree 和
-逐 stage completion 纪律要求先关闭 V5-1A/B/C，再启动 V5-2A，详见 Master Plan。
+历史目标依赖曾允许 `V5-1A` 与 `V5-2A` 在 V5-0C 后并行；D-015 的当前执行裁决不采用该
+并行入口。必须先按 `R2 → C0 → C1 → C2 → C3 → C4 → C5 → D2 → R3-full → R4` 关闭
+authority、module、transaction 与 compatibility 收敛，之后才允许 V5-2A。R3-bootstrap
+只是 one-shot holding lane，不能从它推导 R4 或 V5-2A 解锁。
 `V5-2C` 与 V5-3、Console read model 可
 并行，V5-3 不以 A2A/MCP runtime 通过为前置。Attribution 只有在 workload 把它声明为
 required 时才阻塞 Gate；比赛可诚实 abstain 后直接进入独立 Candidate/Gate。所有入口
 均不得复制 application service。
+
+### 1.1 C0–C5 收敛规则
+
+- C0 接受并复核 D-015/convergence plan，建立 clean branch、WIP inventory 与 characterization；
+  文档或计数存在不等于 C0 DONE；
+- C1 以 JSON Schema 2020-12 + intent registry 建立 single-source wire 和
+  activated-operation compiler，generated/legacy validators 先做 shadow dual validation；
+- C2 在 C1 之后抽取 records、event specifications 与 exact-binding graph verifier foundation，
+  不承载业务 command 或 transport activation；
+- C3 消除 capability/import cycles，并按 canonical owner 拆 coordinator/service/repository，
+  保持一个 PostgreSQL UoW，不增加 D2/R3/R4 行为；
+- C4 将 OpenAPI/Python/TypeScript/CLI/router/capability façades切到 generated artifacts，保留
+  shadow parity、per-surface fallback，默认 major 不变；
+- C5 只在 C4 parity 后清理已证明 obsolete 的 compatibility duplication，启用 effective
+  boundary enforcement，完成 recovery 与 independent P0/P1 review，只解锁 D2。
+
+不能把 C1 改成纯 module inventory，也不能在 C1 wire 单一来源之前启动 shared foundation
+或业务 decomposition。C0 characterization 的 LOC/model/handler 数只定义结构风险和范围，
+不是 bug、dead-code、安全删除或 implementation proof。
+
+任一 wave 出现 dual owner、split transaction、public wire/error/audit/receipt/idempotency/replay
+漂移、隐式 V2 default、locked intent discovery、V3/V4 history rewrite 或后续 stage 混入，立即
+`NO-GO`。回滚先停受影响的 V5 route/capability/dispatcher，保留 append-only facts，继续安全的
+V3/V4 compatibility service，并从最早失败 wave 重新准入。
+
+R2 当前只可报告 `contract=PASS` 与 `replay=PASS`。最终 subject SHA 和 evidence bundle digest
+按产品 owner 指示标记 `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`，在最终项目收口前不得
+生成 placeholder 或改称 evidence/runtime PASS。
 
 ## 2. V5-0 — 设计、owner 与兼容冻结
 
@@ -221,8 +270,9 @@ acceptance-criteria.confirm
 
 ### V5-1A · Application catalog
 
-> 状态：**IN_PROGRESS / CLOSURE REPAIR**。V5-1A/B/C 当前共同处于 repair worktree；
-> 阶段只能按 Master Plan 分别形成 completion commit、evidence 和 verifier 后关闭。
+> 状态：**R2 CONTRACT/REPLAY PASS ONLY / ARCHITECTURE CONVERGENCE ACTIVE**。该边界不证明
+> 完整 runtime；最终 subject SHA/evidence digest 依 owner 指示延后最终项目收口。C0–C5
+> 只允许行为不变的结构收敛，不得借 V5-1A 名义继续领域扩张。
 
 #### Entry
 
@@ -253,6 +303,9 @@ acceptance-criteria.confirm
 - Commit：`feat(v5): add ai application catalog`
 
 ### V5-1B · System manifest and VersionSet
+
+> 状态：**LOCKED**。C5 PASS 后仍须先通过 D2 完整 version-graph contract gate；现有
+> workspace-initial bootstrap 不证明第二 VersionSet 或真实 diff。
 
 #### Deliverables
 
@@ -294,6 +347,9 @@ acceptance-criteria.confirm
 
 ### V5-1C · First System Case
 
+> 状态：**LOCKED**。只在 C5、D2 与 R3-full 依次 PASS 后恢复；已有 repair/fixture/Console
+> 不构成本 stage completion。
+
 #### Deliverables
 
 - additive ApplicationCaseBinding；
@@ -330,6 +386,9 @@ acceptance-criteria.confirm
 ## 4. V5-2 — Durable capability plane
 
 ### V5-2A · Work Kernel
+
+> 状态：**LOCKED / NOT IMPLEMENTED**。C0–C5、D2、R3-full 与 R4 未关闭前不得施工、
+> advertise 或借 structural convergence 预埋 runtime。
 
 #### Deliverables
 

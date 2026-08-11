@@ -1,5 +1,7 @@
 # CaseLoop —— 最终目标完整实现方案（终态蓝图 + 分阶段推进）v3
 
+> **当前权威提示（D-015，2026-08-11）**：本文仅描述已实现 V3 兼容 lane 及其历史施工蓝图，不再指导新的产品或领域开发。新开发默认以 `docs/plan-v5.md` 及 V5 blueprint/contracts 为设计与施工基线；`docs/plan-v4.md` 仅保留为 V4 兼容基线。该指向不改变 public API/CLI 默认 major，不自动启用 V5 route/capability，也不把任何未有 runtime 证据的 V5 能力写成已实现。下方历史正文保持原意。
+
 > **适用范围更新（2026-08-10）**：本文件是当前“小智客服纵切 + AgentTeams 执行层”的 v3 实现蓝图和 T0–T10 施工基线，不再代表 CaseLoop 面向通用 AI Agent 的最终产品范围。产品定位与取舍以 `docs/product-principles.md` 为准；通用 Agent、Langfuse/TraceSource 与第二工作负载已在 `docs/prd-v2.md`、`docs/plan-v4.md` 和 `contracts/v4/` 作为批准目标进入 Stage 0，但 migration/runtime 尚未实现，不能从本文件或 target contract 推断为已实现。
 >
 > 本版已吸收外部技术审查 F1–F8 全部修订（审查裁决：T0–T10 保留，补齐控制面/统计协议/真实 Spike 后 Conditional Build GO）。
