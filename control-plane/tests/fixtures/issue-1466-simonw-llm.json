@@ -1,0 +1,14 @@
+{
+  "number": 1466,
+  "title": "BUG: schema_dsl() raises IndexError when a field has no name before the colon",
+  "body": "Calling `schema_dsl()` with a DSL string where a field has no name before the colon (e.g. `':description'` or `'name, :description'`) crashes with an `IndexError`. This is reachable from the CLI via `llm schema dsl ':foo'` and from `resolve_schema_input` whenever the schema string contains such a field.\n\nTraceback:\n```\nFile \"llm/utils.py\", line 395, in schema_dsl\n    field_name = field_parts[0].strip()\n                 ~~~~~~~~~~~^^^\nIndexError: list index out of range\n```\n\nRoot cause: after `field.split(\":\", 1)`, the left side (`field_info`) is empty. `field_info.strip().split()` returns `[]`, so indexing `field_parts[0]` raises `IndexError`.\n\nMinimal repro:\n```python\nfrom llm.utils import schema_dsl\nschema_dsl(':just a description')  # IndexError\n```",
+  "state": "closed",
+  "html_url": "https://github.com/simonw/llm/issues/1466",
+  "updated_at": "2026-07-30T22:33:06Z",
+  "created_at": "2026-06-01T20:50:26Z",
+  "edited_flag": null,
+  "closed_at": "2026-07-30T22:33:06Z",
+  "user": {
+    "login": "devteamaegis"
+  }
+}

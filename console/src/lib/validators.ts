@@ -1,5 +1,8 @@
 import type {
   ApplicationView,
+  CaseV5Binding,
+  CaseV5IssueSnapshot,
+  CaseV5Readiness,
   CaseDetail,
   CaseEvent,
   CaseEventsView,
@@ -303,6 +306,44 @@ const application: Guard<ApplicationView> = (value): value is ApplicationView =>
 
 const applicationList: Guard<ReadViewList<ApplicationView>> = readListGuard(application);
 
+const caseV5Binding: Guard<CaseV5Binding> = (value): value is CaseV5Binding => record(value)
+  && nonEmptyString(value.application_case_binding_id)
+  && nonEmptyString(value.application_id)
+  && nonEmptyString(value.environment_id)
+  && record(value.exact_case_binding)
+  && nonEmptyString((value.exact_case_binding as Record<string, unknown>).case_id)
+  && integer((value.exact_case_binding as Record<string, unknown>).case_revision)
+  && SHA256_DIGEST.test(String((value.exact_case_binding as Record<string, unknown>).case_digest))
+  && (value.declared_system_version_set_binding_or_unknown === null
+    || record(value.declared_system_version_set_binding_or_unknown))
+  && SHA256_DIGEST.test(String(value.record_digest));
+
+const caseV5IssueSnapshot: Guard<CaseV5IssueSnapshot> = (value): value is CaseV5IssueSnapshot => record(value)
+  && nonEmptyString(value.issue_snapshot_id)
+  && nonEmptyString(value.source_kind)
+  && nonEmptyString(value.source_url)
+  && nonEmptyString(value.external_repo)
+  && integer(value.external_issue_number)
+  && nullableString(value.title)
+  && typeof value.edited_flag === "boolean"
+  && typeof value.deleted_flag === "boolean"
+  && typeof value.instruction_markers_detected === "boolean"
+  && SHA256_DIGEST.test(String(value.snapshot_digest));
+
+const caseV5Readiness: Guard<CaseV5Readiness> = (value): value is CaseV5Readiness => record(value)
+  && nonEmptyString(value.case_id)
+  && integer(value.case_revision)
+  && (value.application_binding === null || caseV5Binding(value.application_binding))
+  && (value.binding_integrity_status === "verified"
+    || value.binding_integrity_status === "integrity_error")
+  && nullableString(value.binding_integrity_error)
+  && (value.case_readiness === "NEEDS_ACCEPTANCE_CRITERIA" || value.case_readiness === "READY")
+  && integer(value.acceptance_proposal_count)
+  && integer(value.confirmed_acceptance_count)
+  && Array.isArray(value.missing_evidence)
+  && value.missing_evidence.every((item) => typeof item === "string")
+  && (value.issue_snapshot === null || caseV5IssueSnapshot(value.issue_snapshot));
+
 export const guards = {
   health,
   environment,
@@ -323,4 +364,5 @@ export const guards = {
   notification,
   evidenceResponse,
   applicationList,
+  caseV5Readiness,
 };

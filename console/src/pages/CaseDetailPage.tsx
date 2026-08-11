@@ -5,7 +5,7 @@ import { StatusChip } from "../components/StatusChip";
 import { usePageData, type PageData } from "../hooks/usePageData";
 import { api } from "../lib/api";
 import { formatTime, stateLabel, stateTone } from "../lib/format";
-import type { CaseDetail, CaseEventsView, EvidenceResponse } from "../lib/types";
+import type { CaseDetail, CaseEventsView, CaseV5Readiness, EvidenceResponse } from "../lib/types";
 
 const CASE_PATH = [
   "RECEIVED",
@@ -24,6 +24,7 @@ export function CaseDetailPage() {
   const detail = usePageData((signal) => api.getCase(id, signal), `case:${id}:detail`);
   const events = usePageData((signal) => api.getCaseEvents(id, signal), `case:${id}:events`);
   const evidence = usePageData((signal) => api.listEvidence(id, signal), `case:${id}:evidence`);
+  const governance = usePageData((signal) => api.getCaseV5Readiness(id, signal), `case:${id}:v5`);
 
   return (
     <div className="space-y-5">
@@ -36,7 +37,9 @@ export function CaseDetailPage() {
         onRetry={detail.reload}
         staleError={detail.refreshError}
       >
-        {detail.data ? <CaseDetailBody data={detail.data} events={events} evidence={evidence} /> : null}
+        {detail.data ? (
+          <CaseDetailBody data={detail.data} events={events} evidence={evidence} governance={governance} />
+        ) : null}
       </AsyncBoundary>
     </div>
   );
@@ -46,10 +49,12 @@ function CaseDetailBody({
   data,
   events,
   evidence,
+  governance,
 }: {
   data: CaseDetail;
   events: PageData<CaseEventsView>;
   evidence: PageData<EvidenceResponse>;
+  governance: PageData<CaseV5Readiness>;
 }) {
   return (
     <>
@@ -147,6 +152,8 @@ function CaseDetailBody({
         </AsyncBoundary>
       </Card>
 
+      <CaseV5GovernanceCard governance={governance} />
+
       <Card title="证据状态" bodyClassName="p-4">
         <AsyncBoundary
           loading={evidence.loading}
@@ -197,6 +204,112 @@ function displayValue(value: unknown): string {
   if (typeof value === "string") return value;
   if (value === undefined) return "—";
   return JSON.stringify(value) ?? String(value);
+}
+
+function CaseV5GovernanceCard({
+  governance,
+}: {
+  governance: PageData<CaseV5Readiness>;
+}) {
+  const readiness = governance.data?.case_readiness;
+  const binding = governance.data?.application_binding;
+  const untrusted = governance.data?.binding_integrity_status !== "verified";
+  return (
+    <Card title="V5 治理 · 系统绑定 / acceptance readiness" bodyClassName="p-4">
+      <AsyncBoundary
+        loading={governance.loading}
+        error={governance.error}
+        dataEmpty={!governance.data}
+        emptyHint="该 Case 无 V5 治理投影"
+        onRetry={governance.reload}
+        staleError={governance.refreshError}
+      >
+        <div className="space-y-4">
+          {untrusted ? (
+            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              binding 记录未通过 envelope 完整性重验，已标记 integrity_error，未作为可信数据展示。
+            </p>
+          ) : null}
+
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-medium text-gray-400">acceptance readiness</span>
+            <StatusChip
+              label={readiness === "READY" ? "READY" : readiness === "NEEDS_ACCEPTANCE_CRITERIA" ? "NEEDS_ACCEPTANCE_CRITERIA" : "UNKNOWN"}
+              tone={readiness === "READY" ? "green" : readiness === "NEEDS_ACCEPTANCE_CRITERIA" ? "amber" : "gray"}
+            />
+            {governance.data ? (
+              <span className="text-xs tabular-nums text-gray-400">
+                {governance.data.acceptance_proposal_count} 个草稿 · {governance.data.confirmed_acceptance_count} 个已确认
+              </span>
+            ) : null}
+          </div>
+          {readiness === "NEEDS_ACCEPTANCE_CRITERIA" && governance.data?.issue_snapshot === null ? (
+            <p className="text-xs text-gray-500">
+              该 Case 尚无已确认验收标准；在 acceptance-criteria 确认前 Gate 不可启动。
+            </p>
+          ) : null}
+
+          <div>
+            <p className="mb-1 text-xs font-medium text-gray-400">application binding</p>
+            {binding ? (
+              <ul className="space-y-1 text-xs text-gray-700">
+                <li className="flex flex-wrap gap-2">
+                  <span className="font-mono">{binding.application_id}</span>
+                  <span className="text-gray-400">/</span>
+                  <span className="font-mono">{binding.environment_id}</span>
+                  <StatusChip label={untrusted ? "integrity_error" : "verified"} tone={untrusted ? "red" : "green"} />
+                </li>
+                <li className="break-all font-mono text-[10px] text-gray-400">
+                  exact case · rev {binding.exact_case_binding.case_revision} · {binding.exact_case_binding.case_digest}
+                </li>
+                <li className="text-[10px] text-gray-400">
+                  声明版本：{binding.declared_system_version_set_binding_or_unknown === null ? "UNKNOWN" : JSON.stringify(binding.declared_system_version_set_binding_or_unknown)}
+                </li>
+              </ul>
+            ) : (
+              <p className="text-xs text-gray-400">UNKNOWN · 尚未绑定到 AI 应用</p>
+            )}
+          </div>
+
+          {governance.data?.issue_snapshot ? (
+            <div>
+              <p className="mb-1 text-xs font-medium text-gray-400">issue 快照（只读 data）</p>
+              <ul className="space-y-1 text-xs text-gray-700">
+                <li className="truncate">
+                  <a className="text-brand-600 hover:underline" href={governance.data.issue_snapshot.source_url} target="_blank" rel="noreferrer">
+                    {governance.data.issue_snapshot.external_repo}#{governance.data.issue_snapshot.external_issue_number}
+                  </a>
+                  {" · "}{governance.data.issue_snapshot.title ?? "UNTITLED"}
+                </li>
+                <li className="flex flex-wrap gap-2 text-[10px] text-gray-400">
+                  {governance.data.issue_snapshot.edited_flag ? <StatusChip label="edited" tone="amber" /> : null}
+                  {governance.data.issue_snapshot.deleted_flag ? <StatusChip label="deleted" tone="red" /> : null}
+                  {governance.data.issue_snapshot.instruction_markers_detected ? (
+                    <StatusChip label="injection markers (data only)" tone="amber" />
+                  ) : null}
+                </li>
+              </ul>
+            </div>
+          ) : null}
+
+          <div>
+            <p className="mb-1 text-xs font-medium text-gray-400">missing evidence</p>
+            {(governance.data?.missing_evidence.length ?? 0) > 0 ? (
+              <ul className="flex flex-wrap gap-1.5">
+                {governance.data?.missing_evidence.map((field) => (
+                  <li key={field} className="rounded bg-amber-50 px-1.5 py-0.5 font-mono text-[10px] text-amber-800">
+                    {field}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-gray-400">无缺项（或证据完整性为 UNKNOWN）</p>
+            )}
+          </div>
+        </div>
+      </AsyncBoundary>
+    </Card>
+  );
 }
 
 function BackLink({ to, label }: { to: string; label: string }) {

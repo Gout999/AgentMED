@@ -1,17 +1,20 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
 import sys
 import time
+import urllib.request
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Sequence, TextIO
 
 import httpx
+import rfc8785
 from pydantic import ValidationError
 
 from ._generated.manifest_v2 import SystemManifestImportRequest
@@ -35,9 +38,12 @@ _IDS = {
     "edge": re.compile(r"^de_[0-9A-Za-z]{8,64}$"),
     "version_set": re.compile(r"^vset_[0-9A-Za-z]{8,64}$"),
     "principal": re.compile(r"^prn_[0-9A-Za-z]{8,64}$"),
+    "binding": re.compile(r"^acb_[0-9A-Za-z]{8,64}$"),
+    "acceptance_revision": re.compile(r"^acr_[0-9A-Za-z]{8,64}$"),
+    "digest": re.compile(r"^sha256:[0-9a-f]{64}$"),
 }
 
-_V1_COMMANDS = frozenset({"capabilities", "signal", "report", "case", "evidence"})
+_V1_COMMANDS = frozenset({"capabilities", "signal", "report", "evidence"})
 _V2_COMMANDS = frozenset(
     {
         "application",
@@ -47,6 +53,12 @@ _V2_COMMANDS = frozenset(
         "system-manifest",
         "init",
     }
+)
+# ``case`` carries both v1 (get/timeline) and v2 (binding/acceptance/from-issue)
+# actions; the per-action api-major checks live in run().
+_V1_CASE_ACTIONS = frozenset({"get", "timeline"})
+_V2_CASE_ACTIONS = frozenset(
+    {"bind-application", "application-binding", "acceptance-criteria", "from-issue"}
 )
 
 
@@ -185,6 +197,56 @@ def build_parser() -> argparse.ArgumentParser:
     timeline.add_argument("--limit", type=int, default=50)
     timeline.add_argument("--cursor")
 
+    # V5-1C case actions (api-major 2).
+    bind_application = case_actions.add_parser("bind-application")
+    bind_application.add_argument("case_id")
+    bind_application.add_argument("--application-id", required=True)
+    bind_application.add_argument("--environment-id", required=True)
+    bind_application.add_argument("--case-revision", type=int, default=1)
+    bind_application.add_argument("--case-digest", required=True)
+    bind_application.add_argument("--system-version-set-id")
+    bind_application.add_argument("--declared-version-unknown", action="store_true")
+    bind_application.add_argument("--issue-snapshot-file")
+    bind_application.add_argument("--idempotency-key")
+
+    application_binding = case_actions.add_parser("application-binding")
+    application_binding_actions = application_binding.add_subparsers(
+        dest="action2", required=True, parser_class=SafeArgumentParser
+    )
+    binding_get = application_binding_actions.add_parser("get")
+    binding_get.add_argument("case_id")
+    binding_get.add_argument("--case-revision", type=int, default=1)
+    binding_get.add_argument("--case-digest", required=True)
+
+    acceptance_criteria = case_actions.add_parser("acceptance-criteria")
+    acceptance_criteria_actions = acceptance_criteria.add_subparsers(
+        dest="action2", required=True, parser_class=SafeArgumentParser
+    )
+    propose = acceptance_criteria_actions.add_parser("propose")
+    propose.add_argument("case_id")
+    propose.add_argument("--case-revision", type=int, default=1)
+    propose.add_argument("--case-digest", required=True)
+    propose.add_argument("--acceptance-json", required=True)
+    propose.add_argument("--idempotency-key")
+    criteria_get = acceptance_criteria_actions.add_parser("get")
+    criteria_get.add_argument("case_id")
+    criteria_get.add_argument("--case-revision", type=int, default=1)
+    confirm = acceptance_criteria_actions.add_parser("confirm")
+    confirm.add_argument("acceptance_criteria_revision_id")
+    confirm.add_argument("--proposed-revision-digest", required=True)
+    confirm.add_argument("--confirmation-note")
+    confirm.add_argument("--idempotency-key")
+
+    from_issue = case_actions.add_parser("from-issue")
+    from_issue.add_argument("github_url")
+    from_issue.add_argument("--application-id", required=True)
+    from_issue.add_argument("--environment-id", required=True)
+    from_issue.add_argument("--snapshot-file")
+    from_issue.add_argument("--refresh", action="store_true")
+    from_issue.add_argument("--source-id")
+    from_issue.add_argument("--reporter-ref")
+    from_issue.add_argument("--idempotency-key")
+
     evidence = commands.add_parser("evidence")
     evidence_get = evidence.add_subparsers(dest="action", required=True, parser_class=SafeArgumentParser).add_parser("get")
     evidence_get.add_argument("receipt_id")
@@ -303,6 +365,104 @@ def _load_manifest_payload(path: str) -> dict[str, object]:
     return model.model_dump(mode="json")
 
 
+_ISSUE_URL = re.compile(
+    r"^https?://github\.com/(?P<owner>[A-Za-z0-9_.-]{1,128})/"
+    r"(?P<repo>[A-Za-z0-9_.-]{1,128})/issues/(?P<number>[1-9][0-9]{0,9})$"
+)
+_ISSUE_CACHE_ENV = "CASELOOP_CACHE_DIR"
+
+
+def _parse_issue_url(url: str) -> tuple[str, str, int]:
+    match = _ISSUE_URL.fullmatch(url)
+    if match is None:
+        raise CliError("ISSUE_URL_INVALID", ExitFamily.INPUT)
+    return match.group("owner"), match.group("repo"), int(match.group("number"))
+
+
+def _issue_cache_dir(env: dict[str, str]) -> Path:
+    configured = env.get(_ISSUE_CACHE_ENV)
+    if configured:
+        return Path(configured)
+    return Path.home() / ".cache" / "caseloop" / "issues"
+
+
+def _fetch_issue_snapshot(
+    url: str,
+    *,
+    snapshot_file: str | None,
+    refresh: bool,
+    env: dict[str, str],
+    uuid_factory: Callable[[], uuid.UUID],
+) -> dict[str, object]:
+    """Read-only issue snapshot fetch: local snapshot file, else cached GitHub
+    API response, else a live read-only GET.  Never writes to the remote."""
+    if snapshot_file is not None:
+        try:
+            raw = Path(snapshot_file).read_text(encoding="utf-8")
+        except OSError as exc:
+            raise CliError("ISSUE_SNAPSHOT_UNREADABLE", ExitFamily.INPUT) from exc
+        try:
+            payload = json.loads(raw)
+        except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+            raise CliError("ISSUE_SNAPSHOT_INVALID_JSON", ExitFamily.INPUT) from exc
+        if not isinstance(payload, dict):
+            raise CliError("ISSUE_SNAPSHOT_INVALID", ExitFamily.INPUT)
+        return payload
+
+    owner, repo, number = _parse_issue_url(url)
+    cache = _issue_cache_dir(env)
+    cache_file = cache / f"{owner}-{repo}-{number}.json"
+    if cache_file.is_file() and not refresh:
+        try:
+            payload = json.loads(cache_file.read_text(encoding="utf-8"))
+        except (json.JSONDecodeError, OSError, UnicodeDecodeError) as exc:
+            raise CliError("ISSUE_SNAPSHOT_UNREADABLE", ExitFamily.INPUT) from exc
+        if not isinstance(payload, dict):
+            raise CliError("ISSUE_SNAPSHOT_INVALID", ExitFamily.INPUT)
+        return payload
+
+    api_url = f"https://api.github.com/repos/{owner}/{repo}/issues/{number}"
+    request = urllib.request.Request(
+        api_url,
+        headers={"Accept": "application/vnd.github+json", "User-Agent": "caseloop-cli"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=20) as response:  # noqa: S310 - read-only public GET
+            raw = response.read()
+    except Exception as exc:  # noqa: BLE001 - stable boundary for network failures
+        raise CliError("ISSUE_FETCH_FAILED", ExitFamily.TEMPORARY) from exc
+    try:
+        payload = json.loads(raw.decode("utf-8"))
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        raise CliError("ISSUE_SNAPSHOT_INVALID_JSON", ExitFamily.INPUT) from exc
+    if not isinstance(payload, dict):
+        raise CliError("ISSUE_SNAPSHOT_INVALID", ExitFamily.INPUT)
+    try:
+        cache.mkdir(parents=True, exist_ok=True)
+        cache_file.write_text(
+            json.dumps(payload, ensure_ascii=False, sort_keys=True), encoding="utf-8"
+        )
+    except OSError:
+        # A read-only snapshot is still usable without the local cache.
+        pass
+    return payload
+
+
+def _issue_snapshot_payload(payload: dict[str, object]) -> dict[str, object]:
+    title = payload.get("title")
+    if not isinstance(title, str) or not title:
+        raise CliError("ISSUE_SNAPSHOT_INVALID", ExitFamily.INPUT)
+    return {
+        "title": title,
+        "body": payload.get("body") if isinstance(payload.get("body"), str) else "",
+        "state": payload.get("state") if isinstance(payload.get("state"), str) else None,
+        "number": payload.get("number"),
+        "html_url": payload.get("html_url"),
+        "user": {"login": (payload.get("user") or {}).get("login")} if isinstance(payload.get("user"), dict) else None,
+        "edited_flag": bool(payload.get("edited_flag", False)),
+    }
+
+
 def _cmd_manifest_validate(args: argparse.Namespace, *, output_stream: TextIO) -> int:
     _load_manifest_payload(args.manifest_file)
     _write_json(output_stream, {"schema_version": "1.0", "manifest_valid": True})
@@ -322,6 +482,242 @@ def _cmd_init(args: argparse.Namespace, *, output_stream: TextIO, error_stream: 
         "  caseloop --api-version 2 system-manifest import --manifest-file <file>\n"
     )
     return int(ExitFamily.OK)
+
+
+def _canonical_digest(value: object) -> str:
+    try:
+        canonical = rfc8785.dumps(value)
+    except (rfc8785.CanonicalizationError, TypeError, ValueError):
+        raise CliError("ISSUE_SNAPSHOT_INVALID", ExitFamily.INPUT) from None
+    return "sha256:" + hashlib.sha256(canonical).hexdigest()
+
+
+def _cmd_case_from_issue(
+    args: argparse.Namespace,
+    *,
+    client: PublicApiClient,
+    env: dict[str, str],
+    profile: dict[str, object],
+    uuid_factory: Callable[[], uuid.UUID],
+    clock: Callable[[], datetime],
+    output_stream: TextIO,
+    error_stream: TextIO,
+) -> dict[str, object]:
+    """``caseloop case from-issue <github-url>`` orchestration.
+
+    Composes only canonical intents: signals.submit → cases.bind-application →
+    acceptance-criteria.propose (draft).  The issue snapshot is read-only data
+    (local file / cached GET); issue text is never an instruction and nothing
+    is ever auto-confirmed.  Deterministic source-event ids and idempotency
+    keys make retries safe (no duplicate case, no second owner).
+    """
+    owner, repo, number = _parse_issue_url(args.github_url)
+    source_event_id = f"github-issue:{owner}:{repo}:{number}"
+    if not 1 <= len(source_event_id) <= 512:
+        raise CliError("SOURCE_EVENT_ID_INVALID", ExitFamily.INPUT)
+    snapshot = _fetch_issue_snapshot(
+        args.github_url,
+        snapshot_file=args.snapshot_file,
+        refresh=args.refresh,
+        env=env,
+        uuid_factory=uuid_factory,
+    )
+    normalized = _issue_snapshot_payload(snapshot)
+    title = normalized["title"]
+    if len(title) > 256:
+        title = title[:253] + "..."
+    body = str(normalized["body"] or "")
+    if len(body) > 20_000:
+        body = body[:19_997] + "..."
+
+    source_id = _valid_id(
+        setting(args.source_id, env, "CASELOOP_SOURCE_ID", profile, "source_id"),
+        "source",
+        required=True,
+    )
+    reporter_ref = _required(
+        setting(args.reporter_ref, env, "CASELOOP_REPORTER_REF", profile, "reporter_ref"),
+        "REPORTER_REF_REQUIRED",
+    )
+    if len(reporter_ref) > 256:
+        raise CliError("SIGNAL_INPUT_INVALID", ExitFamily.INPUT)
+    attachment_digest = _canonical_digest(normalized)
+    signal_idem = args.idempotency_key or f"case-from-issue-{owner}-{repo}-{number}"
+    if not 8 <= len(signal_idem) <= 128:
+        raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+    # Deterministic per snapshot version: retries reuse the issue's updated_at
+    # so the same idempotency key replays instead of conflicting.
+    occurred_at = (
+        snapshot["updated_at"]
+        if isinstance(snapshot.get("updated_at"), str)
+        else clock().astimezone(timezone.utc).isoformat(timespec="seconds").replace("+00:00", "Z")
+    )
+    signal_payload = {
+        "schema_version": "1.0",
+        "source_id": source_id,
+        "source_event_id": source_event_id,
+        "source_event_version": "1",
+        "signal_kind": "maintainer_report",
+        "reporter": {"kind": "maintainer", "source_subject_ref": reporter_ref},
+        "project_id": None,
+        "environment_id": None,
+        "governed_agent_id": None,
+        "occurred_at": occurred_at,
+        "content": {
+            "summary": title,
+            "body": body,
+            "attachments": [
+                {
+                    "uri": args.github_url,
+                    "digest": attachment_digest,
+                    "media_type": "application/json",
+                }
+            ],
+        },
+        "run_locator": None,
+        "privacy_classification": "PUBLIC",
+    }
+    signal_response = client.request(
+        "POST",
+        "/api/v1/signals",
+        body=json.dumps(
+            signal_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8"),
+        idempotency_key=signal_idem,
+        api_major=1,
+    )
+    case_id = signal_response["case"]["case_id"]
+    case_revision = signal_response["case"]["revision"]
+
+    # Resolve the exact case binding (case_id, case_revision, case_digest) from
+    # the authoritative read path, then bind and propose as canonical intents.
+    criteria_response = client.request(
+        "GET",
+        f"/api/v2/cases/{case_id}/acceptance-criteria",
+        params=[("case_revision", str(case_revision))],
+        api_major=2,
+    )
+    exact_binding = criteria_response.get("exact_case_binding")
+    if not isinstance(exact_binding, dict) or not isinstance(
+        exact_binding.get("case_digest"), str
+    ):
+        raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+    case_digest = exact_binding["case_digest"]
+
+    fetched_at = snapshot.get("updated_at") if isinstance(snapshot.get("updated_at"), str) else occurred_at
+    bind_idem = f"case-bind-{owner}-{repo}-{number}"
+    if not 8 <= len(bind_idem) <= 128:
+        raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+    bind_payload = {
+        "schema_version": "2.0",
+        "case_id": case_id,
+        "case_revision": case_revision,
+        "case_digest": case_digest,
+        "application_id": _valid_id(args.application_id, "application", required=True),
+        "environment_id": _valid_id(args.environment_id, "environment", required=True),
+        "declared_system_version_set_binding_or_unknown": {
+            "kind": "UNKNOWN",
+            "reason": "NOT_DECLARED",
+        },
+        "issue_snapshot": {
+            "source_kind": "github_issue",
+            "source_url": args.github_url,
+            "external_repo": f"{owner}/{repo}",
+            "external_issue_number": number,
+            "snapshot_payload": snapshot,
+            "edited_flag": bool(normalized.get("edited_flag", False)),
+            "deleted_flag": bool(normalized.get("state") in ("deleted", "DELETED")),
+            "fetched_at": fetched_at,
+        },
+    }
+    bind_response = client.request(
+        "POST",
+        f"/api/v2/cases/{case_id}:bind-application",
+        body=json.dumps(
+            bind_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8"),
+        idempotency_key=bind_idem,
+        api_major=2,
+    )
+    propose_idem = f"acceptance-propose-{owner}-{repo}-{number}"
+    if not 8 <= len(propose_idem) <= 128:
+        raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+    propose_payload = {
+        "schema_version": "2.0",
+        "case_id": case_id,
+        "case_revision": case_revision,
+        "case_digest": case_digest,
+        "acceptance_source": {
+            "kind": "github_issue",
+            "url": args.github_url,
+            "repo": f"{owner}/{repo}",
+            "number": number,
+        },
+        "reproducer_input": {
+            "kind": "github_issue_body",
+            "untrusted": True,
+            "issue_url": args.github_url,
+            "issue_body": body,
+        },
+        "reproducer_environment": None,
+        "expected_behavior": {
+            "kind": "maintainer_review_required",
+            "untrusted": True,
+            "issue_title": title,
+            "note": "draft derived from the issue title only; expected behavior "
+            "is not acceptance truth until confirmed by a human maintainer",
+        },
+        "oracle_or_evaluator": None,
+        "applicable_workload_profile": {
+            "name": "unknown",
+            "note": "workload profile must be confirmed by a human",
+        },
+        "applicable_deployment_profile": {
+            "name": "unknown",
+            "note": "deployment profile must be confirmed by a human",
+        },
+    }
+    propose_response = client.request(
+        "POST",
+        f"/api/v2/cases/{case_id}:propose-acceptance-criteria",
+        body=json.dumps(
+            propose_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+        ).encode("utf-8"),
+        idempotency_key=propose_idem,
+        api_major=2,
+    )
+    revision = propose_response["acceptance_criteria_revision"]
+    revision_id = revision["acceptance_criteria_revision_id"]
+    revision_digest = revision["record_envelope"]["record_digest"]
+
+    error_stream.write(
+        f"caseloop case from-issue: case {case_id} bound to "
+        f"{bind_response['application_case_binding']['application_id']}; "
+        f"acceptance draft {revision_id} recorded as PROPOSED (untrusted).\n"
+        "No acceptance criteria were auto-confirmed. A reauthenticated human "
+        "maintainer/domain reviewer must confirm the draft before a gate may start:\n"
+        f"  caseloop --api-version 2 case acceptance-criteria confirm {revision_id} "
+        f"--proposed-revision-digest {revision_digest}\n"
+    )
+    return {
+        "schema_version": "1.0",
+        "case_id": case_id,
+        "case_revision": case_revision,
+        "case_digest": case_digest,
+        "application_case_binding_id": bind_response["application_case_binding"][
+            "application_case_binding_id"
+        ],
+        "acceptance_criteria_revision_id": revision_id,
+        "acceptance_criteria_revision_digest": revision_digest,
+        "case_readiness": "NEEDS_ACCEPTANCE_CRITERIA",
+        "next_action": {
+            "code": "CONFIRM_ACCEPTANCE_CRITERIA",
+            "command": (
+                f"caseloop --api-version 2 case acceptance-criteria confirm "
+                f"{revision_id} --proposed-revision-digest {revision_digest}"
+            ),
+        },
+    }
 
 
 def run(
@@ -348,6 +744,11 @@ def run(
             raise CliError("API_MAJOR_MISMATCH", ExitFamily.INPUT)
         if api_major == "1" and args.command in _V2_COMMANDS:
             raise CliError("API_VERSION_REQUIRED", ExitFamily.INPUT)
+        if args.command == "case":
+            if args.action in _V1_CASE_ACTIONS and api_major != "1":
+                raise CliError("API_MAJOR_MISMATCH", ExitFamily.INPUT)
+            if args.action in _V2_CASE_ACTIONS and api_major != "2":
+                raise CliError("API_VERSION_REQUIRED", ExitFamily.INPUT)
 
         # Local-only commands never need API credentials or a running server.
         if args.command == "init":
@@ -543,6 +944,159 @@ def run(
                     ("target_system_version_set_id", target_id),
                 ],
                 api_major=2,
+            )
+        elif args.command == "case" and args.action == "bind-application":
+            case_id = _valid_id(args.case_id, "case", required=True)
+            case_digest = _valid_id(args.case_digest, "digest", required=True) if args.case_digest else None
+            if case_digest is None or not 1 <= args.case_revision:
+                raise CliError("CASE_BINDING_INPUT_INVALID", ExitFamily.INPUT)
+            idem = args.idempotency_key or f"case-bind-application-{uuid_factory().hex}"
+            if not 8 <= len(idem) <= 128:
+                raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+            declared = None
+            if args.system_version_set_id is not None:
+                declared = {
+                    "kind": "SYSTEM_VERSION_SET",
+                    "id": _valid_id(args.system_version_set_id, "version_set", required=True),
+                    "materialization": "DECLARED",
+                }
+            elif not args.declared_version_unknown:
+                declared = {"kind": "UNKNOWN", "reason": "NOT_DECLARED"}
+            payload = {
+                "schema_version": "2.0",
+                "case_id": case_id,
+                "case_revision": args.case_revision,
+                "case_digest": case_digest,
+                "application_id": _valid_id(args.application_id, "application", required=True),
+                "environment_id": _valid_id(args.environment_id, "environment", required=True),
+                "declared_system_version_set_binding_or_unknown": declared,
+                "issue_snapshot": None,
+            }
+            result = client.request(
+                "POST",
+                f"/api/v2/cases/{case_id}:bind-application",
+                body=json.dumps(
+                    payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                ).encode("utf-8"),
+                idempotency_key=idem,
+                api_major=2,
+            )
+        elif (
+            args.command == "case"
+            and args.action == "application-binding"
+            and args.action2 == "get"
+        ):
+            case_id = _valid_id(args.case_id, "case", required=True)
+            case_digest = _valid_id(args.case_digest, "digest", required=True)
+            result = client.request(
+                "GET",
+                f"/api/v2/cases/{case_id}/application-binding",
+                params=[
+                    ("case_revision", str(args.case_revision)),
+                    ("case_digest", case_digest),
+                ],
+                api_major=2,
+            )
+        elif (
+            args.command == "case"
+            and args.action == "acceptance-criteria"
+            and args.action2 == "propose"
+        ):
+            case_id = _valid_id(args.case_id, "case", required=True)
+            case_digest = _valid_id(args.case_digest, "digest", required=True)
+            try:
+                draft = json.loads(args.acceptance_json)
+            except json.JSONDecodeError as exc:
+                raise CliError("ACCEPTANCE_JSON_INVALID", ExitFamily.INPUT) from None
+            if not isinstance(draft, dict):
+                raise CliError("ACCEPTANCE_JSON_INVALID", ExitFamily.INPUT)
+            idem = args.idempotency_key or f"acceptance-propose-{uuid_factory().hex}"
+            if not 8 <= len(idem) <= 128:
+                raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+            for required in (
+                "acceptance_source",
+                "expected_behavior",
+                "applicable_workload_profile",
+                "applicable_deployment_profile",
+            ):
+                if required not in draft:
+                    raise CliError("ACCEPTANCE_JSON_INVALID", ExitFamily.INPUT)
+            # The request fingerprint must match the server's canonical model
+            # dump, so optional fields are sent explicitly as null.
+            draft.setdefault("reproducer_input", None)
+            draft.setdefault("reproducer_environment", None)
+            draft.setdefault("oracle_or_evaluator", None)
+            payload = {
+                "schema_version": "2.0",
+                "case_id": case_id,
+                "case_revision": args.case_revision,
+                "case_digest": case_digest,
+                **draft,
+            }
+            result = client.request(
+                "POST",
+                f"/api/v2/cases/{case_id}:propose-acceptance-criteria",
+                body=json.dumps(
+                    payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                ).encode("utf-8"),
+                idempotency_key=idem,
+                api_major=2,
+            )
+        elif (
+            args.command == "case"
+            and args.action == "acceptance-criteria"
+            and args.action2 == "get"
+        ):
+            case_id = _valid_id(args.case_id, "case", required=True)
+            result = client.request(
+                "GET",
+                f"/api/v2/cases/{case_id}/acceptance-criteria",
+                params=[("case_revision", str(args.case_revision))],
+                api_major=2,
+            )
+        elif (
+            args.command == "case"
+            and args.action == "acceptance-criteria"
+            and args.action2 == "confirm"
+        ):
+            revision_id = _valid_id(
+                args.acceptance_criteria_revision_id, "acceptance_revision", required=True
+            )
+            proposed_digest = _valid_id(
+                args.proposed_revision_digest, "digest", required=True
+            )
+            idem = args.idempotency_key or f"acceptance-confirm-{uuid_factory().hex}"
+            if not 8 <= len(idem) <= 128:
+                raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+            payload = {
+                "schema_version": "2.0",
+                "exact_proposed_revision_binding": {
+                    "kind": "ACCEPTANCE_CRITERIA_REVISION",
+                    "id": revision_id,
+                    "revision": None,
+                    "digest": proposed_digest,
+                },
+                "confirmation_note": args.confirmation_note,
+            }
+            result = client.request(
+                "POST",
+                f"/api/v2/acceptance-criteria/{revision_id}:confirm",
+                body=json.dumps(
+                    payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                ).encode("utf-8"),
+                idempotency_key=idem,
+                api_major=2,
+            )
+        elif args.command == "case" and args.action == "from-issue":
+            result = _cmd_case_from_issue(
+                args,
+                client=client,
+                env=actual_env,
+                profile=profile,
+                uuid_factory=uuid_factory,
+                clock=clock,
+                output_stream=output_stream,
+                error_stream=error_stream,
             )
         elif args.command == "case" and args.action == "get":
             case_id = _valid_id(args.case_id, "case", required=True)

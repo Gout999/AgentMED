@@ -1,0 +1,28 @@
+
+> caseloop-console@0.1.0 build
+> tsc -b && vite build
+
+vite v5.4.21 building for production...
+transforming...
+✓ 57 modules transformed.
+rendering chunks...
+computing gzip size...
+dist/index.html                   0.47 kB │ gzip:  0.32 kB
+dist/assets/index-N8uO797f.css   20.71 kB │ gzip:  4.53 kB
+dist/assets/index-CcHK34dY.js   237.43 kB │ gzip: 71.39 kB
+✓ built in 550ms
+
+> caseloop-console@0.1.0 test
+> vitest run
+
+
+ RUN  v3.2.7 /Users/xiejiachen/caseloop/console
+
+ ✓ src/hooks/usePageData.test.tsx (1 test) 6ms
+ ✓ src/lib/api.test.ts (6 tests) 13ms
+
+ Test Files  2 passed (2)
+      Tests  7 passed (7)
+   Start at  13:50:30
+   Duration  414ms (transform 49ms, setup 0ms, collect 88ms, tests 19ms, environment 0ms, prepare 96ms)
+

@@ -219,4 +219,220 @@ def success_for(request: httpx.Request) -> dict[str, Any]:
         return case(request, path.rsplit("/", 1)[-1])
     if path.startswith("/api/v1/evidence/"):
         return evidence(request, path.rsplit("/", 1)[-1])
+    if path.endswith(":bind-application"):
+        return case_bind_application(request)
+    if path.endswith("/application-binding"):
+        return case_application_binding_get(request)
+    if path.endswith(":propose-acceptance-criteria"):
+        return acceptance_propose(request)
+    if path.endswith("/acceptance-criteria"):
+        return acceptance_get(request)
+    if path.endswith(":confirm"):
+        return acceptance_confirm(request)
     raise AssertionError(path)
+
+
+# ---------------------------------------------------------------------------
+# V5-1C wire samples (case binding / acceptance criteria).
+
+
+def _v5_core(
+    request: httpx.Request, *, resource_kind: str, resource_field: str
+) -> dict[str, Any]:
+    return {
+        "schema_version": "2.0",
+        "workspace_id": request.headers["x-caseloop-workspace-id"],
+        "request_id": request.headers["x-request-id"],
+        "audit_ref": "audit://aud_01J0000000000007",
+    }
+
+
+def _case_v2_receipt(
+    request: httpx.Request,
+    *,
+    intent: str,
+    resource_kind: str,
+    resource_id: str,
+    audit_ref: str,
+    core: dict[str, Any],
+) -> dict[str, Any]:
+    submission = json.loads(request.content)
+    response_without_idempotency = copy.deepcopy(core)
+    response_without_idempotency.pop("idempotency", None)
+    receipt: dict[str, Any] = {
+        "schema_version": "1.0",
+        "workspace_id": request.headers["x-caseloop-workspace-id"],
+        "principal_id": "prn_01J0000000000001",
+        "intent": intent,
+        "idempotency_key": request.headers["x-caseloop-idempotency-key"],
+        "request_fingerprint": digest(submission),
+        "resource": {"kind": resource_kind, "id": resource_id},
+        "operation_id": None,
+        "request_id": request.headers["x-request-id"],
+        "audit_ref": audit_ref,
+        "status": "COMPLETED",
+        "response_digest": digest(response_without_idempotency),
+        "created_at": "2026-08-11T10:00:00Z",
+        "idempotency_receipt_id": "idemr_01J0000000000001",
+        "immutable": True,
+        "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+        "receipt_digest": "",
+    }
+    receipt_without_digest = copy.deepcopy(receipt)
+    receipt_without_digest.pop("receipt_digest")
+    receipt["receipt_digest"] = digest(receipt_without_digest)
+    return receipt
+
+
+def _binding_envelope(request: httpx.Request, binding_id: str) -> dict[str, Any]:
+    case_digest = request.url.params.get("case_digest", "sha256:" + "c" * 64)
+    return {
+        "application_case_binding_id": binding_id,
+        "workspace_id": request.headers["x-caseloop-workspace-id"],
+        "exact_case_binding": {
+            "case_id": "case_01J0000000000001",
+            "case_revision": int(request.url.params.get("case_revision", "1")),
+            "case_digest": case_digest,
+        },
+        "application_id": "app_01J0000000000001",
+        "environment_id": "env_01J0000000000001",
+        "declared_system_version_set_binding_or_unknown": None,
+        "binding_digest": "sha256:" + "d" * 64,
+        "record_envelope": {
+            "schema_version": "2.0",
+            "workspace_id": request.headers["x-caseloop-workspace-id"],
+            "revision": 1,
+            "recorded_by_principal": "prn_01J0000000000001",
+            "recorded_at": "2026-08-11T10:00:00Z",
+            "immutable": True,
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "record_digest": "sha256:" + "e" * 64,
+            "authority_receipt_id": "arec_01J0000000000001",
+        },
+    }
+
+
+def case_bind_application(request: httpx.Request) -> dict[str, Any]:
+    body = json.loads(request.content)
+    binding_id = "acb_01J0000000000001"
+    envelope = _binding_envelope(request, binding_id)
+    envelope["exact_case_binding"]["case_id"] = body["case_id"]
+    core = {
+        **_v5_core(request, resource_kind="application_case_binding", resource_field="application_case_binding"),
+        "application_case_binding": envelope,
+    }
+    core["audit_ref"] = "audit://aud_01J0000000000007"
+    receipt = _case_v2_receipt(
+        request,
+        intent="cases.bind-application",
+        resource_kind="application_case_binding",
+        resource_id=binding_id,
+        audit_ref=core["audit_ref"],
+        core=core,
+    )
+    return {**core, "idempotency": {"receipt": receipt, "replayed": False}}
+
+
+def case_application_binding_get(request: httpx.Request) -> dict[str, Any]:
+    binding_id = "acb_01J0000000000001"
+    return {
+        **_v5_core(request, resource_kind="application_case_binding", resource_field="application_case_binding"),
+        "application_case_binding": _binding_envelope(request, binding_id),
+    }
+
+
+def _revision_envelope(request: httpx.Request, revision_id: str) -> dict[str, Any]:
+    case_digest = "sha256:" + "c" * 64
+    return {
+        "acceptance_criteria_revision_id": revision_id,
+        "workspace_id": request.headers["x-caseloop-workspace-id"],
+        "exact_case_binding": {
+            "case_id": "case_01J0000000000001",
+            "case_revision": 1,
+            "case_digest": case_digest,
+        },
+        "exact_resolution_contract_binding": {
+            "kind": "RESOLUTION_CONTRACT",
+            "revision": None,
+            "digest": None,
+            "materialization": "DECLARED_BY_CASE",
+        },
+        "confirmation_status": "PROPOSED",
+        "proposer_principal": "prn_01J0000000000001",
+        "proposed_at": "2026-08-11T10:00:00Z",
+        "confirmer_principal": None,
+        "confirmed_at": None,
+        "exact_previous_proposed_revision_binding": None,
+        "acceptance_source": {"kind": "github_issue", "repo": "simonw/llm", "number": 1466},
+        "reproducer_input": {"kind": "code"},
+        "reproducer_environment": None,
+        "expected_behavior": {"summary": "schema_dsl must not crash"},
+        "oracle_or_evaluator": None,
+        "applicable_workload_profile": {"name": "cli-once"},
+        "applicable_deployment_profile": {"name": "local-shadow"},
+        "acceptance_digest": "sha256:" + "f" * 64,
+        "record_envelope": {
+            "schema_version": "2.0",
+            "workspace_id": request.headers["x-caseloop-workspace-id"],
+            "revision": 1,
+            "recorded_by_principal": "prn_01J0000000000001",
+            "recorded_at": "2026-08-11T10:00:00Z",
+            "immutable": True,
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "record_digest": "sha256:" + "e" * 64,
+            "authority_receipt_id": "arec_01J0000000000001",
+        },
+    }
+
+
+def acceptance_propose(request: httpx.Request) -> dict[str, Any]:
+    revision_id = "acr_01J0000000000001"
+    core = {
+        **_v5_core(request, resource_kind="acceptance_criteria_revision", resource_field="acceptance_criteria_revision"),
+        "acceptance_criteria_revision": _revision_envelope(request, revision_id),
+    }
+    core["audit_ref"] = "audit://aud_01J0000000000007"
+    receipt = _case_v2_receipt(
+        request,
+        intent="acceptance-criteria.propose",
+        resource_kind="acceptance_criteria_revision",
+        resource_id=revision_id,
+        audit_ref=core["audit_ref"],
+        core=core,
+    )
+    return {**core, "idempotency": {"receipt": receipt, "replayed": False}}
+
+
+def acceptance_get(request: httpx.Request) -> dict[str, Any]:
+    return {
+        **_v5_core(request, resource_kind="acceptance_criteria_revision", resource_field="x"),
+        "exact_case_binding": {
+            "case_id": "case_01J0000000000001",
+            "case_revision": 1,
+            "case_digest": "sha256:" + "c" * 64,
+        },
+        "case_readiness": "NEEDS_ACCEPTANCE_CRITERIA",
+        "revisions": [_revision_envelope(request, "acr_01J0000000000001")],
+        "next_action": {
+            "code": "CONFIRM_ACCEPTANCE_CRITERIA",
+            "command": "case acceptance-criteria confirm",
+        },
+    }
+
+
+def acceptance_confirm(request: httpx.Request) -> dict[str, Any]:
+    revision_id = request.url.path.split("/")[-1][: -len(":confirm")]
+    core = {
+        **_v5_core(request, resource_kind="acceptance_criteria_revision", resource_field="acceptance_criteria_revision"),
+        "acceptance_criteria_revision": _revision_envelope(request, revision_id),
+    }
+    core["audit_ref"] = "audit://aud_01J0000000000007"
+    receipt = _case_v2_receipt(
+        request,
+        intent="acceptance-criteria.confirm",
+        resource_kind="acceptance_criteria_revision",
+        resource_id=revision_id,
+        audit_ref=core["audit_ref"],
+        core=core,
+    )
+    return {**core, "idempotency": {"receipt": receipt, "replayed": False}}

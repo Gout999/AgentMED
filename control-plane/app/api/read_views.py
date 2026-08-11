@@ -78,3 +78,20 @@ def get_applications(
 ) -> dict[str, Any]:
     """V5-1A catalog read model for the Console (internal projection, no bearer)."""
     return read_views.list_applications(session, limit=limit)
+
+
+@router.get("/v1/cases/{case_id}/v5-readiness")
+def get_case_v5_readiness(
+    case_id: str, session: Session = Depends(get_db_session)
+) -> dict[str, Any]:
+    """V5-1C case governance read model for the Console (internal projection).
+
+    Returns the application binding, acceptance readiness projection and
+    missing-evidence list for a case, with per-record envelope integrity
+    revalidation.  Missing or corrupt records project as UNKNOWN/integrity_error
+    — never as trusted state.
+    """
+    result = read_views.case_v5_readiness(session, case_id)
+    if result.get("case_id") is None:
+        raise HTTPException(status_code=404, detail={"code": "not_found", "message": f"case {case_id} not found"})
+    return result

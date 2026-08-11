@@ -47,6 +47,45 @@ export interface CaseEventsView {
   evidence_refs: Record<string, unknown>;
 }
 
+export interface CaseV5Binding {
+  application_case_binding_id: string;
+  application_id: string;
+  environment_id: string;
+  exact_case_binding: {
+    case_id: string;
+    case_revision: number;
+    case_digest: string;
+  };
+  declared_system_version_set_binding_or_unknown: Record<string, unknown> | null;
+  record_digest: string;
+}
+
+export interface CaseV5IssueSnapshot {
+  issue_snapshot_id: string;
+  source_kind: string;
+  source_url: string;
+  external_repo: string;
+  external_issue_number: number;
+  title: string | null;
+  edited_flag: boolean;
+  deleted_flag: boolean;
+  instruction_markers_detected: boolean;
+  snapshot_digest: string;
+}
+
+export interface CaseV5Readiness {
+  case_id: string;
+  case_revision: number;
+  application_binding: CaseV5Binding | null;
+  binding_integrity_status: "verified" | "integrity_error";
+  binding_integrity_error: string | null;
+  case_readiness: "NEEDS_ACCEPTANCE_CRITERIA" | "READY";
+  acceptance_proposal_count: number;
+  confirmed_acceptance_count: number;
+  missing_evidence: string[];
+  issue_snapshot: CaseV5IssueSnapshot | null;
+}
+
 export interface Experiment {
   experiment_id: string;
   state: string;

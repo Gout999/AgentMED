@@ -691,6 +691,249 @@ class SystemAssignment(Base):
     )
 
 
+class ApplicationCaseBinding(Base):
+    """Immutable additive link from an S1A QualityCase to an AI application
+    (case-controller owned, schema-major-2).
+
+    One binding per exact case identity ``(workspace_id, case_id, case_revision,
+    case_digest)``; the same exact case bound to a different target is a
+    conflict and rebinding requires a new quality case revision.  The link is
+    additive: the S1A signal/case payloads and digests are never rewritten.
+    """
+
+    __tablename__ = "application_case_bindings"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["workspace_id", "case_id"],
+            ["quality_cases.workspace_id", "quality_cases.case_id"],
+            name="fk_application_case_binding_case",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "application_id"],
+            ["ai_applications.workspace_id", "ai_applications.application_id"],
+            name="fk_application_case_binding_application",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "environment_id"],
+            ["environments.workspace_id", "environments.environment_id"],
+            name="fk_application_case_binding_environment",
+        ),
+        UniqueConstraint(
+            "workspace_id",
+            "application_case_binding_id",
+            name="uq_application_case_binding_workspace",
+        ),
+        UniqueConstraint(
+            "workspace_id",
+            "case_id",
+            "case_revision",
+            "case_digest",
+            name="uq_application_case_binding_exact_case",
+        ),
+        UniqueConstraint(
+            "record_digest", name="uq_application_case_binding_record_digest"
+        ),
+        CheckConstraint(
+            "case_revision >= 1", name="ck_application_case_binding_case_revision"
+        ),
+        Index(
+            "ix_application_case_binding_workspace_case",
+            "workspace_id",
+            "case_id",
+            "case_revision",
+            "created_at",
+        ),
+        Index(
+            "ix_application_case_binding_workspace_application",
+            "workspace_id",
+            "application_id",
+            "environment_id",
+            "created_at",
+        ),
+    )
+
+    application_case_binding_id: Mapped[str] = mapped_column(
+        String(128), primary_key=True
+    )
+    workspace_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    case_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    case_revision: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    case_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    application_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    environment_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    declared_system_version_set_binding_or_unknown: Mapped[Optional[dict[str, Any]]] = (
+        mapped_column(JSON, nullable=True)
+    )
+    binding_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    envelope_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    record_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    authority_receipt_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    recorded_by_principal: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class AcceptanceCriteriaRevision(Base):
+    """Immutable acceptance-criteria revision (case-controller owned).
+
+    A PROPOSED revision is an untrusted draft (no confirmer fields); only a
+    reauthenticated human maintainer/domain reviewer may confirm, producing a
+    NEW immutable CONFIRMED record that references the prior proposal.  The
+    confirmation check constraints make in-place promotion impossible.
+    """
+
+    __tablename__ = "acceptance_criteria_revisions"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["workspace_id", "case_id"],
+            ["quality_cases.workspace_id", "quality_cases.case_id"],
+            name="fk_acceptance_criteria_revision_case",
+        ),
+        UniqueConstraint(
+            "workspace_id",
+            "acceptance_criteria_revision_id",
+            name="uq_acceptance_criteria_revision_workspace",
+        ),
+        UniqueConstraint(
+            "record_digest", name="uq_acceptance_criteria_revision_record_digest"
+        ),
+        CheckConstraint(
+            "confirmation_status IN ('PROPOSED','CONFIRMED')",
+            name="ck_acceptance_criteria_revision_confirmation_status",
+        ),
+        CheckConstraint(
+            "case_revision >= 1", name="ck_acceptance_criteria_revision_case_revision"
+        ),
+        CheckConstraint(
+            "(confirmation_status = 'PROPOSED' AND confirmer_principal IS NULL "
+            "AND confirmed_at IS NULL) "
+            "OR (confirmation_status = 'CONFIRMED' AND confirmer_principal IS NOT NULL "
+            "AND confirmed_at IS NOT NULL)",
+            name="ck_acceptance_criteria_revision_status_shape",
+        ),
+        Index(
+            "ix_acceptance_criteria_revision_workspace_case",
+            "workspace_id",
+            "case_id",
+            "case_revision",
+            "created_at",
+        ),
+    )
+
+    acceptance_criteria_revision_id: Mapped[str] = mapped_column(
+        String(128), primary_key=True
+    )
+    workspace_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    case_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    case_revision: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    case_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    exact_resolution_contract_binding: Mapped[dict[str, Any]] = mapped_column(
+        JSON, nullable=False
+    )
+    confirmation_status: Mapped[str] = mapped_column(String(16), nullable=False)
+    proposer_principal: Mapped[str] = mapped_column(String(128), nullable=False)
+    proposed_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False
+    )
+    confirmer_principal: Mapped[Optional[str]] = mapped_column(
+        String(128), nullable=True
+    )
+    confirmed_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    exact_previous_proposed_revision_binding: Mapped[Optional[dict[str, Any]]] = (
+        mapped_column(JSON, nullable=True)
+    )
+    acceptance_source: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    reproducer_input: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSON, nullable=True
+    )
+    reproducer_environment: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSON, nullable=True
+    )
+    expected_behavior: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    oracle_or_evaluator: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSON, nullable=True
+    )
+    applicable_workload_profile: Mapped[dict[str, Any]] = mapped_column(
+        JSON, nullable=False
+    )
+    applicable_deployment_profile: Mapped[dict[str, Any]] = mapped_column(
+        JSON, nullable=False
+    )
+    acceptance_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    envelope_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    record_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    authority_receipt_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    recorded_by_principal: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
+class IssueSourceSnapshot(Base):
+    """Read-only GitHub Issue / manual source snapshot (case-controller owned).
+
+    Stores the fetched issue as data only.  ``instruction_markers_detected``
+    flags prompt-injection payloads so downstream code never treats issue text
+    as an instruction or acceptance truth; edited/deleted source states are
+    annotated from the source provider.
+    """
+
+    __tablename__ = "issue_source_snapshots"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["workspace_id", "case_id"],
+            ["quality_cases.workspace_id", "quality_cases.case_id"],
+            name="fk_issue_source_snapshot_case",
+        ),
+        UniqueConstraint(
+            "workspace_id", "issue_snapshot_id", name="uq_issue_source_snapshot_workspace"
+        ),
+        UniqueConstraint("snapshot_digest", name="uq_issue_source_snapshot_digest"),
+        UniqueConstraint(
+            "workspace_id",
+            "case_id",
+            "external_repo",
+            "external_issue_number",
+            name="uq_issue_source_snapshot_issue",
+        ),
+        CheckConstraint(
+            "source_kind IN ('github_issue','manual')",
+            name="ck_issue_source_snapshot_source_kind",
+        ),
+        CheckConstraint(
+            "external_issue_number >= 1", name="ck_issue_source_snapshot_issue_number"
+        ),
+        Index(
+            "ix_issue_source_snapshot_workspace_issue",
+            "workspace_id",
+            "case_id",
+            "source_kind",
+            "created_at",
+        ),
+    )
+
+    issue_snapshot_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    case_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    source_kind: Mapped[str] = mapped_column(String(32), nullable=False)
+    source_url: Mapped[str] = mapped_column(String(1024), nullable=False)
+    external_repo: Mapped[str] = mapped_column(String(256), nullable=False)
+    external_issue_number: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    snapshot_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    snapshot_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    edited_flag: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    deleted_flag: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    instruction_markers_detected: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    fetched_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    recorded_by_principal: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+
+
 def _immutable_write_forbidden(_mapper, _connection, target) -> None:  # type: ignore[no-untyped-def]
     raise RuntimeError(f"v5.immutable_record_update_forbidden:{target.__tablename__}")
 
@@ -716,6 +959,16 @@ for _version_model in (
     event.listen(_version_model, "before_update", _immutable_write_forbidden)
     event.listen(_version_model, "before_delete", _immutable_write_forbidden)
 
+# V5-1C immutable case records: no update/delete path (confirmed revisions can
+# never be rewritten in place; bindings are additive links).
+for _case_model in (
+    ApplicationCaseBinding,
+    AcceptanceCriteriaRevision,
+    IssueSourceSnapshot,
+):
+    event.listen(_case_model, "before_update", _immutable_write_forbidden)
+    event.listen(_case_model, "before_delete", _immutable_write_forbidden)
+
 
 __all__ = [
     "AIApplication",
@@ -724,6 +977,8 @@ __all__ = [
     "ASSIGNMENT_TRANSITION_KIND_VALUES",
     "ATTESTATION_SCOPE_VALUES",
     "ATTESTER_TRUST_ROLE_VALUES",
+    "AcceptanceCriteriaRevision",
+    "ApplicationCaseBinding",
     "BootstrapAttestation",
     "CATALOG_LIFECYCLE_STATES",
     "COMPONENT_KIND_VALUES",
@@ -739,6 +994,7 @@ __all__ = [
     "Environment",
     "GOVERNANCE_MODE_VALUES",
     "IDENTITY_ASSURANCE_VALUES",
+    "IssueSourceSnapshot",
     "PERMISSION_CLASSIFICATION_VALUES",
     "RISK_CLASSIFICATION_VALUES",
     "SystemAssignment",

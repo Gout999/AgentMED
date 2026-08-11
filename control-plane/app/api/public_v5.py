@@ -26,9 +26,17 @@ from app.public_api.auth_contract import AcceptedPrincipalContext, HeaderContrac
 from app.public_api.errors import map_public_error
 from app.public_api.v2_contract import PublicV2RequestHeaders
 from app.public_api.v5_models import (
+    AcceptanceCriteriaConfirmRequest,
+    AcceptanceCriteriaConfirmResponse,
+    AcceptanceCriteriaGetResponse,
+    AcceptanceCriteriaProposeRequest,
+    AcceptanceCriteriaProposeResponse,
+    ApplicationBindingGetResponse,
     ApplicationGetResponse,
     ApplicationRegisterRequest,
     ApplicationRegisterResponse,
+    CaseBindApplicationRequest,
+    CaseBindApplicationResponse,
     ComponentGetResponse,
     ComponentRegisterRequest,
     ComponentRegisterResponse,
@@ -43,7 +51,13 @@ from app.public_api.v5_models import (
     SystemVersionDiffResponse,
     SystemVersionGetResponse,
 )
+from app.services.acceptance import AcceptanceError, AcceptanceService
 from app.services.application_catalog import ApplicationCatalogError, V5ReadDenial as CatalogReadDenial
+from app.services.case_binding import (
+    CaseBindingError,
+    CaseBindingReadDenial as CaseBindingDenial,
+    CaseBindingService,
+)
 from app.services.system_versions import SystemVersionsError, V5ReadDenial
 
 router = APIRouter(prefix="/api/v2", tags=["public-v5-1a-catalog"])
@@ -53,6 +67,8 @@ _ENVIRONMENT_ID = re.compile(r"^env_[0-9A-Za-z]{8,64}$")
 _COMPONENT_ID = re.compile(r"^cmp_[0-9A-Za-z]{8,64}$")
 _EDGE_ID = re.compile(r"^de_[0-9A-Za-z]{8,64}$")
 _VERSION_SET_ID = re.compile(r"^vset_[0-9A-Za-z]{8,64}$")
+_CASE_ID = re.compile(r"^case_[0-9A-Za-z]{8,64}$")
+_ACCEPTANCE_REVISION_ID = re.compile(r"^acr_[0-9A-Za-z]{8,64}$")
 _REQUEST_ID = re.compile(r"^req_[0-9A-Za-z]{8,64}$")
 _MAX_BODY_BYTES = 256_000
 _PUBLIC_HEADER_NAMES = frozenset(
@@ -339,6 +355,22 @@ def _system_versions_service(request: Request, session: Session) -> Any:
     from app.services.system_versions import SystemVersionsService
 
     return SystemVersionsService(session)
+
+
+def _case_binding_service(request: Request, session: Session) -> CaseBindingService:
+    factory = getattr(request.app.state, "case_binding_service_factory", None)
+    if factory is not None:
+        return factory(session)
+
+    return CaseBindingService(session)
+
+
+def _acceptance_service(request: Request, session: Session) -> AcceptanceService:
+    factory = getattr(request.app.state, "acceptance_service_factory", None)
+    if factory is not None:
+        return factory(session)
+
+    return AcceptanceService(session)
 
 
 def _authenticate(
@@ -1155,6 +1187,380 @@ def diff_system_versions(
             request_id=request_id,
             principal=principal,
             allow_read_denial_commit=True,
+        )
+    finally:
+        if session is not None:
+            _close(session)
+
+
+# ---------------------------------------------------------------------------
+# V5-1C application case binding / acceptance criteria
+# (cases.bind-application, case-application-bindings.get,
+# acceptance-criteria.propose/get/confirm).
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/cases/{case_id}:bind-application",
+    response_model=CaseBindApplicationResponse,
+    status_code=201,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": CaseBindApplicationRequest.model_json_schema()
+                }
+            },
+        }
+    },
+)
+async def bind_case_application(case_id: str, request: Request) -> JSONResponse:
+    request_id = _request_id(request)
+    session: Any | None = None
+    principal: AcceptedPrincipalContext | None = None
+    try:
+        headers = PublicV2RequestHeaders.from_headers(
+            _public_headers(request), mutation=True
+        )
+        submission = await _parse_body(request, CaseBindApplicationRequest)
+        session = _session_for(request)
+        principal, resolver = _authenticate(
+            request,
+            session,
+            headers=headers,
+            required_scope="cases:bind",
+        )
+        principal = resolver.bind_requested_context(
+            principal,
+            project_id=None,
+            environment_id=None,
+            required_scope="cases:bind",
+        )
+        request.state.public_principal = principal
+        _validate_path(case_id, _CASE_ID, "case_id")
+        if submission.case_id != case_id:
+            raise _RouteFailure("VALIDATION_FAILED", {"fields": ["case_id"]})
+        service = _case_binding_service(request, session)
+        result = service.bind_application(
+            submission,
+            principal=principal,
+            idempotency_key=headers.idempotency_key,
+            request_id=request_id,
+        )
+        response = CaseBindApplicationResponse.model_validate(result)
+        _commit(session)
+        return _json_response(response, status_code=201)
+    except HeaderContractViolation as exc:
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
+            exc,
+            request_id=request_id,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
+        )
+    except Exception as exc:
+        return _handle_failure(
+            session,
+            exc,
+            request_id=request_id,
+            principal=principal,
+        )
+    finally:
+        if session is not None:
+            _close(session)
+
+
+@router.get(
+    "/cases/{case_id}/application-binding",
+    response_model=ApplicationBindingGetResponse,
+)
+def get_case_application_binding(
+    case_id: str,
+    case_revision: int,
+    case_digest: str,
+    request: Request,
+) -> JSONResponse:
+    request_id = _request_id(request)
+    session: Any | None = None
+    principal: AcceptedPrincipalContext | None = None
+    try:
+        headers = PublicV2RequestHeaders.from_headers(_public_headers(request))
+        session = _session_for(request)
+        principal, _resolver = _authenticate(
+            request, session, headers=headers, required_scope="cases:read"
+        )
+        _validate_path(case_id, _CASE_ID, "case_id")
+        result = _case_binding_service(request, session).get_binding(
+            case_id,
+            case_revision=case_revision,
+            case_digest=case_digest,
+            principal=principal,
+            request_id=request_id,
+        )
+        response = ApplicationBindingGetResponse.model_validate(result)
+        _commit(session)
+        return _json_response(response, status_code=200)
+    except HeaderContractViolation as exc:
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
+            exc,
+            request_id=request_id,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
+        )
+    except Exception as exc:
+        return _handle_failure(
+            session,
+            exc,
+            request_id=request_id,
+            principal=principal,
+            allow_read_denial_commit=True,
+        )
+    finally:
+        if session is not None:
+            _close(session)
+
+
+@router.post(
+    "/cases/{case_id}:propose-acceptance-criteria",
+    response_model=AcceptanceCriteriaProposeResponse,
+    status_code=201,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": AcceptanceCriteriaProposeRequest.model_json_schema()
+                }
+            },
+        }
+    },
+)
+async def propose_acceptance_criteria(case_id: str, request: Request) -> JSONResponse:
+    request_id = _request_id(request)
+    session: Any | None = None
+    principal: AcceptedPrincipalContext | None = None
+    try:
+        headers = PublicV2RequestHeaders.from_headers(
+            _public_headers(request), mutation=True
+        )
+        submission = await _parse_body(request, AcceptanceCriteriaProposeRequest)
+        session = _session_for(request)
+        principal, resolver = _authenticate(
+            request,
+            session,
+            headers=headers,
+            required_scope="acceptance_criteria:propose",
+        )
+        principal = resolver.bind_requested_context(
+            principal,
+            project_id=None,
+            environment_id=None,
+            required_scope="acceptance_criteria:propose",
+        )
+        request.state.public_principal = principal
+        _validate_path(case_id, _CASE_ID, "case_id")
+        if submission.case_id != case_id:
+            raise _RouteFailure("VALIDATION_FAILED", {"fields": ["case_id"]})
+        service = _acceptance_service(request, session)
+        result = service.propose(
+            submission,
+            principal=principal,
+            idempotency_key=headers.idempotency_key,
+            request_id=request_id,
+        )
+        response = AcceptanceCriteriaProposeResponse.model_validate(result)
+        _commit(session)
+        return _json_response(response, status_code=201)
+    except HeaderContractViolation as exc:
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
+            exc,
+            request_id=request_id,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
+        )
+    except Exception as exc:
+        return _handle_failure(
+            session,
+            exc,
+            request_id=request_id,
+            principal=principal,
+        )
+    finally:
+        if session is not None:
+            _close(session)
+
+
+@router.get(
+    "/cases/{case_id}/acceptance-criteria",
+    response_model=AcceptanceCriteriaGetResponse,
+)
+def get_acceptance_criteria(
+    case_id: str,
+    case_revision: int,
+    request: Request,
+) -> JSONResponse:
+    request_id = _request_id(request)
+    session: Any | None = None
+    principal: AcceptedPrincipalContext | None = None
+    try:
+        headers = PublicV2RequestHeaders.from_headers(_public_headers(request))
+        session = _session_for(request)
+        principal, _resolver = _authenticate(
+            request, session, headers=headers, required_scope="acceptance_criteria:read"
+        )
+        _validate_path(case_id, _CASE_ID, "case_id")
+        result = _acceptance_service(request, session).get(
+            case_id,
+            case_revision=case_revision,
+            principal=principal,
+            request_id=request_id,
+        )
+        response = AcceptanceCriteriaGetResponse.model_validate(result)
+        _commit(session)
+        return _json_response(response, status_code=200)
+    except HeaderContractViolation as exc:
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
+            exc,
+            request_id=request_id,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
+        )
+    except Exception as exc:
+        return _handle_failure(
+            session,
+            exc,
+            request_id=request_id,
+            principal=principal,
+            allow_read_denial_commit=True,
+        )
+    finally:
+        if session is not None:
+            _close(session)
+
+
+@router.post(
+    "/acceptance-criteria/{acceptance_criteria_revision_id}:confirm",
+    response_model=AcceptanceCriteriaConfirmResponse,
+    status_code=201,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": AcceptanceCriteriaConfirmRequest.model_json_schema()
+                }
+            },
+        }
+    },
+)
+async def confirm_acceptance_criteria(
+    acceptance_criteria_revision_id: str, request: Request
+) -> JSONResponse:
+    request_id = _request_id(request)
+    session: Any | None = None
+    principal: AcceptedPrincipalContext | None = None
+    try:
+        headers = PublicV2RequestHeaders.from_headers(
+            _public_headers(request), mutation=True
+        )
+        submission = await _parse_body(request, AcceptanceCriteriaConfirmRequest)
+        session = _session_for(request)
+        principal, resolver = _authenticate(
+            request,
+            session,
+            headers=headers,
+            required_scope="acceptance_criteria:confirm",
+        )
+        principal = resolver.bind_requested_context(
+            principal,
+            project_id=None,
+            environment_id=None,
+            required_scope="acceptance_criteria:confirm",
+        )
+        request.state.public_principal = principal
+        _validate_path(
+            acceptance_criteria_revision_id,
+            _ACCEPTANCE_REVISION_ID,
+            "acceptance_criteria_revision_id",
+        )
+        service = _acceptance_service(request, session)
+        result = service.confirm(
+            submission,
+            principal=principal,
+            idempotency_key=headers.idempotency_key,
+            request_id=request_id,
+        )
+        response = AcceptanceCriteriaConfirmResponse.model_validate(result)
+        _commit(session)
+        return _json_response(response, status_code=201)
+    except HeaderContractViolation as exc:
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
+            exc,
+            request_id=request_id,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
+        )
+    except Exception as exc:
+        return _handle_failure(
+            session,
+            exc,
+            request_id=request_id,
+            principal=principal,
         )
     finally:
         if session is not None:

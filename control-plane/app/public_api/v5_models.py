@@ -34,6 +34,7 @@ from app.models.v5_tables import (
 )
 from app.public_api.models import (
     AuditRef,
+    CaseId,
     Digest,
     IdempotencyReceiptId,
     PrincipalId,
@@ -258,6 +259,9 @@ V5IdempotencyIntent = Literal[
     "system-components.register",
     "dependency-edges.record",
     "system-manifests.import",
+    "cases.bind-application",
+    "acceptance-criteria.propose",
+    "acceptance-criteria.confirm",
 ]
 
 
@@ -268,6 +272,8 @@ class V5IdempotencyResource(WireModel):
         "system_component",
         "dependency_edge",
         "system_version_set",
+        "application_case_binding",
+        "acceptance_criteria_revision",
     ]
     id: Annotated[str, Field(pattern=r"^[a-z][a-z0-9]*_[0-9A-Za-z]{8,64}$")]
 
@@ -301,6 +307,24 @@ class V5IdempotencyReceipt(WireModel):
             "system-components.register": ("system_component", "cmp_", False, "COMPLETED"),
             "dependency-edges.record": ("dependency_edge", "de_", False, "COMPLETED"),
             "system-manifests.import": ("system_version_set", "vset_", False, "COMPLETED"),
+            "cases.bind-application": (
+                "application_case_binding",
+                "acb_",
+                False,
+                "COMPLETED",
+            ),
+            "acceptance-criteria.propose": (
+                "acceptance_criteria_revision",
+                "acr_",
+                False,
+                "COMPLETED",
+            ),
+            "acceptance-criteria.confirm": (
+                "acceptance_criteria_revision",
+                "acr_",
+                False,
+                "COMPLETED",
+            ),
         }
         kind, prefix, operation_required, status = expected[self.intent]
         if self.resource.kind != kind or not self.resource.id.startswith(prefix):
@@ -687,7 +711,166 @@ class SystemVersionDiffResponse(WireModel):
     policy_permission_expansions: list[VersionDiffItem] = []
 
 
+# ----------------------------------------------------------------------------
+# V5-1C application case binding / acceptance criteria wire models.
+#
+# DRAFT runtime interpretation (field_contract_ref null in the frozen
+# contracts).  The binding is an additive link to an immutable S1A case; the
+# acceptance proposal is untrusted and never self-confirmable.  The resolution
+# contract runtime is a later slice, so its exact binding is recorded with an
+# honest ``materialization: DECLARED_BY_CASE`` marker until V5-4 materializes
+# real ResolutionContract records.
+# ----------------------------------------------------------------------------
+
+CaseBindingId = Annotated[str, Field(pattern=r"^acb_[0-9A-Za-z]{8,64}$")]
+AcceptanceCriteriaRevisionId = Annotated[
+    str, Field(pattern=r"^acr_[0-9A-Za-z]{8,64}$")
+]
+IssueSnapshotId = Annotated[str, Field(pattern=r"^iss_[0-9A-Za-z]{8,64}$")]
+ExactCaseBinding = dict[str, Any]
+ExactResolutionContractBinding = dict[str, Any]
+SystemVersionSetBindingOrUnknown = dict[str, Any] | None
+ConfirmationStatus = Literal["PROPOSED", "CONFIRMED"]
+CaseReadiness = Literal["NEEDS_ACCEPTANCE_CRITERIA", "READY"]
+
+
+class IssueSnapshotRequest(WireModel):
+    source_kind: Literal["github_issue", "manual"]
+    source_url: Annotated[str, Field(min_length=1, max_length=1024)]
+    external_repo: Annotated[str, Field(min_length=1, max_length=256)]
+    external_issue_number: Annotated[StrictInt, Field(ge=1)]
+    snapshot_payload: dict[str, Any]
+    edited_flag: StrictBool = False
+    deleted_flag: StrictBool = False
+    fetched_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def source_url_is_http(self) -> "IssueSnapshotRequest":
+        if not self.source_url.startswith(("https://", "http://")):
+            raise ValueError("issue source url must be http(s)")
+        return self
+
+
+class CaseBindApplicationRequest(WireModel):
+    schema_version: SchemaVersion2
+    case_id: CaseId
+    case_revision: Annotated[StrictInt, Field(ge=1)]
+    case_digest: Digest
+    application_id: ApplicationId
+    environment_id: CatalogEnvironmentId
+    declared_system_version_set_binding_or_unknown: SystemVersionSetBindingOrUnknown = None
+    issue_snapshot: IssueSnapshotRequest | None = None
+
+
+class ApplicationCaseBindingRecord(WireModel):
+    record_envelope: RecordEnvelope
+    application_case_binding_id: CaseBindingId
+    workspace_id: WorkspaceId
+    exact_case_binding: ExactCaseBinding
+    application_id: ApplicationId
+    environment_id: CatalogEnvironmentId
+    declared_system_version_set_binding_or_unknown: SystemVersionSetBindingOrUnknown
+    binding_digest: Digest
+
+
+class CaseBindApplicationResponse(WireModel):
+    schema_version: SchemaVersion2
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    application_case_binding: ApplicationCaseBindingRecord
+    idempotency: V5IdempotencyDelivery
+
+
+class ApplicationBindingGetResponse(WireModel):
+    schema_version: SchemaVersion2
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    application_case_binding: ApplicationCaseBindingRecord
+
+
+class AcceptanceCriteriaProposeRequest(WireModel):
+    schema_version: SchemaVersion2
+    case_id: CaseId
+    case_revision: Annotated[StrictInt, Field(ge=1)]
+    case_digest: Digest
+    acceptance_source: dict[str, Any]
+    reproducer_input: dict[str, Any] | None = None
+    reproducer_environment: dict[str, Any] | None = None
+    expected_behavior: dict[str, Any]
+    oracle_or_evaluator: dict[str, Any] | None = None
+    applicable_workload_profile: dict[str, Any]
+    applicable_deployment_profile: dict[str, Any]
+
+
+class AcceptanceCriteriaRevisionRecord(WireModel):
+    record_envelope: RecordEnvelope
+    acceptance_criteria_revision_id: AcceptanceCriteriaRevisionId
+    workspace_id: WorkspaceId
+    exact_case_binding: ExactCaseBinding
+    exact_resolution_contract_binding: ExactResolutionContractBinding
+    confirmation_status: ConfirmationStatus
+    proposer_principal: PrincipalId
+    proposed_at: AwareDatetime
+    confirmer_principal: PrincipalId | None = None
+    confirmed_at: AwareDatetime | None = None
+    exact_previous_proposed_revision_binding: dict[str, Any] | None = None
+    acceptance_source: dict[str, Any]
+    reproducer_input: dict[str, Any] | None = None
+    reproducer_environment: dict[str, Any] | None = None
+    expected_behavior: dict[str, Any]
+    oracle_or_evaluator: dict[str, Any] | None = None
+    applicable_workload_profile: dict[str, Any]
+    applicable_deployment_profile: dict[str, Any]
+    acceptance_digest: Digest
+
+
+class AcceptanceCriteriaProposeResponse(WireModel):
+    schema_version: SchemaVersion2
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    acceptance_criteria_revision: AcceptanceCriteriaRevisionRecord
+    idempotency: V5IdempotencyDelivery
+
+
+class AcceptanceCriteriaGetResponse(WireModel):
+    schema_version: SchemaVersion2
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    exact_case_binding: ExactCaseBinding
+    case_readiness: CaseReadiness
+    revisions: list[AcceptanceCriteriaRevisionRecord] = []
+    next_action: dict[str, Any] | None = None
+
+
+class AcceptanceCriteriaConfirmRequest(WireModel):
+    schema_version: SchemaVersion2
+    exact_proposed_revision_binding: dict[str, Any]
+    confirmation_note: Annotated[str, Field(max_length=2000)] | None = None
+
+
+class AcceptanceCriteriaConfirmResponse(WireModel):
+    schema_version: SchemaVersion2
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    acceptance_criteria_revision: AcceptanceCriteriaRevisionRecord
+    idempotency: V5IdempotencyDelivery
+
+
 __all__ = [
+    "AcceptanceCriteriaConfirmRequest",
+    "AcceptanceCriteriaConfirmResponse",
+    "AcceptanceCriteriaGetResponse",
+    "AcceptanceCriteriaProposeRequest",
+    "AcceptanceCriteriaProposeResponse",
+    "AcceptanceCriteriaRevisionId",
+    "AcceptanceCriteriaRevisionRecord",
+    "ApplicationBindingGetResponse",
+    "ApplicationCaseBindingRecord",
     "ApplicationGetResponse",
     "ApplicationId",
     "ApplicationRecord",
@@ -701,6 +884,10 @@ __all__ = [
     "AttestationScope",
     "BootstrapAttestationId",
     "BootstrapAttestationRecord",
+    "CaseBindApplicationRequest",
+    "CaseBindApplicationResponse",
+    "CaseBindingId",
+    "CaseReadiness",
     "CatalogEnvironmentId",
     "ComponentGetResponse",
     "ComponentId",
@@ -719,6 +906,8 @@ __all__ = [
     "EnvironmentRegisterRequest",
     "EnvironmentRegisterResponse",
     "IdentityAssurance",
+    "IssueSnapshotId",
+    "IssueSnapshotRequest",
     "ManifestApplication",
     "ManifestComponent",
     "ManifestEdge",

@@ -40,7 +40,7 @@ def test_sqlite_upgrade_head_allows_multi_stage_gate_binding(tmp_path: Path) -> 
     with engine.begin() as connection:
         assert (
             connection.execute(sa.text("select version_num from alembic_version")).scalar_one()
-            == "009"
+            == "010"
         )
         base = {
             "workorder_id": "wo-multi-stage",
@@ -208,6 +208,97 @@ def test_sqlite_upgrade_head_allows_multi_stage_gate_binding(tmp_path: Path) -> 
         connection.execute(
             sa.text("DELETE FROM system_version_sets WHERE system_version_set_id = :id"),
             {"id": "vset_01J0000000000001"},
+        )
+    # The failed downgrade already dropped the empty 010 tables; restore head so
+    # the 010 assertions below inspect the real schema.
+    command.upgrade(config, "head")
+
+    # V5-1C migration 010: the three case tables exist with the exact-case
+    # binding uniqueness, the confirmation-status shape check, and the read-only
+    # issue snapshot projection.
+    binding_columns = {
+        item["name"] for item in inspector.get_columns("application_case_bindings")
+    }
+    for column in (
+        "application_case_binding_id",
+        "case_id",
+        "case_revision",
+        "case_digest",
+        "application_id",
+        "environment_id",
+        "binding_digest",
+        "envelope_payload",
+        "record_digest",
+        "authority_receipt_id",
+    ):
+        assert column in binding_columns
+    binding_unique = {
+        tuple(item["column_names"])
+        for item in inspector.get_unique_constraints("application_case_bindings")
+    }
+    assert ("workspace_id", "case_id", "case_revision", "case_digest") in binding_unique
+    acceptance_columns = {
+        item["name"] for item in inspector.get_columns("acceptance_criteria_revisions")
+    }
+    for column in (
+        "acceptance_criteria_revision_id",
+        "confirmation_status",
+        "proposer_principal",
+        "confirmer_principal",
+        "exact_previous_proposed_revision_binding",
+        "acceptance_digest",
+        "record_digest",
+    ):
+        assert column in acceptance_columns
+    acceptance_checks = {
+        item["name"] for item in inspector.get_check_constraints("acceptance_criteria_revisions")
+    }
+    assert "ck_acceptance_criteria_revision_status_shape" in acceptance_checks
+    snapshot_columns = {
+        item["name"] for item in inspector.get_columns("issue_source_snapshots")
+    }
+    assert {"snapshot_digest", "edited_flag", "deleted_flag", "instruction_markers_detected"} <= snapshot_columns
+
+    # 010 downgrade is blocked while a binding record exists.
+    with engine.begin() as connection:
+        connection.execute(
+            sa.text(
+                """INSERT INTO application_case_bindings (
+                  application_case_binding_id, workspace_id, case_id, case_revision,
+                  case_digest, application_id, environment_id,
+                  declared_system_version_set_binding_or_unknown, binding_digest,
+                  envelope_payload, record_digest, authority_receipt_id,
+                  recorded_by_principal
+                ) VALUES (
+                  :id, :workspace, :case, :case_revision, :case_digest, :application,
+                  :environment, NULL, :binding_digest, :envelope, :digest, :receipt,
+                  :principal
+                )"""
+            ),
+            {
+                "id": "acb_01J0000000000001",
+                "workspace": "ws_01J0000000000001",
+                "case": "case_01J0000000000001",
+                "case_revision": 1,
+                "case_digest": "sha256:" + "a" * 64,
+                "application": "app_01J0000000000001",
+                "environment": "env_01J0000000000001",
+                "binding_digest": "sha256:" + "b" * 64,
+                "envelope": "{}",
+                "digest": "sha256:" + "c" * 64,
+                "receipt": "arec_01J0000000000001",
+                "principal": "prn_01J0000000000001",
+            },
+        )
+    with pytest.raises(RuntimeError, match="010.downgrade_blocked"):
+        command.downgrade(config, "009")
+    with engine.begin() as connection:
+        connection.execute(
+            sa.text(
+                "DELETE FROM application_case_bindings "
+                "WHERE application_case_binding_id = :id"
+            ),
+            {"id": "acb_01J0000000000001"},
         )
 
     # 008 downgrade is blocked while catalog records exist.

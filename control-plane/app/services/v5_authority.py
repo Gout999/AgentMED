@@ -22,6 +22,8 @@ from app.models import Audit, Event, Outbox
 from app.models.v4_tables import AuthorityReceipt, ControllerRegistration
 from app.models.v5_tables import (
     AIApplication,
+    AcceptanceCriteriaRevision,
+    ApplicationCaseBinding,
     BootstrapAttestation,
     ComponentRevision,
     DependencyEdge,
@@ -310,6 +312,20 @@ _V5_SUBJECT_BINDINGS: dict[str, tuple[type[Any], str, str, str, str | None]] = {
         "authority_receipt_id",
         "revision",
     ),
+    "APPLICATION_CASE_BINDING": (
+        ApplicationCaseBinding,
+        "application_case_binding_id",
+        "record_digest",
+        "authority_receipt_id",
+        None,
+    ),
+    "ACCEPTANCE_CRITERIA_REVISION": (
+        AcceptanceCriteriaRevision,
+        "acceptance_criteria_revision_id",
+        "record_digest",
+        "authority_receipt_id",
+        None,
+    ),
 }
 
 # Business fields that the registered event payload must carry, extracted from
@@ -366,6 +382,82 @@ _V5_EVENT_BUSINESS_FIELDS: dict[str, tuple[str, ...]] = {
         "exposure",
     ),
 }
+
+# V5-1C per-event business fields for case-controller records.  The propose and
+# confirm events carry different field sets (per contracts/v5/events.yaml), so
+# the exact extraction cannot be a single subject-kind set.  Each spec entry is
+# ``(event_payload_field, envelope_field)``; ``None`` as the envelope field
+# means the value is the derived exact subject binding (kind/id/revision/digest)
+# built from the record identity + envelope digest.
+_V5_EVENT_BUSINESS_FIELDS_BY_EVENT: dict[
+    tuple[str, str], tuple[tuple[str, str | None], ...]
+] = {
+    ("APPLICATION_CASE_BINDING", "case.application_bound"): (
+        ("exact_application_case_binding", None),
+        ("exact_case_binding", "exact_case_binding"),
+        ("application_id", "application_id"),
+        ("environment_id", "environment_id"),
+        (
+            "declared_system_version_set_binding_or_unknown",
+            "declared_system_version_set_binding_or_unknown",
+        ),
+    ),
+    ("ACCEPTANCE_CRITERIA_REVISION", "acceptance_criteria.proposed"): (
+        ("exact_acceptance_criteria_revision_binding", None),
+        ("exact_case_binding", "exact_case_binding"),
+        ("exact_resolution_contract_binding", "exact_resolution_contract_binding"),
+        ("confirmation_status", "confirmation_status"),
+        ("proposer_principal", "proposer_principal"),
+        ("proposed_at", "proposed_at"),
+        ("acceptance_source", "acceptance_source"),
+        ("expected_behavior", "expected_behavior"),
+        ("applicable_workload_profile", "applicable_workload_profile"),
+        ("applicable_deployment_profile", "applicable_deployment_profile"),
+        ("acceptance_digest", "acceptance_digest"),
+    ),
+    ("ACCEPTANCE_CRITERIA_REVISION", "acceptance_criteria.confirmed"): (
+        ("exact_acceptance_criteria_revision_binding", None),
+        (
+            "exact_previous_proposed_revision_binding",
+            "exact_previous_proposed_revision_binding",
+        ),
+        ("exact_case_binding", "exact_case_binding"),
+        ("exact_resolution_contract_binding", "exact_resolution_contract_binding"),
+        ("confirmation_status", "confirmation_status"),
+        ("confirmer_principal", "confirmer_principal"),
+        ("confirmed_at", "confirmed_at"),
+        ("acceptance_source", "acceptance_source"),
+        ("expected_behavior", "expected_behavior"),
+        ("applicable_workload_profile", "applicable_workload_profile"),
+        ("applicable_deployment_profile", "applicable_deployment_profile"),
+        ("acceptance_digest", "acceptance_digest"),
+    ),
+}
+
+_V5_EXACT_BINDING_ID_FIELD: dict[str, str] = {
+    "APPLICATION_CASE_BINDING": "application_case_binding_id",
+    "ACCEPTANCE_CRITERIA_REVISION": "acceptance_criteria_revision_id",
+}
+
+
+def _derived_exact_subject_binding(
+    subject_kind: str, envelope: dict[str, Any]
+) -> dict[str, Any]:
+    envelope_payload = envelope.get("record_envelope")
+    id_field = _V5_EXACT_BINDING_ID_FIELD.get(subject_kind)
+    if (
+        not isinstance(envelope_payload, dict)
+        or id_field is None
+        or envelope.get(id_field) is None
+        or not isinstance(envelope_payload.get("record_digest"), str)
+    ):
+        raise V5AuthorityError("v5.authority.subject_binding_invalid")
+    return {
+        "kind": subject_kind,
+        "id": envelope[id_field],
+        "revision": None,
+        "digest": envelope_payload["record_digest"],
+    }
 
 
 class V5AuthorityService:
@@ -586,6 +678,14 @@ class V5AuthorityService:
     def _validate_v5_event_business_payload(
         self, event: Event, *, subject_kind: str, row: Any
     ) -> None:
+        by_event = _V5_EVENT_BUSINESS_FIELDS_BY_EVENT.get(
+            (subject_kind, event.event_type)
+        )
+        if by_event is not None:
+            self._validate_v5_event_business_payload_by_event(
+                event, subject_kind=subject_kind, row=row, spec=by_event
+            )
+            return
         fields = _V5_EVENT_BUSINESS_FIELDS.get(subject_kind)
         if fields is None:
             raise V5AuthorityError("v5.authority.subject_kind_not_implemented")
@@ -607,6 +707,52 @@ class V5AuthorityService:
         if payload != expected:
             raise V5AuthorityError("v5.authority.event_binding_mismatch")
         if event.correlation_id != envelope.get("application_id"):
+            raise V5AuthorityError("v5.authority.event_correlation_mismatch")
+
+    def _validate_v5_event_business_payload_by_event(
+        self,
+        event: Event,
+        *,
+        subject_kind: str,
+        row: Any,
+        spec: tuple[tuple[str, str | None], ...],
+    ) -> None:
+        """Per-event business-field validation for V5-1C case records.
+
+        ``None`` envelope paths resolve to the derived exact subject binding
+        (the self reference that cannot live inside the hashed envelope without
+        creating a digest cycle).
+        """
+
+        envelope = row.envelope_payload
+        expected_business: dict[str, Any] = {}
+        for field_name, envelope_path in spec:
+            if envelope_path is None:
+                value = _derived_exact_subject_binding(subject_kind, envelope)
+            else:
+                if envelope_path not in envelope:
+                    raise V5AuthorityError("v5.authority.event_business_fields_mismatch")
+                value = envelope[envelope_path]
+            expected_business[field_name] = value
+        payload = event.payload or {}
+        expected: dict[str, Any] = {
+            **expected_business,
+            "subject_kind": subject_kind,
+            "subject_id": payload.get("subject_id"),
+            "subject_revision": payload.get("subject_revision"),
+            "subject_digest": payload.get("subject_digest"),
+            "authority_receipt_id": payload.get("authority_receipt_id"),
+        }
+        if payload != expected:
+            raise V5AuthorityError("v5.authority.event_binding_mismatch")
+        # Case records correlate on the exact case binding's case id.
+        exact_case_binding = envelope.get("exact_case_binding")
+        correlation_id = (
+            exact_case_binding.get("case_id")
+            if isinstance(exact_case_binding, dict)
+            else None
+        )
+        if not isinstance(correlation_id, str) or event.correlation_id != correlation_id:
             raise V5AuthorityError("v5.authority.event_correlation_mismatch")
 
     def _validate_v5_controller_chain(

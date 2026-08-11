@@ -189,6 +189,24 @@ def new_system_manifest_id() -> str:
     return f"smf_{_ulid()}"
 
 
+def new_application_case_binding_id() -> str:
+    """V5-1C application case binding immutable-record ID."""
+
+    return f"acb_{_ulid()}"
+
+
+def new_acceptance_criteria_revision_id() -> str:
+    """V5-1C acceptance criteria revision immutable-record ID."""
+
+    return f"acr_{_ulid()}"
+
+
+def new_issue_snapshot_id() -> str:
+    """V5-1C read-only issue source snapshot record ID."""
+
+    return f"iss_{_ulid()}"
+
+
 def short_token(n: int = 16) -> str:
     alphabet = string.ascii_lowercase + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(n))

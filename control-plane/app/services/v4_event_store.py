@@ -234,6 +234,75 @@ _ROUTES: dict[tuple[str, str], _Route] = {
         subject_digest_field=None,
         aggregate_id_field="assignment_id",
     ),
+    # V5-1C case-controller routes.  The business payload mirrors the frozen
+    # contracts/v5/events.yaml ``payload_required`` fields; the exact_*_binding
+    # items are the explicit binding objects the events contract demands.  The
+    # aggregate id is the subject id (a singleton immutable record, so the
+    # subject revision must be null).
+    ("application_case_binding", "case.application_bound"): _Route(
+        owner="case-controller",
+        subject_kind="APPLICATION_CASE_BINDING",
+        subject_revisioned=False,
+        required=frozenset(
+            {
+                "exact_application_case_binding",
+                "exact_case_binding",
+                "application_id",
+                "environment_id",
+                "declared_system_version_set_binding_or_unknown",
+            }
+        ),
+        subject_id_field="subject_id",
+        subject_digest_field=None,
+        aggregate_id_field="subject_id",
+    ),
+    ("acceptance_criteria_revision", "acceptance_criteria.proposed"): _Route(
+        owner="case-controller",
+        subject_kind="ACCEPTANCE_CRITERIA_REVISION",
+        subject_revisioned=False,
+        required=frozenset(
+            {
+                "exact_acceptance_criteria_revision_binding",
+                "exact_case_binding",
+                "exact_resolution_contract_binding",
+                "confirmation_status",
+                "proposer_principal",
+                "proposed_at",
+                "acceptance_source",
+                "expected_behavior",
+                "applicable_workload_profile",
+                "applicable_deployment_profile",
+                "acceptance_digest",
+            }
+        ),
+        subject_id_field="subject_id",
+        subject_digest_field=None,
+        aggregate_id_field="subject_id",
+    ),
+    ("acceptance_criteria_revision", "acceptance_criteria.confirmed"): _Route(
+        owner="case-controller",
+        subject_kind="ACCEPTANCE_CRITERIA_REVISION",
+        subject_revisioned=False,
+        required=frozenset(
+            {
+                "exact_acceptance_criteria_revision_binding",
+                "exact_previous_proposed_revision_binding",
+                "exact_case_binding",
+                "exact_resolution_contract_binding",
+                "confirmation_status",
+                "confirmer_principal",
+                "confirmed_at",
+                "acceptance_source",
+                "expected_behavior",
+                "applicable_workload_profile",
+                "applicable_deployment_profile",
+                "acceptance_digest",
+            }
+        ),
+        subject_id_field="subject_id",
+        subject_digest_field=None,
+        aggregate_id_field="subject_id",
+    ),
 }
 
 _STAGE1_EVENT_TYPES = (

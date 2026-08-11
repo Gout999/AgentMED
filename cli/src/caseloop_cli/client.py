@@ -32,6 +32,13 @@ from ._generated.public_v2 import (
     EnvironmentGetResponse,
     EnvironmentRegisterResponse,
 )
+from ._generated.case_v2 import (
+    AcceptanceCriteriaConfirmResponse,
+    AcceptanceCriteriaGetResponse,
+    AcceptanceCriteriaProposeResponse,
+    ApplicationBindingGetResponse,
+    CaseBindApplicationResponse,
+)
 from ._generated.manifest_v2 import (
     SystemManifestImportResponse,
     SystemVersionDiffResponse,
@@ -52,6 +59,21 @@ _ENVIRONMENT_PATH = re.compile(r"^/api/v2/environments/(env_[0-9A-Za-z]{8,64})$"
 _COMPONENT_PATH = re.compile(r"^/api/v2/system-components/(cmp_[0-9A-Za-z]{8,64})$")
 _EDGE_PATH = re.compile(r"^/api/v2/dependency-edges/(de_[0-9A-Za-z]{8,64})$")
 _VERSION_SET_PATH = re.compile(r"^/api/v2/system-versions/(vset_[0-9A-Za-z]{8,64})$")
+_BIND_APPLICATION_PATH = re.compile(
+    r"^/api/v2/cases/(case_[0-9A-Za-z]{8,64}):bind-application$"
+)
+_APPLICATION_BINDING_PATH = re.compile(
+    r"^/api/v2/cases/(case_[0-9A-Za-z]{8,64})/application-binding$"
+)
+_PROPOSE_ACCEPTANCE_PATH = re.compile(
+    r"^/api/v2/cases/(case_[0-9A-Za-z]{8,64}):propose-acceptance-criteria$"
+)
+_ACCEPTANCE_CRITERIA_PATH = re.compile(
+    r"^/api/v2/cases/(case_[0-9A-Za-z]{8,64})/acceptance-criteria$"
+)
+_CONFIRM_ACCEPTANCE_PATH = re.compile(
+    r"^/api/v2/acceptance-criteria/(acr_[0-9A-Za-z]{8,64}):confirm$"
+)
 _MISSING_NO_TRACE = (
     "trace.input",
     "trace.output",
@@ -225,6 +247,47 @@ def _operation_spec(method: str, path: str) -> _OperationSpec:
         if path == "/api/v2/system-versions:diff":
             return _OperationSpec(
                 "system-versions.diff", 200, SystemVersionDiffResponse
+            )
+        binding = _APPLICATION_BINDING_PATH.fullmatch(path)
+        if binding:
+            return _OperationSpec(
+                "case-application-bindings.get",
+                200,
+                ApplicationBindingGetResponse,
+                binding.group(1),
+            )
+        criteria = _ACCEPTANCE_CRITERIA_PATH.fullmatch(path)
+        if criteria:
+            return _OperationSpec(
+                "acceptance-criteria.get",
+                200,
+                AcceptanceCriteriaGetResponse,
+                criteria.group(1),
+            )
+    if normalized_method == "POST":
+        bind = _BIND_APPLICATION_PATH.fullmatch(path)
+        if bind:
+            return _OperationSpec(
+                "cases.bind-application",
+                201,
+                CaseBindApplicationResponse,
+                bind.group(1),
+            )
+        propose = _PROPOSE_ACCEPTANCE_PATH.fullmatch(path)
+        if propose:
+            return _OperationSpec(
+                "acceptance-criteria.propose",
+                201,
+                AcceptanceCriteriaProposeResponse,
+                propose.group(1),
+            )
+        confirm = _CONFIRM_ACCEPTANCE_PATH.fullmatch(path)
+        if confirm:
+            return _OperationSpec(
+                "acceptance-criteria.confirm",
+                201,
+                AcceptanceCriteriaConfirmResponse,
+                confirm.group(1),
             )
     raise CliError("CLIENT_OPERATION_UNSUPPORTED", ExitFamily.PROTOCOL)
 
@@ -411,6 +474,9 @@ class PublicApiClient:
                     ComponentRegisterResponse,
                     DependencyEdgeRecordResponse,
                     SystemManifestImportResponse,
+                    CaseBindApplicationResponse,
+                    AcceptanceCriteriaProposeResponse,
+                    AcceptanceCriteriaConfirmResponse,
                 ),
             )
             and success.idempotency.replayed is True
@@ -470,6 +536,39 @@ class PublicApiClient:
                 spec, success, body, idempotency_key, raw_payload,
                 resource_id=success.edge.edge_id,
             )
+            return
+        if isinstance(success, CaseBindApplicationResponse):
+            self._validate_v5_mutation_binding(
+                spec, success, body, idempotency_key, raw_payload,
+                resource_id=success.application_case_binding.application_case_binding_id,
+            )
+            return
+        if isinstance(success, ApplicationBindingGetResponse):
+            if (
+                success.application_case_binding.exact_case_binding.get("case_id")
+                != spec.resource_id
+            ):
+                raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+            return
+        if isinstance(success, AcceptanceCriteriaProposeResponse):
+            self._validate_v5_mutation_binding(
+                spec, success, body, idempotency_key, raw_payload,
+                resource_id=(
+                    success.acceptance_criteria_revision.acceptance_criteria_revision_id
+                ),
+            )
+            return
+        if isinstance(success, AcceptanceCriteriaConfirmResponse):
+            self._validate_v5_mutation_binding(
+                spec, success, body, idempotency_key, raw_payload,
+                resource_id=(
+                    success.acceptance_criteria_revision.acceptance_criteria_revision_id
+                ),
+            )
+            return
+        if isinstance(success, AcceptanceCriteriaGetResponse):
+            if success.case_readiness not in {"NEEDS_ACCEPTANCE_CRITERIA", "READY"}:
+                raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
             return
         if isinstance(success, CaseResponse):
             if success.data.case_id != spec.resource_id:

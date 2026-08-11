@@ -875,3 +875,143 @@ def list_applications(
     if partial:
         result["warning"] = "partial_integrity_errors"
     return result
+
+
+# ------------------------------------------------------- 9. V5-1C case governance
+
+
+def case_v5_readiness(session: Session, case_id: str) -> dict[str, Any]:
+    """V5-1C read-only case governance projection for the Console.
+
+    Application binding, acceptance readiness (NEEDS_ACCEPTANCE_CRITERIA /
+    READY), missing-evidence list and the read-only issue snapshot.  Every
+    v5 envelope is revalidated on read; corrupt rows project as
+    integrity_error/UNKNOWN, never as trusted state.
+    """
+
+    from app.models.v4_tables import QualityCase, TraceEvidenceReceipt
+    from app.models.v5_tables import (
+        AcceptanceCriteriaRevision,
+        ApplicationCaseBinding,
+        IssueSourceSnapshot,
+    )
+    from app.utils.v5_integrity import assert_v5_record_digest
+
+    quality_case = session.get(QualityCase, case_id)
+    if quality_case is None:
+        return {"case_id": None}
+    binding: dict[str, Any] | None = None
+    binding_integrity = "verified"
+    binding_error: str | None = None
+    current_binding = session.scalar(
+        select(ApplicationCaseBinding)
+        .where(
+            ApplicationCaseBinding.workspace_id == quality_case.workspace_id,
+            ApplicationCaseBinding.case_id == case_id,
+            ApplicationCaseBinding.case_revision == quality_case.revision,
+        )
+        .order_by(ApplicationCaseBinding.created_at, ApplicationCaseBinding.application_case_binding_id)
+    )
+    if current_binding is not None:
+        try:
+            verified = assert_v5_record_digest(current_binding.envelope_payload)
+            if verified != current_binding.record_digest:
+                raise ValueError("projected record_digest mismatch")
+            envelope = current_binding.envelope_payload
+            binding = {
+                "application_case_binding_id": current_binding.application_case_binding_id,
+                "application_id": current_binding.application_id,
+                "environment_id": current_binding.environment_id,
+                "exact_case_binding": envelope["exact_case_binding"],
+                "declared_system_version_set_binding_or_unknown": envelope.get(
+                    "declared_system_version_set_binding_or_unknown"
+                ),
+                "record_digest": current_binding.record_digest,
+            }
+        except Exception as exc:  # noqa: BLE001 - fail-closed projection
+            binding_integrity = "integrity_error"
+            binding_error = f"v5.binding_integrity_error:{type(exc).__name__}"
+    else:
+        binding = None
+
+    revisions = list(
+        session.scalars(
+            select(AcceptanceCriteriaRevision)
+            .where(
+                AcceptanceCriteriaRevision.workspace_id == quality_case.workspace_id,
+                AcceptanceCriteriaRevision.case_id == case_id,
+                AcceptanceCriteriaRevision.case_revision == quality_case.revision,
+            )
+            .order_by(
+                AcceptanceCriteriaRevision.created_at,
+                AcceptanceCriteriaRevision.acceptance_criteria_revision_id,
+            )
+        ).all()
+    )
+    confirmed = [row for row in revisions if row.confirmation_status == "CONFIRMED"]
+    if confirmed:
+        readiness: str = "READY"
+    else:
+        readiness = "NEEDS_ACCEPTANCE_CRITERIA"
+    proposal_count = int(
+        session.scalar(
+            select(func.count())
+            .select_from(AcceptanceCriteriaRevision)
+            .where(
+                AcceptanceCriteriaRevision.workspace_id == quality_case.workspace_id,
+                AcceptanceCriteriaRevision.case_id == case_id,
+                AcceptanceCriteriaRevision.case_revision == quality_case.revision,
+            )
+        )
+        or 0
+    )
+
+    missing_evidence: list[str] = []
+    evidence_rows = list(
+        session.scalars(
+            select(TraceEvidenceReceipt).where(
+                TraceEvidenceReceipt.workspace_id == quality_case.workspace_id,
+                TraceEvidenceReceipt.signal_id == quality_case.opening_signal_id,
+            )
+        ).all()
+    )
+    for row in evidence_rows:
+        for field in row.requested_fields or []:
+            if field not in missing_evidence:
+                missing_evidence.append(field)
+
+    issue_snapshot: dict[str, Any] | None = None
+    snapshot = session.scalar(
+        select(IssueSourceSnapshot)
+        .where(
+            IssueSourceSnapshot.workspace_id == quality_case.workspace_id,
+            IssueSourceSnapshot.case_id == case_id,
+        )
+        .order_by(IssueSourceSnapshot.created_at, IssueSourceSnapshot.issue_snapshot_id)
+    )
+    if snapshot is not None:
+        issue_snapshot = {
+            "issue_snapshot_id": snapshot.issue_snapshot_id,
+            "source_kind": snapshot.source_kind,
+            "source_url": snapshot.source_url,
+            "external_repo": snapshot.external_repo,
+            "external_issue_number": snapshot.external_issue_number,
+            "title": (snapshot.snapshot_payload or {}).get("title"),
+            "edited_flag": snapshot.edited_flag,
+            "deleted_flag": snapshot.deleted_flag,
+            "instruction_markers_detected": snapshot.instruction_markers_detected,
+            "snapshot_digest": snapshot.snapshot_digest,
+        }
+
+    return {
+        "case_id": case_id,
+        "case_revision": quality_case.revision,
+        "application_binding": binding,
+        "binding_integrity_status": binding_integrity,
+        "binding_integrity_error": binding_error,
+        "case_readiness": readiness,
+        "acceptance_proposal_count": proposal_count,
+        "confirmed_acceptance_count": len(confirmed),
+        "missing_evidence": missing_evidence,
+        "issue_snapshot": issue_snapshot,
+    }

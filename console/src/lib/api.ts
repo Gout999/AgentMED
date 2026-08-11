@@ -3,6 +3,7 @@ import type {
   CaseDetail,
   CaseEventsView,
   CaseSummary,
+  CaseV5Readiness,
   ChangeSet,
   EnvironmentStatus,
   EvidenceResponse,
@@ -109,6 +110,10 @@ export const api = {
     request<CaseDetail>(`/v1/cases/${encodeURIComponent(caseId)}`, guards.caseDetail, { signal }),
   getCaseEvents: (caseId: string, signal?: AbortSignal) =>
     request<CaseEventsView>(`/v1/cases/${encodeURIComponent(caseId)}/events`, guards.caseEvents, { signal }),
+  getCaseV5Readiness: (caseId: string, signal?: AbortSignal) =>
+    request<CaseV5Readiness>(`/v1/cases/${encodeURIComponent(caseId)}/v5-readiness`, guards.caseV5Readiness, {
+      signal,
+    }),
 
   listExperiments: (state?: string, signal?: AbortSignal) =>
     request<ListResponse<Experiment>>(`/v1/experiments${qs({ state, limit: 100 })}`, guards.experimentList, { signal }),
