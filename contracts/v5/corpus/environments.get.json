@@ -1,0 +1,193 @@
+{
+  "cases": [
+    {
+      "direction": "response",
+      "expected": "valid",
+      "id": "environments.get/response/valid",
+      "instance": {
+        "audit_ref": "audit://aud_7c1e9a3b5d8f2c4e",
+        "environment": {
+          "application_id": "app_9c4e2a1f7b3d5c8e",
+          "environment_id": "env_1a2b3c4d5e6f7a8b",
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "production",
+          "record_envelope": {
+            "authority_receipt_id": "arec_2f8c4a1e9b3d7f5a",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:abababababababababababababababababababababababababababababababab",
+            "recorded_at": "2026-08-11T10:24:36.123456Z",
+            "recorded_by_principal": "prn_5d8a2c9e1b4f7a3c",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_3f9a1c4e7b2d8f6a"
+          },
+          "risk_classification": "HIGH",
+          "workspace_id": "ws_3f9a1c4e7b2d8f6a"
+        },
+        "request_id": "req_8a2b4c6d1e3f5a7b",
+        "schema_version": "2.0",
+        "workspace_id": "ws_3f9a1c4e7b2d8f6a"
+      },
+      "reason": "Complete EnvironmentGetResponse: revision-1 ACTIVE environment record with full record envelope; accepted by both the generated 2020-12 schema and the legacy EnvironmentGetResponse model."
+    },
+    {
+      "direction": "response",
+      "expected": "valid",
+      "id": "environments.get/response/rev-any-valid",
+      "instance": {
+        "audit_ref": "audit://aud_7c1e9a3b5d8f2c4e",
+        "environment": {
+          "application_id": "app_9c4e2a1f7b3d5c8e",
+          "environment_id": "env_6b2c4d1e8f3a5c7d",
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "prod-eu-west-1",
+          "record_envelope": {
+            "authority_receipt_id": "arec_2f8c4a1e9b3d7f5a",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:cdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd",
+            "recorded_at": "2026-08-12T09:15:02.500000Z",
+            "recorded_by_principal": "prn_5d8a2c9e1b4f7a3c",
+            "revision": 2,
+            "schema_version": "2.0",
+            "workspace_id": "ws_3f9a1c4e7b2d8f6a"
+          },
+          "risk_classification": "LOW",
+          "workspace_id": "ws_3f9a1c4e7b2d8f6a"
+        },
+        "request_id": "req_8a2b4c6d1e3f5a7b",
+        "schema_version": "2.0",
+        "workspace_id": "ws_3f9a1c4e7b2d8f6a"
+      },
+      "reason": "Revision-2 environment record is also legal: environment records carry no revision-discriminated union (unlike application/component records), so revision >= 1 with lifecycle_state ACTIVE is accepted by both validators."
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "environments.get/response/additional-field",
+      "instance": {
+        "audit_ref": "audit://aud_7c1e9a3b5d8f2c4e",
+        "environment": {
+          "application_id": "app_9c4e2a1f7b3d5c8e",
+          "environment_id": "env_1a2b3c4d5e6f7a8b",
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "production",
+          "record_envelope": {
+            "authority_receipt_id": "arec_2f8c4a1e9b3d7f5a",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:abababababababababababababababababababababababababababababababab",
+            "recorded_at": "2026-08-11T10:24:36.123456Z",
+            "recorded_by_principal": "prn_5d8a2c9e1b4f7a3c",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_3f9a1c4e7b2d8f6a"
+          },
+          "risk_classification": "HIGH",
+          "workspace_id": "ws_3f9a1c4e7b2d8f6a"
+        },
+        "request_id": "req_8a2b4c6d1e3f5a7b",
+        "schema_version": "2.0",
+        "server_time": "2026-08-11T10:24:36.123456Z",
+        "workspace_id": "ws_3f9a1c4e7b2d8f6a"
+      },
+      "reason": "Undeclared response field 'server_time': the generated schema sets additionalProperties: false and the legacy WireModel uses extra='forbid', so the payload is rejected by both."
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "environments.get/response/missing-required",
+      "instance": {
+        "audit_ref": "audit://aud_7c1e9a3b5d8f2c4e",
+        "environment": {
+          "application_id": "app_9c4e2a1f7b3d5c8e",
+          "environment_id": "env_1a2b3c4d5e6f7a8b",
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "production",
+          "record_envelope": {
+            "authority_receipt_id": "arec_2f8c4a1e9b3d7f5a",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:abababababababababababababababababababababababababababababababab",
+            "recorded_at": "2026-08-11T10:24:36.123456Z",
+            "recorded_by_principal": "prn_5d8a2c9e1b4f7a3c",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_3f9a1c4e7b2d8f6a"
+          },
+          "risk_classification": "HIGH",
+          "workspace_id": "ws_3f9a1c4e7b2d8f6a"
+        },
+        "request_id": "req_8a2b4c6d1e3f5a7b",
+        "schema_version": "2.0"
+      },
+      "reason": "Response-level workspace_id is removed: it is required by both the generated $defs.response and the legacy EnvironmentGetResponse model."
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "environments.get/response/type-mismatch",
+      "instance": {
+        "audit_ref": "audit://aud_7c1e9a3b5d8f2c4e",
+        "environment": {
+          "application_id": "app_9c4e2a1f7b3d5c8e",
+          "environment_id": "env_1a2b3c4d5e6f7a8b",
+          "lifecycle_state": "ARCHIVED",
+          "logical_name": "production",
+          "record_envelope": {
+            "authority_receipt_id": "arec_2f8c4a1e9b3d7f5a",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:abababababababababababababababababababababababababababababababab",
+            "recorded_at": "2026-08-11T10:24:36.123456Z",
+            "recorded_by_principal": "prn_5d8a2c9e1b4f7a3c",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_3f9a1c4e7b2d8f6a"
+          },
+          "risk_classification": "HIGH",
+          "workspace_id": "ws_3f9a1c4e7b2d8f6a"
+        },
+        "request_id": "req_8a2b4c6d1e3f5a7b",
+        "schema_version": "2.0",
+        "workspace_id": "ws_3f9a1c4e7b2d8f6a"
+      },
+      "reason": "lifecycle_state 'ARCHIVED' is outside the environment lifecycle enum (only ACTIVE/RETIRED): both the generated environmentRecord (common environmentLifecycleState) and the legacy EnvironmentLifecycleState Literal reject it. ARCHIVED is legal for application records but not environments."
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "environments.get/response/bad-record-envelope",
+      "instance": {
+        "audit_ref": "audit://aud_7c1e9a3b5d8f2c4e",
+        "environment": {
+          "application_id": "app_9c4e2a1f7b3d5c8e",
+          "environment_id": "env_1a2b3c4d5e6f7a8b",
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "production",
+          "record_envelope": {
+            "authority_receipt_id": "arec_2f8c4a1e9b3d7f5a",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": false,
+            "record_digest": "sha256:abababababababababababababababababababababababababababababababab",
+            "recorded_at": "2026-08-11T10:24:36.123456Z",
+            "recorded_by_principal": "prn_5d8a2c9e1b4f7a3c",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_3f9a1c4e7b2d8f6a"
+          },
+          "risk_classification": "HIGH",
+          "workspace_id": "ws_3f9a1c4e7b2d8f6a"
+        },
+        "request_id": "req_8a2b4c6d1e3f5a7b",
+        "schema_version": "2.0",
+        "workspace_id": "ws_3f9a1c4e7b2d8f6a"
+      },
+      "reason": "record_envelope.immutable is false: the generated schema constrains it to true and the legacy RecordEnvelope.envelope_is_immutable validator rejects non-True immutability."
+    }
+  ],
+  "description": "C1 shadow parity evidence baseline for environments.get: every expected verdict is accepted by both the generated JSON Schema 2020-12 wire contract (contracts/v5/schemas/environments.get.schema.json) and the legacy Pydantic models (control-plane/app/public_api/v5_models.py EnvironmentGetResponse). GET intent: no request body and no query parameters, response cases only.",
+  "intent": "environments.get",
+  "schema_version": "1.0"
+}

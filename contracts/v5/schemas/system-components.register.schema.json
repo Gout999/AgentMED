@@ -1,0 +1,55 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/schemas/v5/system-components.register.schema.json",
+  "title": "system-components.register",
+  "description": "R2 activated V5 system component registration. Creates a revision-1 ComponentRecord bound to an existing application in the authenticated workspace, with an idempotency delivery. Mirrors control-plane/app/public_api/v5_models.py ComponentRegisterRequest/ComponentRegisterResponse.",
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "application_id",
+        "component_kind",
+        "logical_name",
+        "owner_principal_ids",
+        "criticality",
+        "data_classification",
+        "permission_classification",
+        "effect_classification"
+      ],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion2" },
+        "application_id": { "$ref": "common.schema.json#/$defs/idApplicationId" },
+        "component_kind": { "$ref": "common.schema.json#/$defs/componentKind" },
+        "logical_name": { "$ref": "common.schema.json#/$defs/logicalName" },
+        "owner_principal_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/idPrincipalId" }
+        },
+        "criticality": { "$ref": "common.schema.json#/$defs/criticality" },
+        "data_classification": { "$ref": "common.schema.json#/$defs/dataClassification" },
+        "permission_classification": { "$ref": "common.schema.json#/$defs/permissionClassification" },
+        "effect_classification": { "$ref": "common.schema.json#/$defs/effectClassification" },
+        "dataset_role": { "anyOf": [{ "$ref": "common.schema.json#/$defs/datasetRole" }, { "type": "null" }] }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "workspace_id", "request_id", "audit_ref", "component", "idempotency"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion2" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "request_id": { "$ref": "common.schema.json#/$defs/idRequestId" },
+        "audit_ref": { "$ref": "common.schema.json#/$defs/auditRef" },
+        "component": { "$ref": "records.schema.json#/$defs/componentRecord" },
+        "idempotency": { "$ref": "common.schema.json#/$defs/idempotencyDelivery" }
+      }
+    },
+    "error": { "$ref": "common.schema.json#/$defs/errorEnvelope" }
+  }
+}

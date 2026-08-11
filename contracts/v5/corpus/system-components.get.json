@@ -1,0 +1,283 @@
+{
+  "cases": [
+    {
+      "direction": "response",
+      "expected": "valid",
+      "id": "system-components.get/response/rev1-valid",
+      "instance": {
+        "audit_ref": "audit://aud_7c4d2e8f1a3b6095",
+        "component": {
+          "application_id": "app_9d1c4e7a2b6f3058",
+          "component_id": "cmp_3f7a2e5d8b1c4096",
+          "component_kind": "MCP_SERVER",
+          "criticality": "P1",
+          "data_classification": "CONFIDENTIAL",
+          "dataset_role": "RUNTIME_DATA",
+          "effect_classification": "EXTERNAL",
+          "exact_previous_system_component_binding_or_null": null,
+          "lifecycle_state": "REGISTERED",
+          "logical_name": "docs_rag_mcp_server",
+          "owner_principal_ids": [
+            "prn_5b8a1c3d9e2f7046"
+          ],
+          "permission_classification": "READ_WRITE",
+          "record_envelope": {
+            "authority_receipt_id": "arec_2d9f4b7e1c6a8035",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:9f3a2b4c1d5e60789f3a2b4c1d5e60789f3a2b4c1d5e60789f3a2b4c1d5e6078",
+            "recorded_at": "2026-07-30T09:41:23.123456+00:00",
+            "recorded_by_principal": "prn_5b8a1c3d9e2f7046",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_8f2c1d9e4b7a3056"
+          },
+          "workspace_id": "ws_8f2c1d9e4b7a3056"
+        },
+        "request_id": "req_6a9f3e2d8c1b4057",
+        "schema_version": "2.0",
+        "workspace_id": "ws_8f2c1d9e4b7a3056"
+      }
+    },
+    {
+      "direction": "response",
+      "expected": "valid",
+      "id": "system-components.get/response/rev2-valid",
+      "instance": {
+        "audit_ref": "audit://aud_7c4d2e8f1a3b6095",
+        "component": {
+          "application_id": "app_9d1c4e7a2b6f3058",
+          "component_id": "cmp_3f7a2e5d8b1c4096",
+          "component_kind": "MCP_SERVER",
+          "criticality": "P1",
+          "data_classification": "CONFIDENTIAL",
+          "dataset_role": "RUNTIME_DATA",
+          "effect_classification": "EXTERNAL",
+          "exact_previous_system_component_binding": {
+            "digest": "sha256:9f3a2b4c1d5e60789f3a2b4c1d5e60789f3a2b4c1d5e60789f3a2b4c1d5e6078",
+            "id": "cmp_3f7a2e5d8b1c4096",
+            "kind": "SYSTEM_COMPONENT",
+            "revision": 1
+          },
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "docs_rag_mcp_server",
+          "owner_principal_ids": [
+            "prn_5b8a1c3d9e2f7046"
+          ],
+          "permission_classification": "READ_WRITE",
+          "record_envelope": {
+            "authority_receipt_id": "arec_6e1a3c8f4b2d9071",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:7c1e4d8a2f5b90367c1e4d8a2f5b90367c1e4d8a2f5b90367c1e4d8a2f5b9036",
+            "recorded_at": "2026-08-05T14:22:47.654321+00:00",
+            "recorded_by_principal": "prn_5b8a1c3d9e2f7046",
+            "revision": 2,
+            "schema_version": "2.0",
+            "workspace_id": "ws_8f2c1d9e4b7a3056"
+          },
+          "workspace_id": "ws_8f2c1d9e4b7a3056"
+        },
+        "request_id": "req_6a9f3e2d8c1b4057",
+        "schema_version": "2.0",
+        "workspace_id": "ws_8f2c1d9e4b7a3056"
+      }
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "system-components.get/response/additional-field",
+      "instance": {
+        "audit_ref": "audit://aud_7c4d2e8f1a3b6095",
+        "component": {
+          "application_id": "app_9d1c4e7a2b6f3058",
+          "component_id": "cmp_3f7a2e5d8b1c4096",
+          "component_kind": "MCP_SERVER",
+          "criticality": "P1",
+          "data_classification": "CONFIDENTIAL",
+          "dataset_role": "RUNTIME_DATA",
+          "effect_classification": "EXTERNAL",
+          "exact_previous_system_component_binding": {
+            "digest": "sha256:9f3a2b4c1d5e60789f3a2b4c1d5e60789f3a2b4c1d5e60789f3a2b4c1d5e6078",
+            "id": "cmp_3f7a2e5d8b1c4096",
+            "kind": "SYSTEM_COMPONENT",
+            "revision": 1
+          },
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "docs_rag_mcp_server",
+          "owner_principal_ids": [
+            "prn_5b8a1c3d9e2f7046"
+          ],
+          "permission_classification": "READ_WRITE",
+          "record_envelope": {
+            "authority_receipt_id": "arec_6e1a3c8f4b2d9071",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:7c1e4d8a2f5b90367c1e4d8a2f5b90367c1e4d8a2f5b90367c1e4d8a2f5b9036",
+            "recorded_at": "2026-08-05T14:22:47.654321+00:00",
+            "recorded_by_principal": "prn_5b8a1c3d9e2f7046",
+            "revision": 2,
+            "schema_version": "2.0",
+            "workspace_id": "ws_8f2c1d9e4b7a3056"
+          },
+          "workspace_id": "ws_8f2c1d9e4b7a3056"
+        },
+        "request_id": "req_6a9f3e2d8c1b4057",
+        "schema_version": "2.0",
+        "unexpected_extra": "boom",
+        "workspace_id": "ws_8f2c1d9e4b7a3056"
+      },
+      "reason": "extra top-level key 'unexpected_extra' violates additionalProperties:false (generated) and WireModel extra='forbid' (legacy)"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "system-components.get/response/missing-required",
+      "instance": {
+        "audit_ref": "audit://aud_7c4d2e8f1a3b6095",
+        "request_id": "req_6a9f3e2d8c1b4057",
+        "schema_version": "2.0",
+        "workspace_id": "ws_8f2c1d9e4b7a3056"
+      },
+      "reason": "'component' is required by the generated response schema and by legacy ComponentGetResponse; deleting it fails both"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "system-components.get/response/type-mismatch",
+      "instance": {
+        "audit_ref": "audit://aud_7c4d2e8f1a3b6095",
+        "component": {
+          "application_id": "app_9d1c4e7a2b6f3058",
+          "component_id": "cmp_3f7a2e5d8b1c4096",
+          "component_kind": "MCP_SERVER",
+          "criticality": "P1",
+          "data_classification": "CONFIDENTIAL",
+          "dataset_role": "RUNTIME_DATA",
+          "effect_classification": "EXTERNAL",
+          "exact_previous_system_component_binding": {
+            "digest": "sha256:9f3a2b4c1d5e60789f3a2b4c1d5e60789f3a2b4c1d5e60789f3a2b4c1d5e6078",
+            "id": "cmp_3f7a2e5d8b1c4096",
+            "kind": "SYSTEM_COMPONENT",
+            "revision": 1
+          },
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "docs_rag_mcp_server",
+          "owner_principal_ids": [
+            "prn_5b8a1c3d9e2f7046"
+          ],
+          "permission_classification": "SUPERUSER",
+          "record_envelope": {
+            "authority_receipt_id": "arec_6e1a3c8f4b2d9071",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:7c1e4d8a2f5b90367c1e4d8a2f5b90367c1e4d8a2f5b90367c1e4d8a2f5b9036",
+            "recorded_at": "2026-08-05T14:22:47.654321+00:00",
+            "recorded_by_principal": "prn_5b8a1c3d9e2f7046",
+            "revision": 2,
+            "schema_version": "2.0",
+            "workspace_id": "ws_8f2c1d9e4b7a3056"
+          },
+          "workspace_id": "ws_8f2c1d9e4b7a3056"
+        },
+        "request_id": "req_6a9f3e2d8c1b4057",
+        "schema_version": "2.0",
+        "workspace_id": "ws_8f2c1d9e4b7a3056"
+      },
+      "reason": "permission_classification 'SUPERUSER' is not in the READ_ONLY/READ_WRITE/ELEVATED enum shared by schema and legacy"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "system-components.get/response/discriminator-both-bindings",
+      "instance": {
+        "audit_ref": "audit://aud_7c4d2e8f1a3b6095",
+        "component": {
+          "application_id": "app_9d1c4e7a2b6f3058",
+          "component_id": "cmp_3f7a2e5d8b1c4096",
+          "component_kind": "MCP_SERVER",
+          "criticality": "P1",
+          "data_classification": "CONFIDENTIAL",
+          "dataset_role": "RUNTIME_DATA",
+          "effect_classification": "EXTERNAL",
+          "exact_previous_system_component_binding": {
+            "digest": "sha256:9f3a2b4c1d5e60789f3a2b4c1d5e60789f3a2b4c1d5e60789f3a2b4c1d5e6078",
+            "id": "cmp_3f7a2e5d8b1c4096",
+            "kind": "SYSTEM_COMPONENT",
+            "revision": 1
+          },
+          "exact_previous_system_component_binding_or_null": null,
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "docs_rag_mcp_server",
+          "owner_principal_ids": [
+            "prn_5b8a1c3d9e2f7046"
+          ],
+          "permission_classification": "READ_WRITE",
+          "record_envelope": {
+            "authority_receipt_id": "arec_6e1a3c8f4b2d9071",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:7c1e4d8a2f5b90367c1e4d8a2f5b90367c1e4d8a2f5b90367c1e4d8a2f5b9036",
+            "recorded_at": "2026-08-05T14:22:47.654321+00:00",
+            "recorded_by_principal": "prn_5b8a1c3d9e2f7046",
+            "revision": 2,
+            "schema_version": "2.0",
+            "workspace_id": "ws_8f2c1d9e4b7a3056"
+          },
+          "workspace_id": "ws_8f2c1d9e4b7a3056"
+        },
+        "request_id": "req_6a9f3e2d8c1b4057",
+        "schema_version": "2.0",
+        "workspace_id": "ws_8f2c1d9e4b7a3056"
+      },
+      "reason": "componentRecord oneOf discriminator requires exactly one previous-binding key; both or_null and exact binding present fails generated schema and legacy revision-2 validator"
+    },
+    {
+      "direction": "response",
+      "expected": "valid",
+      "id": "system-components.get/response/dataset-role-null-valid",
+      "instance": {
+        "audit_ref": "audit://aud_7c4d2e8f1a3b6095",
+        "component": {
+          "application_id": "app_9d1c4e7a2b6f3058",
+          "component_id": "cmp_3f7a2e5d8b1c4096",
+          "component_kind": "MCP_SERVER",
+          "criticality": "P1",
+          "data_classification": "CONFIDENTIAL",
+          "dataset_role": null,
+          "effect_classification": "EXTERNAL",
+          "exact_previous_system_component_binding": {
+            "digest": "sha256:9f3a2b4c1d5e60789f3a2b4c1d5e60789f3a2b4c1d5e60789f3a2b4c1d5e6078",
+            "id": "cmp_3f7a2e5d8b1c4096",
+            "kind": "SYSTEM_COMPONENT",
+            "revision": 1
+          },
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "docs_rag_mcp_server",
+          "owner_principal_ids": [
+            "prn_5b8a1c3d9e2f7046"
+          ],
+          "permission_classification": "READ_WRITE",
+          "record_envelope": {
+            "authority_receipt_id": "arec_6e1a3c8f4b2d9071",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:7c1e4d8a2f5b90367c1e4d8a2f5b90367c1e4d8a2f5b90367c1e4d8a2f5b9036",
+            "recorded_at": "2026-08-05T14:22:47.654321+00:00",
+            "recorded_by_principal": "prn_5b8a1c3d9e2f7046",
+            "revision": 2,
+            "schema_version": "2.0",
+            "workspace_id": "ws_8f2c1d9e4b7a3056"
+          },
+          "workspace_id": "ws_8f2c1d9e4b7a3056"
+        },
+        "request_id": "req_6a9f3e2d8c1b4057",
+        "schema_version": "2.0",
+        "workspace_id": "ws_8f2c1d9e4b7a3056"
+      }
+    }
+  ],
+  "description": "C1 single-source-wire corpus for system-components.get (ComponentGetResponse with the rev-1/rev-2 SystemComponentRecord union). Every expected verdict is certified by BOTH the generated JSON Schema 2020-12 $defs.response and the legacy Pydantic ComponentGetResponse/ComponentRecord models. The rev-2-with-REGISTERED discriminator case is intentionally NOT included: generated schema rejects it (record binding requires lifecycle ACTIVE/DEPRECATED/RETIRED) while the legacy model accepts it (revision>=2 validator checks only the exact binding) - reported as C1 adjudication input instead.",
+  "intent": "system-components.get",
+  "schema_version": "1.0"
+}

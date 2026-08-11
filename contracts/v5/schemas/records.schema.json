@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/schemas/v5/records.schema.json",
+  "title": "V5 activated wire record shapes (schema-major 2)",
+  "description": "Single-source record shapes for the R2 activated wire: ApplicationRecord, EnvironmentRecord, SystemComponentRecord and DependencyEdgeRecord, plus exact bindings. Mirrors control-plane/app/public_api/v5_models.py serializers exactly: revision-1 records carry the *_or_null null binding, revision >= 2 records carry the exact previous binding. Derived from contracts/v5/schema-profiles.yaml#r2_wire_record_shapes.",
+  "$defs": {
+    "exactApplicationBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": { "const": "AI_APPLICATION" },
+        "id": { "$ref": "common.schema.json#/$defs/idApplicationId" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "digest": { "$ref": "common.schema.json#/$defs/digest" }
+      }
+    },
+    "exactSystemComponentBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": { "const": "SYSTEM_COMPONENT" },
+        "id": { "$ref": "common.schema.json#/$defs/idComponentId" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "digest": { "$ref": "common.schema.json#/$defs/digest" }
+      }
+    },
+    "applicationRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_envelope",
+        "application_id",
+        "workspace_id",
+        "project_id",
+        "slug",
+        "display_name",
+        "owner_principal_ids",
+        "criticality",
+        "data_classification",
+        "governance_mode",
+        "lifecycle_state"
+      ],
+      "properties": {
+        "record_envelope": { "$ref": "common.schema.json#/$defs/recordEnvelope" },
+        "application_id": { "$ref": "common.schema.json#/$defs/idApplicationId" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "project_id": { "$ref": "common.schema.json#/$defs/idProjectId" },
+        "slug": { "$ref": "common.schema.json#/$defs/slug" },
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "owner_principal_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/idPrincipalId" }
+        },
+        "criticality": { "$ref": "common.schema.json#/$defs/criticality" },
+        "data_classification": { "$ref": "common.schema.json#/$defs/dataClassification" },
+        "governance_mode": { "$ref": "common.schema.json#/$defs/governanceMode" },
+        "lifecycle_state": { "$ref": "common.schema.json#/$defs/lifecycleState" },
+        "exact_previous_application_binding_or_null": { "type": "null" },
+        "exact_previous_application_binding": { "$ref": "#/$defs/exactApplicationBinding" }
+      },
+      "oneOf": [
+        { "required": ["exact_previous_application_binding_or_null"] },
+        { "required": ["exact_previous_application_binding"] }
+      ],
+      "allOf": [
+        {
+          "if": { "required": ["exact_previous_application_binding_or_null"] },
+          "then": {
+            "properties": {
+              "exact_previous_application_binding": false,
+              "lifecycle_state": { "const": "REGISTERED" }
+            }
+          }
+        },
+        {
+          "if": { "required": ["exact_previous_application_binding"] },
+          "then": {
+            "properties": {
+              "exact_previous_application_binding_or_null": false,
+              "lifecycle_state": { "enum": ["ACTIVE", "ARCHIVED"] }
+            }
+          }
+        }
+      ]
+    },
+    "environmentRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_envelope",
+        "environment_id",
+        "workspace_id",
+        "application_id",
+        "logical_name",
+        "risk_classification",
+        "lifecycle_state"
+      ],
+      "properties": {
+        "record_envelope": { "$ref": "common.schema.json#/$defs/recordEnvelope" },
+        "environment_id": { "$ref": "common.schema.json#/$defs/idEnvironmentId" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "application_id": { "$ref": "common.schema.json#/$defs/idApplicationId" },
+        "logical_name": { "$ref": "common.schema.json#/$defs/logicalName" },
+        "risk_classification": { "$ref": "common.schema.json#/$defs/riskClassification" },
+        "lifecycle_state": { "$ref": "common.schema.json#/$defs/environmentLifecycleState" }
+      }
+    },
+    "componentRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_envelope",
+        "component_id",
+        "workspace_id",
+        "application_id",
+        "component_kind",
+        "logical_name",
+        "owner_principal_ids",
+        "criticality",
+        "data_classification",
+        "permission_classification",
+        "effect_classification",
+        "dataset_role",
+        "lifecycle_state"
+      ],
+      "properties": {
+        "record_envelope": { "$ref": "common.schema.json#/$defs/recordEnvelope" },
+        "component_id": { "$ref": "common.schema.json#/$defs/idComponentId" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "application_id": { "$ref": "common.schema.json#/$defs/idApplicationId" },
+        "component_kind": { "$ref": "common.schema.json#/$defs/componentKind" },
+        "logical_name": { "$ref": "common.schema.json#/$defs/logicalName" },
+        "owner_principal_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/idPrincipalId" }
+        },
+        "criticality": { "$ref": "common.schema.json#/$defs/criticality" },
+        "data_classification": { "$ref": "common.schema.json#/$defs/dataClassification" },
+        "permission_classification": { "$ref": "common.schema.json#/$defs/permissionClassification" },
+        "effect_classification": { "$ref": "common.schema.json#/$defs/effectClassification" },
+        "dataset_role": { "anyOf": [{ "$ref": "common.schema.json#/$defs/datasetRole" }, { "type": "null" }] },
+        "lifecycle_state": { "$ref": "common.schema.json#/$defs/componentLifecycleState" },
+        "exact_previous_system_component_binding_or_null": { "type": "null" },
+        "exact_previous_system_component_binding": { "$ref": "#/$defs/exactSystemComponentBinding" }
+      },
+      "oneOf": [
+        { "required": ["exact_previous_system_component_binding_or_null"] },
+        { "required": ["exact_previous_system_component_binding"] }
+      ],
+      "allOf": [
+        {
+          "if": { "required": ["exact_previous_system_component_binding_or_null"] },
+          "then": {
+            "properties": {
+              "exact_previous_system_component_binding": false,
+              "lifecycle_state": { "const": "REGISTERED" }
+            }
+          }
+        },
+        {
+          "if": { "required": ["exact_previous_system_component_binding"] },
+          "then": {
+            "properties": {
+              "exact_previous_system_component_binding_or_null": false,
+              "lifecycle_state": { "enum": ["ACTIVE", "DEPRECATED", "RETIRED"] }
+            }
+          }
+        }
+      ]
+    },
+    "dependencyEdgeRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_envelope",
+        "edge_id",
+        "workspace_id",
+        "application_id",
+        "from_component_id",
+        "to_component_id",
+        "relation",
+        "required",
+        "edge_digest"
+      ],
+      "properties": {
+        "record_envelope": { "$ref": "common.schema.json#/$defs/recordEnvelope" },
+        "edge_id": { "$ref": "common.schema.json#/$defs/idEdgeId" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "application_id": { "$ref": "common.schema.json#/$defs/idApplicationId" },
+        "from_component_id": { "$ref": "common.schema.json#/$defs/idComponentId" },
+        "to_component_id": { "$ref": "common.schema.json#/$defs/idComponentId" },
+        "relation": { "$ref": "common.schema.json#/$defs/dependencyRelation" },
+        "required": { "type": "boolean" },
+        "edge_digest": { "$ref": "common.schema.json#/$defs/digest" }
+      }
+    },
+    "applicationListCursor": { "type": "string", "pattern": "^cur_[0-9A-Za-z_-]{8,512}$" },
+    "applicationListItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["application", "environments", "system_components", "dependency_edges"],
+      "properties": {
+        "application": { "$ref": "#/$defs/applicationRecord" },
+        "environments": { "type": "array", "items": { "$ref": "#/$defs/environmentRecord" } },
+        "system_components": { "type": "array", "items": { "$ref": "#/$defs/componentRecord" } },
+        "dependency_edges": { "type": "array", "items": { "$ref": "#/$defs/dependencyEdgeRecord" } }
+      }
+    }
+  }
+}

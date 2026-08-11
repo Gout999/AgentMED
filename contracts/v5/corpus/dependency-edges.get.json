@@ -1,0 +1,204 @@
+{
+  "cases": [
+    {
+      "direction": "response",
+      "expected": "valid",
+      "id": "dependency-edges.get/response/edge-record",
+      "instance": {
+        "audit_ref": "audit://aud_5a1b2c3d4e5f6a7b",
+        "edge": {
+          "application_id": "app_5f6e7d8c1a2b3c4d",
+          "edge_digest": "sha256:0f1213b5f0903ae8ee7c45c4958ed4f8aa1ff4c64c478af7a7f371d9377a1081",
+          "edge_id": "de_1a2b3c4d5e6f7a8b",
+          "from_component_id": "cmp_9a8b7c6d5e4f3a2b",
+          "record_envelope": {
+            "authority_receipt_id": "arec_4c8d2e6f1a3b5c7d",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:54ef99090ccaab04a30f2b8544734a1a7730e593f4fc5f0b32bede68bdfe8373",
+            "recorded_at": "2026-07-18T09:30:00+00:00",
+            "recorded_by_principal": "prn_7e9f1a2b3c4d5e6f",
+            "revision": 3,
+            "schema_version": "2.0",
+            "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+          },
+          "relation": "INVOKES",
+          "required": true,
+          "to_component_id": "cmp_2d3e4f5a6b7c8d9e",
+          "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+        },
+        "request_id": "req_9c7d4e2b5a1f3c8d",
+        "schema_version": "2.0",
+        "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+      }
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "dependency-edges.get/response/additional-field",
+      "instance": {
+        "audit_ref": "audit://aud_5a1b2c3d4e5f6a7b",
+        "edge": {
+          "application_id": "app_5f6e7d8c1a2b3c4d",
+          "edge_digest": "sha256:0f1213b5f0903ae8ee7c45c4958ed4f8aa1ff4c64c478af7a7f371d9377a1081",
+          "edge_id": "de_1a2b3c4d5e6f7a8b",
+          "from_component_id": "cmp_9a8b7c6d5e4f3a2b",
+          "record_envelope": {
+            "authority_receipt_id": "arec_4c8d2e6f1a3b5c7d",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:54ef99090ccaab04a30f2b8544734a1a7730e593f4fc5f0b32bede68bdfe8373",
+            "recorded_at": "2026-07-18T09:30:00+00:00",
+            "recorded_by_principal": "prn_7e9f1a2b3c4d5e6f",
+            "revision": 3,
+            "schema_version": "2.0",
+            "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+          },
+          "relation": "INVOKES",
+          "required": true,
+          "to_component_id": "cmp_2d3e4f5a6b7c8d9e",
+          "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+        },
+        "request_id": "req_9c7d4e2b5a1f3c8d",
+        "schema_version": "2.0",
+        "unexpected": "boom",
+        "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+      },
+      "reason": "top-level response carries undeclared field `unexpected`; generated schema (additionalProperties: false) and legacy WireModel (extra='forbid') both reject undeclared fields"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "dependency-edges.get/response/missing-required",
+      "instance": {
+        "edge": {
+          "application_id": "app_5f6e7d8c1a2b3c4d",
+          "edge_digest": "sha256:0f1213b5f0903ae8ee7c45c4958ed4f8aa1ff4c64c478af7a7f371d9377a1081",
+          "edge_id": "de_1a2b3c4d5e6f7a8b",
+          "from_component_id": "cmp_9a8b7c6d5e4f3a2b",
+          "record_envelope": {
+            "authority_receipt_id": "arec_4c8d2e6f1a3b5c7d",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:54ef99090ccaab04a30f2b8544734a1a7730e593f4fc5f0b32bede68bdfe8373",
+            "recorded_at": "2026-07-18T09:30:00+00:00",
+            "recorded_by_principal": "prn_7e9f1a2b3c4d5e6f",
+            "revision": 3,
+            "schema_version": "2.0",
+            "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+          },
+          "relation": "INVOKES",
+          "required": true,
+          "to_component_id": "cmp_2d3e4f5a6b7c8d9e",
+          "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+        },
+        "request_id": "req_9c7d4e2b5a1f3c8d",
+        "schema_version": "2.0",
+        "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+      },
+      "reason": "response omits required field `audit_ref`; both generated schema required list and legacy DependencyEdgeGetResponse field declaration require it"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "dependency-edges.get/response/type-mismatch",
+      "instance": {
+        "audit_ref": "audit://aud_5a1b2c3d4e5f6a7b",
+        "edge": {
+          "application_id": "app_5f6e7d8c1a2b3c4d",
+          "edge_digest": "sha256:0f1213b5f0903ae8ee7c45c4958ed4f8aa1ff4c64c478af7a7f371d9377a1081",
+          "edge_id": "de_1a2b3c4d5e6f7a8b",
+          "from_component_id": "cmp_9a8b7c6d5e4f3a2b",
+          "record_envelope": {
+            "authority_receipt_id": "arec_4c8d2e6f1a3b5c7d",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:54ef99090ccaab04a30f2b8544734a1a7730e593f4fc5f0b32bede68bdfe8373",
+            "recorded_at": "2026-07-18T09:30:00+00:00",
+            "recorded_by_principal": "prn_7e9f1a2b3c4d5e6f",
+            "revision": 3,
+            "schema_version": "2.0",
+            "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+          },
+          "relation": "INVOKES",
+          "required": 1,
+          "to_component_id": "cmp_2d3e4f5a6b7c8d9e",
+          "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+        },
+        "request_id": "req_9c7d4e2b5a1f3c8d",
+        "schema_version": "2.0",
+        "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+      },
+      "reason": "edge.required is integer 1 instead of boolean; generated schema declares type boolean and legacy model uses StrictBool"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "dependency-edges.get/response/bad-relation",
+      "instance": {
+        "audit_ref": "audit://aud_5a1b2c3d4e5f6a7b",
+        "edge": {
+          "application_id": "app_5f6e7d8c1a2b3c4d",
+          "edge_digest": "sha256:0f1213b5f0903ae8ee7c45c4958ed4f8aa1ff4c64c478af7a7f371d9377a1081",
+          "edge_id": "de_1a2b3c4d5e6f7a8b",
+          "from_component_id": "cmp_9a8b7c6d5e4f3a2b",
+          "record_envelope": {
+            "authority_receipt_id": "arec_4c8d2e6f1a3b5c7d",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:54ef99090ccaab04a30f2b8544734a1a7730e593f4fc5f0b32bede68bdfe8373",
+            "recorded_at": "2026-07-18T09:30:00+00:00",
+            "recorded_by_principal": "prn_7e9f1a2b3c4d5e6f",
+            "revision": 3,
+            "schema_version": "2.0",
+            "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+          },
+          "relation": "CALLS",
+          "required": true,
+          "to_component_id": "cmp_2d3e4f5a6b7c8d9e",
+          "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+        },
+        "request_id": "req_9c7d4e2b5a1f3c8d",
+        "schema_version": "2.0",
+        "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+      },
+      "reason": "edge.relation `CALLS` is not in dependencyRelation enum [DEPENDS_ON, INVOKES, DATA_FLOW, CONTAINS, REFERENCES]"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "dependency-edges.get/response/record-envelope-bad-digest",
+      "instance": {
+        "audit_ref": "audit://aud_5a1b2c3d4e5f6a7b",
+        "edge": {
+          "application_id": "app_5f6e7d8c1a2b3c4d",
+          "edge_digest": "sha256:0f1213b5f0903ae8ee7c45c4958ed4f8aa1ff4c64c478af7a7f371d9377a1081",
+          "edge_id": "de_1a2b3c4d5e6f7a8b",
+          "from_component_id": "cmp_9a8b7c6d5e4f3a2b",
+          "record_envelope": {
+            "authority_receipt_id": "arec_4c8d2e6f1a3b5c7d",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:notahexdigest",
+            "recorded_at": "2026-07-18T09:30:00+00:00",
+            "recorded_by_principal": "prn_7e9f1a2b3c4d5e6f",
+            "revision": 3,
+            "schema_version": "2.0",
+            "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+          },
+          "relation": "INVOKES",
+          "required": true,
+          "to_component_id": "cmp_2d3e4f5a6b7c8d9e",
+          "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+        },
+        "request_id": "req_9c7d4e2b5a1f3c8d",
+        "schema_version": "2.0",
+        "workspace_id": "ws_8f3k2a1x9c7d4e2b"
+      },
+      "reason": "record_envelope.record_digest does not match digest pattern ^sha256:[0-9a-f]{64}$"
+    }
+  ],
+  "description": "C1 shadow parity corpus for dependency-edges.get response: DependencyEdgeGetResponse envelope carrying a DependencyEdgeRecord (record_envelope + edge payload). Every valid case must be accepted by both the generated 2020-12 schema (contracts/v5/schemas/dependency-edges.get.schema.json#/$defs/response) and the legacy Pydantic model DependencyEdgeGetResponse; every invalid case must be rejected by both. No request cases: dependency-edges.get is a GET with no body.",
+  "intent": "dependency-edges.get",
+  "schema_version": "1.0"
+}

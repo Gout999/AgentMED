@@ -4,3 +4,5 @@ jsonschema==4.26.0
 PyYAML==6.0.3
 requests==2.34.2
 rfc8785==0.1.4
+# C1 wire schemas 需要真实 date-time format 校验（jsonschema 无它则静默跳过）
+rfc3339-validator==0.1.4

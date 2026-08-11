@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/schemas/v5/dependency-edges.record.schema.json",
+  "title": "dependency-edges.record",
+  "description": "R2 activated V5 dependency edge recording. Creates a revision-1 DependencyEdgeRecord in the authenticated workspace, with an idempotency delivery. Mirrors control-plane/app/public_api/v5_models.py DependencyEdgeRecordRequest/DependencyEdgeRecordResponse.",
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "application_id",
+        "from_component_id",
+        "to_component_id",
+        "relation",
+        "required"
+      ],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion2" },
+        "application_id": { "$ref": "common.schema.json#/$defs/idApplicationId" },
+        "from_component_id": { "$ref": "common.schema.json#/$defs/idComponentId" },
+        "to_component_id": { "$ref": "common.schema.json#/$defs/idComponentId" },
+        "relation": { "$ref": "common.schema.json#/$defs/dependencyRelation" },
+        "required": { "type": "boolean" }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "request_id",
+        "audit_ref",
+        "edge",
+        "idempotency"
+      ],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion2" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "request_id": { "$ref": "common.schema.json#/$defs/idRequestId" },
+        "audit_ref": { "$ref": "common.schema.json#/$defs/auditRef" },
+        "edge": { "$ref": "records.schema.json#/$defs/dependencyEdgeRecord" },
+        "idempotency": { "$ref": "common.schema.json#/$defs/idempotencyDelivery" }
+      }
+    },
+    "error": { "$ref": "common.schema.json#/$defs/errorEnvelope" }
+  }
+}

@@ -1,0 +1,403 @@
+{
+  "cases": [
+    {
+      "direction": "response",
+      "expected": "valid",
+      "id": "capabilities.get/response/valid",
+      "instance": {
+        "audit_ref": "audit://aud_7c2e9d4f8a1b3c5e",
+        "data": {
+          "api_major": 2,
+          "contract_version": "2.0",
+          "disabled_intents": [],
+          "enabled_intents": [
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": true,
+              "name": "capabilities.get",
+              "scope": "intent:capabilities.get"
+            },
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": true,
+              "name": "applications.list",
+              "scope": "intent:applications.list"
+            }
+          ],
+          "generated_at": "2026-08-11T08:00:00Z",
+          "principal": {
+            "credential_expires_at": "2026-09-10T00:00:00Z",
+            "principal_id": "prn_3e8f2a9c7d4b1e6a",
+            "principal_type": "human",
+            "scopes": [
+              "intent:capabilities.get",
+              "intent:applications.list"
+            ]
+          },
+          "server_version": "2.0.1"
+        },
+        "request_id": "req_4d8e2f1a9c3b7a5d",
+        "schema_version": "2.0",
+        "workspace_id": "ws_9f3c2e1a7b8d4f6e"
+      }
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "capabilities.get/response/additional-field",
+      "instance": {
+        "audit_ref": "audit://aud_7c2e9d4f8a1b3c5e",
+        "data": {
+          "api_major": 2,
+          "contract_version": "2.0",
+          "disabled_intents": [],
+          "enabled_intents": [
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": true,
+              "name": "capabilities.get",
+              "scope": "intent:capabilities.get"
+            },
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": true,
+              "name": "applications.list",
+              "scope": "intent:applications.list"
+            }
+          ],
+          "generated_at": "2026-08-11T08:00:00Z",
+          "principal": {
+            "credential_expires_at": "2026-09-10T00:00:00Z",
+            "principal_id": "prn_3e8f2a9c7d4b1e6a",
+            "principal_type": "human",
+            "scopes": [
+              "intent:capabilities.get",
+              "intent:applications.list"
+            ]
+          },
+          "server_version": "2.0.1"
+        },
+        "request_id": "req_4d8e2f1a9c3b7a5d",
+        "schema_version": "2.0",
+        "workspace_id": "ws_9f3c2e1a7b8d4f6e",
+        "x_extra_field": true
+      },
+      "reason": "undeclared top-level field x_extra_field is rejected: generated schema additionalProperties=false and legacy WireModel extra=forbid"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "capabilities.get/response/missing-required",
+      "instance": {
+        "audit_ref": "audit://aud_7c2e9d4f8a1b3c5e",
+        "data": {
+          "api_major": 2,
+          "contract_version": "2.0",
+          "disabled_intents": [],
+          "enabled_intents": [
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": true,
+              "name": "capabilities.get",
+              "scope": "intent:capabilities.get"
+            },
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": true,
+              "name": "applications.list",
+              "scope": "intent:applications.list"
+            }
+          ],
+          "principal": {
+            "credential_expires_at": "2026-09-10T00:00:00Z",
+            "principal_id": "prn_3e8f2a9c7d4b1e6a",
+            "principal_type": "human",
+            "scopes": [
+              "intent:capabilities.get",
+              "intent:applications.list"
+            ]
+          },
+          "server_version": "2.0.1"
+        },
+        "request_id": "req_4d8e2f1a9c3b7a5d",
+        "schema_version": "2.0",
+        "workspace_id": "ws_9f3c2e1a7b8d4f6e"
+      },
+      "reason": "data.generated_at is a required field of V5ServerCapabilitiesData / capabilitiesData; omitting it fails required in the generated schema and ValidationError in legacy"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "capabilities.get/response/type-mismatch",
+      "instance": {
+        "audit_ref": "audit://aud_7c2e9d4f8a1b3c5e",
+        "data": {
+          "api_major": "2",
+          "contract_version": "2.0",
+          "disabled_intents": [],
+          "enabled_intents": [
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": true,
+              "name": "capabilities.get",
+              "scope": "intent:capabilities.get"
+            },
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": true,
+              "name": "applications.list",
+              "scope": "intent:applications.list"
+            }
+          ],
+          "generated_at": "2026-08-11T08:00:00Z",
+          "principal": {
+            "credential_expires_at": "2026-09-10T00:00:00Z",
+            "principal_id": "prn_3e8f2a9c7d4b1e6a",
+            "principal_type": "human",
+            "scopes": [
+              "intent:capabilities.get",
+              "intent:applications.list"
+            ]
+          },
+          "server_version": "2.0.1"
+        },
+        "request_id": "req_4d8e2f1a9c3b7a5d",
+        "schema_version": "2.0",
+        "workspace_id": "ws_9f3c2e1a7b8d4f6e"
+      },
+      "reason": "api_major must be the integer 2: generated schema const 2 and legacy StrictInt + major_is_two reject the string \"2\""
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "capabilities.get/response/disabled-intents-nonempty",
+      "instance": {
+        "audit_ref": "audit://aud_7c2e9d4f8a1b3c5e",
+        "data": {
+          "api_major": 2,
+          "contract_version": "2.0",
+          "disabled_intents": [
+            "system-versions.record"
+          ],
+          "enabled_intents": [
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": true,
+              "name": "capabilities.get",
+              "scope": "intent:capabilities.get"
+            },
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": true,
+              "name": "applications.list",
+              "scope": "intent:applications.list"
+            }
+          ],
+          "generated_at": "2026-08-11T08:00:00Z",
+          "principal": {
+            "credential_expires_at": "2026-09-10T00:00:00Z",
+            "principal_id": "prn_3e8f2a9c7d4b1e6a",
+            "principal_type": "human",
+            "scopes": [
+              "intent:capabilities.get",
+              "intent:applications.list"
+            ]
+          },
+          "server_version": "2.0.1"
+        },
+        "request_id": "req_4d8e2f1a9c3b7a5d",
+        "schema_version": "2.0",
+        "workspace_id": "ws_9f3c2e1a7b8d4f6e"
+      },
+      "reason": "disabled_intents must stay empty: generated schema const [] and legacy skeletons_remain_undiscoverable reject any listed intent (here the skeleton system-versions.record)"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "capabilities.get/response/bad-principal-type",
+      "instance": {
+        "audit_ref": "audit://aud_7c2e9d4f8a1b3c5e",
+        "data": {
+          "api_major": 2,
+          "contract_version": "2.0",
+          "disabled_intents": [],
+          "enabled_intents": [
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": true,
+              "name": "capabilities.get",
+              "scope": "intent:capabilities.get"
+            },
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": true,
+              "name": "applications.list",
+              "scope": "intent:applications.list"
+            }
+          ],
+          "generated_at": "2026-08-11T08:00:00Z",
+          "principal": {
+            "credential_expires_at": "2026-09-10T00:00:00Z",
+            "principal_id": "prn_3e8f2a9c7d4b1e6a",
+            "principal_type": "robot",
+            "scopes": [
+              "intent:capabilities.get",
+              "intent:applications.list"
+            ]
+          },
+          "server_version": "2.0.1"
+        },
+        "request_id": "req_4d8e2f1a9c3b7a5d",
+        "schema_version": "2.0",
+        "workspace_id": "ws_9f3c2e1a7b8d4f6e"
+      },
+      "reason": "principal_type must be one of human/external_agent/service/connector; \"robot\" fails the generated enum and the legacy Literal"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "capabilities.get/response/http-false",
+      "instance": {
+        "audit_ref": "audit://aud_7c2e9d4f8a1b3c5e",
+        "data": {
+          "api_major": 2,
+          "contract_version": "2.0",
+          "disabled_intents": [],
+          "enabled_intents": [
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": false,
+              "name": "capabilities.get",
+              "scope": "intent:capabilities.get"
+            },
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": true,
+              "name": "applications.list",
+              "scope": "intent:applications.list"
+            }
+          ],
+          "generated_at": "2026-08-11T08:00:00Z",
+          "principal": {
+            "credential_expires_at": "2026-09-10T00:00:00Z",
+            "principal_id": "prn_3e8f2a9c7d4b1e6a",
+            "principal_type": "human",
+            "scopes": [
+              "intent:capabilities.get",
+              "intent:applications.list"
+            ]
+          },
+          "server_version": "2.0.1"
+        },
+        "request_id": "req_4d8e2f1a9c3b7a5d",
+        "schema_version": "2.0",
+        "workspace_id": "ws_9f3c2e1a7b8d4f6e"
+      },
+      "reason": "advertised enabled intents require http=true: generated const true and legacy transports_are_real reject http=false on capabilities.get"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "capabilities.get/response/duplicate-intent-names",
+      "instance": {
+        "audit_ref": "audit://aud_7c2e9d4f8a1b3c5e",
+        "data": {
+          "api_major": 2,
+          "contract_version": "2.0",
+          "disabled_intents": [],
+          "enabled_intents": [
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": true,
+              "name": "capabilities.get",
+              "scope": "intent:capabilities.get"
+            },
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": true,
+              "name": "capabilities.get",
+              "scope": "intent:capabilities.get"
+            }
+          ],
+          "generated_at": "2026-08-11T08:00:00Z",
+          "principal": {
+            "credential_expires_at": "2026-09-10T00:00:00Z",
+            "principal_id": "prn_3e8f2a9c7d4b1e6a",
+            "principal_type": "human",
+            "scopes": [
+              "intent:capabilities.get",
+              "intent:applications.list"
+            ]
+          },
+          "server_version": "2.0.1"
+        },
+        "request_id": "req_4d8e2f1a9c3b7a5d",
+        "schema_version": "2.0",
+        "workspace_id": "ws_9f3c2e1a7b8d4f6e"
+      },
+      "reason": "enabled_intents entries must be unique: two identical capabilities.get items fail generated uniqueItems and legacy enabled_intents_are_unique"
+    },
+    {
+      "direction": "response",
+      "expected": "valid",
+      "id": "capabilities.get/response/scopes-empty-valid",
+      "instance": {
+        "audit_ref": "audit://aud_7c2e9d4f8a1b3c5e",
+        "data": {
+          "api_major": 2,
+          "contract_version": "2.0",
+          "disabled_intents": [],
+          "enabled_intents": [
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": true,
+              "name": "capabilities.get",
+              "scope": "intent:capabilities.get"
+            },
+            {
+              "cli": true,
+              "execution_mode": "synchronous",
+              "http": true,
+              "name": "applications.list",
+              "scope": "intent:applications.list"
+            }
+          ],
+          "generated_at": "2026-08-11T08:00:00Z",
+          "principal": {
+            "credential_expires_at": "2026-09-10T00:00:00Z",
+            "principal_id": "prn_3e8f2a9c7d4b1e6a",
+            "principal_type": "human",
+            "scopes": [
+              "intent:capabilities.get",
+              "intent:applications.list"
+            ]
+          },
+          "server_version": "2.0.1"
+        },
+        "request_id": "req_4d8e2f1a9c3b7a5d",
+        "schema_version": "2.0",
+        "workspace_id": "ws_9f3c2e1a7b8d4f6e"
+      }
+    }
+  ],
+  "description": "Shadow-parity corpus for the capabilities.get success response (direction=response only; GET has no request body or query params). Instances validate against contracts/v5/schemas/capabilities.get.schema.json #/$defs/response (generated 2020-12 side) and app.public_api.v5_capability_models.V5ServerCapabilitiesResponse (legacy side). Two case classes were deliberately excluded as C1 adjudication inputs because the two validators cannot agree on them: (1) execution_mode vs name cross-field constraint (schema lacks the legacy system-manifests.import => synchronous_local_transaction rule, so schema accepts while legacy rejects); (2) non-date-time generated_at (schema declares format date-time but the system jsonschema install has no date-time format checker, so schema accepts while legacy rejects).",
+  "intent": "capabilities.get",
+  "schema_version": "1.0"
+}

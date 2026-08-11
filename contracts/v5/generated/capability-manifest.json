@@ -1,0 +1,88 @@
+{
+  "disabled_intents": [],
+  "enabled_intent_count": 11,
+  "enabled_intents": [
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "capabilities.get",
+      "scope": "capabilities:read"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "applications.register",
+      "scope": "applications:manage"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "applications.get",
+      "scope": "applications:read"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "applications.list",
+      "scope": "applications:read"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "environments.register",
+      "scope": "applications:manage"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "environments.get",
+      "scope": "applications:read"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "system-components.register",
+      "scope": "applications:manage"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "system-components.get",
+      "scope": "applications:read"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "dependency-edges.record",
+      "scope": "applications:manage"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "dependency-edges.get",
+      "scope": "applications:read"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous_local_transaction",
+      "http": true,
+      "name": "system-manifests.import",
+      "scope": "system_manifests:import"
+    }
+  ],
+  "generated_by": "caseloop-v5-compiler",
+  "schema_version": "1.0",
+  "source": {
+    "operation_manifest": "contracts/v5/generated/operation-manifest.json"
+  }
+}

@@ -1,0 +1,201 @@
+{
+  "cases": [
+    {
+      "direction": "error",
+      "expected": "valid",
+      "id": "error-envelope/error/valid",
+      "instance": {
+        "error": {
+          "audit_ref": null,
+          "audit_status": "NOT_APPLICABLE",
+          "code": "RESOURCE_NOT_FOUND",
+          "details": {},
+          "help_url": "https://docs.caseloop.dev/errors/RESOURCE_NOT_FOUND",
+          "message": "The requested resource was not found.",
+          "operation_id": null,
+          "request_id": "req_8f3b2a1c9d4e5f60718293a4",
+          "retry_after_ms": null,
+          "retryable": false
+        },
+        "schema_version": "1.0",
+        "workspace_id": null,
+        "workspace_resolved": false
+      }
+    },
+    {
+      "direction": "error",
+      "expected": "valid",
+      "id": "error-envelope/error/valid-with-workspace",
+      "instance": {
+        "error": {
+          "audit_ref": "audit://aud_3b8d1f6a9c2e5b7d4f0a8c1e",
+          "audit_status": "RECORDED",
+          "code": "WORKSPACE_ACCESS_DENIED",
+          "details": {},
+          "help_url": "https://docs.caseloop.dev/errors/WORKSPACE_ACCESS_DENIED",
+          "message": "The accepted principal cannot access this workspace.",
+          "operation_id": "op_9f2e1d4c7a8b5c3d6e0f1a2b",
+          "request_id": "req_4a9e2c8b7f6d1a3b5c0e9f8a",
+          "retry_after_ms": null,
+          "retryable": false
+        },
+        "schema_version": "1.0",
+        "workspace_id": "ws_7c1d4f0a2b9e3c5d8a6f0e1b",
+        "workspace_resolved": true
+      }
+    },
+    {
+      "direction": "error",
+      "expected": "invalid",
+      "id": "error-envelope/error/recorded-requires-audit-ref",
+      "instance": {
+        "error": {
+          "audit_ref": null,
+          "audit_status": "RECORDED",
+          "code": "WORKSPACE_ACCESS_DENIED",
+          "details": {},
+          "help_url": "https://docs.caseloop.dev/errors/WORKSPACE_ACCESS_DENIED",
+          "message": "The accepted principal cannot access this workspace.",
+          "operation_id": "op_9f2e1d4c7a8b5c3d6e0f1a2b",
+          "request_id": "req_4a9e2c8b7f6d1a3b5c0e9f8a",
+          "retry_after_ms": null,
+          "retryable": false
+        },
+        "schema_version": "1.0",
+        "workspace_id": "ws_7c1d4f0a2b9e3c5d8a6f0e1b",
+        "workspace_resolved": true
+      },
+      "reason": "audit_status RECORDED requires a non-null audit_ref (schema allOf then-branch; legacy PublicErrorDetail validator)"
+    },
+    {
+      "direction": "error",
+      "expected": "invalid",
+      "id": "error-envelope/error/workspace-mismatch",
+      "instance": {
+        "error": {
+          "audit_ref": null,
+          "audit_status": "NOT_APPLICABLE",
+          "code": "RESOURCE_NOT_FOUND",
+          "details": {},
+          "help_url": "https://docs.caseloop.dev/errors/RESOURCE_NOT_FOUND",
+          "message": "The requested resource was not found.",
+          "operation_id": null,
+          "request_id": "req_8f3b2a1c9d4e5f60718293a4",
+          "retry_after_ms": null,
+          "retryable": false
+        },
+        "schema_version": "1.0",
+        "workspace_id": null,
+        "workspace_resolved": true
+      },
+      "reason": "workspace_resolved true contradicts null workspace_id (schema allOf workspace_id:null then-branch; legacy workspace_state_is_truthful validator)"
+    },
+    {
+      "direction": "error",
+      "expected": "invalid",
+      "id": "error-envelope/error/workspace-mismatch-2",
+      "instance": {
+        "error": {
+          "audit_ref": "audit://aud_3b8d1f6a9c2e5b7d4f0a8c1e",
+          "audit_status": "RECORDED",
+          "code": "WORKSPACE_ACCESS_DENIED",
+          "details": {},
+          "help_url": "https://docs.caseloop.dev/errors/WORKSPACE_ACCESS_DENIED",
+          "message": "The accepted principal cannot access this workspace.",
+          "operation_id": "op_9f2e1d4c7a8b5c3d6e0f1a2b",
+          "request_id": "req_4a9e2c8b7f6d1a3b5c0e9f8a",
+          "retry_after_ms": null,
+          "retryable": false
+        },
+        "schema_version": "1.0",
+        "workspace_id": "ws_7c1d4f0a2b9e3c5d8a6f0e1b",
+        "workspace_resolved": false
+      },
+      "reason": "workspace_id present but workspace_resolved false (schema allOf workspace_id:string then-branch; legacy workspace_state_is_truthful validator)"
+    },
+    {
+      "direction": "error",
+      "expected": "invalid",
+      "id": "error-envelope/error/additional-field",
+      "instance": {
+        "error": {
+          "audit_ref": null,
+          "audit_status": "NOT_APPLICABLE",
+          "code": "RESOURCE_NOT_FOUND",
+          "details": {},
+          "help_url": "https://docs.caseloop.dev/errors/RESOURCE_NOT_FOUND",
+          "message": "The requested resource was not found.",
+          "operation_id": null,
+          "request_id": "req_8f3b2a1c9d4e5f60718293a4",
+          "retry_after_ms": null,
+          "retryable": false
+        },
+        "schema_version": "1.0",
+        "trace_id": "trc_a1b2c3d4e5f6a7b8c9d0e1f2",
+        "workspace_id": null,
+        "workspace_resolved": false
+      },
+      "reason": "envelope carries undeclared field trace_id (schema additionalProperties:false; legacy WireModel extra=forbid)"
+    },
+    {
+      "direction": "error",
+      "expected": "invalid",
+      "id": "error-envelope/error/bad-code-pattern",
+      "instance": {
+        "error": {
+          "audit_ref": null,
+          "audit_status": "NOT_APPLICABLE",
+          "code": "resource_not_found",
+          "details": {},
+          "help_url": "https://docs.caseloop.dev/errors/RESOURCE_NOT_FOUND",
+          "message": "The requested resource was not found.",
+          "operation_id": null,
+          "request_id": "req_8f3b2a1c9d4e5f60718293a4",
+          "retry_after_ms": null,
+          "retryable": false
+        },
+        "schema_version": "1.0",
+        "workspace_id": null,
+        "workspace_resolved": false
+      },
+      "reason": "code must match ^[A-Z][A-Z0-9_]{2,63}$ (lowercase rejected by schema pattern and legacy Field pattern)"
+    },
+    {
+      "direction": "error",
+      "expected": "invalid",
+      "id": "error-envelope/error/missing-required",
+      "instance": {
+        "schema_version": "1.0",
+        "workspace_id": null,
+        "workspace_resolved": false
+      },
+      "reason": "error object omitted (required by schema errorDetail; legacy PublicErrorEnvelope requires error)"
+    },
+    {
+      "direction": "error",
+      "expected": "invalid",
+      "id": "error-envelope/error/bad-status",
+      "instance": {
+        "error": {
+          "audit_ref": null,
+          "audit_status": "PENDING",
+          "code": "RESOURCE_NOT_FOUND",
+          "details": {},
+          "help_url": "https://docs.caseloop.dev/errors/RESOURCE_NOT_FOUND",
+          "message": "The requested resource was not found.",
+          "operation_id": null,
+          "request_id": "req_8f3b2a1c9d4e5f60718293a4",
+          "retry_after_ms": null,
+          "retryable": false
+        },
+        "schema_version": "1.0",
+        "workspace_id": null,
+        "workspace_resolved": false
+      },
+      "reason": "audit_status PENDING outside enum [RECORDED, UNAVAILABLE, NOT_APPLICABLE] (schema enum; legacy Literal)"
+    }
+  ],
+  "description": "Shared error-envelope corpus for the C1 shadow dual-validation baseline. Every instance is validated against both the generated JSON Schema 2020-12 errorEnvelope $def (common.schema.json#/$defs/errorEnvelope, the error $def every activated intent schema references) and the legacy pydantic PublicErrorEnvelope (control-plane/app/public_api/errors.py); expected verdicts encode generic envelope invariants only (workspace truthfulness, audit truthfulness, code shape, structural completeness) and intentionally avoid code-specific constraints such as AUDIT_UNAVAILABLE.",
+  "intent": "error-envelope",
+  "schema_version": "1.0"
+}

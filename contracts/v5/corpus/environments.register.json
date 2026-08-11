@@ -1,0 +1,334 @@
+{
+  "cases": [
+    {
+      "direction": "request",
+      "expected": "valid",
+      "id": "environments.register/request/valid",
+      "instance": {
+        "application_id": "app_9f2kL3mN8qR7sT1uV4wX",
+        "logical_name": "production",
+        "risk_classification": "HIGH",
+        "schema_version": "2.0"
+      }
+    },
+    {
+      "direction": "request",
+      "expected": "invalid",
+      "id": "environments.register/request/additional-field",
+      "instance": {
+        "application_id": "app_9f2kL3mN8qR7sT1uV4wX",
+        "display_name": "Production catalog environment",
+        "logical_name": "production",
+        "risk_classification": "HIGH",
+        "schema_version": "2.0"
+      },
+      "reason": "undeclared field display_name is not part of EnvironmentRegisterRequest (extra=forbid / additionalProperties=false)"
+    },
+    {
+      "direction": "request",
+      "expected": "invalid",
+      "id": "environments.register/request/type-mismatch",
+      "instance": {
+        "application_id": "app_9f2kL3mN8qR7sT1uV4wX",
+        "logical_name": "production",
+        "risk_classification": "EXTREME",
+        "schema_version": "2.0"
+      },
+      "reason": "risk_classification EXTREME is not in the allowed enumeration LOW/MEDIUM/HIGH/CRITICAL"
+    },
+    {
+      "direction": "response",
+      "expected": "valid",
+      "id": "environments.register/response/valid",
+      "instance": {
+        "audit_ref": "audit://aud_A1b2C3d4E5f6G7h8I9j",
+        "environment": {
+          "application_id": "app_9f2kL3mN8qR7sT1uV4wX",
+          "environment_id": "env_e7dG4hJ9kL2mN5pQ8rS1",
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "production",
+          "record_envelope": {
+            "authority_receipt_id": "arec_a1B2c3D4e5F6g7H8i9J",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:1ec51e55692beae98666fbe1a77da2784f03cf557bc8c57ed0482579a16774e4",
+            "recorded_at": "2026-08-11T16:30:00.000Z",
+            "recorded_by_principal": "prn_7h3b1g0d3rX9y4zW2vC",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_c0ntr01planeA1phaB2k"
+          },
+          "risk_classification": "HIGH",
+          "workspace_id": "ws_c0ntr01planeA1phaB2k"
+        },
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_A1b2C3d4E5f6G7h8I9j",
+            "created_at": "2026-08-11T16:30:00.000Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "register-prod-20260811-a1b2c3d4",
+            "idempotency_receipt_id": "idemr_x7Y8z9A0b1C2d3E4f5G",
+            "immutable": true,
+            "intent": "environments.register",
+            "operation_id": null,
+            "principal_id": "prn_7h3b1g0d3rX9y4zW2vC",
+            "receipt_digest": "sha256:f0036177117f9862f67923171dbdb4e5ca3bfc701bdfb03dd9c65fc375e4d812",
+            "request_fingerprint": "sha256:fa3dced1317d378a9c20a99fa85348d17db759bdd76624b45f10151459309a19",
+            "request_id": "req_8f2kL3mN9qR7sT1uV4wZ",
+            "resource": {
+              "id": "env_e7dG4hJ9kL2mN5pQ8rS1",
+              "kind": "environment"
+            },
+            "response_digest": "sha256:e9002cc7a846de59dea82c39209e9f4241a5c3bd76476d5b3a1687346966de78",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_c0ntr01planeA1phaB2k"
+          },
+          "replayed": false
+        },
+        "request_id": "req_8f2kL3mN9qR7sT1uV4wZ",
+        "schema_version": "2.0",
+        "workspace_id": "ws_c0ntr01planeA1phaB2k"
+      }
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "environments.register/response/additional-field",
+      "instance": {
+        "audit_ref": "audit://aud_A1b2C3d4E5f6G7h8I9j",
+        "environment": {
+          "application_id": "app_9f2kL3mN8qR7sT1uV4wX",
+          "environment_id": "env_e7dG4hJ9kL2mN5pQ8rS1",
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "production",
+          "record_envelope": {
+            "authority_receipt_id": "arec_a1B2c3D4e5F6g7H8i9J",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:1ec51e55692beae98666fbe1a77da2784f03cf557bc8c57ed0482579a16774e4",
+            "recorded_at": "2026-08-11T16:30:00.000Z",
+            "recorded_by_principal": "prn_7h3b1g0d3rX9y4zW2vC",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_c0ntr01planeA1phaB2k"
+          },
+          "risk_classification": "HIGH",
+          "workspace_id": "ws_c0ntr01planeA1phaB2k"
+        },
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_A1b2C3d4E5f6G7h8I9j",
+            "created_at": "2026-08-11T16:30:00.000Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "register-prod-20260811-a1b2c3d4",
+            "idempotency_receipt_id": "idemr_x7Y8z9A0b1C2d3E4f5G",
+            "immutable": true,
+            "intent": "environments.register",
+            "operation_id": null,
+            "principal_id": "prn_7h3b1g0d3rX9y4zW2vC",
+            "receipt_digest": "sha256:f0036177117f9862f67923171dbdb4e5ca3bfc701bdfb03dd9c65fc375e4d812",
+            "request_fingerprint": "sha256:fa3dced1317d378a9c20a99fa85348d17db759bdd76624b45f10151459309a19",
+            "request_id": "req_8f2kL3mN9qR7sT1uV4wZ",
+            "resource": {
+              "id": "env_e7dG4hJ9kL2mN5pQ8rS1",
+              "kind": "environment"
+            },
+            "response_digest": "sha256:e9002cc7a846de59dea82c39209e9f4241a5c3bd76476d5b3a1687346966de78",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_c0ntr01planeA1phaB2k"
+          },
+          "replayed": false
+        },
+        "request_id": "req_8f2kL3mN9qR7sT1uV4wZ",
+        "schema_version": "2.0",
+        "trace_id": "trace-abc123",
+        "workspace_id": "ws_c0ntr01planeA1phaB2k"
+      },
+      "reason": "undeclared field trace_id is not part of EnvironmentRegisterResponse (extra=forbid / additionalProperties=false)"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "environments.register/response/missing-required",
+      "instance": {
+        "audit_ref": "audit://aud_A1b2C3d4E5f6G7h8I9j",
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_A1b2C3d4E5f6G7h8I9j",
+            "created_at": "2026-08-11T16:30:00.000Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "register-prod-20260811-a1b2c3d4",
+            "idempotency_receipt_id": "idemr_x7Y8z9A0b1C2d3E4f5G",
+            "immutable": true,
+            "intent": "environments.register",
+            "operation_id": null,
+            "principal_id": "prn_7h3b1g0d3rX9y4zW2vC",
+            "receipt_digest": "sha256:f0036177117f9862f67923171dbdb4e5ca3bfc701bdfb03dd9c65fc375e4d812",
+            "request_fingerprint": "sha256:fa3dced1317d378a9c20a99fa85348d17db759bdd76624b45f10151459309a19",
+            "request_id": "req_8f2kL3mN9qR7sT1uV4wZ",
+            "resource": {
+              "id": "env_e7dG4hJ9kL2mN5pQ8rS1",
+              "kind": "environment"
+            },
+            "response_digest": "sha256:e9002cc7a846de59dea82c39209e9f4241a5c3bd76476d5b3a1687346966de78",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_c0ntr01planeA1phaB2k"
+          },
+          "replayed": false
+        },
+        "request_id": "req_8f2kL3mN9qR7sT1uV4wZ",
+        "schema_version": "2.0",
+        "workspace_id": "ws_c0ntr01planeA1phaB2k"
+      },
+      "reason": "required field environment is absent"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "environments.register/response/type-mismatch",
+      "instance": {
+        "audit_ref": "audit://aud_A1b2C3d4E5f6G7h8I9j",
+        "environment": {
+          "application_id": "app_9f2kL3mN8qR7sT1uV4wX",
+          "environment_id": "env_e7dG4hJ9kL2mN5pQ8rS1",
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "staging env",
+          "record_envelope": {
+            "authority_receipt_id": "arec_a1B2c3D4e5F6g7H8i9J",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:1ec51e55692beae98666fbe1a77da2784f03cf557bc8c57ed0482579a16774e4",
+            "recorded_at": "2026-08-11T16:30:00.000Z",
+            "recorded_by_principal": "prn_7h3b1g0d3rX9y4zW2vC",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_c0ntr01planeA1phaB2k"
+          },
+          "risk_classification": "HIGH",
+          "workspace_id": "ws_c0ntr01planeA1phaB2k"
+        },
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_A1b2C3d4E5f6G7h8I9j",
+            "created_at": "2026-08-11T16:30:00.000Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "register-prod-20260811-a1b2c3d4",
+            "idempotency_receipt_id": "idemr_x7Y8z9A0b1C2d3E4f5G",
+            "immutable": true,
+            "intent": "environments.register",
+            "operation_id": null,
+            "principal_id": "prn_7h3b1g0d3rX9y4zW2vC",
+            "receipt_digest": "sha256:f0036177117f9862f67923171dbdb4e5ca3bfc701bdfb03dd9c65fc375e4d812",
+            "request_fingerprint": "sha256:fa3dced1317d378a9c20a99fa85348d17db759bdd76624b45f10151459309a19",
+            "request_id": "req_8f2kL3mN9qR7sT1uV4wZ",
+            "resource": {
+              "id": "env_e7dG4hJ9kL2mN5pQ8rS1",
+              "kind": "environment"
+            },
+            "response_digest": "sha256:e9002cc7a846de59dea82c39209e9f4241a5c3bd76476d5b3a1687346966de78",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_c0ntr01planeA1phaB2k"
+          },
+          "replayed": false
+        },
+        "request_id": "req_8f2kL3mN9qR7sT1uV4wZ",
+        "schema_version": "2.0",
+        "workspace_id": "ws_c0ntr01planeA1phaB2k"
+      },
+      "reason": "environment.logical_name 'staging env' contains a space and violates the ^[a-z0-9](?:[a-z0-9_-]{0,127})$ pattern"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "environments.register/response/missing-idempotency",
+      "instance": {
+        "audit_ref": "audit://aud_A1b2C3d4E5f6G7h8I9j",
+        "environment": {
+          "application_id": "app_9f2kL3mN8qR7sT1uV4wX",
+          "environment_id": "env_e7dG4hJ9kL2mN5pQ8rS1",
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "production",
+          "record_envelope": {
+            "authority_receipt_id": "arec_a1B2c3D4e5F6g7H8i9J",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:1ec51e55692beae98666fbe1a77da2784f03cf557bc8c57ed0482579a16774e4",
+            "recorded_at": "2026-08-11T16:30:00.000Z",
+            "recorded_by_principal": "prn_7h3b1g0d3rX9y4zW2vC",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_c0ntr01planeA1phaB2k"
+          },
+          "risk_classification": "HIGH",
+          "workspace_id": "ws_c0ntr01planeA1phaB2k"
+        },
+        "request_id": "req_8f2kL3mN9qR7sT1uV4wZ",
+        "schema_version": "2.0",
+        "workspace_id": "ws_c0ntr01planeA1phaB2k"
+      },
+      "reason": "required field idempotency is absent"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "environments.register/response/bad-idempotency-receipt",
+      "instance": {
+        "audit_ref": "audit://aud_A1b2C3d4E5f6G7h8I9j",
+        "environment": {
+          "application_id": "app_9f2kL3mN8qR7sT1uV4wX",
+          "environment_id": "env_e7dG4hJ9kL2mN5pQ8rS1",
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "production",
+          "record_envelope": {
+            "authority_receipt_id": "arec_a1B2c3D4e5F6g7H8i9J",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:1ec51e55692beae98666fbe1a77da2784f03cf557bc8c57ed0482579a16774e4",
+            "recorded_at": "2026-08-11T16:30:00.000Z",
+            "recorded_by_principal": "prn_7h3b1g0d3rX9y4zW2vC",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_c0ntr01planeA1phaB2k"
+          },
+          "risk_classification": "HIGH",
+          "workspace_id": "ws_c0ntr01planeA1phaB2k"
+        },
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_A1b2C3d4E5f6G7h8I9j",
+            "created_at": "2026-08-11T16:30:00.000Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "register-prod-20260811-a1b2c3d4",
+            "idempotency_receipt_id": "idemr_x7Y8z9A0b1C2d3E4f5G",
+            "immutable": true,
+            "intent": "environments.register",
+            "operation_id": null,
+            "principal_id": "prn_7h3b1g0d3rX9y4zW2vC",
+            "request_fingerprint": "sha256:fa3dced1317d378a9c20a99fa85348d17db759bdd76624b45f10151459309a19",
+            "request_id": "req_8f2kL3mN9qR7sT1uV4wZ",
+            "resource": {
+              "id": "env_e7dG4hJ9kL2mN5pQ8rS1",
+              "kind": "environment"
+            },
+            "response_digest": "sha256:e9002cc7a846de59dea82c39209e9f4241a5c3bd76476d5b3a1687346966de78",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_c0ntr01planeA1phaB2k"
+          },
+          "replayed": false
+        },
+        "request_id": "req_8f2kL3mN9qR7sT1uV4wZ",
+        "schema_version": "2.0",
+        "workspace_id": "ws_c0ntr01planeA1phaB2k"
+      },
+      "reason": "idempotency.receipt is missing the required field receipt_digest"
+    }
+  ],
+  "description": "Shared C1 shadow-parity corpus for environments.register: every case is adjudicated identically by the generated JSON Schema 2020-12 validator (contracts/v5/schemas/environments.register.schema.json $defs request/response) and the legacy Pydantic models (control-plane/app/public_api/v5_models.py EnvironmentRegisterRequest/EnvironmentRegisterResponse). Valid instances carry complete realistic payloads; each invalid instance isolates a single defect (undeclared field, enum/pattern violation, missing required field).",
+  "intent": "environments.register",
+  "schema_version": "1.0"
+}

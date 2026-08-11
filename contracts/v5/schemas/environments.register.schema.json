@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/schemas/v5/environments.register.schema.json",
+  "title": "environments.register",
+  "description": "R2 activated V5 environment registration. Creates a revision-1 EnvironmentRecord bound to an existing application in the authenticated workspace, with an idempotency delivery. Mirrors control-plane/app/public_api/v5_models.py EnvironmentRegisterRequest/EnvironmentRegisterResponse.",
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "application_id", "logical_name", "risk_classification"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion2" },
+        "application_id": { "$ref": "common.schema.json#/$defs/idApplicationId" },
+        "logical_name": { "$ref": "common.schema.json#/$defs/logicalName" },
+        "risk_classification": { "$ref": "common.schema.json#/$defs/riskClassification" }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "workspace_id", "request_id", "audit_ref", "environment", "idempotency"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion2" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "request_id": { "$ref": "common.schema.json#/$defs/idRequestId" },
+        "audit_ref": { "$ref": "common.schema.json#/$defs/auditRef" },
+        "environment": { "$ref": "records.schema.json#/$defs/environmentRecord" },
+        "idempotency": { "$ref": "common.schema.json#/$defs/idempotencyDelivery" }
+      }
+    },
+    "error": { "$ref": "common.schema.json#/$defs/errorEnvelope" }
+  }
+}

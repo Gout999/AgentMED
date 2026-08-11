@@ -1,0 +1,257 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/schemas/v5/common.schema.json",
+  "title": "V5 common wire definitions (schema-major 2)",
+  "description": "Shared id formats, enums, record envelope, idempotency and error shapes for the activated V5 public wire. Derived from control-plane/app/public_api/{models,v5_models,errors}.py; byte-for-byte parity with the legacy Pydantic models is enforced by the C1 shadow conformance harness.",
+  "$defs": {
+    "schemaVersion2": { "const": "2.0" },
+    "v5PublicIntentName": {
+      "enum": [
+        "capabilities.get",
+        "applications.register",
+        "applications.get",
+        "applications.list",
+        "environments.register",
+        "environments.get",
+        "system-components.register",
+        "system-components.get",
+        "dependency-edges.record",
+        "dependency-edges.get",
+        "system-manifests.import"
+      ]
+    },
+    "idWorkspaceId": { "type": "string", "pattern": "^ws_[0-9A-Za-z]{8,64}$" },
+    "idProjectId": { "type": "string", "pattern": "^proj_[0-9A-Za-z]{8,64}$" },
+    "idPrincipalId": { "type": "string", "pattern": "^prn_[0-9A-Za-z]{8,64}$" },
+    "idRequestId": { "type": "string", "pattern": "^req_[0-9A-Za-z]{8,64}$" },
+    "idOperationId": { "type": "string", "pattern": "^op_[0-9A-Za-z]{8,64}$" },
+    "idIdempotencyReceiptId": { "type": "string", "pattern": "^idemr_[0-9A-Za-z]{8,64}$" },
+    "idAuthorityReceiptId": { "type": "string", "pattern": "^arec_[0-9A-Za-z]{8,64}$" },
+    "idApplicationId": { "type": "string", "pattern": "^app_[0-9A-Za-z]{8,64}$" },
+    "idEnvironmentId": { "type": "string", "pattern": "^env_[0-9A-Za-z]{8,64}$" },
+    "idComponentId": { "type": "string", "pattern": "^cmp_[0-9A-Za-z]{8,64}$" },
+    "idEdgeId": { "type": "string", "pattern": "^de_[0-9A-Za-z]{8,64}$" },
+    "idComponentRevisionId": { "type": "string", "pattern": "^crv_[0-9A-Za-z]{8,64}$" },
+    "idTopologyRevisionId": { "type": "string", "pattern": "^tpr_[0-9A-Za-z]{8,64}$" },
+    "idSystemVersionSetId": { "type": "string", "pattern": "^vset_[0-9A-Za-z]{8,64}$" },
+    "idSystemManifestId": { "type": "string", "pattern": "^smf_[0-9A-Za-z]{8,64}$" },
+    "idBootstrapAttestationId": { "type": "string", "pattern": "^batt_[0-9A-Za-z]{8,64}$" },
+    "idAssignmentId": { "type": "string", "pattern": "^asg_[0-9A-Za-z]{8,64}$" },
+    "idExactEvidenceId": { "type": "string", "pattern": "^[a-z][a-z0-9]*_[0-9A-Za-z]{8,64}$" },
+    "idempotencyResourceId": { "type": "string", "pattern": "^[a-z][a-z0-9]*_[0-9A-Za-z]{8,64}$" },
+    "digest": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+    "auditRef": { "type": "string", "pattern": "^audit://aud_[0-9A-Za-z]{8,64}$" },
+    "slug": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64,
+      "pattern": "^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$"
+    },
+    "logicalName": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 128,
+      "pattern": "^[a-z0-9](?:[a-z0-9_-]{0,127})$"
+    },
+    "lifecycleState": { "enum": ["REGISTERED", "ACTIVE", "ARCHIVED"] },
+    "environmentLifecycleState": { "enum": ["ACTIVE", "RETIRED"] },
+    "componentLifecycleState": { "enum": ["REGISTERED", "ACTIVE", "DEPRECATED", "RETIRED"] },
+    "criticality": { "enum": ["P0", "P1", "P2", "P3"] },
+    "dataClassification": { "enum": ["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"] },
+    "governanceMode": { "enum": ["MANAGED", "OBSERVED"] },
+    "riskClassification": { "enum": ["LOW", "MEDIUM", "HIGH", "CRITICAL"] },
+    "permissionClassification": { "enum": ["READ_ONLY", "READ_WRITE", "ELEVATED"] },
+    "effectClassification": { "enum": ["NONE", "LOCAL", "EXTERNAL"] },
+    "componentKind": {
+      "enum": [
+        "APPLICATION_CODE",
+        "AGENT",
+        "MODEL_BINDING",
+        "PROMPT",
+        "DATASET",
+        "INDEX",
+        "EMBEDDING",
+        "RETRIEVER",
+        "SKILL",
+        "MCP_SERVER",
+        "TOOL_SCHEMA",
+        "POLICY",
+        "MEMORY_POLICY",
+        "RUNTIME_PROFILE",
+        "CONNECTOR"
+      ]
+    },
+    "datasetRole": { "enum": ["RUNTIME_DATA", "EVALUATION_DATA", "SEALED_HOLDOUT"] },
+    "dependencyRelation": { "enum": ["DEPENDS_ON", "INVOKES", "DATA_FLOW", "CONTAINS", "REFERENCES"] },
+    "identityAssurance": {
+      "enum": ["IMMUTABLE_DIGEST", "PROVIDER_VERSION", "MUTABLE_ALIAS", "OBSERVED_ONLY", "UNKNOWN"]
+    },
+    "v5IdempotencyIntent": {
+      "enum": [
+        "applications.register",
+        "environments.register",
+        "system-components.register",
+        "dependency-edges.record",
+        "system-manifests.import",
+        "cases.bind-application",
+        "acceptance-criteria.propose",
+        "acceptance-criteria.confirm"
+      ]
+    },
+    "idempotencyResource": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "ai_application",
+            "environment",
+            "system_component",
+            "dependency_edge",
+            "system_version_set",
+            "application_case_binding",
+            "acceptance_criteria_revision"
+          ]
+        },
+        "id": { "$ref": "#/$defs/idempotencyResourceId" }
+      }
+    },
+    "recordEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "revision",
+        "recorded_by_principal",
+        "recorded_at",
+        "immutable",
+        "hash_rule",
+        "record_digest",
+        "authority_receipt_id"
+      ],
+      "properties": {
+        "schema_version": { "$ref": "#/$defs/schemaVersion2" },
+        "workspace_id": { "$ref": "#/$defs/idWorkspaceId" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "recorded_by_principal": { "$ref": "#/$defs/idPrincipalId" },
+        "recorded_at": { "type": "string", "format": "date-time" },
+        "immutable": { "const": true },
+        "hash_rule": { "const": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)" },
+        "record_digest": { "$ref": "#/$defs/digest" },
+        "authority_receipt_id": { "$ref": "#/$defs/idAuthorityReceiptId" }
+      }
+    },
+    "idempotencyReceipt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "principal_id",
+        "intent",
+        "idempotency_key",
+        "request_fingerprint",
+        "resource",
+        "operation_id",
+        "request_id",
+        "audit_ref",
+        "status",
+        "response_digest",
+        "created_at",
+        "idempotency_receipt_id",
+        "immutable",
+        "hash_rule",
+        "receipt_digest"
+      ],
+      "properties": {
+        "schema_version": { "const": "1.0" },
+        "workspace_id": { "$ref": "#/$defs/idWorkspaceId" },
+        "principal_id": { "$ref": "#/$defs/idPrincipalId" },
+        "intent": { "$ref": "#/$defs/v5IdempotencyIntent" },
+        "idempotency_key": { "type": "string", "minLength": 8, "maxLength": 128 },
+        "request_fingerprint": { "$ref": "#/$defs/digest" },
+        "resource": { "$ref": "#/$defs/idempotencyResource" },
+        "operation_id": { "anyOf": [{ "$ref": "#/$defs/idOperationId" }, { "type": "null" }] },
+        "request_id": { "$ref": "#/$defs/idRequestId" },
+        "audit_ref": { "$ref": "#/$defs/auditRef" },
+        "status": { "enum": ["ACCEPTED", "COMPLETED"] },
+        "response_digest": { "$ref": "#/$defs/digest" },
+        "created_at": { "type": "string", "format": "date-time" },
+        "idempotency_receipt_id": { "$ref": "#/$defs/idIdempotencyReceiptId" },
+        "immutable": { "const": true },
+        "hash_rule": { "const": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)" },
+        "receipt_digest": { "$ref": "#/$defs/digest" }
+      }
+    },
+    "idempotencyDelivery": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["receipt", "replayed"],
+      "properties": {
+        "receipt": { "$ref": "#/$defs/idempotencyReceipt" },
+        "replayed": { "type": "boolean" }
+      }
+    },
+    "errorDetail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "message",
+        "retryable",
+        "retry_after_ms",
+        "request_id",
+        "operation_id",
+        "audit_ref",
+        "audit_status",
+        "details",
+        "help_url"
+      ],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,63}$" },
+        "message": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "retryable": { "type": "boolean" },
+        "retry_after_ms": { "anyOf": [{ "type": "integer", "minimum": 0 }, { "type": "null" }] },
+        "request_id": { "$ref": "#/$defs/idRequestId" },
+        "operation_id": { "anyOf": [{ "$ref": "#/$defs/idOperationId" }, { "type": "null" }] },
+        "audit_ref": { "anyOf": [{ "$ref": "#/$defs/auditRef" }, { "type": "null" }] },
+        "audit_status": { "enum": ["RECORDED", "UNAVAILABLE", "NOT_APPLICABLE"] },
+        "details": { "type": "object", "additionalProperties": true },
+        "help_url": { "anyOf": [{ "type": "string", "format": "uri" }, { "type": "null" }] }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "audit_status": { "const": "RECORDED" } }, "required": ["audit_status"] },
+          "then": { "properties": { "audit_ref": { "type": "string" } }, "required": ["audit_ref"] }
+        },
+        {
+          "if": { "properties": { "audit_status": { "not": { "const": "RECORDED" } } }, "required": ["audit_status"] },
+          "then": { "properties": { "audit_ref": { "type": "null" } } }
+        }
+      ]
+    },
+    "errorEnvelope": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "workspace_id", "workspace_resolved", "error"],
+      "properties": {
+        "schema_version": { "const": "1.0" },
+        "workspace_id": { "anyOf": [{ "$ref": "#/$defs/idWorkspaceId" }, { "type": "null" }] },
+        "workspace_resolved": { "type": "boolean" },
+        "error": { "$ref": "#/$defs/errorDetail" }
+      },
+      "allOf": [
+        {
+          "if": { "properties": { "workspace_id": { "type": "string" } } },
+          "then": { "properties": { "workspace_resolved": { "const": true } } }
+        },
+        {
+          "if": { "properties": { "workspace_id": { "type": "null" } } },
+          "then": { "properties": { "workspace_resolved": { "const": false } } }
+        }
+      ]
+    }
+  }
+}

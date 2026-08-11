@@ -1,0 +1,364 @@
+{
+  "cases": [
+    {
+      "direction": "request",
+      "expected": "valid",
+      "id": "dependency-edges.record/request/valid",
+      "instance": {
+        "application_id": "app_catalogd2d3f4a5b6c7d8e",
+        "from_component_id": "cmp_gateway9f8e7d6c5b4a3f2e",
+        "relation": "DEPENDS_ON",
+        "required": true,
+        "schema_version": "2.0",
+        "to_component_id": "cmp_inference1a2b3c4d5e6f7a8b"
+      }
+    },
+    {
+      "direction": "request",
+      "expected": "invalid",
+      "id": "dependency-edges.record/request/additional-field",
+      "instance": {
+        "application_id": "app_catalogd2d3f4a5b6c7d8e",
+        "from_component_id": "cmp_gateway9f8e7d6c5b4a3f2e",
+        "relation": "DEPENDS_ON",
+        "required": true,
+        "schema_version": "2.0",
+        "to_component_id": "cmp_inference1a2b3c4d5e6f7a8b",
+        "unexpected_field": "boom"
+      },
+      "reason": "undeclared field unexpected_field: legacy WireModel forbids extra fields and the schema sets additionalProperties=false"
+    },
+    {
+      "direction": "request",
+      "expected": "invalid",
+      "id": "dependency-edges.record/request/type-mismatch",
+      "instance": {
+        "application_id": "app_catalogd2d3f4a5b6c7d8e",
+        "from_component_id": "cmp_gateway9f8e7d6c5b4a3f2e",
+        "relation": "CALLS",
+        "required": true,
+        "schema_version": "2.0",
+        "to_component_id": "cmp_inference1a2b3c4d5e6f7a8b"
+      },
+      "reason": "relation CALLS is not a member of DependencyRelation; legacy Literal and schema enum both reject it"
+    },
+    {
+      "direction": "request",
+      "expected": "invalid",
+      "id": "dependency-edges.record/request/required-not-bool",
+      "instance": {
+        "application_id": "app_catalogd2d3f4a5b6c7d8e",
+        "from_component_id": "cmp_gateway9f8e7d6c5b4a3f2e",
+        "relation": "DEPENDS_ON",
+        "required": "yes",
+        "schema_version": "2.0",
+        "to_component_id": "cmp_inference1a2b3c4d5e6f7a8b"
+      },
+      "reason": "required is a JSON string, not a StrictBool/boolean"
+    },
+    {
+      "direction": "response",
+      "expected": "valid",
+      "id": "dependency-edges.record/response/valid",
+      "instance": {
+        "audit_ref": "audit://aud_derecord9a8b7c6d5e4f3a2b",
+        "edge": {
+          "application_id": "app_catalogd2d3f4a5b6c7d8e",
+          "edge_digest": "sha256:2f82a8f3c3d72c81f5995928668da126d56dbc19424246c7ee84a44066db8dc7",
+          "edge_id": "de_0001a2b3c4d5e6f7a8b9c",
+          "from_component_id": "cmp_gateway9f8e7d6c5b4a3f2e",
+          "record_envelope": {
+            "authority_receipt_id": "arec_0001a2b3c4d5e6f7a8b9c",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:62bab03d3a299d20a091c2cdae98da3c052b4143f3e072edc3370dd51bc49ce7",
+            "recorded_at": "2026-08-11T16:40:12.456Z",
+            "recorded_by_principal": "prn_opsservice01a2b3c4d5e6f7a",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+          },
+          "relation": "INVOKES",
+          "required": true,
+          "to_component_id": "cmp_inference1a2b3c4d5e6f7a8b",
+          "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+        },
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_derecord9a8b7c6d5e4f3a2b",
+            "created_at": "2026-08-11T16:40:12.456Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "de-record-20260811-0001",
+            "idempotency_receipt_id": "idemr_0001a2b3c4d5e6f7a8b9c",
+            "immutable": true,
+            "intent": "dependency-edges.record",
+            "operation_id": null,
+            "principal_id": "prn_opsservice01a2b3c4d5e6f7a",
+            "receipt_digest": "sha256:99d5e434159c3ef44e1f8c83fac2d53b30201a6458655cc5e4ad594ee6bb0fb8",
+            "request_fingerprint": "sha256:0c19a9e82536cc2d7f77db5aaa646e8063d3c2fc1633669232e2b449a03aeae9",
+            "request_id": "req_derecord01a2b3c4d5e6f7a",
+            "resource": {
+              "id": "de_0001a2b3c4d5e6f7a8b9c",
+              "kind": "dependency_edge"
+            },
+            "response_digest": "sha256:4f3dfdbfe3241d3be932492d3bb8876eb47a3a53bd8707e54acc7e7d9540f77c",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+          },
+          "replayed": false
+        },
+        "request_id": "req_derecord01a2b3c4d5e6f7a",
+        "schema_version": "2.0",
+        "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+      }
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "dependency-edges.record/response/additional-field",
+      "instance": {
+        "audit_ref": "audit://aud_derecord9a8b7c6d5e4f3a2b",
+        "edge": {
+          "application_id": "app_catalogd2d3f4a5b6c7d8e",
+          "edge_digest": "sha256:2f82a8f3c3d72c81f5995928668da126d56dbc19424246c7ee84a44066db8dc7",
+          "edge_id": "de_0001a2b3c4d5e6f7a8b9c",
+          "from_component_id": "cmp_gateway9f8e7d6c5b4a3f2e",
+          "record_envelope": {
+            "authority_receipt_id": "arec_0001a2b3c4d5e6f7a8b9c",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:62bab03d3a299d20a091c2cdae98da3c052b4143f3e072edc3370dd51bc49ce7",
+            "recorded_at": "2026-08-11T16:40:12.456Z",
+            "recorded_by_principal": "prn_opsservice01a2b3c4d5e6f7a",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+          },
+          "relation": "INVOKES",
+          "required": true,
+          "to_component_id": "cmp_inference1a2b3c4d5e6f7a8b",
+          "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+        },
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_derecord9a8b7c6d5e4f3a2b",
+            "created_at": "2026-08-11T16:40:12.456Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "de-record-20260811-0001",
+            "idempotency_receipt_id": "idemr_0001a2b3c4d5e6f7a8b9c",
+            "immutable": true,
+            "intent": "dependency-edges.record",
+            "operation_id": null,
+            "principal_id": "prn_opsservice01a2b3c4d5e6f7a",
+            "receipt_digest": "sha256:99d5e434159c3ef44e1f8c83fac2d53b30201a6458655cc5e4ad594ee6bb0fb8",
+            "request_fingerprint": "sha256:0c19a9e82536cc2d7f77db5aaa646e8063d3c2fc1633669232e2b449a03aeae9",
+            "request_id": "req_derecord01a2b3c4d5e6f7a",
+            "resource": {
+              "id": "de_0001a2b3c4d5e6f7a8b9c",
+              "kind": "dependency_edge"
+            },
+            "response_digest": "sha256:4f3dfdbfe3241d3be932492d3bb8876eb47a3a53bd8707e54acc7e7d9540f77c",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+          },
+          "replayed": false
+        },
+        "request_id": "req_derecord01a2b3c4d5e6f7a",
+        "schema_version": "2.0",
+        "trace_context": "txn_00000000000000000001",
+        "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+      },
+      "reason": "undeclared field trace_context: legacy WireModel forbids extra fields and the schema sets additionalProperties=false"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "dependency-edges.record/response/missing-required",
+      "instance": {
+        "audit_ref": "audit://aud_derecord9a8b7c6d5e4f3a2b",
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_derecord9a8b7c6d5e4f3a2b",
+            "created_at": "2026-08-11T16:40:12.456Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "de-record-20260811-0001",
+            "idempotency_receipt_id": "idemr_0001a2b3c4d5e6f7a8b9c",
+            "immutable": true,
+            "intent": "dependency-edges.record",
+            "operation_id": null,
+            "principal_id": "prn_opsservice01a2b3c4d5e6f7a",
+            "receipt_digest": "sha256:99d5e434159c3ef44e1f8c83fac2d53b30201a6458655cc5e4ad594ee6bb0fb8",
+            "request_fingerprint": "sha256:0c19a9e82536cc2d7f77db5aaa646e8063d3c2fc1633669232e2b449a03aeae9",
+            "request_id": "req_derecord01a2b3c4d5e6f7a",
+            "resource": {
+              "id": "de_0001a2b3c4d5e6f7a8b9c",
+              "kind": "dependency_edge"
+            },
+            "response_digest": "sha256:4f3dfdbfe3241d3be932492d3bb8876eb47a3a53bd8707e54acc7e7d9540f77c",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+          },
+          "replayed": false
+        },
+        "request_id": "req_derecord01a2b3c4d5e6f7a",
+        "schema_version": "2.0",
+        "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+      },
+      "reason": "required field edge is absent"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "dependency-edges.record/response/type-mismatch",
+      "instance": {
+        "audit_ref": "audit://aud_derecord9a8b7c6d5e4f3a2b",
+        "edge": {
+          "application_id": "app_catalogd2d3f4a5b6c7d8e",
+          "edge_digest": "sha256:not-a-valid-digest",
+          "edge_id": "de_0001a2b3c4d5e6f7a8b9c",
+          "from_component_id": "cmp_gateway9f8e7d6c5b4a3f2e",
+          "record_envelope": {
+            "authority_receipt_id": "arec_0001a2b3c4d5e6f7a8b9c",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:62bab03d3a299d20a091c2cdae98da3c052b4143f3e072edc3370dd51bc49ce7",
+            "recorded_at": "2026-08-11T16:40:12.456Z",
+            "recorded_by_principal": "prn_opsservice01a2b3c4d5e6f7a",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+          },
+          "relation": "INVOKES",
+          "required": true,
+          "to_component_id": "cmp_inference1a2b3c4d5e6f7a8b",
+          "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+        },
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_derecord9a8b7c6d5e4f3a2b",
+            "created_at": "2026-08-11T16:40:12.456Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "de-record-20260811-0001",
+            "idempotency_receipt_id": "idemr_0001a2b3c4d5e6f7a8b9c",
+            "immutable": true,
+            "intent": "dependency-edges.record",
+            "operation_id": null,
+            "principal_id": "prn_opsservice01a2b3c4d5e6f7a",
+            "receipt_digest": "sha256:99d5e434159c3ef44e1f8c83fac2d53b30201a6458655cc5e4ad594ee6bb0fb8",
+            "request_fingerprint": "sha256:0c19a9e82536cc2d7f77db5aaa646e8063d3c2fc1633669232e2b449a03aeae9",
+            "request_id": "req_derecord01a2b3c4d5e6f7a",
+            "resource": {
+              "id": "de_0001a2b3c4d5e6f7a8b9c",
+              "kind": "dependency_edge"
+            },
+            "response_digest": "sha256:4f3dfdbfe3241d3be932492d3bb8876eb47a3a53bd8707e54acc7e7d9540f77c",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+          },
+          "replayed": false
+        },
+        "request_id": "req_derecord01a2b3c4d5e6f7a",
+        "schema_version": "2.0",
+        "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+      },
+      "reason": "edge.edge_digest is not a sha256: digest (digest pattern mismatch)"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "dependency-edges.record/response/missing-idempotency",
+      "instance": {
+        "audit_ref": "audit://aud_derecord9a8b7c6d5e4f3a2b",
+        "edge": {
+          "application_id": "app_catalogd2d3f4a5b6c7d8e",
+          "edge_digest": "sha256:2f82a8f3c3d72c81f5995928668da126d56dbc19424246c7ee84a44066db8dc7",
+          "edge_id": "de_0001a2b3c4d5e6f7a8b9c",
+          "from_component_id": "cmp_gateway9f8e7d6c5b4a3f2e",
+          "record_envelope": {
+            "authority_receipt_id": "arec_0001a2b3c4d5e6f7a8b9c",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:62bab03d3a299d20a091c2cdae98da3c052b4143f3e072edc3370dd51bc49ce7",
+            "recorded_at": "2026-08-11T16:40:12.456Z",
+            "recorded_by_principal": "prn_opsservice01a2b3c4d5e6f7a",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+          },
+          "relation": "INVOKES",
+          "required": true,
+          "to_component_id": "cmp_inference1a2b3c4d5e6f7a8b",
+          "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+        },
+        "request_id": "req_derecord01a2b3c4d5e6f7a",
+        "schema_version": "2.0",
+        "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+      },
+      "reason": "required field idempotency is absent"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "dependency-edges.record/response/bad-idempotency-receipt",
+      "instance": {
+        "audit_ref": "audit://aud_derecord9a8b7c6d5e4f3a2b",
+        "edge": {
+          "application_id": "app_catalogd2d3f4a5b6c7d8e",
+          "edge_digest": "sha256:2f82a8f3c3d72c81f5995928668da126d56dbc19424246c7ee84a44066db8dc7",
+          "edge_id": "de_0001a2b3c4d5e6f7a8b9c",
+          "from_component_id": "cmp_gateway9f8e7d6c5b4a3f2e",
+          "record_envelope": {
+            "authority_receipt_id": "arec_0001a2b3c4d5e6f7a8b9c",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:62bab03d3a299d20a091c2cdae98da3c052b4143f3e072edc3370dd51bc49ce7",
+            "recorded_at": "2026-08-11T16:40:12.456Z",
+            "recorded_by_principal": "prn_opsservice01a2b3c4d5e6f7a",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+          },
+          "relation": "INVOKES",
+          "required": true,
+          "to_component_id": "cmp_inference1a2b3c4d5e6f7a8b",
+          "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+        },
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_derecord9a8b7c6d5e4f3a2b",
+            "created_at": "2026-08-11T16:40:12.456Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "de-record-20260811-0001",
+            "idempotency_receipt_id": "idemr_0001a2b3c4d5e6f7a8b9c",
+            "intent": "dependency-edges.record",
+            "operation_id": null,
+            "principal_id": "prn_opsservice01a2b3c4d5e6f7a",
+            "receipt_digest": "sha256:99d5e434159c3ef44e1f8c83fac2d53b30201a6458655cc5e4ad594ee6bb0fb8",
+            "request_fingerprint": "sha256:0c19a9e82536cc2d7f77db5aaa646e8063d3c2fc1633669232e2b449a03aeae9",
+            "request_id": "req_derecord01a2b3c4d5e6f7a",
+            "resource": {
+              "id": "de_0001a2b3c4d5e6f7a8b9c",
+              "kind": "dependency_edge"
+            },
+            "response_digest": "sha256:4f3dfdbfe3241d3be932492d3bb8876eb47a3a53bd8707e54acc7e7d9540f77c",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+          },
+          "replayed": false
+        },
+        "request_id": "req_derecord01a2b3c4d5e6f7a",
+        "schema_version": "2.0",
+        "workspace_id": "ws_catalog9a8b7c6d5e4f3a2b"
+      },
+      "reason": "idempotency.receipt lacks required field immutable (idempotency receipt must be immutable)"
+    }
+  ],
+  "description": "C1 shadow-parity evidence corpus for dependency-edges.record: every expected verdict must be accepted identically by the generated JSON Schema 2020-12 $defs (contracts/v5/schemas/dependency-edges.record.schema.json) and the legacy Pydantic wire models (control-plane/app/public_api/v5_models.py DependencyEdgeRecordRequest / DependencyEdgeRecordResponse). The legacy from_component_id != to_component_id cross-field rule is not representable in JSON Schema and is intentionally excluded from the corpus.",
+  "intent": "dependency-edges.record",
+  "schema_version": "1.0"
+}

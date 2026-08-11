@@ -1,0 +1,435 @@
+{
+  "cases": [
+    {
+      "direction": "request",
+      "expected": "valid",
+      "id": "system-components.register/request/valid",
+      "instance": {
+        "application_id": "app_9f2c4d7e1b3a5c8d6e2f",
+        "component_kind": "DATASET",
+        "criticality": "P2",
+        "data_classification": "INTERNAL",
+        "dataset_role": "RUNTIME_DATA",
+        "effect_classification": "LOCAL",
+        "logical_name": "user_feedback_dataset",
+        "owner_principal_ids": [
+          "prn_1a2b3c4d5e6f7a8b9c0d",
+          "prn_9c8d7e6f5a4b3c2d1e0f"
+        ],
+        "permission_classification": "READ_WRITE",
+        "schema_version": "2.0"
+      },
+      "reason": "complete request body with dataset_role present and unique owners"
+    },
+    {
+      "direction": "request",
+      "expected": "valid",
+      "id": "system-components.register/request/dataset-role-null-valid",
+      "instance": {
+        "application_id": "app_9f2c4d7e1b3a5c8d6e2f",
+        "component_kind": "MCP_SERVER",
+        "criticality": "P2",
+        "data_classification": "INTERNAL",
+        "dataset_role": null,
+        "effect_classification": "LOCAL",
+        "logical_name": "user_feedback_dataset",
+        "owner_principal_ids": [
+          "prn_1a2b3c4d5e6f7a8b9c0d",
+          "prn_9c8d7e6f5a4b3c2d1e0f"
+        ],
+        "permission_classification": "READ_WRITE",
+        "schema_version": "2.0"
+      },
+      "reason": "dataset_role is optional and accepts an explicit null"
+    },
+    {
+      "direction": "request",
+      "expected": "invalid",
+      "id": "system-components.register/request/additional-field",
+      "instance": {
+        "application_id": "app_9f2c4d7e1b3a5c8d6e2f",
+        "component_kind": "DATASET",
+        "criticality": "P2",
+        "data_classification": "INTERNAL",
+        "dataset_role": "RUNTIME_DATA",
+        "effect_classification": "LOCAL",
+        "logical_name": "user_feedback_dataset",
+        "owner_principal_ids": [
+          "prn_1a2b3c4d5e6f7a8b9c0d",
+          "prn_9c8d7e6f5a4b3c2d1e0f"
+        ],
+        "permission_classification": "READ_WRITE",
+        "schema_version": "2.0",
+        "unexpected_flag": true
+      },
+      "reason": "undeclared field rejected by additionalProperties:false and legacy extra=forbid"
+    },
+    {
+      "direction": "request",
+      "expected": "invalid",
+      "id": "system-components.register/request/type-mismatch",
+      "instance": {
+        "application_id": "app_9f2c4d7e1b3a5c8d6e2f",
+        "component_kind": "ORCHESTRATOR",
+        "criticality": "P2",
+        "data_classification": "INTERNAL",
+        "dataset_role": "RUNTIME_DATA",
+        "effect_classification": "LOCAL",
+        "logical_name": "user_feedback_dataset",
+        "owner_principal_ids": [
+          "prn_1a2b3c4d5e6f7a8b9c0d",
+          "prn_9c8d7e6f5a4b3c2d1e0f"
+        ],
+        "permission_classification": "READ_WRITE",
+        "schema_version": "2.0"
+      },
+      "reason": "component_kind ORCHESTRATOR is not in the componentKind enum"
+    },
+    {
+      "direction": "response",
+      "expected": "valid",
+      "id": "system-components.register/response/valid",
+      "instance": {
+        "audit_ref": "audit://aud_7c6b5a4f3e2d1c8b7a6f",
+        "component": {
+          "application_id": "app_9f2c4d7e1b3a5c8d6e2f",
+          "component_id": "cmp_3f7a1c9d2e8b4a6f5c3d",
+          "component_kind": "DATASET",
+          "criticality": "P2",
+          "data_classification": "INTERNAL",
+          "dataset_role": "EVALUATION_DATA",
+          "effect_classification": "LOCAL",
+          "exact_previous_system_component_binding_or_null": null,
+          "lifecycle_state": "REGISTERED",
+          "logical_name": "user_feedback_dataset",
+          "owner_principal_ids": [
+            "prn_1a2b3c4d5e6f7a8b9c0d",
+            "prn_9c8d7e6f5a4b3c2d1e0f"
+          ],
+          "permission_classification": "READ_WRITE",
+          "record_envelope": {
+            "authority_receipt_id": "arec_8b7a6f5e4d3c2b1a9f8e",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "recorded_at": "2026-08-11T09:30:00Z",
+            "recorded_by_principal": "prn_1a2b3c4d5e6f7a8b9c0d",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+          },
+          "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+        },
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_7c6b5a4f3e2d1c8b7a6f",
+            "created_at": "2026-08-11T09:30:00Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "register-user-feedback-dataset-20260811",
+            "idempotency_receipt_id": "idemr_2c4d6e8f0a1b3c5d7e9f",
+            "immutable": true,
+            "intent": "system-components.register",
+            "operation_id": null,
+            "principal_id": "prn_1a2b3c4d5e6f7a8b9c0d",
+            "receipt_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "request_fingerprint": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "request_id": "req_8f3e2d1c4b5a6f7e8d9c",
+            "resource": {
+              "id": "cmp_3f7a1c9d2e8b4a6f5c3d",
+              "kind": "system_component"
+            },
+            "response_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+          },
+          "replayed": false
+        },
+        "request_id": "req_8f3e2d1c4b5a6f7e8d9c",
+        "schema_version": "2.0",
+        "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+      },
+      "reason": "full response with revision-1 REGISTERED component carrying the null previous binding"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "system-components.register/response/additional-field",
+      "instance": {
+        "audit_ref": "audit://aud_7c6b5a4f3e2d1c8b7a6f",
+        "component": {
+          "application_id": "app_9f2c4d7e1b3a5c8d6e2f",
+          "component_id": "cmp_3f7a1c9d2e8b4a6f5c3d",
+          "component_kind": "DATASET",
+          "criticality": "P2",
+          "data_classification": "INTERNAL",
+          "dataset_role": "EVALUATION_DATA",
+          "effect_classification": "LOCAL",
+          "exact_previous_system_component_binding_or_null": null,
+          "lifecycle_state": "REGISTERED",
+          "logical_name": "user_feedback_dataset",
+          "owner_principal_ids": [
+            "prn_1a2b3c4d5e6f7a8b9c0d",
+            "prn_9c8d7e6f5a4b3c2d1e0f"
+          ],
+          "permission_classification": "READ_WRITE",
+          "record_envelope": {
+            "authority_receipt_id": "arec_8b7a6f5e4d3c2b1a9f8e",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "recorded_at": "2026-08-11T09:30:00Z",
+            "recorded_by_principal": "prn_1a2b3c4d5e6f7a8b9c0d",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+          },
+          "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+        },
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_7c6b5a4f3e2d1c8b7a6f",
+            "created_at": "2026-08-11T09:30:00Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "register-user-feedback-dataset-20260811",
+            "idempotency_receipt_id": "idemr_2c4d6e8f0a1b3c5d7e9f",
+            "immutable": true,
+            "intent": "system-components.register",
+            "operation_id": null,
+            "principal_id": "prn_1a2b3c4d5e6f7a8b9c0d",
+            "receipt_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "request_fingerprint": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "request_id": "req_8f3e2d1c4b5a6f7e8d9c",
+            "resource": {
+              "id": "cmp_3f7a1c9d2e8b4a6f5c3d",
+              "kind": "system_component"
+            },
+            "response_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+          },
+          "replayed": false
+        },
+        "request_id": "req_8f3e2d1c4b5a6f7e8d9c",
+        "schema_version": "2.0",
+        "trace_id": "trc_9a8b7c6d5e4f3a2b",
+        "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+      },
+      "reason": "undeclared response field rejected by additionalProperties:false and legacy extra=forbid"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "system-components.register/response/missing-required",
+      "instance": {
+        "audit_ref": "audit://aud_7c6b5a4f3e2d1c8b7a6f",
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_7c6b5a4f3e2d1c8b7a6f",
+            "created_at": "2026-08-11T09:30:00Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "register-user-feedback-dataset-20260811",
+            "idempotency_receipt_id": "idemr_2c4d6e8f0a1b3c5d7e9f",
+            "immutable": true,
+            "intent": "system-components.register",
+            "operation_id": null,
+            "principal_id": "prn_1a2b3c4d5e6f7a8b9c0d",
+            "receipt_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "request_fingerprint": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "request_id": "req_8f3e2d1c4b5a6f7e8d9c",
+            "resource": {
+              "id": "cmp_3f7a1c9d2e8b4a6f5c3d",
+              "kind": "system_component"
+            },
+            "response_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+          },
+          "replayed": false
+        },
+        "request_id": "req_8f3e2d1c4b5a6f7e8d9c",
+        "schema_version": "2.0",
+        "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+      },
+      "reason": "required component field deleted from the response"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "system-components.register/response/type-mismatch",
+      "instance": {
+        "audit_ref": "audit://aud_7c6b5a4f3e2d1c8b7a6f",
+        "component": {
+          "application_id": "app_9f2c4d7e1b3a5c8d6e2f",
+          "component_id": "cmp_3f7a1c9d2e8b4a6f5c3d",
+          "component_kind": "DATASET",
+          "criticality": "P2",
+          "data_classification": "INTERNAL",
+          "dataset_role": "EVALUATION_DATA",
+          "effect_classification": "LOCAL",
+          "exact_previous_system_component_binding_or_null": null,
+          "lifecycle_state": "REGISTERED",
+          "logical_name": "user_feedback_dataset",
+          "owner_principal_ids": [
+            "prn_1a2b3c4d5e6f7a8b9c0d",
+            "prn_1a2b3c4d5e6f7a8b9c0d"
+          ],
+          "permission_classification": "READ_WRITE",
+          "record_envelope": {
+            "authority_receipt_id": "arec_8b7a6f5e4d3c2b1a9f8e",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "recorded_at": "2026-08-11T09:30:00Z",
+            "recorded_by_principal": "prn_1a2b3c4d5e6f7a8b9c0d",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+          },
+          "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+        },
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_7c6b5a4f3e2d1c8b7a6f",
+            "created_at": "2026-08-11T09:30:00Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "register-user-feedback-dataset-20260811",
+            "idempotency_receipt_id": "idemr_2c4d6e8f0a1b3c5d7e9f",
+            "immutable": true,
+            "intent": "system-components.register",
+            "operation_id": null,
+            "principal_id": "prn_1a2b3c4d5e6f7a8b9c0d",
+            "receipt_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "request_fingerprint": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "request_id": "req_8f3e2d1c4b5a6f7e8d9c",
+            "resource": {
+              "id": "cmp_3f7a1c9d2e8b4a6f5c3d",
+              "kind": "system_component"
+            },
+            "response_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+          },
+          "replayed": false
+        },
+        "request_id": "req_8f3e2d1c4b5a6f7e8d9c",
+        "schema_version": "2.0",
+        "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+      },
+      "reason": "duplicate owner_principal_ids violates uniqueItems and the legacy uniqueness validator"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "system-components.register/response/missing-idempotency",
+      "instance": {
+        "audit_ref": "audit://aud_7c6b5a4f3e2d1c8b7a6f",
+        "component": {
+          "application_id": "app_9f2c4d7e1b3a5c8d6e2f",
+          "component_id": "cmp_3f7a1c9d2e8b4a6f5c3d",
+          "component_kind": "DATASET",
+          "criticality": "P2",
+          "data_classification": "INTERNAL",
+          "dataset_role": "EVALUATION_DATA",
+          "effect_classification": "LOCAL",
+          "exact_previous_system_component_binding_or_null": null,
+          "lifecycle_state": "REGISTERED",
+          "logical_name": "user_feedback_dataset",
+          "owner_principal_ids": [
+            "prn_1a2b3c4d5e6f7a8b9c0d",
+            "prn_9c8d7e6f5a4b3c2d1e0f"
+          ],
+          "permission_classification": "READ_WRITE",
+          "record_envelope": {
+            "authority_receipt_id": "arec_8b7a6f5e4d3c2b1a9f8e",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "recorded_at": "2026-08-11T09:30:00Z",
+            "recorded_by_principal": "prn_1a2b3c4d5e6f7a8b9c0d",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+          },
+          "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+        },
+        "request_id": "req_8f3e2d1c4b5a6f7e8d9c",
+        "schema_version": "2.0",
+        "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+      },
+      "reason": "required idempotency delivery deleted from the response"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "system-components.register/response/bad-idempotency-receipt",
+      "instance": {
+        "audit_ref": "audit://aud_7c6b5a4f3e2d1c8b7a6f",
+        "component": {
+          "application_id": "app_9f2c4d7e1b3a5c8d6e2f",
+          "component_id": "cmp_3f7a1c9d2e8b4a6f5c3d",
+          "component_kind": "DATASET",
+          "criticality": "P2",
+          "data_classification": "INTERNAL",
+          "dataset_role": "EVALUATION_DATA",
+          "effect_classification": "LOCAL",
+          "exact_previous_system_component_binding_or_null": null,
+          "lifecycle_state": "REGISTERED",
+          "logical_name": "user_feedback_dataset",
+          "owner_principal_ids": [
+            "prn_1a2b3c4d5e6f7a8b9c0d",
+            "prn_9c8d7e6f5a4b3c2d1e0f"
+          ],
+          "permission_classification": "READ_WRITE",
+          "record_envelope": {
+            "authority_receipt_id": "arec_8b7a6f5e4d3c2b1a9f8e",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "recorded_at": "2026-08-11T09:30:00Z",
+            "recorded_by_principal": "prn_1a2b3c4d5e6f7a8b9c0d",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+          },
+          "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+        },
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_7c6b5a4f3e2d1c8b7a6f",
+            "created_at": "2026-08-11T09:30:00Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "idempotency_key": "register-user-feedback-dataset-20260811",
+            "idempotency_receipt_id": "idemr_2c4d6e8f0a1b3c5d7e9f",
+            "immutable": true,
+            "intent": "system-components.register",
+            "operation_id": null,
+            "principal_id": "prn_1a2b3c4d5e6f7a8b9c0d",
+            "receipt_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "request_fingerprint": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "request_id": "req_8f3e2d1c4b5a6f7e8d9c",
+            "resource": {
+              "id": "cmp_3f7a1c9d2e8b4a6f5c3d",
+              "kind": "system_component"
+            },
+            "response_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+          },
+          "replayed": false
+        },
+        "request_id": "req_8f3e2d1c4b5a6f7e8d9c",
+        "schema_version": "2.0",
+        "workspace_id": "ws_a1b2c3d4e5f6a7b8c9d0"
+      },
+      "reason": "idempotency receipt hash_rule must be the receipt_digest exclusion rule, not the record envelope rule"
+    }
+  ],
+  "description": "C1 shadow parity corpus for system-components.register. Every expected verdict is reproduced by both the generated JSON Schema 2020-12 contract (contracts/v5/schemas/system-components.register.schema.json) and the legacy Pydantic models (control-plane/app/public_api/v5_models.py ComponentRegisterRequest/ComponentRegisterResponse).",
+  "intent": "system-components.register",
+  "schema_version": "1.0"
+}

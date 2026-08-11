@@ -1,0 +1,248 @@
+{
+  "cases": [
+    {
+      "direction": "query",
+      "expected": "valid",
+      "id": "applications.list/query/valid",
+      "instance": {
+        "cursor": "cur_Cu9r8s7o6r5T4o3k2",
+        "limit": 50,
+        "project_id": "proj_p1Q2w3E4r5T6y7U8"
+      }
+    },
+    {
+      "direction": "query",
+      "expected": "invalid",
+      "id": "applications.list/query/missing-project-id",
+      "instance": {
+        "cursor": "cur_Cu9r8s7o6r5T4o3k2",
+        "limit": 20
+      },
+      "reason": "project_id is required by the query schema; omitting it must fail closed."
+    },
+    {
+      "direction": "query",
+      "expected": "invalid",
+      "id": "applications.list/query/bad-cursor",
+      "instance": {
+        "cursor": "page-1",
+        "limit": 20,
+        "project_id": "proj_p1Q2w3E4r5T6y7U8"
+      },
+      "reason": "cursor must match ^cur_[0-9A-Za-z_-]{8,512}$ (opaque server-issued cursors only)."
+    },
+    {
+      "direction": "query",
+      "expected": "invalid",
+      "id": "applications.list/query/extra-param",
+      "instance": {
+        "cursor": "cur_Cu9r8s7o6r5T4o3k2",
+        "limit": 10,
+        "project_id": "proj_p1Q2w3E4r5T6y7U8",
+        "sort": "name"
+      },
+      "reason": "query schema declares additionalProperties:false; unknown parameters are rejected."
+    },
+    {
+      "direction": "query",
+      "expected": "invalid",
+      "id": "applications.list/query/limit-zero",
+      "instance": {
+        "limit": 0,
+        "project_id": "proj_p1Q2w3E4r5T6y7U8"
+      },
+      "reason": "limit is bounded to 1..100 by V5ApplicationListService; 0 violates minimum."
+    },
+    {
+      "direction": "query",
+      "expected": "invalid",
+      "id": "applications.list/query/limit-over-100",
+      "instance": {
+        "limit": 101,
+        "project_id": "proj_p1Q2w3E4r5T6y7U8"
+      },
+      "reason": "limit is bounded to 1..100 by V5ApplicationListService; 101 violates maximum."
+    },
+    {
+      "direction": "response",
+      "expected": "valid",
+      "id": "applications.list/response/valid",
+      "instance": {
+        "audit_ref": "audit://aud_Au8d7i6t5R4e3f2",
+        "items": [
+          {
+            "application": {
+              "application_id": "app_aPp9l8i7c6a5t4o",
+              "criticality": "P1",
+              "data_classification": "CONFIDENTIAL",
+              "display_name": "Payments Service",
+              "exact_previous_application_binding_or_null": null,
+              "governance_mode": "MANAGED",
+              "lifecycle_state": "REGISTERED",
+              "owner_principal_ids": [
+                "prn_pR1n2c3i4p5a6l7"
+              ],
+              "project_id": "proj_p1Q2w3E4r5T6y7U8",
+              "record_envelope": {
+                "authority_receipt_id": "arec_aR3e4c5o6r7d8y9",
+                "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+                "immutable": true,
+                "record_digest": "sha256:c2bfd9f458b952574ab96867ca46489fa6debe8c3046f5fc8f4b2717ad6c6c95",
+                "recorded_at": "2026-08-11T08:00:00+00:00",
+                "recorded_by_principal": "prn_pR1n2c3i4p5a6l7",
+                "revision": 1,
+                "schema_version": "2.0",
+                "workspace_id": "ws_a1b2C3d4e5F6g7h8"
+              },
+              "slug": "payments-service",
+              "workspace_id": "ws_a1b2C3d4e5F6g7h8"
+            },
+            "dependency_edges": [],
+            "environments": [],
+            "system_components": []
+          }
+        ],
+        "next_cursor": null,
+        "request_id": "req_r1T2y3U4i5O6p7A8",
+        "schema_version": "2.0",
+        "workspace_id": "ws_a1b2C3d4e5F6g7h8"
+      }
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "applications.list/response/additional-field",
+      "instance": {
+        "audit_ref": "audit://aud_Au8d7i6t5R4e3f2",
+        "items": [
+          {
+            "application": {
+              "application_id": "app_aPp9l8i7c6a5t4o",
+              "criticality": "P1",
+              "data_classification": "CONFIDENTIAL",
+              "display_name": "Payments Service",
+              "exact_previous_application_binding_or_null": null,
+              "governance_mode": "MANAGED",
+              "lifecycle_state": "REGISTERED",
+              "owner_principal_ids": [
+                "prn_pR1n2c3i4p5a6l7"
+              ],
+              "project_id": "proj_p1Q2w3E4r5T6y7U8",
+              "record_envelope": {
+                "authority_receipt_id": "arec_aR3e4c5o6r7d8y9",
+                "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+                "immutable": true,
+                "record_digest": "sha256:c2bfd9f458b952574ab96867ca46489fa6debe8c3046f5fc8f4b2717ad6c6c95",
+                "recorded_at": "2026-08-11T08:00:00+00:00",
+                "recorded_by_principal": "prn_pR1n2c3i4p5a6l7",
+                "revision": 1,
+                "schema_version": "2.0",
+                "workspace_id": "ws_a1b2C3d4e5F6g7h8"
+              },
+              "slug": "payments-service",
+              "workspace_id": "ws_a1b2C3d4e5F6g7h8"
+            },
+            "dependency_edges": [],
+            "environments": [],
+            "system_components": []
+          }
+        ],
+        "next_cursor": null,
+        "page": 1,
+        "request_id": "req_r1T2y3U4i5O6p7A8",
+        "schema_version": "2.0",
+        "workspace_id": "ws_a1b2C3d4e5F6g7h8"
+      },
+      "reason": "response declares additionalProperties:false (legacy extra='forbid'); unknown fields are rejected."
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "applications.list/response/type-mismatch",
+      "instance": {
+        "audit_ref": "audit://aud_Au8d7i6t5R4e3f2",
+        "items": {
+          "application": {
+            "application_id": "app_aPp9l8i7c6a5t4o",
+            "criticality": "P1",
+            "data_classification": "CONFIDENTIAL",
+            "display_name": "Payments Service",
+            "exact_previous_application_binding_or_null": null,
+            "governance_mode": "MANAGED",
+            "lifecycle_state": "REGISTERED",
+            "owner_principal_ids": [
+              "prn_pR1n2c3i4p5a6l7"
+            ],
+            "project_id": "proj_p1Q2w3E4r5T6y7U8",
+            "record_envelope": {
+              "authority_receipt_id": "arec_aR3e4c5o6r7d8y9",
+              "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+              "immutable": true,
+              "record_digest": "sha256:c2bfd9f458b952574ab96867ca46489fa6debe8c3046f5fc8f4b2717ad6c6c95",
+              "recorded_at": "2026-08-11T08:00:00+00:00",
+              "recorded_by_principal": "prn_pR1n2c3i4p5a6l7",
+              "revision": 1,
+              "schema_version": "2.0",
+              "workspace_id": "ws_a1b2C3d4e5F6g7h8"
+            },
+            "slug": "payments-service",
+            "workspace_id": "ws_a1b2C3d4e5F6g7h8"
+          }
+        },
+        "next_cursor": null,
+        "request_id": "req_r1T2y3U4i5O6p7A8",
+        "schema_version": "2.0",
+        "workspace_id": "ws_a1b2C3d4e5F6g7h8"
+      },
+      "reason": "items must be an array of applicationListItem records; an object is not a list."
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "applications.list/response/missing-next-cursor",
+      "instance": {
+        "audit_ref": "audit://aud_Au8d7i6t5R4e3f2",
+        "items": [
+          {
+            "application": {
+              "application_id": "app_aPp9l8i7c6a5t4o",
+              "criticality": "P1",
+              "data_classification": "CONFIDENTIAL",
+              "display_name": "Payments Service",
+              "exact_previous_application_binding_or_null": null,
+              "governance_mode": "MANAGED",
+              "lifecycle_state": "REGISTERED",
+              "owner_principal_ids": [
+                "prn_pR1n2c3i4p5a6l7"
+              ],
+              "project_id": "proj_p1Q2w3E4r5T6y7U8",
+              "record_envelope": {
+                "authority_receipt_id": "arec_aR3e4c5o6r7d8y9",
+                "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+                "immutable": true,
+                "record_digest": "sha256:c2bfd9f458b952574ab96867ca46489fa6debe8c3046f5fc8f4b2717ad6c6c95",
+                "recorded_at": "2026-08-11T08:00:00+00:00",
+                "recorded_by_principal": "prn_pR1n2c3i4p5a6l7",
+                "revision": 1,
+                "schema_version": "2.0",
+                "workspace_id": "ws_a1b2C3d4e5F6g7h8"
+              },
+              "slug": "payments-service",
+              "workspace_id": "ws_a1b2C3d4e5F6g7h8"
+            },
+            "dependency_edges": [],
+            "environments": [],
+            "system_components": []
+          }
+        ],
+        "request_id": "req_r1T2y3U4i5O6p7A8",
+        "schema_version": "2.0",
+        "workspace_id": "ws_a1b2C3d4e5F6g7h8"
+      },
+      "reason": "next_cursor is required (nullable but present on the wire); omission must fail closed."
+    }
+  ],
+  "description": "C1 single-source-wire shadow parity corpus for intent applications.list: query (required project_id, optional server-issued cursor and bounded limit) and list response (applicationListItem records). Valid cases must be accepted by both the generated applications.list.schema.json $defs and the legacy ApplicationListResponse model; invalid cases must be rejected by both. Query direction is legacy N/A (no legacy query model).",
+  "intent": "applications.list",
+  "schema_version": "1.0"
+}

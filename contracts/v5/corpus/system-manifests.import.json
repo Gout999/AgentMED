@@ -1,0 +1,1888 @@
+{
+  "cases": [
+    {
+      "direction": "request",
+      "expected": "valid",
+      "id": "system-manifests.import/request/valid-bootstrap-manifest",
+      "instance": {
+        "application": {
+          "criticality": "P1",
+          "data_classification": "INTERNAL",
+          "display_name": "Customer Support Assistant",
+          "governance_mode": "MANAGED",
+          "owner_principal_ids": [
+            "prn_9b3e7f21c5"
+          ],
+          "project_id": "proj_2f8a1c04d9",
+          "slug": "customer-support"
+        },
+        "components": [
+          {
+            "component_kind": "APPLICATION_CODE",
+            "criticality": "P1",
+            "data_classification": "INTERNAL",
+            "dataset_role": null,
+            "effect_classification": "LOCAL",
+            "logical_name": "support-app",
+            "owner_principal_ids": [
+              "prn_9b3e7f21c5"
+            ],
+            "permission_classification": "READ_WRITE",
+            "revision": {
+              "artifact_refs": [],
+              "content_digest": "sha256:9d48925a00bbf881c9b59bc2685a1ea0f6f9afb8bc7e82be63f370fc52731747",
+              "declared_version": "1.4.2",
+              "identity_assurance": "IMMUTABLE_DIGEST",
+              "identity_locator": {
+                "kind": "git_repo",
+                "ref": "v1.4.2",
+                "repo": "acme/customer-support"
+              },
+              "resolved_at": "2026-08-11T09:30:00.000Z"
+            }
+          }
+        ],
+        "dependency_edges": [],
+        "environment": {
+          "logical_name": "production",
+          "risk_classification": "HIGH"
+        },
+        "schema_version": "2.0"
+      }
+    },
+    {
+      "direction": "request",
+      "expected": "invalid",
+      "id": "system-manifests.import/request/additional-field",
+      "instance": {
+        "application": {
+          "criticality": "P1",
+          "data_classification": "INTERNAL",
+          "display_name": "Customer Support Assistant",
+          "governance_mode": "MANAGED",
+          "owner_principal_ids": [
+            "prn_9b3e7f21c5"
+          ],
+          "project_id": "proj_2f8a1c04d9",
+          "slug": "customer-support"
+        },
+        "components": [
+          {
+            "component_kind": "APPLICATION_CODE",
+            "criticality": "P1",
+            "data_classification": "INTERNAL",
+            "dataset_role": null,
+            "effect_classification": "LOCAL",
+            "logical_name": "support-app",
+            "owner_principal_ids": [
+              "prn_9b3e7f21c5"
+            ],
+            "permission_classification": "READ_WRITE",
+            "revision": {
+              "artifact_refs": [],
+              "content_digest": "sha256:9d48925a00bbf881c9b59bc2685a1ea0f6f9afb8bc7e82be63f370fc52731747",
+              "declared_version": "1.4.2",
+              "identity_assurance": "IMMUTABLE_DIGEST",
+              "identity_locator": {
+                "kind": "git_repo",
+                "ref": "v1.4.2",
+                "repo": "acme/customer-support"
+              },
+              "resolved_at": "2026-08-11T09:30:00.000Z"
+            }
+          }
+        ],
+        "dependency_edges": [],
+        "environment": {
+          "logical_name": "production",
+          "risk_classification": "HIGH"
+        },
+        "schema_version": "2.0",
+        "unexpected_field": "boom"
+      },
+      "reason": "unknown top-level field unexpected_field: generated request schema declares additionalProperties: false and the legacy SystemManifestImportRequest uses extra='forbid'"
+    },
+    {
+      "direction": "request",
+      "expected": "invalid",
+      "id": "system-manifests.import/request/missing-component-kind",
+      "instance": {
+        "application": {
+          "criticality": "P1",
+          "data_classification": "INTERNAL",
+          "display_name": "Customer Support Assistant",
+          "governance_mode": "MANAGED",
+          "owner_principal_ids": [
+            "prn_9b3e7f21c5"
+          ],
+          "project_id": "proj_2f8a1c04d9",
+          "slug": "customer-support"
+        },
+        "components": [
+          {
+            "criticality": "P1",
+            "data_classification": "INTERNAL",
+            "dataset_role": null,
+            "effect_classification": "LOCAL",
+            "logical_name": "support-app",
+            "owner_principal_ids": [
+              "prn_9b3e7f21c5"
+            ],
+            "permission_classification": "READ_WRITE",
+            "revision": {
+              "artifact_refs": [],
+              "content_digest": "sha256:9d48925a00bbf881c9b59bc2685a1ea0f6f9afb8bc7e82be63f370fc52731747",
+              "declared_version": "1.4.2",
+              "identity_assurance": "IMMUTABLE_DIGEST",
+              "identity_locator": {
+                "kind": "git_repo",
+                "ref": "v1.4.2",
+                "repo": "acme/customer-support"
+              },
+              "resolved_at": "2026-08-11T09:30:00.000Z"
+            }
+          }
+        ],
+        "dependency_edges": [],
+        "environment": {
+          "logical_name": "production",
+          "risk_classification": "HIGH"
+        },
+        "schema_version": "2.0"
+      },
+      "reason": "manifest component is missing the required component_kind field: the generated manifestComponent $def and legacy ManifestComponent both require it"
+    },
+    {
+      "direction": "response",
+      "expected": "valid",
+      "id": "system-manifests.import/response/valid-bootstrap-import",
+      "instance": {
+        "application": {
+          "application_id": "app_2d8c47a1e0",
+          "criticality": "P1",
+          "data_classification": "INTERNAL",
+          "display_name": "Customer Support Assistant",
+          "exact_previous_application_binding_or_null": null,
+          "governance_mode": "MANAGED",
+          "lifecycle_state": "REGISTERED",
+          "owner_principal_ids": [
+            "prn_9b3e7f21c5"
+          ],
+          "project_id": "proj_2f8a1c04d9",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:527c0f9828b7233c36fd896f7c3c2624d087c2995cbf393bc1372c8c043dd472",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "slug": "customer-support",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "audit_ref": "audit://aud_9c2f6b3d81",
+        "bootstrap_attestation": {
+          "application_id": "app_2d8c47a1e0",
+          "attestation_scope": "INITIAL_DESIRED_ASSIGNMENT",
+          "attester_principal_id": "prn_9b3e7f21c5",
+          "attester_trust_role": "integrator",
+          "bootstrap_attestation_id": "batt_6c9a2e4d83",
+          "environment_id": "env_7b9f31d5c6",
+          "exact_initial_system_version_set_binding": {
+            "digest": "sha256:b1cbcb5cbac0f217fc069e833afd7ea2f6fb68c598404a7135063baa0e0e93af",
+            "id": "vset_8b2f4d7a05",
+            "kind": "SYSTEM_VERSION_SET",
+            "revision": 1
+          },
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:9081a544f4aaa5507c0ec5751943b90c7c097a77a7d91a3e6eed9525782f3587",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "component_revisions": [
+          {
+            "application_id": "app_2d8c47a1e0",
+            "component_id": "cmp_5a1e8b3f70",
+            "component_kind": "APPLICATION_CODE",
+            "component_revision_id": "crv_9c4d2f6a81",
+            "configuration_digest": "sha256:e4508d45f10e60258a28310f67cae0d4fb72cacb5a628276b6e71bd598784922",
+            "content_digest": "sha256:9d48925a00bbf881c9b59bc2685a1ea0f6f9afb8bc7e82be63f370fc52731747",
+            "dataset_role": null,
+            "declared_version": "1.4.2",
+            "exact_provenance_receipt_bindings": [],
+            "exact_system_component_binding": {
+              "digest": "sha256:9a1b3a8890473dfd2da91ab19933f3bb05a768e7abbc908433fd11ae444e6c2a",
+              "id": "cmp_5a1e8b3f70",
+              "kind": "SYSTEM_COMPONENT",
+              "revision": 1
+            },
+            "identity_assurance": "IMMUTABLE_DIGEST",
+            "identity_locator": {
+              "kind": "git_repo",
+              "ref": "v1.4.2",
+              "repo": "acme/customer-support"
+            },
+            "logical_name": "support-app",
+            "record_envelope": {
+              "authority_receipt_id": "arec_5f8b2d9c47",
+              "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+              "immutable": true,
+              "record_digest": "sha256:adf68e15f8b4e4b516bbe0768b7b89efe802cadc85421bc9d2d5994c41037e6b",
+              "recorded_at": "2026-08-11T09:31:02.000Z",
+              "recorded_by_principal": "prn_9b3e7f21c5",
+              "revision": 1,
+              "schema_version": "2.0",
+              "workspace_id": "ws_6f3a9c2e81"
+            },
+            "resolved_at": "2026-08-11T09:30:00.000Z",
+            "workspace_id": "ws_6f3a9c2e81"
+          }
+        ],
+        "components": [
+          {
+            "application_id": "app_2d8c47a1e0",
+            "component_id": "cmp_5a1e8b3f70",
+            "component_kind": "APPLICATION_CODE",
+            "criticality": "P1",
+            "data_classification": "INTERNAL",
+            "dataset_role": null,
+            "effect_classification": "LOCAL",
+            "exact_previous_system_component_binding_or_null": null,
+            "lifecycle_state": "REGISTERED",
+            "logical_name": "support-app",
+            "owner_principal_ids": [
+              "prn_9b3e7f21c5"
+            ],
+            "permission_classification": "READ_WRITE",
+            "record_envelope": {
+              "authority_receipt_id": "arec_5f8b2d9c47",
+              "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+              "immutable": true,
+              "record_digest": "sha256:b9592ad2e66d94e4a774c6ee4c52e8efe30f5fff9c1b26969d8a3a02f2172b7d",
+              "recorded_at": "2026-08-11T09:31:02.000Z",
+              "recorded_by_principal": "prn_9b3e7f21c5",
+              "revision": 1,
+              "schema_version": "2.0",
+              "workspace_id": "ws_6f3a9c2e81"
+            },
+            "workspace_id": "ws_6f3a9c2e81"
+          }
+        ],
+        "dependency_edges": [],
+        "environment": {
+          "application_id": "app_2d8c47a1e0",
+          "environment_id": "env_7b9f31d5c6",
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "production",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:5057a6a3d943f39683eaa374640090fdde3150067073793c720d4b323b56feba",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "risk_classification": "HIGH",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_9c2f6b3d81",
+            "created_at": "2026-08-11T09:31:02.000Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "manifest-import-2026-08-11-a1",
+            "idempotency_receipt_id": "idemr_2a7c4e9f53",
+            "immutable": true,
+            "intent": "system-manifests.import",
+            "operation_id": null,
+            "principal_id": "prn_9b3e7f21c5",
+            "receipt_digest": "sha256:26e61167745c9dbe17518d99d1628aa1485d79896778fbc58301c84153378bdb",
+            "request_fingerprint": "sha256:f8c92c7bf2cd35509a407a67c3995f6dc03f429762183d36ba38abdce8621d46",
+            "request_id": "req_4d8a1e7c35",
+            "resource": {
+              "id": "vset_8b2f4d7a05",
+              "kind": "system_version_set"
+            },
+            "response_digest": "sha256:b7689df9a16e0656cb737371f30c92521d21f9f0242cb10e56a0e76ae4127a7f",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "replayed": false
+        },
+        "manifest_digest": "sha256:d61dfefd74d33ecc226e2e158674d3be7007be14fc98ab539142de37e589b218",
+        "manifest_id": "smf_7a4d2c9e61",
+        "request_id": "req_4d8a1e7c35",
+        "schema_version": "2.0",
+        "system_assignment": {
+          "application_id": "app_2d8c47a1e0",
+          "assignment_id": "asg_1d5f8b3a27",
+          "environment_id": "env_7b9f31d5c6",
+          "exact_assignment_authority_binding": {
+            "binding_kind": "BOOTSTRAP_ATTESTATION",
+            "digest": "sha256:47b6f2c28556cd44dd121164205051f263de8cd6d7fa3b470fcfa00847b05d1e",
+            "id": "batt_6c9a2e4d83",
+            "revision": 1
+          },
+          "exact_previous_assignment_binding_or_null": null,
+          "exact_slot_version_set_bindings": [
+            {
+              "digest": "sha256:17276db739830b1fec226426f9eee953440e3553df57650dd7ef093533369eb6",
+              "id": "vset_8b2f4d7a05",
+              "kind": "SYSTEM_VERSION_SET",
+              "revision": 1,
+              "slot": "PRIMARY"
+            }
+          ],
+          "expected_previous_generation": null,
+          "exposure": "EXPOSED",
+          "generation": 1,
+          "lifecycle_state": "ACTIVE",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:2768fefd477442f9cb12dce7b063c602d80e6d7ef5622f01f99f1e69f005365e",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "requested_by_external_operation_id": null,
+          "transition_kind": "BOOTSTRAP",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "system_version_set": {
+          "application_id": "app_2d8c47a1e0",
+          "declared_environment_id": "env_7b9f31d5c6",
+          "exact_component_revision_bindings": [
+            {
+              "digest": "sha256:b0928188782dcc6384195895b92101e607b7b0c0ccf2759e65b09b0714eeaba7",
+              "id": "crv_9c4d2f6a81",
+              "kind": "COMPONENT_REVISION",
+              "revision": 1
+            }
+          ],
+          "exact_topology_revision_binding": {
+            "digest": "sha256:f7660372f7ead621f8b3892d981111ae93d2f1059fecfd8cedd5c54bdc0e6ae4",
+            "id": "tpr_3e7a1c5b92",
+            "kind": "TOPOLOGY_REVISION",
+            "revision": 1
+          },
+          "identity_assurance_summary": {
+            "component_assurances": [
+              {
+                "component_id": "cmp_5a1e8b3f70",
+                "component_revision_id": "crv_9c4d2f6a81",
+                "identity_assurance": "IMMUTABLE_DIGEST"
+              }
+            ]
+          },
+          "manifest": {
+            "application": {
+              "slug": "customer-support"
+            },
+            "components": [
+              {
+                "logical_name": "support-app"
+              }
+            ],
+            "environment": {
+              "logical_name": "production"
+            },
+            "schema_version": "2.0"
+          },
+          "manifest_digest": "sha256:d61dfefd74d33ecc226e2e158674d3be7007be14fc98ab539142de37e589b218",
+          "provenance_receipt_ids": [
+            "arec_5f8b2d9c47"
+          ],
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:ffe82379bd700be881aee2a880765bf3f966bdc27912ab05d5eb27f60a08175b",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "system_version_set_id": "vset_8b2f4d7a05",
+          "version_set_digest": "sha256:a181a8e774c7b8367e85a911d63bf81316a96237df5dcff3931dfbe13fec94fe",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "topology_revision": {
+          "application_id": "app_2d8c47a1e0",
+          "component_ids": [
+            "cmp_5a1e8b3f70"
+          ],
+          "exact_edge_revision_bindings": [],
+          "provenance_receipt_ids": [
+            "arec_5f8b2d9c47"
+          ],
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:af902257e9fcceb192533800e63ae2fd94fe4c8adbcff080985a78826482d330",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "topology_digest": "sha256:e6e2b826e31fca5c36125c48f130dcb6f961e698ff8a8776a1f290cf0892e8e6",
+          "topology_revision_id": "tpr_3e7a1c5b92",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "workspace_id": "ws_6f3a9c2e81"
+      }
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "system-manifests.import/response/additional-field",
+      "instance": {
+        "application": {
+          "application_id": "app_2d8c47a1e0",
+          "criticality": "P1",
+          "data_classification": "INTERNAL",
+          "display_name": "Customer Support Assistant",
+          "exact_previous_application_binding_or_null": null,
+          "governance_mode": "MANAGED",
+          "lifecycle_state": "REGISTERED",
+          "owner_principal_ids": [
+            "prn_9b3e7f21c5"
+          ],
+          "project_id": "proj_2f8a1c04d9",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:527c0f9828b7233c36fd896f7c3c2624d087c2995cbf393bc1372c8c043dd472",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "slug": "customer-support",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "audit_ref": "audit://aud_9c2f6b3d81",
+        "bootstrap_attestation": {
+          "application_id": "app_2d8c47a1e0",
+          "attestation_scope": "INITIAL_DESIRED_ASSIGNMENT",
+          "attester_principal_id": "prn_9b3e7f21c5",
+          "attester_trust_role": "integrator",
+          "bootstrap_attestation_id": "batt_6c9a2e4d83",
+          "environment_id": "env_7b9f31d5c6",
+          "exact_initial_system_version_set_binding": {
+            "digest": "sha256:b1cbcb5cbac0f217fc069e833afd7ea2f6fb68c598404a7135063baa0e0e93af",
+            "id": "vset_8b2f4d7a05",
+            "kind": "SYSTEM_VERSION_SET",
+            "revision": 1
+          },
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:9081a544f4aaa5507c0ec5751943b90c7c097a77a7d91a3e6eed9525782f3587",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "component_revisions": [
+          {
+            "application_id": "app_2d8c47a1e0",
+            "component_id": "cmp_5a1e8b3f70",
+            "component_kind": "APPLICATION_CODE",
+            "component_revision_id": "crv_9c4d2f6a81",
+            "configuration_digest": "sha256:e4508d45f10e60258a28310f67cae0d4fb72cacb5a628276b6e71bd598784922",
+            "content_digest": "sha256:9d48925a00bbf881c9b59bc2685a1ea0f6f9afb8bc7e82be63f370fc52731747",
+            "dataset_role": null,
+            "declared_version": "1.4.2",
+            "exact_provenance_receipt_bindings": [],
+            "exact_system_component_binding": {
+              "digest": "sha256:9a1b3a8890473dfd2da91ab19933f3bb05a768e7abbc908433fd11ae444e6c2a",
+              "id": "cmp_5a1e8b3f70",
+              "kind": "SYSTEM_COMPONENT",
+              "revision": 1
+            },
+            "identity_assurance": "IMMUTABLE_DIGEST",
+            "identity_locator": {
+              "kind": "git_repo",
+              "ref": "v1.4.2",
+              "repo": "acme/customer-support"
+            },
+            "logical_name": "support-app",
+            "record_envelope": {
+              "authority_receipt_id": "arec_5f8b2d9c47",
+              "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+              "immutable": true,
+              "record_digest": "sha256:adf68e15f8b4e4b516bbe0768b7b89efe802cadc85421bc9d2d5994c41037e6b",
+              "recorded_at": "2026-08-11T09:31:02.000Z",
+              "recorded_by_principal": "prn_9b3e7f21c5",
+              "revision": 1,
+              "schema_version": "2.0",
+              "workspace_id": "ws_6f3a9c2e81"
+            },
+            "resolved_at": "2026-08-11T09:30:00.000Z",
+            "workspace_id": "ws_6f3a9c2e81"
+          }
+        ],
+        "components": [
+          {
+            "application_id": "app_2d8c47a1e0",
+            "component_id": "cmp_5a1e8b3f70",
+            "component_kind": "APPLICATION_CODE",
+            "criticality": "P1",
+            "data_classification": "INTERNAL",
+            "dataset_role": null,
+            "effect_classification": "LOCAL",
+            "exact_previous_system_component_binding_or_null": null,
+            "lifecycle_state": "REGISTERED",
+            "logical_name": "support-app",
+            "owner_principal_ids": [
+              "prn_9b3e7f21c5"
+            ],
+            "permission_classification": "READ_WRITE",
+            "record_envelope": {
+              "authority_receipt_id": "arec_5f8b2d9c47",
+              "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+              "immutable": true,
+              "record_digest": "sha256:b9592ad2e66d94e4a774c6ee4c52e8efe30f5fff9c1b26969d8a3a02f2172b7d",
+              "recorded_at": "2026-08-11T09:31:02.000Z",
+              "recorded_by_principal": "prn_9b3e7f21c5",
+              "revision": 1,
+              "schema_version": "2.0",
+              "workspace_id": "ws_6f3a9c2e81"
+            },
+            "workspace_id": "ws_6f3a9c2e81"
+          }
+        ],
+        "dependency_edges": [],
+        "environment": {
+          "application_id": "app_2d8c47a1e0",
+          "environment_id": "env_7b9f31d5c6",
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "production",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:5057a6a3d943f39683eaa374640090fdde3150067073793c720d4b323b56feba",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "risk_classification": "HIGH",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_9c2f6b3d81",
+            "created_at": "2026-08-11T09:31:02.000Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "manifest-import-2026-08-11-a1",
+            "idempotency_receipt_id": "idemr_2a7c4e9f53",
+            "immutable": true,
+            "intent": "system-manifests.import",
+            "operation_id": null,
+            "principal_id": "prn_9b3e7f21c5",
+            "receipt_digest": "sha256:26e61167745c9dbe17518d99d1628aa1485d79896778fbc58301c84153378bdb",
+            "request_fingerprint": "sha256:f8c92c7bf2cd35509a407a67c3995f6dc03f429762183d36ba38abdce8621d46",
+            "request_id": "req_4d8a1e7c35",
+            "resource": {
+              "id": "vset_8b2f4d7a05",
+              "kind": "system_version_set"
+            },
+            "response_digest": "sha256:b7689df9a16e0656cb737371f30c92521d21f9f0242cb10e56a0e76ae4127a7f",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "replayed": false
+        },
+        "manifest_digest": "sha256:d61dfefd74d33ecc226e2e158674d3be7007be14fc98ab539142de37e589b218",
+        "manifest_id": "smf_7a4d2c9e61",
+        "request_id": "req_4d8a1e7c35",
+        "schema_version": "2.0",
+        "system_assignment": {
+          "application_id": "app_2d8c47a1e0",
+          "assignment_id": "asg_1d5f8b3a27",
+          "environment_id": "env_7b9f31d5c6",
+          "exact_assignment_authority_binding": {
+            "binding_kind": "BOOTSTRAP_ATTESTATION",
+            "digest": "sha256:47b6f2c28556cd44dd121164205051f263de8cd6d7fa3b470fcfa00847b05d1e",
+            "id": "batt_6c9a2e4d83",
+            "revision": 1
+          },
+          "exact_previous_assignment_binding_or_null": null,
+          "exact_slot_version_set_bindings": [
+            {
+              "digest": "sha256:17276db739830b1fec226426f9eee953440e3553df57650dd7ef093533369eb6",
+              "id": "vset_8b2f4d7a05",
+              "kind": "SYSTEM_VERSION_SET",
+              "revision": 1,
+              "slot": "PRIMARY"
+            }
+          ],
+          "expected_previous_generation": null,
+          "exposure": "EXPOSED",
+          "generation": 1,
+          "lifecycle_state": "ACTIVE",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:2768fefd477442f9cb12dce7b063c602d80e6d7ef5622f01f99f1e69f005365e",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "requested_by_external_operation_id": null,
+          "transition_kind": "BOOTSTRAP",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "system_version_set": {
+          "application_id": "app_2d8c47a1e0",
+          "declared_environment_id": "env_7b9f31d5c6",
+          "exact_component_revision_bindings": [
+            {
+              "digest": "sha256:b0928188782dcc6384195895b92101e607b7b0c0ccf2759e65b09b0714eeaba7",
+              "id": "crv_9c4d2f6a81",
+              "kind": "COMPONENT_REVISION",
+              "revision": 1
+            }
+          ],
+          "exact_topology_revision_binding": {
+            "digest": "sha256:f7660372f7ead621f8b3892d981111ae93d2f1059fecfd8cedd5c54bdc0e6ae4",
+            "id": "tpr_3e7a1c5b92",
+            "kind": "TOPOLOGY_REVISION",
+            "revision": 1
+          },
+          "identity_assurance_summary": {
+            "component_assurances": [
+              {
+                "component_id": "cmp_5a1e8b3f70",
+                "component_revision_id": "crv_9c4d2f6a81",
+                "identity_assurance": "IMMUTABLE_DIGEST"
+              }
+            ]
+          },
+          "manifest": {
+            "application": {
+              "slug": "customer-support"
+            },
+            "components": [
+              {
+                "logical_name": "support-app"
+              }
+            ],
+            "environment": {
+              "logical_name": "production"
+            },
+            "schema_version": "2.0"
+          },
+          "manifest_digest": "sha256:d61dfefd74d33ecc226e2e158674d3be7007be14fc98ab539142de37e589b218",
+          "provenance_receipt_ids": [
+            "arec_5f8b2d9c47"
+          ],
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:ffe82379bd700be881aee2a880765bf3f966bdc27912ab05d5eb27f60a08175b",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "system_version_set_id": "vset_8b2f4d7a05",
+          "version_set_digest": "sha256:a181a8e774c7b8367e85a911d63bf81316a96237df5dcff3931dfbe13fec94fe",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "topology_revision": {
+          "application_id": "app_2d8c47a1e0",
+          "component_ids": [
+            "cmp_5a1e8b3f70"
+          ],
+          "exact_edge_revision_bindings": [],
+          "provenance_receipt_ids": [
+            "arec_5f8b2d9c47"
+          ],
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:af902257e9fcceb192533800e63ae2fd94fe4c8adbcff080985a78826482d330",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "topology_digest": "sha256:e6e2b826e31fca5c36125c48f130dcb6f961e698ff8a8776a1f290cf0892e8e6",
+          "topology_revision_id": "tpr_3e7a1c5b92",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "unexpected": "x",
+        "workspace_id": "ws_6f3a9c2e81"
+      },
+      "reason": "unknown top-level field unexpected: generated response schema declares additionalProperties: false and the legacy SystemManifestImportResponse uses extra='forbid'"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "system-manifests.import/response/missing-system-version-set",
+      "instance": {
+        "application": {
+          "application_id": "app_2d8c47a1e0",
+          "criticality": "P1",
+          "data_classification": "INTERNAL",
+          "display_name": "Customer Support Assistant",
+          "exact_previous_application_binding_or_null": null,
+          "governance_mode": "MANAGED",
+          "lifecycle_state": "REGISTERED",
+          "owner_principal_ids": [
+            "prn_9b3e7f21c5"
+          ],
+          "project_id": "proj_2f8a1c04d9",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:527c0f9828b7233c36fd896f7c3c2624d087c2995cbf393bc1372c8c043dd472",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "slug": "customer-support",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "audit_ref": "audit://aud_9c2f6b3d81",
+        "bootstrap_attestation": {
+          "application_id": "app_2d8c47a1e0",
+          "attestation_scope": "INITIAL_DESIRED_ASSIGNMENT",
+          "attester_principal_id": "prn_9b3e7f21c5",
+          "attester_trust_role": "integrator",
+          "bootstrap_attestation_id": "batt_6c9a2e4d83",
+          "environment_id": "env_7b9f31d5c6",
+          "exact_initial_system_version_set_binding": {
+            "digest": "sha256:b1cbcb5cbac0f217fc069e833afd7ea2f6fb68c598404a7135063baa0e0e93af",
+            "id": "vset_8b2f4d7a05",
+            "kind": "SYSTEM_VERSION_SET",
+            "revision": 1
+          },
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:9081a544f4aaa5507c0ec5751943b90c7c097a77a7d91a3e6eed9525782f3587",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "component_revisions": [
+          {
+            "application_id": "app_2d8c47a1e0",
+            "component_id": "cmp_5a1e8b3f70",
+            "component_kind": "APPLICATION_CODE",
+            "component_revision_id": "crv_9c4d2f6a81",
+            "configuration_digest": "sha256:e4508d45f10e60258a28310f67cae0d4fb72cacb5a628276b6e71bd598784922",
+            "content_digest": "sha256:9d48925a00bbf881c9b59bc2685a1ea0f6f9afb8bc7e82be63f370fc52731747",
+            "dataset_role": null,
+            "declared_version": "1.4.2",
+            "exact_provenance_receipt_bindings": [],
+            "exact_system_component_binding": {
+              "digest": "sha256:9a1b3a8890473dfd2da91ab19933f3bb05a768e7abbc908433fd11ae444e6c2a",
+              "id": "cmp_5a1e8b3f70",
+              "kind": "SYSTEM_COMPONENT",
+              "revision": 1
+            },
+            "identity_assurance": "IMMUTABLE_DIGEST",
+            "identity_locator": {
+              "kind": "git_repo",
+              "ref": "v1.4.2",
+              "repo": "acme/customer-support"
+            },
+            "logical_name": "support-app",
+            "record_envelope": {
+              "authority_receipt_id": "arec_5f8b2d9c47",
+              "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+              "immutable": true,
+              "record_digest": "sha256:adf68e15f8b4e4b516bbe0768b7b89efe802cadc85421bc9d2d5994c41037e6b",
+              "recorded_at": "2026-08-11T09:31:02.000Z",
+              "recorded_by_principal": "prn_9b3e7f21c5",
+              "revision": 1,
+              "schema_version": "2.0",
+              "workspace_id": "ws_6f3a9c2e81"
+            },
+            "resolved_at": "2026-08-11T09:30:00.000Z",
+            "workspace_id": "ws_6f3a9c2e81"
+          }
+        ],
+        "components": [
+          {
+            "application_id": "app_2d8c47a1e0",
+            "component_id": "cmp_5a1e8b3f70",
+            "component_kind": "APPLICATION_CODE",
+            "criticality": "P1",
+            "data_classification": "INTERNAL",
+            "dataset_role": null,
+            "effect_classification": "LOCAL",
+            "exact_previous_system_component_binding_or_null": null,
+            "lifecycle_state": "REGISTERED",
+            "logical_name": "support-app",
+            "owner_principal_ids": [
+              "prn_9b3e7f21c5"
+            ],
+            "permission_classification": "READ_WRITE",
+            "record_envelope": {
+              "authority_receipt_id": "arec_5f8b2d9c47",
+              "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+              "immutable": true,
+              "record_digest": "sha256:b9592ad2e66d94e4a774c6ee4c52e8efe30f5fff9c1b26969d8a3a02f2172b7d",
+              "recorded_at": "2026-08-11T09:31:02.000Z",
+              "recorded_by_principal": "prn_9b3e7f21c5",
+              "revision": 1,
+              "schema_version": "2.0",
+              "workspace_id": "ws_6f3a9c2e81"
+            },
+            "workspace_id": "ws_6f3a9c2e81"
+          }
+        ],
+        "dependency_edges": [],
+        "environment": {
+          "application_id": "app_2d8c47a1e0",
+          "environment_id": "env_7b9f31d5c6",
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "production",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:5057a6a3d943f39683eaa374640090fdde3150067073793c720d4b323b56feba",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "risk_classification": "HIGH",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_9c2f6b3d81",
+            "created_at": "2026-08-11T09:31:02.000Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "manifest-import-2026-08-11-a1",
+            "idempotency_receipt_id": "idemr_2a7c4e9f53",
+            "immutable": true,
+            "intent": "system-manifests.import",
+            "operation_id": null,
+            "principal_id": "prn_9b3e7f21c5",
+            "receipt_digest": "sha256:26e61167745c9dbe17518d99d1628aa1485d79896778fbc58301c84153378bdb",
+            "request_fingerprint": "sha256:f8c92c7bf2cd35509a407a67c3995f6dc03f429762183d36ba38abdce8621d46",
+            "request_id": "req_4d8a1e7c35",
+            "resource": {
+              "id": "vset_8b2f4d7a05",
+              "kind": "system_version_set"
+            },
+            "response_digest": "sha256:b7689df9a16e0656cb737371f30c92521d21f9f0242cb10e56a0e76ae4127a7f",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "replayed": false
+        },
+        "manifest_digest": "sha256:d61dfefd74d33ecc226e2e158674d3be7007be14fc98ab539142de37e589b218",
+        "manifest_id": "smf_7a4d2c9e61",
+        "request_id": "req_4d8a1e7c35",
+        "schema_version": "2.0",
+        "system_assignment": {
+          "application_id": "app_2d8c47a1e0",
+          "assignment_id": "asg_1d5f8b3a27",
+          "environment_id": "env_7b9f31d5c6",
+          "exact_assignment_authority_binding": {
+            "binding_kind": "BOOTSTRAP_ATTESTATION",
+            "digest": "sha256:47b6f2c28556cd44dd121164205051f263de8cd6d7fa3b470fcfa00847b05d1e",
+            "id": "batt_6c9a2e4d83",
+            "revision": 1
+          },
+          "exact_previous_assignment_binding_or_null": null,
+          "exact_slot_version_set_bindings": [
+            {
+              "digest": "sha256:17276db739830b1fec226426f9eee953440e3553df57650dd7ef093533369eb6",
+              "id": "vset_8b2f4d7a05",
+              "kind": "SYSTEM_VERSION_SET",
+              "revision": 1,
+              "slot": "PRIMARY"
+            }
+          ],
+          "expected_previous_generation": null,
+          "exposure": "EXPOSED",
+          "generation": 1,
+          "lifecycle_state": "ACTIVE",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:2768fefd477442f9cb12dce7b063c602d80e6d7ef5622f01f99f1e69f005365e",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "requested_by_external_operation_id": null,
+          "transition_kind": "BOOTSTRAP",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "topology_revision": {
+          "application_id": "app_2d8c47a1e0",
+          "component_ids": [
+            "cmp_5a1e8b3f70"
+          ],
+          "exact_edge_revision_bindings": [],
+          "provenance_receipt_ids": [
+            "arec_5f8b2d9c47"
+          ],
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:af902257e9fcceb192533800e63ae2fd94fe4c8adbcff080985a78826482d330",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "topology_digest": "sha256:e6e2b826e31fca5c36125c48f130dcb6f961e698ff8a8776a1f290cf0892e8e6",
+          "topology_revision_id": "tpr_3e7a1c5b92",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "workspace_id": "ws_6f3a9c2e81"
+      },
+      "reason": "system_version_set is a required field of the response in both the generated $defs.response and legacy SystemManifestImportResponse"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "system-manifests.import/response/manifest-digest-type-mismatch",
+      "instance": {
+        "application": {
+          "application_id": "app_2d8c47a1e0",
+          "criticality": "P1",
+          "data_classification": "INTERNAL",
+          "display_name": "Customer Support Assistant",
+          "exact_previous_application_binding_or_null": null,
+          "governance_mode": "MANAGED",
+          "lifecycle_state": "REGISTERED",
+          "owner_principal_ids": [
+            "prn_9b3e7f21c5"
+          ],
+          "project_id": "proj_2f8a1c04d9",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:527c0f9828b7233c36fd896f7c3c2624d087c2995cbf393bc1372c8c043dd472",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "slug": "customer-support",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "audit_ref": "audit://aud_9c2f6b3d81",
+        "bootstrap_attestation": {
+          "application_id": "app_2d8c47a1e0",
+          "attestation_scope": "INITIAL_DESIRED_ASSIGNMENT",
+          "attester_principal_id": "prn_9b3e7f21c5",
+          "attester_trust_role": "integrator",
+          "bootstrap_attestation_id": "batt_6c9a2e4d83",
+          "environment_id": "env_7b9f31d5c6",
+          "exact_initial_system_version_set_binding": {
+            "digest": "sha256:b1cbcb5cbac0f217fc069e833afd7ea2f6fb68c598404a7135063baa0e0e93af",
+            "id": "vset_8b2f4d7a05",
+            "kind": "SYSTEM_VERSION_SET",
+            "revision": 1
+          },
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:9081a544f4aaa5507c0ec5751943b90c7c097a77a7d91a3e6eed9525782f3587",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "component_revisions": [
+          {
+            "application_id": "app_2d8c47a1e0",
+            "component_id": "cmp_5a1e8b3f70",
+            "component_kind": "APPLICATION_CODE",
+            "component_revision_id": "crv_9c4d2f6a81",
+            "configuration_digest": "sha256:e4508d45f10e60258a28310f67cae0d4fb72cacb5a628276b6e71bd598784922",
+            "content_digest": "sha256:9d48925a00bbf881c9b59bc2685a1ea0f6f9afb8bc7e82be63f370fc52731747",
+            "dataset_role": null,
+            "declared_version": "1.4.2",
+            "exact_provenance_receipt_bindings": [],
+            "exact_system_component_binding": {
+              "digest": "sha256:9a1b3a8890473dfd2da91ab19933f3bb05a768e7abbc908433fd11ae444e6c2a",
+              "id": "cmp_5a1e8b3f70",
+              "kind": "SYSTEM_COMPONENT",
+              "revision": 1
+            },
+            "identity_assurance": "IMMUTABLE_DIGEST",
+            "identity_locator": {
+              "kind": "git_repo",
+              "ref": "v1.4.2",
+              "repo": "acme/customer-support"
+            },
+            "logical_name": "support-app",
+            "record_envelope": {
+              "authority_receipt_id": "arec_5f8b2d9c47",
+              "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+              "immutable": true,
+              "record_digest": "sha256:adf68e15f8b4e4b516bbe0768b7b89efe802cadc85421bc9d2d5994c41037e6b",
+              "recorded_at": "2026-08-11T09:31:02.000Z",
+              "recorded_by_principal": "prn_9b3e7f21c5",
+              "revision": 1,
+              "schema_version": "2.0",
+              "workspace_id": "ws_6f3a9c2e81"
+            },
+            "resolved_at": "2026-08-11T09:30:00.000Z",
+            "workspace_id": "ws_6f3a9c2e81"
+          }
+        ],
+        "components": [
+          {
+            "application_id": "app_2d8c47a1e0",
+            "component_id": "cmp_5a1e8b3f70",
+            "component_kind": "APPLICATION_CODE",
+            "criticality": "P1",
+            "data_classification": "INTERNAL",
+            "dataset_role": null,
+            "effect_classification": "LOCAL",
+            "exact_previous_system_component_binding_or_null": null,
+            "lifecycle_state": "REGISTERED",
+            "logical_name": "support-app",
+            "owner_principal_ids": [
+              "prn_9b3e7f21c5"
+            ],
+            "permission_classification": "READ_WRITE",
+            "record_envelope": {
+              "authority_receipt_id": "arec_5f8b2d9c47",
+              "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+              "immutable": true,
+              "record_digest": "sha256:b9592ad2e66d94e4a774c6ee4c52e8efe30f5fff9c1b26969d8a3a02f2172b7d",
+              "recorded_at": "2026-08-11T09:31:02.000Z",
+              "recorded_by_principal": "prn_9b3e7f21c5",
+              "revision": 1,
+              "schema_version": "2.0",
+              "workspace_id": "ws_6f3a9c2e81"
+            },
+            "workspace_id": "ws_6f3a9c2e81"
+          }
+        ],
+        "dependency_edges": [],
+        "environment": {
+          "application_id": "app_2d8c47a1e0",
+          "environment_id": "env_7b9f31d5c6",
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "production",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:5057a6a3d943f39683eaa374640090fdde3150067073793c720d4b323b56feba",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "risk_classification": "HIGH",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_9c2f6b3d81",
+            "created_at": "2026-08-11T09:31:02.000Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "manifest-import-2026-08-11-a1",
+            "idempotency_receipt_id": "idemr_2a7c4e9f53",
+            "immutable": true,
+            "intent": "system-manifests.import",
+            "operation_id": null,
+            "principal_id": "prn_9b3e7f21c5",
+            "receipt_digest": "sha256:26e61167745c9dbe17518d99d1628aa1485d79896778fbc58301c84153378bdb",
+            "request_fingerprint": "sha256:f8c92c7bf2cd35509a407a67c3995f6dc03f429762183d36ba38abdce8621d46",
+            "request_id": "req_4d8a1e7c35",
+            "resource": {
+              "id": "vset_8b2f4d7a05",
+              "kind": "system_version_set"
+            },
+            "response_digest": "sha256:b7689df9a16e0656cb737371f30c92521d21f9f0242cb10e56a0e76ae4127a7f",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "replayed": false
+        },
+        "manifest_digest": "sha256:not-a-valid-digest",
+        "manifest_id": "smf_7a4d2c9e61",
+        "request_id": "req_4d8a1e7c35",
+        "schema_version": "2.0",
+        "system_assignment": {
+          "application_id": "app_2d8c47a1e0",
+          "assignment_id": "asg_1d5f8b3a27",
+          "environment_id": "env_7b9f31d5c6",
+          "exact_assignment_authority_binding": {
+            "binding_kind": "BOOTSTRAP_ATTESTATION",
+            "digest": "sha256:47b6f2c28556cd44dd121164205051f263de8cd6d7fa3b470fcfa00847b05d1e",
+            "id": "batt_6c9a2e4d83",
+            "revision": 1
+          },
+          "exact_previous_assignment_binding_or_null": null,
+          "exact_slot_version_set_bindings": [
+            {
+              "digest": "sha256:17276db739830b1fec226426f9eee953440e3553df57650dd7ef093533369eb6",
+              "id": "vset_8b2f4d7a05",
+              "kind": "SYSTEM_VERSION_SET",
+              "revision": 1,
+              "slot": "PRIMARY"
+            }
+          ],
+          "expected_previous_generation": null,
+          "exposure": "EXPOSED",
+          "generation": 1,
+          "lifecycle_state": "ACTIVE",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:2768fefd477442f9cb12dce7b063c602d80e6d7ef5622f01f99f1e69f005365e",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "requested_by_external_operation_id": null,
+          "transition_kind": "BOOTSTRAP",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "system_version_set": {
+          "application_id": "app_2d8c47a1e0",
+          "declared_environment_id": "env_7b9f31d5c6",
+          "exact_component_revision_bindings": [
+            {
+              "digest": "sha256:b0928188782dcc6384195895b92101e607b7b0c0ccf2759e65b09b0714eeaba7",
+              "id": "crv_9c4d2f6a81",
+              "kind": "COMPONENT_REVISION",
+              "revision": 1
+            }
+          ],
+          "exact_topology_revision_binding": {
+            "digest": "sha256:f7660372f7ead621f8b3892d981111ae93d2f1059fecfd8cedd5c54bdc0e6ae4",
+            "id": "tpr_3e7a1c5b92",
+            "kind": "TOPOLOGY_REVISION",
+            "revision": 1
+          },
+          "identity_assurance_summary": {
+            "component_assurances": [
+              {
+                "component_id": "cmp_5a1e8b3f70",
+                "component_revision_id": "crv_9c4d2f6a81",
+                "identity_assurance": "IMMUTABLE_DIGEST"
+              }
+            ]
+          },
+          "manifest": {
+            "application": {
+              "slug": "customer-support"
+            },
+            "components": [
+              {
+                "logical_name": "support-app"
+              }
+            ],
+            "environment": {
+              "logical_name": "production"
+            },
+            "schema_version": "2.0"
+          },
+          "manifest_digest": "sha256:d61dfefd74d33ecc226e2e158674d3be7007be14fc98ab539142de37e589b218",
+          "provenance_receipt_ids": [
+            "arec_5f8b2d9c47"
+          ],
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:ffe82379bd700be881aee2a880765bf3f966bdc27912ab05d5eb27f60a08175b",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "system_version_set_id": "vset_8b2f4d7a05",
+          "version_set_digest": "sha256:a181a8e774c7b8367e85a911d63bf81316a96237df5dcff3931dfbe13fec94fe",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "topology_revision": {
+          "application_id": "app_2d8c47a1e0",
+          "component_ids": [
+            "cmp_5a1e8b3f70"
+          ],
+          "exact_edge_revision_bindings": [],
+          "provenance_receipt_ids": [
+            "arec_5f8b2d9c47"
+          ],
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:af902257e9fcceb192533800e63ae2fd94fe4c8adbcff080985a78826482d330",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "topology_digest": "sha256:e6e2b826e31fca5c36125c48f130dcb6f961e698ff8a8776a1f290cf0892e8e6",
+          "topology_revision_id": "tpr_3e7a1c5b92",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "workspace_id": "ws_6f3a9c2e81"
+      },
+      "reason": "manifest_digest 'sha256:not-a-valid-digest' violates the digest pattern ^sha256:[0-9a-f]{64}$ enforced by both the generated schema and the legacy Digest type"
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "system-manifests.import/response/missing-idempotency",
+      "instance": {
+        "application": {
+          "application_id": "app_2d8c47a1e0",
+          "criticality": "P1",
+          "data_classification": "INTERNAL",
+          "display_name": "Customer Support Assistant",
+          "exact_previous_application_binding_or_null": null,
+          "governance_mode": "MANAGED",
+          "lifecycle_state": "REGISTERED",
+          "owner_principal_ids": [
+            "prn_9b3e7f21c5"
+          ],
+          "project_id": "proj_2f8a1c04d9",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:527c0f9828b7233c36fd896f7c3c2624d087c2995cbf393bc1372c8c043dd472",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "slug": "customer-support",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "audit_ref": "audit://aud_9c2f6b3d81",
+        "bootstrap_attestation": {
+          "application_id": "app_2d8c47a1e0",
+          "attestation_scope": "INITIAL_DESIRED_ASSIGNMENT",
+          "attester_principal_id": "prn_9b3e7f21c5",
+          "attester_trust_role": "integrator",
+          "bootstrap_attestation_id": "batt_6c9a2e4d83",
+          "environment_id": "env_7b9f31d5c6",
+          "exact_initial_system_version_set_binding": {
+            "digest": "sha256:b1cbcb5cbac0f217fc069e833afd7ea2f6fb68c598404a7135063baa0e0e93af",
+            "id": "vset_8b2f4d7a05",
+            "kind": "SYSTEM_VERSION_SET",
+            "revision": 1
+          },
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:9081a544f4aaa5507c0ec5751943b90c7c097a77a7d91a3e6eed9525782f3587",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "component_revisions": [
+          {
+            "application_id": "app_2d8c47a1e0",
+            "component_id": "cmp_5a1e8b3f70",
+            "component_kind": "APPLICATION_CODE",
+            "component_revision_id": "crv_9c4d2f6a81",
+            "configuration_digest": "sha256:e4508d45f10e60258a28310f67cae0d4fb72cacb5a628276b6e71bd598784922",
+            "content_digest": "sha256:9d48925a00bbf881c9b59bc2685a1ea0f6f9afb8bc7e82be63f370fc52731747",
+            "dataset_role": null,
+            "declared_version": "1.4.2",
+            "exact_provenance_receipt_bindings": [],
+            "exact_system_component_binding": {
+              "digest": "sha256:9a1b3a8890473dfd2da91ab19933f3bb05a768e7abbc908433fd11ae444e6c2a",
+              "id": "cmp_5a1e8b3f70",
+              "kind": "SYSTEM_COMPONENT",
+              "revision": 1
+            },
+            "identity_assurance": "IMMUTABLE_DIGEST",
+            "identity_locator": {
+              "kind": "git_repo",
+              "ref": "v1.4.2",
+              "repo": "acme/customer-support"
+            },
+            "logical_name": "support-app",
+            "record_envelope": {
+              "authority_receipt_id": "arec_5f8b2d9c47",
+              "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+              "immutable": true,
+              "record_digest": "sha256:adf68e15f8b4e4b516bbe0768b7b89efe802cadc85421bc9d2d5994c41037e6b",
+              "recorded_at": "2026-08-11T09:31:02.000Z",
+              "recorded_by_principal": "prn_9b3e7f21c5",
+              "revision": 1,
+              "schema_version": "2.0",
+              "workspace_id": "ws_6f3a9c2e81"
+            },
+            "resolved_at": "2026-08-11T09:30:00.000Z",
+            "workspace_id": "ws_6f3a9c2e81"
+          }
+        ],
+        "components": [
+          {
+            "application_id": "app_2d8c47a1e0",
+            "component_id": "cmp_5a1e8b3f70",
+            "component_kind": "APPLICATION_CODE",
+            "criticality": "P1",
+            "data_classification": "INTERNAL",
+            "dataset_role": null,
+            "effect_classification": "LOCAL",
+            "exact_previous_system_component_binding_or_null": null,
+            "lifecycle_state": "REGISTERED",
+            "logical_name": "support-app",
+            "owner_principal_ids": [
+              "prn_9b3e7f21c5"
+            ],
+            "permission_classification": "READ_WRITE",
+            "record_envelope": {
+              "authority_receipt_id": "arec_5f8b2d9c47",
+              "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+              "immutable": true,
+              "record_digest": "sha256:b9592ad2e66d94e4a774c6ee4c52e8efe30f5fff9c1b26969d8a3a02f2172b7d",
+              "recorded_at": "2026-08-11T09:31:02.000Z",
+              "recorded_by_principal": "prn_9b3e7f21c5",
+              "revision": 1,
+              "schema_version": "2.0",
+              "workspace_id": "ws_6f3a9c2e81"
+            },
+            "workspace_id": "ws_6f3a9c2e81"
+          }
+        ],
+        "dependency_edges": [],
+        "environment": {
+          "application_id": "app_2d8c47a1e0",
+          "environment_id": "env_7b9f31d5c6",
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "production",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:5057a6a3d943f39683eaa374640090fdde3150067073793c720d4b323b56feba",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "risk_classification": "HIGH",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "manifest_digest": "sha256:d61dfefd74d33ecc226e2e158674d3be7007be14fc98ab539142de37e589b218",
+        "manifest_id": "smf_7a4d2c9e61",
+        "request_id": "req_4d8a1e7c35",
+        "schema_version": "2.0",
+        "system_assignment": {
+          "application_id": "app_2d8c47a1e0",
+          "assignment_id": "asg_1d5f8b3a27",
+          "environment_id": "env_7b9f31d5c6",
+          "exact_assignment_authority_binding": {
+            "binding_kind": "BOOTSTRAP_ATTESTATION",
+            "digest": "sha256:47b6f2c28556cd44dd121164205051f263de8cd6d7fa3b470fcfa00847b05d1e",
+            "id": "batt_6c9a2e4d83",
+            "revision": 1
+          },
+          "exact_previous_assignment_binding_or_null": null,
+          "exact_slot_version_set_bindings": [
+            {
+              "digest": "sha256:17276db739830b1fec226426f9eee953440e3553df57650dd7ef093533369eb6",
+              "id": "vset_8b2f4d7a05",
+              "kind": "SYSTEM_VERSION_SET",
+              "revision": 1,
+              "slot": "PRIMARY"
+            }
+          ],
+          "expected_previous_generation": null,
+          "exposure": "EXPOSED",
+          "generation": 1,
+          "lifecycle_state": "ACTIVE",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:2768fefd477442f9cb12dce7b063c602d80e6d7ef5622f01f99f1e69f005365e",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "requested_by_external_operation_id": null,
+          "transition_kind": "BOOTSTRAP",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "system_version_set": {
+          "application_id": "app_2d8c47a1e0",
+          "declared_environment_id": "env_7b9f31d5c6",
+          "exact_component_revision_bindings": [
+            {
+              "digest": "sha256:b0928188782dcc6384195895b92101e607b7b0c0ccf2759e65b09b0714eeaba7",
+              "id": "crv_9c4d2f6a81",
+              "kind": "COMPONENT_REVISION",
+              "revision": 1
+            }
+          ],
+          "exact_topology_revision_binding": {
+            "digest": "sha256:f7660372f7ead621f8b3892d981111ae93d2f1059fecfd8cedd5c54bdc0e6ae4",
+            "id": "tpr_3e7a1c5b92",
+            "kind": "TOPOLOGY_REVISION",
+            "revision": 1
+          },
+          "identity_assurance_summary": {
+            "component_assurances": [
+              {
+                "component_id": "cmp_5a1e8b3f70",
+                "component_revision_id": "crv_9c4d2f6a81",
+                "identity_assurance": "IMMUTABLE_DIGEST"
+              }
+            ]
+          },
+          "manifest": {
+            "application": {
+              "slug": "customer-support"
+            },
+            "components": [
+              {
+                "logical_name": "support-app"
+              }
+            ],
+            "environment": {
+              "logical_name": "production"
+            },
+            "schema_version": "2.0"
+          },
+          "manifest_digest": "sha256:d61dfefd74d33ecc226e2e158674d3be7007be14fc98ab539142de37e589b218",
+          "provenance_receipt_ids": [
+            "arec_5f8b2d9c47"
+          ],
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:ffe82379bd700be881aee2a880765bf3f966bdc27912ab05d5eb27f60a08175b",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "system_version_set_id": "vset_8b2f4d7a05",
+          "version_set_digest": "sha256:a181a8e774c7b8367e85a911d63bf81316a96237df5dcff3931dfbe13fec94fe",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "topology_revision": {
+          "application_id": "app_2d8c47a1e0",
+          "component_ids": [
+            "cmp_5a1e8b3f70"
+          ],
+          "exact_edge_revision_bindings": [],
+          "provenance_receipt_ids": [
+            "arec_5f8b2d9c47"
+          ],
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:af902257e9fcceb192533800e63ae2fd94fe4c8adbcff080985a78826482d330",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "topology_digest": "sha256:e6e2b826e31fca5c36125c48f130dcb6f961e698ff8a8776a1f290cf0892e8e6",
+          "topology_revision_id": "tpr_3e7a1c5b92",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "workspace_id": "ws_6f3a9c2e81"
+      },
+      "reason": "idempotency is a required field of the response in both the generated $defs.response and legacy SystemManifestImportResponse"
+    },
+    {
+      "direction": "response",
+      "expected": "valid",
+      "id": "system-manifests.import/response/approver-policy-revision-null",
+      "instance": {
+        "application": {
+          "application_id": "app_2d8c47a1e0",
+          "criticality": "P1",
+          "data_classification": "INTERNAL",
+          "display_name": "Customer Support Assistant",
+          "exact_previous_application_binding_or_null": null,
+          "governance_mode": "MANAGED",
+          "lifecycle_state": "REGISTERED",
+          "owner_principal_ids": [
+            "prn_9b3e7f21c5"
+          ],
+          "project_id": "proj_2f8a1c04d9",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:527c0f9828b7233c36fd896f7c3c2624d087c2995cbf393bc1372c8c043dd472",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "slug": "customer-support",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "approver_policy_revision": null,
+        "audit_ref": "audit://aud_9c2f6b3d81",
+        "bootstrap_attestation": {
+          "application_id": "app_2d8c47a1e0",
+          "attestation_scope": "INITIAL_DESIRED_ASSIGNMENT",
+          "attester_principal_id": "prn_9b3e7f21c5",
+          "attester_trust_role": "integrator",
+          "bootstrap_attestation_id": "batt_6c9a2e4d83",
+          "environment_id": "env_7b9f31d5c6",
+          "exact_initial_system_version_set_binding": {
+            "digest": "sha256:b1cbcb5cbac0f217fc069e833afd7ea2f6fb68c598404a7135063baa0e0e93af",
+            "id": "vset_8b2f4d7a05",
+            "kind": "SYSTEM_VERSION_SET",
+            "revision": 1
+          },
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:9081a544f4aaa5507c0ec5751943b90c7c097a77a7d91a3e6eed9525782f3587",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "component_revisions": [
+          {
+            "application_id": "app_2d8c47a1e0",
+            "component_id": "cmp_5a1e8b3f70",
+            "component_kind": "APPLICATION_CODE",
+            "component_revision_id": "crv_9c4d2f6a81",
+            "configuration_digest": "sha256:e4508d45f10e60258a28310f67cae0d4fb72cacb5a628276b6e71bd598784922",
+            "content_digest": "sha256:9d48925a00bbf881c9b59bc2685a1ea0f6f9afb8bc7e82be63f370fc52731747",
+            "dataset_role": null,
+            "declared_version": "1.4.2",
+            "exact_provenance_receipt_bindings": [],
+            "exact_system_component_binding": {
+              "digest": "sha256:9a1b3a8890473dfd2da91ab19933f3bb05a768e7abbc908433fd11ae444e6c2a",
+              "id": "cmp_5a1e8b3f70",
+              "kind": "SYSTEM_COMPONENT",
+              "revision": 1
+            },
+            "identity_assurance": "IMMUTABLE_DIGEST",
+            "identity_locator": {
+              "kind": "git_repo",
+              "ref": "v1.4.2",
+              "repo": "acme/customer-support"
+            },
+            "logical_name": "support-app",
+            "record_envelope": {
+              "authority_receipt_id": "arec_5f8b2d9c47",
+              "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+              "immutable": true,
+              "record_digest": "sha256:adf68e15f8b4e4b516bbe0768b7b89efe802cadc85421bc9d2d5994c41037e6b",
+              "recorded_at": "2026-08-11T09:31:02.000Z",
+              "recorded_by_principal": "prn_9b3e7f21c5",
+              "revision": 1,
+              "schema_version": "2.0",
+              "workspace_id": "ws_6f3a9c2e81"
+            },
+            "resolved_at": "2026-08-11T09:30:00.000Z",
+            "workspace_id": "ws_6f3a9c2e81"
+          }
+        ],
+        "components": [
+          {
+            "application_id": "app_2d8c47a1e0",
+            "component_id": "cmp_5a1e8b3f70",
+            "component_kind": "APPLICATION_CODE",
+            "criticality": "P1",
+            "data_classification": "INTERNAL",
+            "dataset_role": null,
+            "effect_classification": "LOCAL",
+            "exact_previous_system_component_binding_or_null": null,
+            "lifecycle_state": "REGISTERED",
+            "logical_name": "support-app",
+            "owner_principal_ids": [
+              "prn_9b3e7f21c5"
+            ],
+            "permission_classification": "READ_WRITE",
+            "record_envelope": {
+              "authority_receipt_id": "arec_5f8b2d9c47",
+              "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+              "immutable": true,
+              "record_digest": "sha256:b9592ad2e66d94e4a774c6ee4c52e8efe30f5fff9c1b26969d8a3a02f2172b7d",
+              "recorded_at": "2026-08-11T09:31:02.000Z",
+              "recorded_by_principal": "prn_9b3e7f21c5",
+              "revision": 1,
+              "schema_version": "2.0",
+              "workspace_id": "ws_6f3a9c2e81"
+            },
+            "workspace_id": "ws_6f3a9c2e81"
+          }
+        ],
+        "dependency_edges": [],
+        "environment": {
+          "application_id": "app_2d8c47a1e0",
+          "environment_id": "env_7b9f31d5c6",
+          "lifecycle_state": "ACTIVE",
+          "logical_name": "production",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:5057a6a3d943f39683eaa374640090fdde3150067073793c720d4b323b56feba",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "risk_classification": "HIGH",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "idempotency": {
+          "receipt": {
+            "audit_ref": "audit://aud_9c2f6b3d81",
+            "created_at": "2026-08-11T09:31:02.000Z",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "idempotency_key": "manifest-import-2026-08-11-a1",
+            "idempotency_receipt_id": "idemr_2a7c4e9f53",
+            "immutable": true,
+            "intent": "system-manifests.import",
+            "operation_id": null,
+            "principal_id": "prn_9b3e7f21c5",
+            "receipt_digest": "sha256:26e61167745c9dbe17518d99d1628aa1485d79896778fbc58301c84153378bdb",
+            "request_fingerprint": "sha256:f8c92c7bf2cd35509a407a67c3995f6dc03f429762183d36ba38abdce8621d46",
+            "request_id": "req_4d8a1e7c35",
+            "resource": {
+              "id": "vset_8b2f4d7a05",
+              "kind": "system_version_set"
+            },
+            "response_digest": "sha256:b7689df9a16e0656cb737371f30c92521d21f9f0242cb10e56a0e76ae4127a7f",
+            "schema_version": "1.0",
+            "status": "COMPLETED",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "replayed": false
+        },
+        "manifest_digest": "sha256:d61dfefd74d33ecc226e2e158674d3be7007be14fc98ab539142de37e589b218",
+        "manifest_id": "smf_7a4d2c9e61",
+        "request_id": "req_4d8a1e7c35",
+        "schema_version": "2.0",
+        "system_assignment": {
+          "application_id": "app_2d8c47a1e0",
+          "assignment_id": "asg_1d5f8b3a27",
+          "environment_id": "env_7b9f31d5c6",
+          "exact_assignment_authority_binding": {
+            "binding_kind": "BOOTSTRAP_ATTESTATION",
+            "digest": "sha256:47b6f2c28556cd44dd121164205051f263de8cd6d7fa3b470fcfa00847b05d1e",
+            "id": "batt_6c9a2e4d83",
+            "revision": 1
+          },
+          "exact_previous_assignment_binding_or_null": null,
+          "exact_slot_version_set_bindings": [
+            {
+              "digest": "sha256:17276db739830b1fec226426f9eee953440e3553df57650dd7ef093533369eb6",
+              "id": "vset_8b2f4d7a05",
+              "kind": "SYSTEM_VERSION_SET",
+              "revision": 1,
+              "slot": "PRIMARY"
+            }
+          ],
+          "expected_previous_generation": null,
+          "exposure": "EXPOSED",
+          "generation": 1,
+          "lifecycle_state": "ACTIVE",
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:2768fefd477442f9cb12dce7b063c602d80e6d7ef5622f01f99f1e69f005365e",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "requested_by_external_operation_id": null,
+          "transition_kind": "BOOTSTRAP",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "system_version_set": {
+          "application_id": "app_2d8c47a1e0",
+          "declared_environment_id": "env_7b9f31d5c6",
+          "exact_component_revision_bindings": [
+            {
+              "digest": "sha256:b0928188782dcc6384195895b92101e607b7b0c0ccf2759e65b09b0714eeaba7",
+              "id": "crv_9c4d2f6a81",
+              "kind": "COMPONENT_REVISION",
+              "revision": 1
+            }
+          ],
+          "exact_topology_revision_binding": {
+            "digest": "sha256:f7660372f7ead621f8b3892d981111ae93d2f1059fecfd8cedd5c54bdc0e6ae4",
+            "id": "tpr_3e7a1c5b92",
+            "kind": "TOPOLOGY_REVISION",
+            "revision": 1
+          },
+          "identity_assurance_summary": {
+            "component_assurances": [
+              {
+                "component_id": "cmp_5a1e8b3f70",
+                "component_revision_id": "crv_9c4d2f6a81",
+                "identity_assurance": "IMMUTABLE_DIGEST"
+              }
+            ]
+          },
+          "manifest": {
+            "application": {
+              "slug": "customer-support"
+            },
+            "components": [
+              {
+                "logical_name": "support-app"
+              }
+            ],
+            "environment": {
+              "logical_name": "production"
+            },
+            "schema_version": "2.0"
+          },
+          "manifest_digest": "sha256:d61dfefd74d33ecc226e2e158674d3be7007be14fc98ab539142de37e589b218",
+          "provenance_receipt_ids": [
+            "arec_5f8b2d9c47"
+          ],
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:ffe82379bd700be881aee2a880765bf3f966bdc27912ab05d5eb27f60a08175b",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "system_version_set_id": "vset_8b2f4d7a05",
+          "version_set_digest": "sha256:a181a8e774c7b8367e85a911d63bf81316a96237df5dcff3931dfbe13fec94fe",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "topology_revision": {
+          "application_id": "app_2d8c47a1e0",
+          "component_ids": [
+            "cmp_5a1e8b3f70"
+          ],
+          "exact_edge_revision_bindings": [],
+          "provenance_receipt_ids": [
+            "arec_5f8b2d9c47"
+          ],
+          "record_envelope": {
+            "authority_receipt_id": "arec_5f8b2d9c47",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:af902257e9fcceb192533800e63ae2fd94fe4c8adbcff080985a78826482d330",
+            "recorded_at": "2026-08-11T09:31:02.000Z",
+            "recorded_by_principal": "prn_9b3e7f21c5",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_6f3a9c2e81"
+          },
+          "topology_digest": "sha256:e6e2b826e31fca5c36125c48f130dcb6f961e698ff8a8776a1f290cf0892e8e6",
+          "topology_revision_id": "tpr_3e7a1c5b92",
+          "workspace_id": "ws_6f3a9c2e81"
+        },
+        "workspace_id": "ws_6f3a9c2e81"
+      },
+      "reason": null
+    }
+  ],
+  "description": "C1 shadow-parity corpus for the R2 bootstrap system manifest import intent. Request cases cover a minimal but field-complete ONE_SHOT manifest (application, environment, one APPLICATION_CODE component with an IMMUTABLE_DIGEST revision). Response cases cover the full bootstrap outcome: application/environment/component/edge records, component revisions, topology revision, system version set, bootstrap attestation, bootstrap system assignment and the idempotency delivery, all revision-1 per the legacy record revision constraints. Every expected verdict must be agreed by the generated JSON Schema 2020-12 validators and the legacy Pydantic models (SystemManifestImportRequest / SystemManifestImportResponse).",
+  "intent": "system-manifests.import",
+  "schema_version": "1.0"
+}

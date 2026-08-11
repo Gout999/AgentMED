@@ -1,0 +1,333 @@
+{
+  "cases": [
+    {
+      "direction": "response",
+      "expected": "valid",
+      "id": "applications.get/response/rev1-valid",
+      "instance": {
+        "application": {
+          "application_id": "app_3f6a9c2e8b1d47a5",
+          "criticality": "P1",
+          "data_classification": "CONFIDENTIAL",
+          "display_name": "Payment Intake Application",
+          "exact_previous_application_binding_or_null": null,
+          "governance_mode": "MANAGED",
+          "lifecycle_state": "REGISTERED",
+          "owner_principal_ids": [
+            "prn_4a3b2c1d0e9f8877",
+            "prn_b2a9c8d7e6f50413"
+          ],
+          "project_id": "proj_7c2d9e1f3a5b6840",
+          "record_envelope": {
+            "authority_receipt_id": "arec_1a2b3c4d5e6f7890",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+            "recorded_at": "2026-08-11T08:30:00Z",
+            "recorded_by_principal": "prn_4a3b2c1d0e9f8877",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_9f8e7d6c5b4a3928"
+          },
+          "slug": "payment-intake",
+          "workspace_id": "ws_9f8e7d6c5b4a3928"
+        },
+        "audit_ref": "audit://aud_8a7b6c5d4e3f2019",
+        "request_id": "req_5d4c3b2a1f0e9887",
+        "schema_version": "2.0",
+        "workspace_id": "ws_9f8e7d6c5b4a3928"
+      }
+    },
+    {
+      "direction": "response",
+      "expected": "valid",
+      "id": "applications.get/response/rev2-valid",
+      "instance": {
+        "application": {
+          "application_id": "app_3f6a9c2e8b1d47a5",
+          "criticality": "P1",
+          "data_classification": "CONFIDENTIAL",
+          "display_name": "Payment Intake Application",
+          "exact_previous_application_binding": {
+            "digest": "sha256:fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+            "id": "app_1a2b3c4d5e6f7089",
+            "kind": "AI_APPLICATION",
+            "revision": 1
+          },
+          "governance_mode": "MANAGED",
+          "lifecycle_state": "ACTIVE",
+          "owner_principal_ids": [
+            "prn_4a3b2c1d0e9f8877",
+            "prn_b2a9c8d7e6f50413"
+          ],
+          "project_id": "proj_7c2d9e1f3a5b6840",
+          "record_envelope": {
+            "authority_receipt_id": "arec_1a2b3c4d5e6f7890",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "recorded_at": "2026-08-11T09:15:00Z",
+            "recorded_by_principal": "prn_4a3b2c1d0e9f8877",
+            "revision": 2,
+            "schema_version": "2.0",
+            "workspace_id": "ws_9f8e7d6c5b4a3928"
+          },
+          "slug": "payment-intake",
+          "workspace_id": "ws_9f8e7d6c5b4a3928"
+        },
+        "audit_ref": "audit://aud_8a7b6c5d4e3f2019",
+        "request_id": "req_5d4c3b2a1f0e9887",
+        "schema_version": "2.0",
+        "workspace_id": "ws_9f8e7d6c5b4a3928"
+      }
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "applications.get/response/additional-field",
+      "instance": {
+        "application": {
+          "application_id": "app_3f6a9c2e8b1d47a5",
+          "criticality": "P1",
+          "data_classification": "CONFIDENTIAL",
+          "display_name": "Payment Intake Application",
+          "exact_previous_application_binding_or_null": null,
+          "governance_mode": "MANAGED",
+          "lifecycle_state": "REGISTERED",
+          "owner_principal_ids": [
+            "prn_4a3b2c1d0e9f8877",
+            "prn_b2a9c8d7e6f50413"
+          ],
+          "project_id": "proj_7c2d9e1f3a5b6840",
+          "record_envelope": {
+            "authority_receipt_id": "arec_1a2b3c4d5e6f7890",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+            "recorded_at": "2026-08-11T08:30:00Z",
+            "recorded_by_principal": "prn_4a3b2c1d0e9f8877",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_9f8e7d6c5b4a3928"
+          },
+          "slug": "payment-intake",
+          "workspace_id": "ws_9f8e7d6c5b4a3928"
+        },
+        "audit_ref": "audit://aud_8a7b6c5d4e3f2019",
+        "request_id": "req_5d4c3b2a1f0e9887",
+        "schema_version": "2.0",
+        "unexpected_field": "unexpected-value",
+        "workspace_id": "ws_9f8e7d6c5b4a3928"
+      },
+      "reason": "Response carries an undeclared top-level field; the generated schema sets additionalProperties=false and the legacy WireModel config uses extra='forbid', so both reject."
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "applications.get/response/missing-required",
+      "instance": {
+        "application": {
+          "application_id": "app_3f6a9c2e8b1d47a5",
+          "criticality": "P1",
+          "data_classification": "CONFIDENTIAL",
+          "display_name": "Payment Intake Application",
+          "exact_previous_application_binding_or_null": null,
+          "governance_mode": "MANAGED",
+          "lifecycle_state": "REGISTERED",
+          "owner_principal_ids": [
+            "prn_4a3b2c1d0e9f8877",
+            "prn_b2a9c8d7e6f50413"
+          ],
+          "project_id": "proj_7c2d9e1f3a5b6840",
+          "record_envelope": {
+            "authority_receipt_id": "arec_1a2b3c4d5e6f7890",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+            "recorded_at": "2026-08-11T08:30:00Z",
+            "recorded_by_principal": "prn_4a3b2c1d0e9f8877",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_9f8e7d6c5b4a3928"
+          },
+          "slug": "payment-intake",
+          "workspace_id": "ws_9f8e7d6c5b4a3928"
+        },
+        "request_id": "req_5d4c3b2a1f0e9887",
+        "schema_version": "2.0",
+        "workspace_id": "ws_9f8e7d6c5b4a3928"
+      },
+      "reason": "Response omits the required audit_ref; both the generated schema required list and the legacy ApplicationGetResponse required field reject the instance."
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "applications.get/response/type-mismatch",
+      "instance": {
+        "application": {
+          "application_id": "app_4c3x",
+          "criticality": "P1",
+          "data_classification": "CONFIDENTIAL",
+          "display_name": "Payment Intake Application",
+          "exact_previous_application_binding_or_null": null,
+          "governance_mode": "MANAGED",
+          "lifecycle_state": "REGISTERED",
+          "owner_principal_ids": [
+            "prn_4a3b2c1d0e9f8877",
+            "prn_b2a9c8d7e6f50413"
+          ],
+          "project_id": "proj_7c2d9e1f3a5b6840",
+          "record_envelope": {
+            "authority_receipt_id": "arec_1a2b3c4d5e6f7890",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+            "recorded_at": "2026-08-11T08:30:00Z",
+            "recorded_by_principal": "prn_4a3b2c1d0e9f8877",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_9f8e7d6c5b4a3928"
+          },
+          "slug": "payment-intake",
+          "workspace_id": "ws_9f8e7d6c5b4a3928"
+        },
+        "audit_ref": "audit://aud_8a7b6c5d4e3f2019",
+        "request_id": "req_5d4c3b2a1f0e9887",
+        "schema_version": "2.0",
+        "workspace_id": "ws_9f8e7d6c5b4a3928"
+      },
+      "reason": "application_id 'app_4c3x' fails the ^app_[0-9A-Za-z]{8,64}$ id pattern (4 chars after the prefix, fewer than 8); both validators reject."
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "applications.get/response/discriminator-both-bindings",
+      "instance": {
+        "application": {
+          "application_id": "app_3f6a9c2e8b1d47a5",
+          "criticality": "P1",
+          "data_classification": "CONFIDENTIAL",
+          "display_name": "Payment Intake Application",
+          "exact_previous_application_binding": {
+            "digest": "sha256:fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+            "id": "app_1a2b3c4d5e6f7089",
+            "kind": "AI_APPLICATION",
+            "revision": 1
+          },
+          "exact_previous_application_binding_or_null": null,
+          "governance_mode": "MANAGED",
+          "lifecycle_state": "ACTIVE",
+          "owner_principal_ids": [
+            "prn_4a3b2c1d0e9f8877",
+            "prn_b2a9c8d7e6f50413"
+          ],
+          "project_id": "proj_7c2d9e1f3a5b6840",
+          "record_envelope": {
+            "authority_receipt_id": "arec_1a2b3c4d5e6f7890",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "recorded_at": "2026-08-11T09:15:00Z",
+            "recorded_by_principal": "prn_4a3b2c1d0e9f8877",
+            "revision": 2,
+            "schema_version": "2.0",
+            "workspace_id": "ws_9f8e7d6c5b4a3928"
+          },
+          "slug": "payment-intake",
+          "workspace_id": "ws_9f8e7d6c5b4a3928"
+        },
+        "audit_ref": "audit://aud_8a7b6c5d4e3f2019",
+        "request_id": "req_5d4c3b2a1f0e9887",
+        "schema_version": "2.0",
+        "workspace_id": "ws_9f8e7d6c5b4a3928"
+      },
+      "reason": "Record carries both exact_previous_application_binding_or_null and exact_previous_application_binding; the generated schema oneOf requires exactly one and the legacy revision>=2 validator forbids the or_null field, so both reject."
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "applications.get/response/discriminator-missing-binding",
+      "instance": {
+        "application": {
+          "application_id": "app_3f6a9c2e8b1d47a5",
+          "criticality": "P1",
+          "data_classification": "CONFIDENTIAL",
+          "display_name": "Payment Intake Application",
+          "exact_previous_application_binding_or_null": null,
+          "governance_mode": "MANAGED",
+          "lifecycle_state": "ACTIVE",
+          "owner_principal_ids": [
+            "prn_4a3b2c1d0e9f8877",
+            "prn_b2a9c8d7e6f50413"
+          ],
+          "project_id": "proj_7c2d9e1f3a5b6840",
+          "record_envelope": {
+            "authority_receipt_id": "arec_1a2b3c4d5e6f7890",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef",
+            "recorded_at": "2026-08-11T09:15:00Z",
+            "recorded_by_principal": "prn_4a3b2c1d0e9f8877",
+            "revision": 2,
+            "schema_version": "2.0",
+            "workspace_id": "ws_9f8e7d6c5b4a3928"
+          },
+          "slug": "payment-intake",
+          "workspace_id": "ws_9f8e7d6c5b4a3928"
+        },
+        "audit_ref": "audit://aud_8a7b6c5d4e3f2019",
+        "request_id": "req_5d4c3b2a1f0e9887",
+        "schema_version": "2.0",
+        "workspace_id": "ws_9f8e7d6c5b4a3928"
+      },
+      "reason": "ACTIVE record has the null binding and no exact previous binding; the generated schema lifecycle/binding coupling (ACTIVE requires the exact binding) and the legacy transition validator (revision>=2 requires an exact previous binding) both reject."
+    },
+    {
+      "direction": "response",
+      "expected": "invalid",
+      "id": "applications.get/response/rev2-with-REGISTERED-state",
+      "instance": {
+        "application": {
+          "application_id": "app_3f6a9c2e8b1d47a5",
+          "criticality": "P1",
+          "data_classification": "CONFIDENTIAL",
+          "display_name": "Payment Intake Application",
+          "exact_previous_application_binding": {
+            "digest": "sha256:fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210",
+            "id": "app_1a2b3c4d5e6f7089",
+            "kind": "AI_APPLICATION",
+            "revision": 1
+          },
+          "governance_mode": "MANAGED",
+          "lifecycle_state": "REGISTERED",
+          "owner_principal_ids": [
+            "prn_4a3b2c1d0e9f8877",
+            "prn_b2a9c8d7e6f50413"
+          ],
+          "project_id": "proj_7c2d9e1f3a5b6840",
+          "record_envelope": {
+            "authority_receipt_id": "arec_1a2b3c4d5e6f7890",
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "immutable": true,
+            "record_digest": "sha256:abcdef0123456789abcdef0123456789abcdef0123456789abcdef0123456789",
+            "recorded_at": "2026-08-11T08:30:00Z",
+            "recorded_by_principal": "prn_4a3b2c1d0e9f8877",
+            "revision": 1,
+            "schema_version": "2.0",
+            "workspace_id": "ws_9f8e7d6c5b4a3928"
+          },
+          "slug": "payment-intake",
+          "workspace_id": "ws_9f8e7d6c5b4a3928"
+        },
+        "audit_ref": "audit://aud_8a7b6c5d4e3f2019",
+        "request_id": "req_5d4c3b2a1f0e9887",
+        "schema_version": "2.0",
+        "workspace_id": "ws_9f8e7d6c5b4a3928"
+      },
+      "reason": "REGISTERED is the revision-1 lifecycle and must pair with the null previous binding; carrying an exact previous binding is rejected by the generated schema lifecycle/binding coupling and by the legacy revision-1 validator. Envelope revision is 1 (not 2): with envelope revision 2 the legacy model's revision>=2 branch does not check lifecycle_state and would accept, so that variant is a schema/legacy divergence reported separately rather than asserted here."
+    }
+  ],
+  "description": "C1 shadow-parity corpus for applications.get: ApplicationGetResponse response shapes over the revision-1 (REGISTERED + exact_previous_application_binding_or_null) / revision-2 (ACTIVE or ARCHIVED + exact_previous_application_binding) ApplicationRecord union. Every instance is dual-validated against the generated applications.get.schema.json $defs/response and the legacy ApplicationGetResponse model; the expected verdict must match both.",
+  "intent": "applications.get",
+  "schema_version": "1.0"
+}

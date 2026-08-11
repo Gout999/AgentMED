@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/schemas/v5/capabilities.get.schema.json",
+  "title": "capabilities.get",
+  "description": "R2 activated V5 capability discovery. Exact 11-intent allowlist published only after scope/principal/trust filtering. Mirrors control-plane/app/public_api/v5_capability_models.py V5ServerCapabilitiesResponse.",
+  "$defs": {
+    "request": {
+      "description": "capabilities.get is a GET with no request body.",
+      "type": "null"
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "workspace_id", "request_id", "audit_ref", "data"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion2" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "request_id": { "$ref": "common.schema.json#/$defs/idRequestId" },
+        "audit_ref": { "$ref": "common.schema.json#/$defs/auditRef" },
+        "data": { "$ref": "#/$defs/capabilitiesData" }
+      }
+    },
+    "capabilitiesData": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "server_version",
+        "api_major",
+        "contract_version",
+        "principal",
+        "enabled_intents",
+        "disabled_intents",
+        "generated_at"
+      ],
+      "properties": {
+        "server_version": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "api_major": { "const": 2 },
+        "contract_version": { "const": "2.0" },
+        "principal": { "$ref": "#/$defs/principal" },
+        "enabled_intents": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "$ref": "#/$defs/enabledIntent" }
+        },
+        "disabled_intents": { "const": [] },
+        "generated_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "principal": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["principal_id", "principal_type", "scopes", "credential_expires_at"],
+      "properties": {
+        "principal_id": { "$ref": "common.schema.json#/$defs/idPrincipalId" },
+        "principal_type": { "enum": ["human", "external_agent", "service", "connector"] },
+        "scopes": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1, "maxLength": 128 }
+        },
+        "credential_expires_at": { "type": "string", "format": "date-time" }
+      }
+    },
+    "enabledIntent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "scope", "execution_mode", "http", "cli"],
+      "properties": {
+        "name": { "$ref": "common.schema.json#/$defs/v5PublicIntentName" },
+        "scope": { "type": "string", "minLength": 1, "maxLength": 128 },
+        "execution_mode": { "enum": ["synchronous", "synchronous_local_transaction"] },
+        "http": { "const": true },
+        "cli": { "const": true }
+      }
+    },
+    "error": { "$ref": "common.schema.json#/$defs/errorEnvelope" }
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/schemas/v5/applications.register.schema.json",
+  "title": "applications.register",
+  "description": "R2 activated V5 application registration. POST /applications; registers a new ai_application at revision 1 (lifecycle_state REGISTERED) under the authenticated workspace. Mirrors control-plane/app/public_api/v5_models.py ApplicationRegisterRequest/ApplicationRegisterResponse.",
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "project_id",
+        "slug",
+        "display_name",
+        "owner_principal_ids",
+        "criticality",
+        "data_classification",
+        "governance_mode"
+      ],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion2" },
+        "project_id": { "$ref": "common.schema.json#/$defs/idProjectId" },
+        "slug": { "$ref": "common.schema.json#/$defs/slug" },
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "owner_principal_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/idPrincipalId" }
+        },
+        "criticality": { "$ref": "common.schema.json#/$defs/criticality" },
+        "data_classification": { "$ref": "common.schema.json#/$defs/dataClassification" },
+        "governance_mode": { "$ref": "common.schema.json#/$defs/governanceMode" }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "request_id",
+        "audit_ref",
+        "application",
+        "idempotency"
+      ],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion2" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "request_id": { "$ref": "common.schema.json#/$defs/idRequestId" },
+        "audit_ref": { "$ref": "common.schema.json#/$defs/auditRef" },
+        "application": { "$ref": "records.schema.json#/$defs/applicationRecord" },
+        "idempotency": { "$ref": "common.schema.json#/$defs/idempotencyDelivery" }
+      }
+    },
+    "error": { "$ref": "common.schema.json#/$defs/errorEnvelope" }
+  }
+}

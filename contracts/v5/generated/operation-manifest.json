@@ -1,0 +1,389 @@
+{
+  "activated_intent_count": 11,
+  "activation_rule": {
+    "activated_wire_statuses": [
+      "FROZEN_R2",
+      "FROZEN_R2_R3_BOOTSTRAP"
+    ],
+    "draft_or_deferred_intents_excluded": true,
+    "not_a_route_or_capability_activation": true
+  },
+  "generated_by": "caseloop-v5-compiler",
+  "operations": [
+    {
+      "allowed_principal_types": [
+        "human",
+        "external_agent",
+        "service",
+        "connector"
+      ],
+      "cli": "capabilities get",
+      "cli_requires_explicit_api_major": true,
+      "contract_major": 2,
+      "delivery_slice": "V5-0C",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "GET",
+        "operation_id": "getV5Capabilities",
+        "path": "/api/v2/capabilities"
+      },
+      "idempotency": "none",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "capabilities.get",
+      "kind": "query",
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/capabilities.get.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/capabilities.get.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/capabilities.get.schema.json#/$defs/response"
+      },
+      "scope": "capabilities:read",
+      "wire_status": "FROZEN_R2"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "service"
+      ],
+      "cli": "application register",
+      "cli_requires_explicit_api_major": true,
+      "command_target": {
+        "command": "applications.register",
+        "resource": "ai_application"
+      },
+      "contract_major": 2,
+      "delivery_slice": "V5-1A",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "POST",
+        "operation_id": "registerApplication",
+        "path": "/api/v2/applications"
+      },
+      "idempotency": "required",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "applications.register",
+      "kind": "mutation",
+      "required_trust_roles_any_of": [
+        "integrator",
+        "catalog_admin"
+      ],
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/applications.register.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/applications.register.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/applications.register.schema.json#/$defs/response"
+      },
+      "scope": "applications:manage",
+      "trust_roles_source": "authenticated_server_registration",
+      "wire_status": "FROZEN_R2"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "external_agent",
+        "service",
+        "connector"
+      ],
+      "authorization_condition": "application_authorized_reader",
+      "cli": "application get",
+      "cli_requires_explicit_api_major": true,
+      "contract_major": 2,
+      "delivery_slice": "V5-1A",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "GET",
+        "operation_id": "getApplication",
+        "path": "/api/v2/applications/{application_id}"
+      },
+      "idempotency": "none",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "applications.get",
+      "kind": "query",
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/applications.get.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/applications.get.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/applications.get.schema.json#/$defs/response"
+      },
+      "scope": "applications:read",
+      "wire_status": "FROZEN_R2"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "external_agent",
+        "service",
+        "connector"
+      ],
+      "authorization_condition": "workspace_and_required_project_scoped_application_authorized_reader",
+      "cli": "application list",
+      "cli_requires_explicit_api_major": true,
+      "contract_major": 2,
+      "delivery_slice": "V5-1A",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "GET",
+        "operation_id": "listApplications",
+        "path": "/api/v2/applications",
+        "query_parameters": {
+          "optional": [
+            "cursor",
+            "limit"
+          ],
+          "required": [
+            "project_id"
+          ]
+        }
+      },
+      "idempotency": "none",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "applications.list",
+      "kind": "query",
+      "pagination": {
+        "cursor": "server_issued_opaque",
+        "visibility_filter_before_page_and_count": true
+      },
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/applications.list.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/applications.list.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/applications.list.schema.json#/$defs/response"
+      },
+      "scope": "applications:read",
+      "wire_status": "FROZEN_R2"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "service"
+      ],
+      "cli": "environment register",
+      "cli_requires_explicit_api_major": true,
+      "command_target": {
+        "command": "environments.register",
+        "resource": "environment"
+      },
+      "contract_major": 2,
+      "delivery_slice": "V5-1A",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "POST",
+        "operation_id": "registerEnvironment",
+        "path": "/api/v2/environments"
+      },
+      "idempotency": "required",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "environments.register",
+      "kind": "mutation",
+      "required_trust_roles_any_of": [
+        "integrator",
+        "catalog_admin"
+      ],
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/environments.register.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/environments.register.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/environments.register.schema.json#/$defs/response"
+      },
+      "scope": "applications:manage",
+      "trust_roles_source": "authenticated_server_registration",
+      "wire_status": "FROZEN_R2"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "external_agent",
+        "service",
+        "connector"
+      ],
+      "authorization_condition": "application_environment_authorized_reader",
+      "cli": "environment get",
+      "cli_requires_explicit_api_major": true,
+      "contract_major": 2,
+      "delivery_slice": "V5-1A",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "GET",
+        "operation_id": "getEnvironment",
+        "path": "/api/v2/environments/{environment_id}"
+      },
+      "idempotency": "none",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "environments.get",
+      "kind": "query",
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/environments.get.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/environments.get.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/environments.get.schema.json#/$defs/response"
+      },
+      "scope": "applications:read",
+      "wire_status": "FROZEN_R2"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "service"
+      ],
+      "cli": "system-component register",
+      "cli_requires_explicit_api_major": true,
+      "command_target": {
+        "command": "system-components.register",
+        "resource": "system_component"
+      },
+      "contract_major": 2,
+      "delivery_slice": "V5-1A",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "POST",
+        "operation_id": "registerSystemComponent",
+        "path": "/api/v2/system-components"
+      },
+      "idempotency": "required",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "system-components.register",
+      "kind": "mutation",
+      "required_trust_roles_any_of": [
+        "integrator",
+        "catalog_admin"
+      ],
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/system-components.register.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/system-components.register.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/system-components.register.schema.json#/$defs/response"
+      },
+      "scope": "applications:manage",
+      "trust_roles_source": "authenticated_server_registration",
+      "wire_status": "FROZEN_R2"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "external_agent",
+        "service",
+        "connector"
+      ],
+      "authorization_condition": "application_component_authorized_reader",
+      "cli": "system-component get",
+      "cli_requires_explicit_api_major": true,
+      "contract_major": 2,
+      "delivery_slice": "V5-1A",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "GET",
+        "operation_id": "getSystemComponent",
+        "path": "/api/v2/system-components/{component_id}"
+      },
+      "idempotency": "none",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "system-components.get",
+      "kind": "query",
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/system-components.get.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/system-components.get.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/system-components.get.schema.json#/$defs/response"
+      },
+      "scope": "applications:read",
+      "wire_status": "FROZEN_R2"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "service"
+      ],
+      "cli": "dependency-edge record",
+      "cli_requires_explicit_api_major": true,
+      "command_target": {
+        "command": "dependency-edges.record",
+        "resource": "dependency_edge"
+      },
+      "contract_major": 2,
+      "delivery_slice": "V5-1A",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "POST",
+        "operation_id": "recordDependencyEdge",
+        "path": "/api/v2/dependency-edges"
+      },
+      "idempotency": "required",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "dependency-edges.record",
+      "kind": "mutation",
+      "required_trust_roles_any_of": [
+        "integrator",
+        "catalog_admin"
+      ],
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/dependency-edges.record.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/dependency-edges.record.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/dependency-edges.record.schema.json#/$defs/response"
+      },
+      "scope": "applications:manage",
+      "trust_roles_source": "authenticated_server_registration",
+      "wire_status": "FROZEN_R2"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "external_agent",
+        "service",
+        "connector"
+      ],
+      "authorization_condition": "application_dependency_edge_authorized_reader",
+      "cli": "dependency-edge get",
+      "cli_requires_explicit_api_major": true,
+      "contract_major": 2,
+      "delivery_slice": "V5-1A",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "GET",
+        "operation_id": "getDependencyEdge",
+        "path": "/api/v2/dependency-edges/{dependency_edge_id}"
+      },
+      "idempotency": "none",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "dependency-edges.get",
+      "kind": "query",
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/dependency-edges.get.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/dependency-edges.get.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/dependency-edges.get.schema.json#/$defs/response"
+      },
+      "scope": "applications:read",
+      "wire_status": "FROZEN_R2"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "service"
+      ],
+      "cli": "system-manifest import",
+      "cli_requires_explicit_api_major": true,
+      "contract_major": 2,
+      "delivery_slice": "V5-1B",
+      "execution_mode": "synchronous_local_transaction",
+      "http": {
+        "method": "POST",
+        "operation_id": "importSystemManifest",
+        "path": "/api/v2/system-manifests:import"
+      },
+      "idempotency": "required",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "system-manifests.import",
+      "kind": "mutation",
+      "required_trust_roles_any_of": [
+        "integrator",
+        "catalog_admin",
+        "trusted_builder"
+      ],
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/system-manifests.import.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/system-manifests.import.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/system-manifests.import.schema.json#/$defs/response"
+      },
+      "scope": "system_manifests:import",
+      "trust_roles_source": "authenticated_server_registration",
+      "wire_status": "FROZEN_R2_R3_BOOTSTRAP",
+      "workflow_owner": "manifest_import_coordinator"
+    }
+  ],
+  "schema_version": "1.0",
+  "source": {
+    "intent_registry": "contracts/v5/intent-registry.yaml",
+    "wire_schemas": "contracts/v5/schemas/*.schema.json"
+  }
+}

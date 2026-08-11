@@ -1,0 +1,519 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/schemas/v5/system-manifests.import.schema.json",
+  "title": "system-manifests.import",
+  "description": "R2 activated V5 bootstrap system manifest import. ONE_SHOT workspace-initial import: registers the first application, environment, components and dependency edges, then emits the component revisions, topology revision, system version set, bootstrap attestation and bootstrap system assignment, with an idempotency delivery. Mirrors control-plane/app/public_api/v5_models.py SystemManifestImportRequest/SystemManifestImportResponse.",
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "application", "environment", "components"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion2" },
+        "application": { "$ref": "#/$defs/manifestApplication" },
+        "environment": { "$ref": "#/$defs/manifestEnvironment" },
+        "components": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": { "$ref": "#/$defs/manifestComponent" }
+        },
+        "dependency_edges": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/manifestEdge" }
+        },
+        "approver_policy": {
+          "anyOf": [{ "$ref": "#/$defs/manifestComponent" }, { "type": "null" }]
+        }
+      }
+    },
+    "manifestApplication": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "project_id",
+        "slug",
+        "display_name",
+        "owner_principal_ids",
+        "criticality",
+        "data_classification",
+        "governance_mode"
+      ],
+      "properties": {
+        "project_id": { "$ref": "common.schema.json#/$defs/idProjectId" },
+        "slug": { "$ref": "common.schema.json#/$defs/slug" },
+        "display_name": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "owner_principal_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/idPrincipalId" }
+        },
+        "criticality": { "$ref": "common.schema.json#/$defs/criticality" },
+        "data_classification": { "$ref": "common.schema.json#/$defs/dataClassification" },
+        "governance_mode": { "$ref": "common.schema.json#/$defs/governanceMode" }
+      }
+    },
+    "manifestEnvironment": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["logical_name", "risk_classification"],
+      "properties": {
+        "logical_name": { "$ref": "common.schema.json#/$defs/logicalName" },
+        "risk_classification": { "$ref": "common.schema.json#/$defs/riskClassification" }
+      }
+    },
+    "manifestRevisionSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_locator", "identity_assurance"],
+      "properties": {
+        "identity_locator": { "type": "object", "additionalProperties": true },
+        "identity_assurance": { "$ref": "common.schema.json#/$defs/identityAssurance" },
+        "content_digest": { "anyOf": [{ "$ref": "common.schema.json#/$defs/digest" }, { "type": "null" }] },
+        "declared_version": { "anyOf": [{ "type": "string", "minLength": 1, "maxLength": 256 }, { "type": "null" }] },
+        "provider_origin": { "anyOf": [{ "type": "string", "minLength": 1, "maxLength": 512 }, { "type": "null" }] },
+        "resolved_at": { "anyOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }] },
+        "immutable_provider_version_attestation": { "anyOf": [{ "type": "object", "additionalProperties": true }, { "type": "null" }] },
+        "exact_observation_receipt_binding": { "anyOf": [{ "type": "object", "additionalProperties": true }, { "type": "null" }] },
+        "unknown_reason": { "anyOf": [{ "type": "string", "minLength": 1, "maxLength": 512 }, { "type": "null" }] },
+        "interface_schema_digest": { "anyOf": [{ "$ref": "common.schema.json#/$defs/digest" }, { "type": "null" }] },
+        "permission_manifest_digest": { "anyOf": [{ "$ref": "common.schema.json#/$defs/digest" }, { "type": "null" }] },
+        "dependency_lock_digest": { "anyOf": [{ "$ref": "common.schema.json#/$defs/digest" }, { "type": "null" }] },
+        "artifact_refs": {
+          "anyOf": [
+            { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+            { "type": "null" }
+          ]
+        },
+        "exact_provenance_receipt_bindings": {
+          "anyOf": [
+            { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "manifestComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "logical_name",
+        "component_kind",
+        "owner_principal_ids",
+        "criticality",
+        "data_classification",
+        "permission_classification",
+        "effect_classification",
+        "revision"
+      ],
+      "properties": {
+        "logical_name": { "$ref": "common.schema.json#/$defs/logicalName" },
+        "component_kind": { "$ref": "common.schema.json#/$defs/componentKind" },
+        "owner_principal_ids": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 32,
+          "uniqueItems": true,
+          "items": { "$ref": "common.schema.json#/$defs/idPrincipalId" }
+        },
+        "criticality": { "$ref": "common.schema.json#/$defs/criticality" },
+        "data_classification": { "$ref": "common.schema.json#/$defs/dataClassification" },
+        "permission_classification": { "$ref": "common.schema.json#/$defs/permissionClassification" },
+        "effect_classification": { "$ref": "common.schema.json#/$defs/effectClassification" },
+        "dataset_role": { "anyOf": [{ "$ref": "common.schema.json#/$defs/datasetRole" }, { "type": "null" }] },
+        "revision": { "$ref": "#/$defs/manifestRevisionSpec" }
+      }
+    },
+    "manifestEdge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from_component", "to_component", "relation", "required"],
+      "properties": {
+        "from_component": { "$ref": "common.schema.json#/$defs/logicalName" },
+        "to_component": { "$ref": "common.schema.json#/$defs/logicalName" },
+        "relation": { "$ref": "common.schema.json#/$defs/dependencyRelation" },
+        "required": { "type": "boolean" }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "request_id",
+        "audit_ref",
+        "manifest_id",
+        "manifest_digest",
+        "application",
+        "environment",
+        "components",
+        "dependency_edges",
+        "component_revisions",
+        "topology_revision",
+        "system_version_set",
+        "bootstrap_attestation",
+        "system_assignment",
+        "idempotency"
+      ],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion2" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "request_id": { "$ref": "common.schema.json#/$defs/idRequestId" },
+        "audit_ref": { "$ref": "common.schema.json#/$defs/auditRef" },
+        "manifest_id": { "$ref": "#/$defs/idSystemManifestId" },
+        "manifest_digest": { "$ref": "common.schema.json#/$defs/digest" },
+        "application": { "$ref": "records.schema.json#/$defs/applicationRecord" },
+        "environment": { "$ref": "records.schema.json#/$defs/environmentRecord" },
+        "components": {
+          "type": "array",
+          "items": { "$ref": "records.schema.json#/$defs/componentRecord" }
+        },
+        "dependency_edges": {
+          "type": "array",
+          "items": { "$ref": "records.schema.json#/$defs/dependencyEdgeRecord" }
+        },
+        "component_revisions": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/componentRevisionRecord" }
+        },
+        "topology_revision": { "$ref": "#/$defs/topologyRevisionRecord" },
+        "system_version_set": { "$ref": "#/$defs/systemVersionSetRecord" },
+        "bootstrap_attestation": { "$ref": "#/$defs/bootstrapAttestationRecord" },
+        "system_assignment": { "$ref": "#/$defs/systemAssignmentRecord" },
+        "approver_policy_revision": {
+          "anyOf": [{ "$ref": "#/$defs/componentRevisionRecord" }, { "type": "null" }]
+        },
+        "idempotency": { "$ref": "common.schema.json#/$defs/idempotencyDelivery" }
+      }
+    },
+    "idSystemManifestId": { "$ref": "common.schema.json#/$defs/idSystemManifestId" },
+    "idBootstrapAttestationId": { "$ref": "common.schema.json#/$defs/idBootstrapAttestationId" },
+    "idAssignmentId": { "$ref": "common.schema.json#/$defs/idAssignmentId" },
+    "idExactEvidenceId": { "$ref": "common.schema.json#/$defs/idExactEvidenceId" },
+    "attesterTrustRole": {
+      "enum": ["integrator", "catalog_admin", "trusted_builder"]
+    },
+    "attestationScope": { "const": "INITIAL_DESIRED_ASSIGNMENT" },
+    "componentRevisionRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_envelope",
+        "component_revision_id",
+        "workspace_id",
+        "application_id",
+        "component_id",
+        "exact_system_component_binding",
+        "component_kind",
+        "logical_name",
+        "identity_locator",
+        "identity_assurance",
+        "configuration_digest",
+        "exact_provenance_receipt_bindings"
+      ],
+      "properties": {
+        "record_envelope": { "$ref": "common.schema.json#/$defs/recordEnvelope" },
+        "component_revision_id": { "$ref": "common.schema.json#/$defs/idComponentRevisionId" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "application_id": { "$ref": "common.schema.json#/$defs/idApplicationId" },
+        "component_id": { "$ref": "common.schema.json#/$defs/idComponentId" },
+        "exact_system_component_binding": { "$ref": "records.schema.json#/$defs/exactSystemComponentBinding" },
+        "component_kind": { "$ref": "common.schema.json#/$defs/componentKind" },
+        "logical_name": { "$ref": "common.schema.json#/$defs/logicalName" },
+        "identity_locator": { "type": "object", "additionalProperties": true },
+        "identity_assurance": { "$ref": "common.schema.json#/$defs/identityAssurance" },
+        "configuration_digest": { "$ref": "common.schema.json#/$defs/digest" },
+        "exact_provenance_receipt_bindings": {
+          "type": "array",
+          "items": {
+            "oneOf": [
+              { "$ref": "#/$defs/exactV4EvidenceBinding" },
+              { "$ref": "#/$defs/exactV5EvidenceBinding" }
+            ]
+          }
+        },
+        "declared_version": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "content_digest": { "anyOf": [{ "$ref": "common.schema.json#/$defs/digest" }, { "type": "null" }] },
+        "provider_origin": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "resolved_at": { "anyOf": [{ "type": "string", "format": "date-time" }, { "type": "null" }] },
+        "immutable_provider_version_attestation": { "anyOf": [{ "type": "object", "additionalProperties": true }, { "type": "null" }] },
+        "exact_observation_receipt_binding": {
+          "anyOf": [{ "$ref": "#/$defs/exactV5EvidenceBinding" }, { "type": "null" }]
+        },
+        "unknown_reason": { "anyOf": [{ "type": "string" }, { "type": "null" }] },
+        "interface_schema_digest": { "anyOf": [{ "$ref": "common.schema.json#/$defs/digest" }, { "type": "null" }] },
+        "permission_manifest_digest": { "anyOf": [{ "$ref": "common.schema.json#/$defs/digest" }, { "type": "null" }] },
+        "dependency_lock_digest": { "anyOf": [{ "$ref": "common.schema.json#/$defs/digest" }, { "type": "null" }] },
+        "dataset_role": { "anyOf": [{ "$ref": "common.schema.json#/$defs/datasetRole" }, { "type": "null" }] },
+        "artifact_refs": {
+          "anyOf": [
+            { "type": "array", "items": { "type": "object", "additionalProperties": true } },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "exactV4EvidenceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["contract_major", "kind", "id", "revision", "digest"],
+      "properties": {
+        "contract_major": { "const": 1 },
+        "kind": {
+          "enum": ["TRACE_EVIDENCE_RECEIPT", "MODEL_CALL_RECEIPT", "RESOLUTION_REVIEW_RECEIPT"]
+        },
+        "id": { "$ref": "#/$defs/idExactEvidenceId" },
+        "revision": { "anyOf": [{ "type": "integer", "minimum": 1 }, { "type": "null" }] },
+        "digest": { "$ref": "common.schema.json#/$defs/digest" }
+      }
+    },
+    "exactV5EvidenceBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": {
+          "enum": [
+            "SYSTEM_EPISODE_SNAPSHOT",
+            "OBSERVED_STATE_SNAPSHOT",
+            "OPERATION_EXECUTION_RECEIPT",
+            "EXTERNAL_EFFECT_RECEIPT"
+          ]
+        },
+        "id": { "$ref": "#/$defs/idExactEvidenceId" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "digest": { "$ref": "common.schema.json#/$defs/digest" }
+      }
+    },
+    "topologyRevisionRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_envelope",
+        "topology_revision_id",
+        "workspace_id",
+        "application_id",
+        "component_ids",
+        "exact_edge_revision_bindings",
+        "topology_digest",
+        "provenance_receipt_ids"
+      ],
+      "properties": {
+        "record_envelope": { "$ref": "common.schema.json#/$defs/recordEnvelope" },
+        "topology_revision_id": { "$ref": "common.schema.json#/$defs/idTopologyRevisionId" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "application_id": { "$ref": "common.schema.json#/$defs/idApplicationId" },
+        "component_ids": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/idComponentId" }
+        },
+        "exact_edge_revision_bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/exactDependencyEdgeBinding" }
+        },
+        "topology_digest": { "$ref": "common.schema.json#/$defs/digest" },
+        "provenance_receipt_ids": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/idAuthorityReceiptId" }
+        }
+      }
+    },
+    "exactDependencyEdgeBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": { "const": "DEPENDENCY_EDGE" },
+        "id": { "$ref": "common.schema.json#/$defs/idEdgeId" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "digest": { "$ref": "common.schema.json#/$defs/digest" }
+      }
+    },
+    "systemVersionSetRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_envelope",
+        "system_version_set_id",
+        "workspace_id",
+        "application_id",
+        "declared_environment_id",
+        "exact_component_revision_bindings",
+        "exact_topology_revision_binding",
+        "identity_assurance_summary",
+        "provenance_receipt_ids",
+        "version_set_digest"
+      ],
+      "properties": {
+        "record_envelope": { "$ref": "common.schema.json#/$defs/recordEnvelope" },
+        "system_version_set_id": { "$ref": "common.schema.json#/$defs/idSystemVersionSetId" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "application_id": { "$ref": "common.schema.json#/$defs/idApplicationId" },
+        "declared_environment_id": { "$ref": "common.schema.json#/$defs/idEnvironmentId" },
+        "exact_component_revision_bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/exactComponentRevisionBinding" }
+        },
+        "exact_topology_revision_binding": { "$ref": "#/$defs/exactTopologyRevisionBinding" },
+        "identity_assurance_summary": { "$ref": "#/$defs/identityAssuranceSummary" },
+        "provenance_receipt_ids": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/idAuthorityReceiptId" }
+        },
+        "version_set_digest": { "$ref": "common.schema.json#/$defs/digest" },
+        "manifest_digest": { "anyOf": [{ "$ref": "common.schema.json#/$defs/digest" }, { "type": "null" }] },
+        "manifest": { "anyOf": [{ "type": "object", "additionalProperties": true }, { "type": "null" }] }
+      }
+    },
+    "exactComponentRevisionBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": { "const": "COMPONENT_REVISION" },
+        "id": { "$ref": "common.schema.json#/$defs/idComponentRevisionId" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "digest": { "$ref": "common.schema.json#/$defs/digest" }
+      }
+    },
+    "exactTopologyRevisionBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": { "const": "TOPOLOGY_REVISION" },
+        "id": { "$ref": "common.schema.json#/$defs/idTopologyRevisionId" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "digest": { "$ref": "common.schema.json#/$defs/digest" }
+      }
+    },
+    "identityAssuranceSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component_assurances"],
+      "properties": {
+        "component_assurances": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/identityAssuranceEntry" }
+        }
+      }
+    },
+    "identityAssuranceEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component_revision_id", "component_id", "identity_assurance"],
+      "properties": {
+        "component_revision_id": { "$ref": "common.schema.json#/$defs/idComponentRevisionId" },
+        "component_id": { "$ref": "common.schema.json#/$defs/idComponentId" },
+        "identity_assurance": { "$ref": "common.schema.json#/$defs/identityAssurance" }
+      }
+    },
+    "bootstrapAttestationRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_envelope",
+        "bootstrap_attestation_id",
+        "workspace_id",
+        "application_id",
+        "environment_id",
+        "exact_initial_system_version_set_binding",
+        "attester_principal_id",
+        "attester_trust_role",
+        "attestation_scope"
+      ],
+      "properties": {
+        "record_envelope": { "$ref": "common.schema.json#/$defs/recordEnvelope" },
+        "bootstrap_attestation_id": { "$ref": "#/$defs/idBootstrapAttestationId" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "application_id": { "$ref": "common.schema.json#/$defs/idApplicationId" },
+        "environment_id": { "$ref": "common.schema.json#/$defs/idEnvironmentId" },
+        "exact_initial_system_version_set_binding": { "$ref": "#/$defs/exactSystemVersionSetBinding" },
+        "attester_principal_id": { "$ref": "common.schema.json#/$defs/idPrincipalId" },
+        "attester_trust_role": { "$ref": "#/$defs/attesterTrustRole" },
+        "attestation_scope": { "$ref": "#/$defs/attestationScope" }
+      }
+    },
+    "exactSystemVersionSetBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": { "const": "SYSTEM_VERSION_SET" },
+        "id": { "$ref": "common.schema.json#/$defs/idSystemVersionSetId" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "digest": { "$ref": "common.schema.json#/$defs/digest" }
+      }
+    },
+    "systemAssignmentRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_envelope",
+        "assignment_id",
+        "workspace_id",
+        "application_id",
+        "environment_id",
+        "generation",
+        "lifecycle_state",
+        "transition_kind",
+        "exact_previous_assignment_binding_or_null",
+        "exact_slot_version_set_bindings",
+        "exposure",
+        "expected_previous_generation",
+        "exact_assignment_authority_binding"
+      ],
+      "properties": {
+        "record_envelope": { "$ref": "common.schema.json#/$defs/recordEnvelope" },
+        "assignment_id": { "$ref": "#/$defs/idAssignmentId" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "application_id": { "$ref": "common.schema.json#/$defs/idApplicationId" },
+        "environment_id": { "$ref": "common.schema.json#/$defs/idEnvironmentId" },
+        "generation": { "type": "integer", "minimum": 1 },
+        "lifecycle_state": { "const": "ACTIVE" },
+        "transition_kind": { "const": "BOOTSTRAP" },
+        "exact_previous_assignment_binding_or_null": { "type": "null" },
+        "exact_slot_version_set_bindings": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 1,
+          "items": { "$ref": "#/$defs/exactSlotVersionSetBinding" }
+        },
+        "exposure": { "const": "EXPOSED" },
+        "expected_previous_generation": { "type": "null" },
+        "exact_assignment_authority_binding": { "$ref": "#/$defs/exactBootstrapAttestationAuthorityBinding" },
+        "requested_by_external_operation_id": {
+          "anyOf": [{ "type": "string", "pattern": "^op_[0-9A-Za-z]{8,64}$" }, { "type": "null" }]
+        }
+      }
+    },
+    "exactSlotVersionSetBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest", "slot"],
+      "properties": {
+        "kind": { "const": "SYSTEM_VERSION_SET" },
+        "id": { "$ref": "common.schema.json#/$defs/idSystemVersionSetId" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "digest": { "$ref": "common.schema.json#/$defs/digest" },
+        "slot": { "const": "PRIMARY" }
+      }
+    },
+    "exactBootstrapAttestationAuthorityBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["binding_kind", "id", "revision", "digest"],
+      "properties": {
+        "binding_kind": { "const": "BOOTSTRAP_ATTESTATION" },
+        "id": { "$ref": "#/$defs/idBootstrapAttestationId" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "digest": { "$ref": "common.schema.json#/$defs/digest" }
+      }
+    },
+    "error": { "$ref": "common.schema.json#/$defs/errorEnvelope" }
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/schemas/v5/applications.list.schema.json",
+  "title": "applications.list",
+  "description": "R2 activated V5 application list within the authenticated workspace, filtered by required project_id, paged by server-issued opaque cursor. Mirrors control-plane/app/public_api/v5_models.py ApplicationListResponse; items are applicationListItem records from records.schema.json.",
+  "$defs": {
+    "request": {
+      "description": "applications.list is a GET with no request body.",
+      "type": "null"
+    },
+    "query": {
+      "description": "GET /applications query parameters: project_id (required), cursor and limit (optional). Limit is bounded to 1..100 by V5ApplicationListService.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["project_id"],
+      "properties": {
+        "project_id": { "$ref": "common.schema.json#/$defs/idProjectId" },
+        "cursor": { "$ref": "records.schema.json#/$defs/applicationListCursor" },
+        "limit": { "type": "integer", "minimum": 1, "maximum": 100 }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "workspace_id", "request_id", "audit_ref", "items", "next_cursor"],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion2" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "request_id": { "$ref": "common.schema.json#/$defs/idRequestId" },
+        "audit_ref": { "$ref": "common.schema.json#/$defs/auditRef" },
+        "items": {
+          "type": "array",
+          "items": { "$ref": "records.schema.json#/$defs/applicationListItem" }
+        },
+        "next_cursor": {
+          "anyOf": [
+            { "$ref": "records.schema.json#/$defs/applicationListCursor" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "error": { "$ref": "common.schema.json#/$defs/errorEnvelope" }
+  }
+}
