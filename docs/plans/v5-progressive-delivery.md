@@ -13,9 +13,9 @@
 > D-015 已接受 V5 为新产品/领域开发默认设计与施工基线，V3/V4 为 compatibility lanes；
 > 这不是 runtime/public cutover proof。当前执行必须先完成
 > [`v5-architecture-convergence.md`](v5-architecture-convergence.md) 的 C0–C5，D2、R3、
-> R4 与 V5-2+ 在此之前保持锁定。C0 与 C1 已关闭（C0 semantic series `a14784a` +
-> `903e954`；C1 semantic subject `3dc7339`，post-commit verifier PASS，P0=0/P1=0）；C2
-> `ELIGIBLE / NOT STARTED`；C3–C5 与 D2、R3、R4、V5-2+ 继续锁定；SHA/evidence digest
+> R4 与 V5-2+ 在此之前保持锁定。C0、C1 与 C2 已关闭（C0 `a14784a`+`903e954`；C1
+> `3dc7339`；C2 `d2c3f18`，foundation extraction，post-commit verifier PASS，P0=0/P1=0）；C3
+> `ELIGIBLE / NOT STARTED`；C4–C5 与 D2、R3、R4、V5-2+ 继续锁定；SHA/evidence digest
 > 保持 `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`。
 
 本蓝图面向能够冷启动接手任务的后续 Agent/贡献者。每个步骤都必须先读本文件、
@@ -85,13 +85,14 @@ required 时才阻塞 Gate；比赛可诚实 abstain 后直接进入独立 Candi
 
 - C0 接受并复核 D-015/convergence plan，建立 clean branch、WIP inventory 与 characterization；
   文档或计数存在不等于 C0 DONE；（C0 已于 2026-08-11 关闭：semantic series `a14784a` +
-  `903e954`，post-commit verifier PASS，P0=0/P1=0；C1 已于同日关闭（`3dc7339`），C2 现为 `ELIGIBLE / NOT STARTED`）。
+  `903e954`，post-commit verifier PASS，P0=0/P1=0；C1 与 C2 已于同日关闭（`3dc7339`、`d2c3f18`），C3 现为 `ELIGIBLE / NOT STARTED`）。
 - C1 以 JSON Schema 2020-12 + intent registry 建立 single-source wire 和
   activated-operation compiler，generated/legacy validators 先做 shadow dual validation；
   （C1 已于 2026-08-11 关闭：semantic subject `3dc7339`，post-commit verifier PASS，
-  P0=0/P1=0；C2 现为 `ELIGIBLE / NOT STARTED`）。
+  P0=0/P1=0；C3 现为 `ELIGIBLE / NOT STARTED`）。
 - C2 在 C1 之后抽取 records、event specifications 与 exact-binding graph verifier foundation，
-  不承载业务 command 或 transport activation；
+  不承载业务 command 或 transport activation；（C2 已于 2026-08-11 关闭：semantic subject
+  `d2c3f18`，post-commit verifier PASS，P0=0/P1=0；C3 现为 `ELIGIBLE / NOT STARTED`）。
 - C3 消除 capability/import cycles，并按 canonical owner 拆 coordinator/service/repository，
   保持一个 PostgreSQL UoW，不增加 D2/R3/R4 行为；
 - C4 将 OpenAPI/Python/TypeScript/CLI/router/capability façades切到 generated artifacts，保留
@@ -276,7 +277,7 @@ acceptance-criteria.confirm
 
 ### V5-1A · Application catalog
 
-> 状态：**R2 CONTRACT/REPLAY PASS ONLY / C0-C1 CONVERGENCE DONE / C2 ELIGIBLE / NOT STARTED**。该边界不证明
+> 状态：**R2 CONTRACT/REPLAY PASS ONLY / C0-C2 CONVERGENCE DONE / C3 ELIGIBLE / NOT STARTED**。该边界不证明
 > 完整 runtime；最终 subject SHA/evidence digest 依 owner 指示延后最终项目收口。C0–C5
 > 只允许行为不变的结构收敛，不得借 V5-1A 名义继续领域扩张。
 

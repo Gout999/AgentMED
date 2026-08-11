@@ -4,7 +4,7 @@
 >
 > Decision: [D-015](../decisions/D-015-v5-default-development-baseline-and-v3-v4-compatibility-lanes.md)
 >
-> Current wave: **C2 ELIGIBLE / NOT STARTED**（C0 DONE `a14784a`+`903e954`; C1 DONE `3dc7339`, verifier PASS P0=0/P1=0）
+> Current wave: **C3 ELIGIBLE / NOT STARTED**（C0 `a14784a`+`903e954`; C1 `3dc7339`; C2 `d2c3f18`, verifier PASS P0=0/P1=0）
 >
 > Locked while C0–C5 remain open: **D2, R3, R4, V5-2+**
 
@@ -206,7 +206,7 @@ the mismatch corpus and failed finding.
 
 ### C2 — Foundation extraction: records, event specifications and graph verifier
 
-**Status:** `ELIGIBLE / NOT STARTED`（unlocked by C1 DONE; 须先完成 C1 gate review 再开工）。
+**Status:** `DONE`. Semantic subject `d2c3f18`; post-commit verifier PASS, P0=0/P1=0; unit 876 + 12 PG-gated skips; conformance 547; findings in contracts/v5/c2-foundation-findings.md; SHA/evidence digest `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`.
 
 **Scope:** after C1 freezes wire inputs, extract closed record primitives, major-aware event
 specifications and the exact-binding/graph verifier from version-named or oversized modules. The
@@ -237,7 +237,7 @@ fixtures and preserve all committed facts.
 
 ### C3 — Capability/import-cycle elimination and coordinator/service decomposition
 
-**Status:** `LOCKED UNTIL C2 PASS`.
+**Status:** `ELIGIBLE / NOT STARTED`（unlocked by C2 DONE; 须先完成 C2 gate review 再开工）。
 
 **Scope:** eliminate capability and import cycles exposed by C0–C2, classify every module/lane and
 decompose oversized coordinators/services into owner-local application, domain and repository
@@ -402,7 +402,7 @@ It may not:
 Allowed before C5 closes:
 
 - `D-015 ACCEPTED / NOT RUNTIME CUTOVER PROOF`;
-- `C0 DONE` (`a14784a`+`903e954`) / `C1 DONE` (`3dc7339`), or the exact independently verified wave status;
+- `C0 DONE` (`a14784a`+`903e954`) / `C1 DONE` (`3dc7339`) / `C2 DONE` (`d2c3f18`), or the exact independently verified wave status;
 - `R2 contract/replay PASS only`;
 - `D2/R3/R4/V5-2+ LOCKED`;
 - `SHA/evidence digest DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`.
