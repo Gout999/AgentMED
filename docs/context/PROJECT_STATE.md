@@ -1,6 +1,8 @@
 # Project State
 
-- `repository_snapshot`: R0 documentation-authority semantic subject (exact hash is recorded only by the post-commit evidence/status closure); pre-R0 baseline `4a0a421cc669bf98d9b882d149d5d3df4c8dc36e`
+- `r0_documentation_subject`: `4d15c1c81180386fa4852a53f8b8847e74cda050` (independent detached-checkout PASS; P0=0/P1=0)
+- `r0_evidence`: `evidence/v5/stage-0/documentation-authority/r0docs_20260811T104032Z_4d15c1c/`
+- `pre_r0_baseline`: `4a0a421cc669bf98d9b882d149d5d3df4c8dc36e`
 - `last_independently_verified_evidence_subject_commit`: `b3727d72e9251bbf4d92047c02512d38eb976cf5` (V5-0C, contract-only freeze; V5 runtime facets NOT_RUN)
 - `stage0_documentation_commit`: `b7889a7e200f76bd5985188ff6fb7e9e1860fd28`
 - `previous_v3_evidence_commit`: `cef1598b4ac1d42fdd4f206c5747eb89a06f24fc`
@@ -16,9 +18,9 @@
 - Current execution orchestration is
   `docs/plans/v5-master-execution-plan.md`. `docs/README.md` defines the document authority and
   archive policy; old cumulative handoffs and preconstruction snapshots are historical only. The
-  Master Plan independent static execution review passed on 2026-08-11. The authority package is
-  the R0 semantic subject described here, but R0 remains open until detached clean-checkout
-  verification and a digest-bearing evidence/status closure commit pass.
+  Master Plan independent static execution review passed on 2026-08-11. R0 is now `DONE`: semantic
+  subject `4d15c1c81180386fa4852a53f8b8847e74cda050` passed detached clean-checkout verification,
+  with a digest-bearing manifest and independent P0=0/P1=0 report under the R0 evidence path.
 
 - Commits through `4a0a421` contain V5-1A/B/C implementation work, but the project-wide review
   rejected the prior closure, so the tracked 1A/1B/1C bundles are not accepted closure authority.
@@ -48,9 +50,8 @@
   no completion commit, digest-bearing run manifest, per-stage post-commit verifier or live facet.
   Therefore V5-1A/B/C are `IN_PROGRESS`, not `DONE`.
 - `docs/decisions/D-013-v5-ai-system-governance-and-agent-native-control-plane.md` and its
-  referrers are in the R0 authority-recovery semantic subject. The product-authority chain remains
-  `VERIFYING` until the detached clean-checkout verifier and evidence/status closure commit bind the
-  exact subject hash.
+  referrers are in the verified R0 authority-recovery subject. The clean-checkout product-authority
+  chain is closed; this proves documentation authority only, not V5 runtime.
 
 ## Current product and requirements state
 

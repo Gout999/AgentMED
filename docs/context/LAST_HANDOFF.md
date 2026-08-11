@@ -6,10 +6,11 @@
 
 ## 2026-08-11 V5 documentation recovery and execution-plan handoff (current)
 
-- `closure_status`: **R0 VERIFYING / NO-GO for V5-1 stage DONE**。`4a0a421` 是 pre-R0
-  baseline；本 checkout 是 R0 文档权威 semantic subject。只有后续 clean-checkout verifier
-  和 evidence/status closure commit 才能记录它的 exact hash 与 PASS。V5 repair 仍是独立
-  未提交 WIP，未 push。
+- `closure_status`: **R0 DONE / NO-GO for V5-1 stage DONE**。R0 semantic subject
+  `4d15c1c81180386fa4852a53f8b8847e74cda050` 已在 detached clean checkout 通过独立
+  verifier（P0=0/P1=0），digest-bearing evidence 位于
+  `evidence/v5/stage-0/documentation-authority/r0docs_20260811T104032Z_4d15c1c/`。R0 的九个
+  runtime facets 全为 `NOT_RUN`；V5 repair 仍是独立未提交 WIP，未 push。
 - `authority_and_integrity_repair`: V5 major-2 event、exact binding、AuthorityReceipt、
   project/environment grant、server trust role、denial audit、fresh human reauth、并发确认、
   manifest locking、provenance/dataset/diff 和 dirty-discovery 已在 worktree 修复并通过聚焦验证。
@@ -31,13 +32,13 @@
   任一 runtime stage。
 - `known_blockers`: (1) AIApplication/SystemComponent frozen `REGISTERED→ACTIVE` 与 runtime
   direct ACTIVE 冲突；(2) second VersionSet 用户价值需要先冻结并激活 standalone
-  `system-versions.record` 以及产生第二 component/topology revision 的真实 wire；(3) R0
-  semantic subject 尚待 clean-checkout verifier 和 digest-bearing evidence/status closure；
-  (4) R1–R4 digest-bearing manifest、completion commit/verifier 尚未产生；(5) V5 outbox
+  `system-versions.record` 以及产生第二 component/topology revision 的真实 wire；(3) R1–R4
+  digest-bearing manifest、completion commit/verifier 尚未产生；(4) V5 outbox
   属于 V5-2，ResolutionContract 属于 V5-4。
-- `next_action`: 对本 R0 semantic subject 做 clean-checkout link/status/provenance/secret 扫描，
-  由独立 verifier 复核后形成 evidence/status closure commit；随后裁决生命周期 D1，再按
-  R1→R4 分 stage 形成 evidence、semantic commit 和 post-commit verifier。不得先启动 V5-2。
+- `next_action`: 由 product owner 记录并裁决 D1；当前推荐保留 frozen
+  `REGISTERED→ACTIVE`，并以独立 ADR/semantic subject/verifier 定义 append-only lifecycle
+  revision history、owner/CAS activation 和 ComponentRevision→ACTIVE component exact binding。
+  D1 关闭后再按 R1→R4 分 stage 施工。不得先启动 V5-2。
 - `authorization_boundary`: 当前用户目标授权按 Master Plan 进行本地施工、精确 staging 和
   semantic/evidence commits。push、PR、付费 provider、live、human approval、production 或
   其他 external write 仍需单独授权。

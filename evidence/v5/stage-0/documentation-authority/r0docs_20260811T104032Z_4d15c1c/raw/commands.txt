@@ -1,0 +1,27 @@
+1. cwd=<detached-checkout>
+   git rev-parse HEAD && git rev-parse HEAD^ && git status --porcelain=v1 --untracked-files=all
+   exit=0; subject/parent exact; dirty_before=0
+2. cwd=<detached-checkout>
+   git diff --name-status --no-renames HEAD^ HEAD; exact-set/exclude checker against docs/context/R0_DOCUMENTATION_PROVENANCE.md
+   exit=0; 30 actual=30 declared; excluded intersection=0
+3. cwd=<detached-checkout>
+   git diff --check HEAD^ HEAD
+   exit=0; findings=0
+4. cwd=<detached-checkout>
+   git diff --binary --no-ext-diff HEAD^ HEAD | shasum -a 256
+   exit=0; dd4be851baa697cb27a33aebda1ba96cf50221a3cca4b233a7a537fa49467398
+5. cwd=<detached-checkout>
+   Python tracked-Markdown local-link scanner over git ls-files '*.md' with URL decode, repo-escape and tracked-target checks
+   exit=0; 138 files; 186 local links; 0 broken/untracked/outside
+6. cwd=<detached-checkout>
+   rg active-status drift scan with archive/research/competition/presentation/evidence excluded; manual negation classification
+   exit=0; 3 lexical matches; 3 honest negations; 0 semantic findings
+7. cwd=<detached-checkout>
+   Python archive metadata checker plus git grep docs/archive inbound-authority review
+   exit=0; 5/5 complete; 16 navigation/provenance refs; 0 authority misuse
+8. cwd=<detached-checkout>
+   Python added-line secret/PII/forbidden-filename/credential-URL/high-entropy scan
+   exit=0; secret=0; PII=0; forbidden files=0; credential URLs=0; 33 benign heuristic candidates reviewed
+9. cwd=<detached-checkout>
+   git status --porcelain=v1 --untracked-files=all
+   exit=0; dirty_after=0

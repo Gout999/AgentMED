@@ -1,0 +1,233 @@
+{
+  "schema_version": "1.0",
+  "run_id": "r0docs_20260811T104032Z_4d15c1c",
+  "stage": "V5-R0",
+  "slice": "documentation-authority",
+  "started_at": "2026-08-11T10:40:32Z",
+  "completed_at": "2026-08-11T10:44:28Z",
+  "status": "PASS",
+  "subject": {
+    "commit": "4d15c1c81180386fa4852a53f8b8847e74cda050",
+    "parent": "4a0a421cc669bf98d9b882d149d5d3df4c8dc36e",
+    "tree": "17987639fb43ef12fdc6005cadd2a10d4a029d3b",
+    "branch": "codex/v4-foundation",
+    "dirty_before": false,
+    "dirty_after": false,
+    "diff_sha256": "dd4be851baa697cb27a33aebda1ba96cf50221a3cca4b233a7a537fa49467398"
+  },
+  "scope": {
+    "included_path_count": 30,
+    "included_paths_ref": "raw/subject-paths.txt",
+    "included_paths_sha256": "df88e095f09ed32fbd2020c4deadb6d88ade72c61190ad06f12adf9bef778ad0",
+    "precommit_inventory_ref": "docs/context/R0_DOCUMENTATION_PROVENANCE.md",
+    "precommit_inventory_sha256": "6c0bcbb38cd3dbca7e78baa2f7bf7fedea799156575b20dca7a043b1a9e73c9a",
+    "path_set_equal": true,
+    "excluded_intersection_count": 0,
+    "excluded_groups": [
+      "runtime",
+      "contract activation",
+      "migration",
+      "component README",
+      "First Case runbook",
+      "historical and WIP evidence",
+      "presentation",
+      "live/provider",
+      "generated WIP"
+    ]
+  },
+  "authority_sources_ref": "raw/authority-sources.sha256",
+  "contract_versions": {
+    "status": "NOT_APPLICABLE",
+    "reason": "R0 verifies documentation authority and does not execute or modify a wire/domain contract."
+  },
+  "migration_versions": {
+    "status": "NOT_APPLICABLE",
+    "reason": "R0 performs no schema migration or database access."
+  },
+  "environment": {
+    "os": "macOS 26.5",
+    "git": "2.50.1 (Apple Git-155)",
+    "python": "3.14.4",
+    "checkout": "detached temporary worktree",
+    "secrets_recorded": false,
+    "runtime_identities": {
+      "postgresql": "NOT_RUN",
+      "container": "NOT_RUN",
+      "provider": "NOT_RUN",
+      "agent_runtime": "NOT_RUN",
+      "repository_sandbox": "NOT_RUN",
+      "external_target": "NOT_RUN"
+    }
+  },
+  "commands": [
+    {
+      "id": "identity-clean-before",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "id": "path-inventory-and-exclusions",
+      "exit_code": 0,
+      "result": "PASS",
+      "counts": {
+        "actual": 30,
+        "declared": 30,
+        "excluded_intersection": 0
+      }
+    },
+    {
+      "id": "diff-check-and-digest",
+      "exit_code": 0,
+      "result": "PASS"
+    },
+    {
+      "id": "tracked-markdown-links",
+      "exit_code": 0,
+      "result": "PASS",
+      "counts": {
+        "markdown_files": 138,
+        "local_links": 186,
+        "broken": 0
+      }
+    },
+    {
+      "id": "status-drift",
+      "exit_code": 0,
+      "result": "PASS",
+      "counts": {
+        "lexical_matches": 3,
+        "honest_negations": 3,
+        "semantic_findings": 0
+      }
+    },
+    {
+      "id": "archive-provenance",
+      "exit_code": 0,
+      "result": "PASS",
+      "counts": {
+        "archive_files": 5,
+        "findings": 0
+      }
+    },
+    {
+      "id": "secret-pii-redaction",
+      "exit_code": 0,
+      "result": "PASS",
+      "counts": {
+        "secret_findings": 0,
+        "pii_findings": 0,
+        "forbidden_filenames": 0,
+        "credential_urls": 0
+      }
+    },
+    {
+      "id": "clean-after",
+      "exit_code": 0,
+      "result": "PASS"
+    }
+  ],
+  "commands_index_ref": "commands/README.md",
+  "commands_ref": "raw/commands.txt",
+  "scans": {
+    "markdown_links": "PASS",
+    "status_drift": "PASS",
+    "archive_provenance": "PASS",
+    "secret": "PASS",
+    "pii": "PASS",
+    "redaction_report_ref": "redaction-report.md"
+  },
+  "facets": {
+    "contract": "NOT_RUN",
+    "replay": "NOT_RUN",
+    "domain-provider-live": "NOT_RUN",
+    "agentteams-native": "NOT_RUN",
+    "claude-runtime-live": "NOT_RUN",
+    "agent-causal": "NOT_RUN",
+    "repo-sandbox": "NOT_RUN",
+    "human-authorized-external": "NOT_RUN",
+    "production-canary": "NOT_RUN"
+  },
+  "artifacts": [
+    {
+      "kind": "subject-paths",
+      "path": "raw/subject-paths.txt",
+      "sha256": "df88e095f09ed32fbd2020c4deadb6d88ade72c61190ad06f12adf9bef778ad0",
+      "size": 984
+    },
+    {
+      "kind": "authority-source-digests",
+      "path": "raw/authority-sources.sha256",
+      "sha256": "f6e5a12223ab7ebfd23cb108d5243711795e8c00b9a95dd9101000f5756f54c6",
+      "size": 796
+    },
+    {
+      "kind": "verification-summary",
+      "path": "raw/verification-summary.txt",
+      "sha256": "2a258304e40c60986f0eb8858114179085f2209d3877de3c2cd3e6b8b396c648",
+      "size": 964
+    },
+    {
+      "kind": "commands",
+      "path": "raw/commands.txt",
+      "sha256": "986bbf82f72ebb6e562e4bc6415380e40987796f099209864415ef910ce1d932",
+      "size": 1583
+    },
+    {
+      "kind": "redaction-report",
+      "path": "redaction-report.md",
+      "sha256": "210d161b8ef70a95c1031ad523170fc81ada91ef5ff414b9695ebf85116a3fdf",
+      "size": 637
+    },
+    {
+      "kind": "verification",
+      "path": "verification.md",
+      "sha256": "0e1932d1e7de5bd50b341bf627db476be6bb61f61c4ba8c2d61a85672002e4df",
+      "size": 1504
+    },
+    {
+      "kind": "independent-verifier-report",
+      "path": "verifier-report.md",
+      "sha256": "dcb537be97a8db2600b50ce1cd802bfc39c5040a4213216af26ef77607584962",
+      "size": 754
+    },
+    {
+      "kind": "commands-index",
+      "path": "commands/README.md",
+      "sha256": "14a2cb7a7afcee3a9870aa389dce6d1eea2da3ef037dddc14420d2fb4406b954",
+      "size": 303
+    },
+    {
+      "kind": "receipts-not-applicable",
+      "path": "receipts/NOT_APPLICABLE.md",
+      "sha256": "ef2148fd9545091bb06deead0984d70409000a2bc26cba98b74d7babed9aae7c",
+      "size": 316
+    },
+    {
+      "kind": "runtime-artifacts-not-applicable",
+      "path": "artifacts/NOT_APPLICABLE.md",
+      "sha256": "521db27ec1147f32aeae860daa784f27b896c9f9a193b845cba064f0c4e61513",
+      "size": 329
+    }
+  ],
+  "known_gaps": [
+    "R0 validates documentation authority only; every runtime evidence facet is NOT_RUN.",
+    "V5-1A/B/C remediation remains uncommitted WIP and is not accepted closure evidence.",
+    "D1 lifecycle and D2 version-graph recording decisions remain the next construction gates."
+  ],
+  "stop_gates": {
+    "p0": 0,
+    "p1": 0,
+    "broken_links": 0,
+    "secret_or_pii_findings": 0
+  },
+  "rollback": "Revert the R0 semantic and evidence/status commits together; do not alter archived raw evidence or runtime WIP.",
+  "verifier": {
+    "identity": "Codex independent sub-agent /root/r0_verifier_prep",
+    "subject_commit": "4d15c1c81180386fa4852a53f8b8847e74cda050",
+    "report_ref": "verifier-report.md",
+    "report_sha256": "dcb537be97a8db2600b50ce1cd802bfc39c5040a4213216af26ef77607584962",
+    "p0": 0,
+    "p1": 0,
+    "verdict": "PASS"
+  }
+}

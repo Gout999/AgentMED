@@ -70,8 +70,8 @@ migration、tests、evidence、rollback、commit 和 verifier。
 
 | 项目 | 当前事实 | 执行影响 |
 |---|---|---|
-| Git | pre-R0 baseline=`4a0a421`；工作树包含大量未提交的 V5 repair 与独立历史 WIP | 禁止 `git add -A`；先做 provenance inventory 和文件 allowlist |
-| V5-0A | 产品决策已接受；D-013/产品原则的 clean-checkout 包装仍未闭合 | 作为 `R0` 文档权威链 repair，不回写 V5-0B/0C 历史结论 |
+| Git | R0 subject=`4d15c1c81180386fa4852a53f8b8847e74cda050` 已 detached clean-checkout PASS；工作树仍包含大量未提交 V5 repair 与独立历史 WIP | 继续禁止 `git add -A`；每个后续 package 使用独立 provenance inventory 和精确 allowlist |
+| V5-0A | 产品决策、D-013/产品原则 clean-checkout authority 已由 R0 关闭 | 不回写 V5-0B/0C 历史 freeze；不从文档 PASS 推导 runtime |
 | V5-0B/0C | contract-only freeze 已独立 PASS | 保留历史 freeze；current runtime overlay 另行标注 |
 | V5-1A | runtime/repair 存在；REGISTERED→ACTIVE 合同与 direct ACTIVE runtime 冲突 | 决策 `D1` 是阶段硬阻塞 |
 | V5-1B | manifest import、VersionSet、GET/diff repair 存在 | standalone `system-versions.record` 与第二版本仍缺失 |
@@ -83,7 +83,7 @@ migration、tests、evidence、rollback、commit 和 verifier。
 
 | Stage | 状态 | 解锁条件 |
 |---|---|---|
-| V5-0A clean-checkout closure | `IN_PROGRESS` | R0 PASS |
+| V5-0A clean-checkout closure | `DONE` | subject `4d15c1c81180386fa4852a53f8b8847e74cda050`；R0 evidence/verifier PASS |
 | V5-0B/0C | `DONE (contract-only)` | 历史 freeze，不重开 |
 | V5-1A | `IN_PROGRESS` | D1 + R1/R2 PASS |
 | V5-1B | `IN_PROGRESS` | R3 PASS |
@@ -728,9 +728,8 @@ Evidence commit 只记录对前一个 immutable subject commit 的验证结果�
 
 ## 17. 下一执行队列
 
-1. 完成文档腐化盘点和 archive 引用迁移；
-2. 独立复核并激活本 Master Plan；
-3. 完成 R0 dirty-worktree provenance 与 clean-checkout authority；
-4. 由产品 owner 裁决 D1，推荐保留 `REGISTERED → ACTIVE`；
-5. 按 R1→R4 逐包实施、提交、验证；
-6. 只有 R4 post-commit verifier PASS 后，重写并冻结 V5-2A 施工 brief。
+1. 由 product owner 记录并裁决 D1；当前推荐保留 `REGISTERED → ACTIVE`，以独立 ADR/semantic subject/verifier 关闭 decision gate；
+2. 重排未提交 migration 链，确保 R1 authority/event foundation 先于 R4 hardening；
+3. 按 R1→R4 逐包实施、提交、验证；
+4. D2 冻结完整 version-graph recording bundle，而非只增加一个无法产生第二 graph 的 VersionSet endpoint；
+5. 只有 R4 post-commit verifier PASS 后，重写并冻结 V5-2A 施工 brief。
