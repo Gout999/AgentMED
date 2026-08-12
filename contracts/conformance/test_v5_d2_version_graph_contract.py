@@ -168,6 +168,18 @@ def test_record_references_existing_authority_valid_objects_only() -> None:
         for binding in version_set["exact_component_revision_bindings"]:
             assert binding["id"] in catalog_ids
 
+    # 每条 component_revision 记录都绑定其组件的当前 ACTIVE 生命周期 revision
+    # （D-014：REGISTERED=1、ACTIVE=2）；version set 引用记录本身，记录 immutable。
+    components = {row["component_id"]: row for row in fixture["catalog_graph"]["components"]}
+    for row in fixture["catalog_graph"]["component_revisions"]:
+        binding = row["exact_system_component_binding"]
+        assert binding["kind"] == "SYSTEM_COMPONENT"
+        assert binding["id"] == row["component_id"]
+        assert binding["revision"] == components[row["component_id"]][
+            "current_authoritative_revision"
+        ]
+        assert binding["revision"] == 2
+
 
 def test_lineage_and_cas_require_exact_previous_binding() -> None:
     registry = _load_yaml(V5 / "intent-registry.yaml")
