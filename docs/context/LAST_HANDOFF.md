@@ -38,12 +38,20 @@
   NOT_IMPLEMENTED` (contract-only, no transport, capability discovery stays hidden). Standalone
   activation, second VersionSet record/get/diff runtime, R4 Case/Acceptance routes, V5-2+,
   MCP/A2A, provider/live and production surfaces remain hidden or unimplemented.
-- `next_action`: begin R3-full Entry audit and runtime construction from clean `4852664` plus
-  this status/plan commit. R3-full implements the standalone `system-versions.record/get/diff`
-  runtime on the frozen D2 contract: request may only reference existing authority-valid objects,
-  exact lineage/CAS previous binding, one PostgreSQL UoW, `system_version_set.recorded` event
-  with outbox/audit/AuthorityReceipt, deterministic non-self diff, and a second-VersionSet PG E2E
-  with a real (non-self) diff. R4, V5-2+ remain blocked by the exact Master §17 predecessor chain.
+- `next_action`: begin R4 Entry audit from clean `18482f8` plus this status/plan commit.
+  R4 implements the First System Case closure on the accepted Master §17.5 contract:
+  IssueSource/binding/acceptance immutable authority, cases.bind-application and the
+  acceptance-criteria intents, case read model/CLI/Console, readiness bounded at
+  `NEEDS_ACCEPTANCE_CRITERIA`/`PENDING_MATERIALIZATION`; V5-2+ remain blocked by the Master
+  §17 predecessor chain.
+- `r3_full_closure`: `DONE (contract + R3-scoped replay)` at semantic series `33ea7e6` +
+  `caed0eb` + `18482f8`. Activated `FROZEN_R3` record/get/diff with exact-previous CAS lineage
+  under a workspace/application/environment advisory lock, one PG UoW (event/outbox/audit/
+  receipt/idempotency), reference-only validation, recursive get verification, deterministic
+  D2-shaped diff, migration 013, HTTP/CLI/capability activation. Verifier PASS P0=0/P1=0;
+  unit 995+12 PG skips; CLI 120; conformance 557; compiler 18; disposable PG 30+1 R4-skip.
+  Evidence:
+  `evidence/v5/stage-1/system-version/r3full_20260812T050342Z_caed0eb/`.
 - `d2_closure`: `DONE (contract-only)` at semantic series `5717124` + `4852664`. Freezes the
   complete `system-versions.record/get/diff` bundle: JSON Schema 2020-12 wire, authority,
   idempotency, lineage/CAS, event/outbox/audit/receipt, capability discovery stays hidden, and a

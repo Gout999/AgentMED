@@ -1,0 +1,107 @@
+{
+  "schema_version": "1.0",
+  "run_id": "r3full_20260812T050342Z_caed0eb",
+  "stage": "V5-R3-full",
+  "slice": "second-version-set-and-semantic-diff-runtime",
+  "started_at": "2026-08-12T04:30:00Z",
+  "completed_at": "2026-08-12T05:10:00Z",
+  "status": "PASS",
+  "subject": {
+    "commit": "18482f8",
+    "parent": "caed0eb",
+    "tree": "ebfaebe73b336b0e8abf07dbd20d8da3cfdeb6fe",
+    "branch": "codex/v5-convergence",
+    "dirty_before": false,
+    "dirty_after": false,
+    "direct_diff_sha256": "240844a45d60549bed65f55d8d3ad2278626c2b8dd787c21260ba4219dbcdef8",
+    "semantic_series": [
+      "33ea7e6",
+      "caed0eb"
+    ],
+    "semantic_series_base": "f5fce73",
+    "semantic_series_diff_sha256": "240844a45d60549bed65f55d8d3ad2278626c2b8dd787c21260ba4219dbcdef8"
+  },
+  "scope": {
+    "included_path_count": 46,
+    "included_paths_ref": "raw/subject-paths.txt",
+    "allowlist_violations": 0,
+    "mode_symlink_binary_findings": 0,
+    "excluded_groups": [
+      "provider/live and Agent execution",
+      "repository sandbox and external side effects",
+      "historical evidence rewrites"
+    ]
+  },
+  "authority_sources_ref": "raw/authority-sources.sha256",
+  "contract_versions": {
+    "status": "PASS",
+    "api_major": 2,
+    "decision": "Master §17.4 second VersionSet and semantic diff runtime",
+    "frozen_intents": [
+      "system-versions.record",
+      "system-versions.get",
+      "system-versions.diff"
+    ],
+    "wire_status": "FROZEN_R3",
+    "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+    "runtime_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
+  },
+  "migration_versions": {
+    "status": "PASS",
+    "head": "013",
+    "summary": "013 adds exact_previous_system_version_set_binding_or_null to system_version_sets (additive lineage column)"
+  },
+  "environment": {
+    "os": "macOS",
+    "git": "Apple Git",
+    "python": "3.11",
+    "checkout": "detached temporary worktree",
+    "secrets_recorded": false,
+    "runtime_identities": {
+      "postgresql": "disposable control_plane_test (alembic head 013)",
+      "quality_api": "NOT_RUN",
+      "providers": "NOT_RUN"
+    }
+  },
+  "facets": {
+    "contract": "PASS",
+    "replay": "PASS (R3-scoped disposable PostgreSQL journey)",
+    "domain-provider-live": "NOT_RUN",
+    "agentteams-native": "NOT_RUN",
+    "claude-runtime-live": "NOT_RUN",
+    "agent-causal": "NOT_RUN",
+    "repo-sandbox": "NOT_RUN",
+    "human-authorized-external": "NOT_RUN",
+    "production-canary": "NOT_RUN"
+  },
+  "stop_gates": {
+    "compiler_determinism": "PASS (zero generated diff)",
+    "compiler_tests": "PASS (18)",
+    "full_conformance": "PASS (557)",
+    "control_plane_unit_and_wave_checkers": "PASS (992, 12 PG skips)",
+    "cli": "PASS (120)",
+    "postgres_journeys": "PASS (8)",
+    "static_scans": "PASS (0 findings)",
+    "clean_before_after": "PASS (0 dirty)",
+    "independent_verifier": "P0=0/P1=0 (see verifier-report.md)"
+  },
+  "verifier": {
+    "verdict": "PASS",
+    "p0": 0,
+    "p1": 0,
+    "report_ref": "verifier-report.md"
+  },
+  "artifacts": {
+    "dir": "artifacts/",
+    "status": "NOT_APPLICABLE"
+  },
+  "receipts": {
+    "dir": "receipts/",
+    "status": "NOT_APPLICABLE"
+  },
+  "semantic_series": [
+    "33ea7e6",
+    "caed0eb",
+    "18482f8"
+  ]
+}

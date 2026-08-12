@@ -1,0 +1,53 @@
+1. identity-clean-before
+cwd: repository root of detached worktree
+command: git rev-parse HEAD && git rev-parse HEAD^ && git status --porcelain
+exit_code: 0
+result: PASS; subject=caed0eb; direct_parent=33ea7e6; dirty_paths=0
+
+2. compiler-determinism
+cwd: contracts/compiler
+command: PYTHONPATH=contracts python3 -m compiler emit && git diff --exit-code -- contracts/v5/generated/
+exit_code: 0
+result: PASS; 14 activated intents; zero generated diff
+
+3. compiler-tests
+cwd: contracts/compiler
+command: PYTHONPATH=contracts python3 -m pytest tests -q
+exit_code: 0
+result: PASS; 18 passed
+
+4. conformance
+cwd: contracts
+command: eval-harness/.venv/bin/python -m pytest conformance/test_schemas.py conformance/test_wilson.py conformance/test_v4_*.py conformance/test_v5_*.py -q
+exit_code: 0
+result: PASS; 557 passed
+
+5. control-plane-unit
+cwd: control-plane
+command: pytest tests/unit + C1-C5 wave checkers (c1_shadow_parity/c2_foundation/c2_graph/c3_import_graph/c4_allowlist_diff/c4_fallback_drill/c5_rollback_drill)
+exit_code: 0
+result: PASS; 992 passed, 12 PG-gated skips
+
+6. cli
+cwd: cli
+command: pytest tests -q
+exit_code: 0
+result: PASS; 120 passed
+
+7. postgres-journeys
+cwd: control-plane
+command: pytest integration (r3 second-version-set journey/concurrent CAS/tamper + r2 manifest + catalog + lifecycle) with disposable PostgreSQL
+exit_code: 0
+result: PASS; 8 passed (r3: bootstrap -> record second -> GET both -> diff -> same-key replay -> concurrent CAS 1 winner -> tamper 500)
+
+8. yaml-duplicate-key / markdown-link / secret-pii
+cwd: repository root
+command: unique-key YAML loader; tracked markdown link scanner; cumulative added-line secret/PII scan
+exit_code: 0
+result: PASS; dup=0; broken=0; secret=0 real findings (12 identifier-only hits); pii=0
+
+9. diff-check-and-clean-after
+cwd: repository root
+command: git diff --check && git status --porcelain
+exit_code: 0
+result: PASS; findings=0; dirty=0

@@ -15,11 +15,11 @@
 - `c4_transport_subject`: `1d7b59c` (C4 original cutover; `b6fa629` remediation makes generated structural + semantic validation jointly mandatory and fail-closed; Python parity covers 11 ops/103 cases)
 - `c5_cleanup_subject`: `19f26bf` (original C5 semantic package; superseded for execution by the remediation below)
 - `c5_remediation_subject`: `b6fa629` (owner port, generated structural+semantic fail-closed, real V5 route switch, unified Console/PG gate; detached clean `verify_convergence.sh` 8/8 PASS; compiler 18; conformance 547; control-plane 998 collected/12 PG safety skip; CLI 118; Console 20+build; disposable PG 17/17)
-- `convergence_series`: `COMPLETE / REMEDIATED` (D2 closed contract-only; R3-full is the only `ELIGIBLE` package; R4, V5-2+ remain LOCKED by Master §17)
+- `convergence_series`: `COMPLETE / REMEDIATED` (D2 and R3-full closed; R4 is the only `ELIGIBLE` package; V5-2+ remain LOCKED by Master §17)
 - `r2_verification`: contracts 541; control-plane unit 876 plus 12 explicitly PG-gated skips; CLI 118; Console 17 plus build; disposable PostgreSQL 17/17
 - `checksum_policy`: SHA-256 and digest-bearing final evidence are deferred by the product owner until final whole-project closure; this deferral does not convert an unrun facet to PASS
 - `pre_r0_baseline`: `4a0a421cc669bf98d9b882d149d5d3df4c8dc36e`
-- `last_clean_verified_semantic_subject_commit`: `4852664` (D2 contract freeze + remediation; detached clean gates PASS; R3-full must still perform the normal independent Entry audit before closing)
+- `last_clean_verified_semantic_subject_commit`: `18482f8` (R3-full runtime + remediation; R4 must perform the normal independent Entry audit) (D2 contract freeze + remediation; detached clean gates PASS; R3-full must still perform the normal independent Entry audit before closing)
 - `last_digest_closed_evidence_subject_commit`: `4852664c60f92e73ee349ec0e7b27e81d84c7b6a4` (V5-D2 contract-only; retained separately because R1/R2 checksums are owner-deferred)
 - `stage0_documentation_commit`: `b7889a7e200f76bd5985188ff6fb7e9e1860fd28`
 - `previous_v3_evidence_commit`: `cef1598b4ac1d42fdd4f206c5747eb89a06f24fc`

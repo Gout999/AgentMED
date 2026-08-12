@@ -956,6 +956,12 @@ deterministic；focused conformance、full V3/V4/V5、wire model parity、duplic
 
 ### 17.4 R3-full — second VersionSet and semantic diff runtime
 
+> **状态**：`DONE (contract + R3-scoped replay)`。semantic series `33ea7e6` + `caed0eb` +
+> `18482f8`；evidence `evidence/v5/stage-1/system-version/r3full_20260812T050342Z_caed0eb/`；
+> detached clean post-commit verifier PASS P0=0/P1=0；unit 995、CLI 120、conformance 557、
+> compiler 18、disposable PG 30+1 R4-skip。`contract=PASS`、R3-scope `replay=PASS`；live/
+> Agent/external/production facets `NOT_RUN`。只解锁 R4 施工。
+
 **Owned outcome**：Version Controller 成为唯一 `system-versions.record/get/diff` success owner。
 首次 bootstrap 保持一套事实；standalone record 从现有 authority graph 产生第二及后续 immutable
 VersionSet，不暗建 Application/Environment/ComponentRevision/Topology。
