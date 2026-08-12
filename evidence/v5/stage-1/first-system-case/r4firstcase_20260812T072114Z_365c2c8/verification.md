@@ -38,6 +38,22 @@ Detached clean-checkout verification passed:
 - clean checkout before and after: 0 dirty paths;
 - independent verifier: PASS, P0=0, P1=0.
 
+## Remediation confirmation pass (2026-08-12, post-closure)
+
+The first verifier round reported P0=0/P1=0 in `verifier-report.md`, but its
+NEW-1 note flagged one ineffective assertion plus residual dead definitions;
+those were fixed in `365c2c8` after that report was written, so the
+remediation itself had not been re-verified. A second detached clean-checkout
+pass at `365c2c8` re-ran the gates and all remain green:
+
+- full V3/V4/V5 conformance: 557 passed;
+- control-plane unit + C1–C5 wave checkers: 996 passed, 12 PG-gated skips;
+- CLI: 130 passed;
+- disposable PostgreSQL journeys: 31 passed + 1 R2-era from-issue e2e skip;
+- compiler determinism: zero generated diff.
+
+The remediation is therefore confirmed; no new findings.
+
 Facets: `contract=PASS`; R4-scoped `replay=PASS` (disposable PostgreSQL
 journey on the real HTTP stack). `domain-provider-live`,
 `agentteams-native`, `claude-runtime-live`, `agent-causal`, `repo-sandbox`,

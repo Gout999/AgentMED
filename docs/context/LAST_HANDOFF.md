@@ -38,19 +38,27 @@
   NOT_IMPLEMENTED` (contract-only, no transport, capability discovery stays hidden). Standalone
   activation, second VersionSet record/get/diff runtime, R4 Case/Acceptance routes, V5-2+,
   MCP/A2A, provider/live and production surfaces remain hidden or unimplemented.
-- `next_action`: begin V5-2A-0 contract/owner/migration freeze from clean `365c2c8` plus this
-  status/plan commit. V5-2A implements the Durable Work Kernel (Master §17.6): Work
-  Controller exclusive WorkOrder/Task/Attempt/Decision/Reaction ownership, lease+fence+attempt
-  claim semantics, business-command and attempt-completion transaction separation, exactly-once
-  outbox/reaction ledger with at-least-once replay; V5-2B/2C/3A/4/5 remain blocked by the Master
-  §17 predecessor chain.
+- `next_action`: V5-2A construction is handed to the remote construction machine per the
+  product-owner division of labor (2026-08-12): remote writes all code from V5-2A-0
+  contract/owner/migration freeze onward (Master §17.6 Durable Work Kernel); local runs the
+  disposable-PostgreSQL journeys, any live facet, and final closure. Remote has no Docker and
+  no provider keys, so its green runs never include PG journeys; those stages stay
+  `VERIFYING (replay=LOCAL_VERIFICATION_PENDING)` until local re-runs them. The remote
+  briefing, safe verification subset, and known pitfalls are in
+  [`V5_REMOTE_CONSTRUCTION_HANDOFF.md`](V5_REMOTE_CONSTRUCTION_HANDOFF.md).
 - `r4_first_case_closure`: `DONE (contract + R4-scoped replay)` at semantic series `df86662` +
   `7c17391` + `365c2c8`. Five 1C intents activated; issue-source→case→bind→propose→confirm with
   immutable authority records and readiness bounded at NEEDS_ACCEPTANCE_CRITERIA /
   PENDING_MATERIALIZATION (never READY before V5-4A); duplicate confirmation fails closed; CLI
   case command family incl. local from-issue. Verifier PASS P0=0/P1=0; unit 996+12 PG skips; CLI
-  130; conformance 557; compiler 18; disposable PG 31+1 R2-skip. Evidence:
+  130; conformance 557; compiler 18; disposable PG 31+1 R2-skip. The post-report remediation
+  (`365c2c8`) was confirmed by a second detached clean-checkout pass on 2026-08-12 with all
+  gates green. Evidence:
   `evidence/v5/stage-1/first-system-case/r4firstcase_20260812T072114Z_365c2c8/`.
+- `local_closure_2026_08_12`: the convergence worktree moved from `/private/tmp` to
+  `~/caseloop-wt-v5-convergence` (branch `codex/v5-convergence`, clean). Local code
+  construction pauses here; remote construction starts from the commit containing
+  `V5_REMOTE_CONSTRUCTION_HANDOFF.md`.
 - `r3_full_closure`: `DONE (contract + R3-scoped replay)` at semantic series `33ea7e6` +
   `caed0eb` + `18482f8`. Activated `FROZEN_R3` record/get/diff with exact-previous CAS lineage
   under a workspace/application/environment advisory lock, one PG UoW (event/outbox/audit/

@@ -81,7 +81,8 @@
     "postgres_journeys": "PASS (31 + 1 R2-era skip)",
     "static_scans": "PASS (0 findings)",
     "clean_before_after": "PASS (0 dirty)",
-    "independent_verifier": "P0=0/P1=0 (see verifier-report.md)"
+    "independent_verifier": "P0=0/P1=0 (see verifier-report.md)",
+    "remediation_confirmation_pass": "PASS (2026-08-12 second detached 365c2c8 checkout: conformance 557, unit 996 + 12 PG skips, CLI 130, PG 31 + 1 R2-era skip, compiler zero diff)"
   },
   "verifier": {
     "verdict": "PASS",

@@ -27,7 +27,8 @@
 - `origin/main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `local main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `collaborator_sync_merge`: `4b5377dae317eaeadbf23ab85481881096b6d6d2`
-- `working_tree`: branch `codex/v5-convergence`; C0–C5 semantic series retained; execution baseline repaired at `b6fa629`. The Master is version `2026-08-12.10`; D2 `ELIGIBLE / NOT STARTED` is the only next package and must freeze the complete `record/get/diff` bundle. The original `codex/v4-foundation` mixed WIP is preserved and excluded; its exact 144-entry snapshot is recorded in `docs/context/V5_CONVERGENCE_WIP_INVENTORY.md`.
+- `working_tree`: branch `codex/v5-convergence` at `~/caseloop-wt-v5-convergence` (moved out of `/private/tmp` on 2026-08-12); C0–C5 semantic series retained; execution baseline repaired at `b6fa629`. The Master is version `2026-08-12.10`; D2, R3-full and R4 are closed; V5-2A is the only `ELIGIBLE` package. The original `codex/v4-foundation` mixed WIP is preserved and excluded; its exact 144-entry snapshot is recorded in `docs/context/V5_CONVERGENCE_WIP_INVENTORY.md`.
+- `construction_division_2026_08_12`: per product-owner decision, V5-2A onward is constructed on the remote machine (stronger model, no Docker, no provider keys); the remote briefing is `docs/context/V5_REMOTE_CONSTRUCTION_HANDOFF.md`. Local owns disposable-PostgreSQL journeys, live facets and final closure; remote-closed stages stay `VERIFYING (replay=LOCAL_VERIFICATION_PENDING)` until local re-runs the PG gates.
 - `last_updated`: `2026-08-12` (Asia/Hong_Kong)
 
 ## Current V5 convergence truth (supersedes the historical repair snapshot below)

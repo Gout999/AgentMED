@@ -28,16 +28,23 @@ generated-wire、rollback 与 final-PG gate 缺口已由 remediation subject `b6
 **C0–C5 架构收敛系列现在具备真实可执行基线。** D2 已关闭（semantic series
 `5717124` + `4852664`；contract-only：三 intent `system-versions.record/get/diff`
 冻结为 `FROZEN_FOR_IMPLEMENTATION / NOT_IMPLEMENTED`，detached clean post-commit
-verifier PASS P0=0/P1=0，仅 `contract=PASS`）。R3-full 为唯一 `ELIGIBLE` package
-（standalone record/get/diff runtime，D2 契约是它的实现基线）；R4、V5-2+ 继续按
-Master 锁定。
+verifier PASS P0=0/P1=0，仅 `contract=PASS`）。R3-full 已关闭（semantic series
+`33ea7e6` + `caed0eb` + `18482f8`；standalone record/get/diff runtime，exact-previous
+CAS + advisory lock + 单 PG UoW；verifier PASS P0=0/P1=0）。R4 已关闭（semantic
+series `df86662` + `7c17391` + `365c2c8`；First System Case closure：5 个 1C intent
+激活、readiness 界限 PENDING_MATERIALIZATION、duplicate-confirm fail-closed、CLI case
+命令族；verifier PASS P0=0/P1=0，且 remediation 经第二轮 detached clean-checkout
+复查全绿）。**V5-2A（Durable Work Kernel，Master §17.6）是唯一 `ELIGIBLE`
+package**；V5-2B+ 继续按 Master 锁定。
 
 D-015 接受 V5 为所有新产品/领域开发的默认设计与施工基线，并把 V3/V4 固定为兼容
 lane；这不改变 public API/CLI 默认 major，不激活新 route/capability，也不追溯改写既有
 事实。**C0–C5 architecture convergence 系列已完成并经 `b6fa629` remediation 重验**。
-下一执行焦点是 D2 完整 version-graph contract gate：一次冻结
-`system-versions.record/get/diff`，不再采用 bootstrap-only defer 分支。R3-full、R4 与 V5-2+
-仍按 Master 的单一依赖链锁定，禁止跨层堆叠。
+D2、R3-full、R4 均已按各自证据关闭。下一执行焦点是 V5-2A Durable Work Kernel
+（Master §17.6），且按 product owner 2026-08-12 的分工裁决交由远端施工机完成代码
+部分（远端无 Docker/无 provider key；交接入口为
+`docs/context/V5_REMOTE_CONSTRUCTION_HANDOFF.md`），本地负责 disposable-PostgreSQL
+journey、live facet 与最终收口。V5-2B+ 仍按 Master 的单一依赖链锁定，禁止跨层堆叠。
 
 - Product and scope baseline: `docs/product-principles.md` + D-013 + D-015.
 - V5 new-development baseline: `docs/plan-v5.md` + `docs/plans/v5-progressive-delivery.md` + `docs/plans/v5-architecture-convergence.md` + 已冻结的 `contracts/v5/`。`docs/plan-v4.md` 只保留为 V4 兼容性基线；v3 保留为已实现兼容基线。
@@ -47,7 +54,7 @@ lane；这不改变 public API/CLI 默认 major，不激活新 route/capability�
   audit 与 recovery 铁律，但把 Langfuse、AgentTeams、Claude Code 和 Coding Team 改为
   可插拔 Adapter；真实外部 Agent 经 CLI 调用即可满足比赛首条 Agent-native 证明。
 - Local branch, document, contract, code, and test construction is authorized. Push, PR, paid provider calls, human approvals, and production or other external writes still require their own authorization.
-- V5 feature progression now follows Master §17. D2 is the only open package; every later package remains locked until its exact predecessor has a semantic commit, clean verifier and status closure. V4 S1B-S7 remain frozen.
+- V5 feature progression now follows Master §17. V5-2A is the only open package (remote-constructed per the 2026-08-12 owner division); every later package remains locked until its exact predecessor has a semantic commit, clean verifier and status closure. V4 S1B-S7 remain frozen.
 - Security prerequisite for the next live/provider run: rotate the potentially exposed StepFun, Feishu, and internal authority/read/write/role credentials after a resolved Compose configuration expanded values into a private tool log. No secret value may enter Git or evidence. Rotation is not part of Stage 0 and remains unperformed; live execution is blocked until it is complete and a redacted preflight passes.
 
 ## V5 design preparation
