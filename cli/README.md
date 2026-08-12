@@ -1,7 +1,7 @@
 # CaseLoop CLI
 
 This package is the machine-oriented client for the frozen V4 Stage 1A public
-contract and the explicitly selected R2 V5 overlay.
+contract and the activated V5 public-operation manifest.
 
 Default/V1 commands:
 
@@ -10,17 +10,18 @@ Default/V1 commands:
 - `case get` and `case timeline`
 - `evidence get`
 
-With `--api-version 2`, capability discovery advertises only the implemented
-R2 public surface: Application register/get/list, Environment, SystemComponent
-and DependencyEdge register/get, plus authenticated one-shot SystemManifest import. Local manifest
-validation performs no HTTP request, needs no credential, is not a server capability, and does not
-prove server acceptance.
+With `--api-version 2`, capability discovery and the generated operation
+manifest expose the implemented 23-operation surface: Application Catalog,
+SystemManifest import, SystemVersion record/get/diff, Case binding and
+Acceptance Criteria workflows, plus V5-2B investigation and durable Operation
+commands. Local manifest validation performs no HTTP request, needs no
+credential, is not a server capability, and does not prove server acceptance.
 
-Standalone Application/SystemComponent activation, standalone second-version
-recording, system-version read/diff discovery, Case/Acceptance workflows,
-V5-2+, approval and release are not R2 capabilities and are not advertised.
-The R2 CLI exposes only `system-manifest validate` and `system-manifest import`;
-the former `record`, version `get`, and `diff` actions are intentionally absent.
+Approval and release operations remain unavailable and are not advertised.
+An Operation reaching `COMPLETED` means that its Work attempt has a trusted,
+receipt-bound structured artifact; it does not mean that a Gate or Release has
+passed. `operation cancel` records a stop request. Stopping `wait` or `follow`
+with Ctrl-C only detaches the client and never sends that request.
 
 ## Install and configure
 
@@ -51,6 +52,20 @@ caseloop --profile .caseloop/config.yaml --api-version 2 capabilities get
 
 caseloop --profile .caseloop/config.yaml --api-version 2 application list \
   --project-id proj_... --limit 50
+
+caseloop --profile .caseloop/config.yaml --api-version 2 case investigate \
+  case_... --case-revision 1 --case-digest sha256:... \
+  --instructions "Investigate the regression" --follow
+
+caseloop --profile .caseloop/config.yaml --api-version 2 operation get op_...
+
+caseloop --profile .caseloop/config.yaml --api-version 2 operation list --limit 50
+
+caseloop --profile .caseloop/config.yaml --api-version 2 operation follow \
+  op_... --timeout-seconds 300
+
+caseloop --profile .caseloop/config.yaml --api-version 2 operation cancel \
+  op_... --reason "Operator requested a stop"
 
 caseloop --profile .caseloop/config.yaml signal submit \
   --summary "The agent chose the wrong tool" \
