@@ -227,6 +227,11 @@ def test_first_wire_slice_matches_registry_and_compatibility() -> None:
     r2_intents = set(
         registry["r2_application_catalog_contract"]["activated_contract_intents"]
     )
+    later_activated = {
+        *registry["r3_full_contract"]["activated_contract_intents"],
+        *registry["r4_full_contract"]["activated_contract_intents"],
+        *registry["v5_2b_public_operation_contract"]["activated_contract_intents"],
+    }
     assert set(FIRST_SLICE) <= set(by_name)
     for name in FIRST_SLICE:
         intent = by_name[name]
@@ -246,10 +251,11 @@ def test_first_wire_slice_matches_registry_and_compatibility() -> None:
                 "FROZEN_FOR_IMPLEMENTATION",
                 "FROZEN_R3",
                 "FROZEN_R4",
+                "FROZEN_V5_2B",
             )
             assert intent["implementation_status"] == (
                 "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
-                if intent["wire_status"] in ("FROZEN_R3", "FROZEN_R4")
+                if name in later_activated
                 else "NOT_IMPLEMENTED"
             )
         assert intent["cli_requires_explicit_api_major"] is True
@@ -278,8 +284,18 @@ def test_first_wire_slice_matches_registry_and_compatibility() -> None:
     for example in fixture["skeleton_outside_slice"]["examples"]:
         assert example in by_name, example
         assert example not in FIRST_SLICE, example
-        assert by_name[example]["wire_status"] == "DRAFT"
-        assert by_name[example]["implementation_status"] == "NOT_IMPLEMENTED"
+        if example in later_activated:
+            assert by_name[example]["wire_status"] in {
+                "FROZEN_R3",
+                "FROZEN_R4",
+                "FROZEN_V5_2B",
+            }
+            assert by_name[example]["implementation_status"] == (
+                "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
+            )
+        else:
+            assert by_name[example]["wire_status"] == "DRAFT"
+            assert by_name[example]["implementation_status"] == "NOT_IMPLEMENTED"
     assert fixture["skeleton_outside_slice"]["skeleton_generates"] == compatibility["first_slice"][
         "skeleton_intents_generate"
     ]

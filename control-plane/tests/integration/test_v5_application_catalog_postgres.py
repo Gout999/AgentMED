@@ -166,7 +166,7 @@ def test_v5_catalog_installed_cli_real_postgres_loopback(
                 version_connection.execute(
                     sa.text("SELECT version_num FROM alembic_version")
                 ).scalar_one()
-                == "014"
+                == "015"
             )
 
         cli, pinned_site_packages = _install_cli(repo_root, tmp_path)

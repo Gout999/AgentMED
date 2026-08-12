@@ -124,6 +124,24 @@ def _attempt_snapshot(attempt: WorkAttempt) -> dict[str, Any]:
     }
 
 
+def validate_work_task_head(task: WorkTask) -> None:
+    """Fail closed if a durable task projection no longer matches its head."""
+    if (
+        not task.record_digest
+        or canonical_digest(_task_snapshot(task)) != task.record_digest
+    ):
+        raise V5WorkKernelError("v5.work.projection_integrity_invalid")
+
+
+def validate_work_attempt_head(attempt: WorkAttempt) -> None:
+    """Fail closed if a durable attempt projection no longer matches its head."""
+    if (
+        not attempt.record_digest
+        or canonical_digest(_attempt_snapshot(attempt)) != attempt.record_digest
+    ):
+        raise V5WorkKernelError("v5.work.projection_integrity_invalid")
+
+
 def _proposal_snapshot(proposal: WorkProposal) -> dict[str, Any]:
     return {
         "proposal_id": proposal.proposal_id,

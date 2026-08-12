@@ -1,6 +1,6 @@
 {
   "disabled_intents": [],
-  "enabled_intent_count": 19,
+  "enabled_intent_count": 23,
   "enabled_intents": [
     {
       "cli": true,
@@ -134,6 +134,34 @@
       "http": true,
       "name": "acceptance-criteria.get",
       "scope": "acceptance_criteria:read"
+    },
+    {
+      "cli": true,
+      "execution_mode": "asynchronous",
+      "http": true,
+      "name": "investigations.start",
+      "scope": "investigations:start"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "operations.get",
+      "scope": "operations:read"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "operations.list",
+      "scope": "operations:read"
+    },
+    {
+      "cli": true,
+      "execution_mode": "asynchronous",
+      "http": true,
+      "name": "operations.cancel-request",
+      "scope": "operations:cancel"
     }
   ],
   "generated_by": "caseloop-v5-compiler",

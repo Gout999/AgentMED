@@ -59,6 +59,7 @@ PATH_PARAMETER_ID_DEFS = {
     "system_version_set_id": "idSystemVersionSetId",
     "case_id": "idCaseId",
     "acceptance_criteria_revision_id": "idAcceptanceCriteriaRevisionId",
+    "operation_id": "idOperationId",
 }
 
 # ---------------------------------------------------------------------------

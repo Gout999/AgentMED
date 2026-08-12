@@ -32,6 +32,7 @@ from app.models.v5_tables import (
     SystemComponent,
 )
 from app.models.v5_work_tables import (
+    AutomationRequest,
     WorkAttempt,
     WorkAttemptCapability,
     WorkProposal,
@@ -67,6 +68,7 @@ __all__ = [
     "Environment",
     "SystemComponent",
     "DependencyEdge",
+    "AutomationRequest",
     "WorkTask",
     "WorkAttempt",
     "WorkAttemptCapability",

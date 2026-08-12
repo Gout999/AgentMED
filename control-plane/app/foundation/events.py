@@ -350,6 +350,43 @@ EVENT_ROUTES: dict[tuple[str, str], EventRoute] = {
 
 
 V5_EVENT_ROUTES: dict[tuple[str, str], V5EventRoute] = {
+    # V5-2B AutomationRequest owner facts.  The public Operation remains a
+    # projection over this request and the linked WorkTask/Attempt.
+    ("automation_request", "automation_request.investigation_submitted"): V5EventRoute(
+        owner="automation-request-controller",
+        subject_kind="AUTOMATION_REQUEST",
+        required=frozenset(
+            {
+                "exact_automation_request_binding",
+                "exact_work_task_binding",
+                "exact_case_binding",
+                "application_id",
+                "environment_id",
+                "request_digest",
+                "budget_digest",
+                "requester_principal",
+            }
+        ),
+        self_binding_field="exact_automation_request_binding",
+        dependent_bindings=(("exact_work_task_binding", "WORK_TASK", None),),
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("automation_request", "automation_request.stop_requested"): V5EventRoute(
+        owner="automation-request-controller",
+        subject_kind="AUTOMATION_REQUEST",
+        required=frozenset(
+            {
+                "exact_automation_request_binding",
+                "operation_id",
+                "reason",
+                "requested_by_principal",
+            }
+        ),
+        self_binding_field="exact_automation_request_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
     ("ai_application", "application.registered"): V5EventRoute(
         owner="application-catalog-controller",
         subject_kind="AI_APPLICATION",

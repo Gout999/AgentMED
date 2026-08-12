@@ -51,6 +51,10 @@ EXPECTED_ACTIVATED_NAMES = [
     "acceptance-criteria.propose",
     "acceptance-criteria.confirm",
     "acceptance-criteria.get",
+    "investigations.start",
+    "operations.get",
+    "operations.list",
+    "operations.cancel-request",
 ]
 
 
@@ -79,7 +83,7 @@ def _generated_validator(registry: Registry, name: str, definition: str):
 
 def test_all_v5_schemas_are_meta_valid(schema_registry: Registry) -> None:
     files = sorted(SCHEMAS_DIR.glob("*.schema.json"))
-    assert len(files) == 21
+    assert len(files) == 25
     for path in files:
         document = _load_json(path)
         assert document.get("$schema") == "https://json-schema.org/draft/2020-12/schema"
@@ -91,7 +95,7 @@ def test_operation_manifest_matches_schemas() -> None:
     manifest = _load_json(GENERATED_DIR / "operation-manifest.json")
     names = [op["intent"] for op in manifest["operations"]]
     assert names == EXPECTED_ACTIVATED_NAMES
-    assert manifest["activated_intent_count"] == 19
+    assert manifest["activated_intent_count"] == 23
     for op in manifest["operations"]:
         for definition in ("request", "response", "error"):
             assert (
@@ -100,9 +104,9 @@ def test_operation_manifest_matches_schemas() -> None:
             )
 
 
-def test_capability_manifest_is_exact_19() -> None:
+def test_capability_manifest_is_exact_23() -> None:
     manifest = _load_json(GENERATED_DIR / "capability-manifest.json")
-    assert manifest["enabled_intent_count"] == 19
+    assert manifest["enabled_intent_count"] == 23
     assert manifest["disabled_intents"] == []
     names = [entry["name"] for entry in manifest["enabled_intents"]]
     assert names == EXPECTED_ACTIVATED_NAMES

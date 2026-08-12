@@ -26,6 +26,7 @@ from sqlalchemy import (
     Integer,
     String,
     UniqueConstraint,
+    Boolean,
     event,
     func,
 )
@@ -72,6 +73,109 @@ _ATTEMPT_STATE_SQL = "(" + ",".join(f"'{s}'" for s in ATTEMPT_STATES) + ")"
 _PROPOSAL_STATUS_SQL = "(" + ",".join(f"'{s}'" for s in PROPOSAL_STATUSES) + ")"
 _DECISION_SQL = "(" + ",".join(f"'{s}'" for s in PROPOSAL_DECISIONS) + ")"
 _REACTION_STATUS_SQL = "(" + ",".join(f"'{s}'" for s in REACTION_STATUSES) + ")"
+
+
+class AutomationRequest(Base):
+    """V5-2B durable public-operation binding for the V4 logical owner.
+
+    The row owns only investigation admission/budget/stop-request facts.  It
+    deliberately does not own execution or terminal success: ``operation``
+    state is rebuilt from the linked WorkTask/Attempt on every read.
+    """
+
+    __tablename__ = "automation_requests"
+    __table_args__ = (
+        ForeignKeyConstraint(
+            ["workspace_id", "task_id"],
+            ["work_tasks.workspace_id", "work_tasks.task_id"],
+            name="fk_automation_request_work_task",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "application_case_binding_id"],
+            [
+                "application_case_bindings.workspace_id",
+                "application_case_bindings.application_case_binding_id",
+            ],
+            name="fk_automation_request_case_binding",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "application_id"],
+            ["ai_applications.workspace_id", "ai_applications.application_id"],
+            name="fk_automation_request_application",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "environment_id"],
+            ["environments.workspace_id", "environments.environment_id"],
+            name="fk_automation_request_environment",
+        ),
+        ForeignKeyConstraint(
+            ["workspace_id", "requester_principal"],
+            ["public_principals.workspace_id", "public_principals.principal_id"],
+            name="fk_automation_request_principal",
+        ),
+        UniqueConstraint(
+            "workspace_id",
+            "automation_request_id",
+            name="uq_automation_request_workspace_request",
+        ),
+        UniqueConstraint(
+            "workspace_id", "operation_id", name="uq_automation_request_operation"
+        ),
+        UniqueConstraint(
+            "workspace_id", "task_id", name="uq_automation_request_task"
+        ),
+        CheckConstraint(
+            "revision >= 1", name="ck_automation_request_revision"
+        ),
+        CheckConstraint(
+            "(stop_requested = false AND stop_requested_at IS NULL "
+            "AND stop_reason IS NULL AND stop_requested_by_principal IS NULL) OR "
+            "(stop_requested = true AND stop_requested_at IS NOT NULL "
+            "AND stop_reason IS NOT NULL AND stop_requested_by_principal IS NOT NULL)",
+            name="ck_automation_request_stop_shape",
+        ),
+        Index(
+            "ix_automation_request_visible_page",
+            "workspace_id",
+            "operation_id",
+            "application_id",
+            "requester_principal",
+        ),
+    )
+
+    automation_request_id: Mapped[str] = mapped_column(String(128), primary_key=True)
+    workspace_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    operation_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    task_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    application_case_binding_id: Mapped[str] = mapped_column(
+        String(128), nullable=False
+    )
+    case_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    case_revision: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    case_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    application_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    environment_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    requester_principal: Mapped[str] = mapped_column(String(128), nullable=False)
+    request_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
+    request_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    budget_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=1)
+    stop_requested: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    stop_requested_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    stop_reason: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    stop_requested_by_principal: Mapped[Optional[str]] = mapped_column(
+        String(128), nullable=True
+    )
+    record_digest: Mapped[str] = mapped_column(String(80), nullable=False)
+    authority_receipt_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
 
 
 class WorkTask(Base):

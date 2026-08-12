@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/schemas/v5/operations.list.schema.json",
+  "title": "operations.list",
+  "description": "V5-2B visible operation page; filtering precedes count and pagination.",
+  "$defs": {
+    "request": {"type": "null"},
+    "query": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "limit": {"type": "integer", "minimum": 1, "maximum": 100},
+        "cursor": {"type": "string", "pattern": "^opcur_[0-9A-Za-z_-]{8,512}$"}
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "workspace_id", "request_id", "audit_ref", "items", "next_cursor"],
+      "properties": {
+        "schema_version": {"$ref": "common.schema.json#/$defs/schemaVersion2"},
+        "workspace_id": {"$ref": "common.schema.json#/$defs/idWorkspaceId"},
+        "request_id": {"$ref": "common.schema.json#/$defs/idRequestId"},
+        "audit_ref": {"$ref": "common.schema.json#/$defs/auditRef"},
+        "items": {"type": "array", "items": {"$ref": "operations.get.schema.json#/$defs/operation"}},
+        "next_cursor": {"anyOf": [{"type": "string", "pattern": "^opcur_[0-9A-Za-z_-]{8,512}$"}, {"type": "null"}]}
+      }
+    },
+    "error": {"$ref": "common.schema.json#/$defs/errorEnvelope"}
+  }
+}

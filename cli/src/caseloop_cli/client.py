@@ -32,6 +32,10 @@ from ._generated.public_v2 import (
     DependencyEdgeRecordResponse,
     EnvironmentGetResponse,
     EnvironmentRegisterResponse,
+    InvestigationStartResponse,
+    OperationCancelResponse,
+    OperationGetResponse,
+    OperationListResponse,
     V5ServerCapabilitiesResponse,
 )
 from ._generated.manifest_v2 import (
@@ -89,6 +93,10 @@ _V2_RESPONSE_MODELS: dict[str, SuccessModel] = {
     "acceptance-criteria.propose": AcceptanceCriteriaProposeResponse,
     "acceptance-criteria.get": AcceptanceCriteriaGetResponse,
     "acceptance-criteria.confirm": AcceptanceCriteriaConfirmResponse,
+    "investigations.start": InvestigationStartResponse,
+    "operations.get": OperationGetResponse,
+    "operations.list": OperationListResponse,
+    "operations.cancel-request": OperationCancelResponse,
 }
 
 # Strict id pattern per manifest path parameter.  Preserving the exact
@@ -102,6 +110,7 @@ _V2_PATH_PARAM_ID_PATTERN: dict[str, str] = {
     "system_version_set_id": "vset_[0-9A-Za-z]{8,64}",
     "case_id": "case_[0-9A-Za-z]{8,64}",
     "acceptance_criteria_revision_id": "acr_[0-9A-Za-z]{8,64}",
+    "operation_id": "op_[0-9A-Za-z]{8,64}",
 }
 
 SuccessModel: TypeAlias = type[BaseModel]
@@ -131,6 +140,7 @@ _ERROR_META: dict[str, tuple[int, bool]] = {
     "RESOURCE_NOT_FOUND": (404, False),
     "IDEMPOTENCY_CONFLICT": (409, False),
     "CATALOG_CONFLICT": (409, False),
+    "OPERATION_NOT_CANCELLABLE": (409, False),
     "CONTRACT_VERSION_UNSUPPORTED": (412, False),
     "CONTENT_TOO_LARGE": (413, False),
     "UNSUPPORTED_MEDIA_TYPE": (415, False),
@@ -500,6 +510,8 @@ class PublicApiClient:
                     CaseBindApplicationResponse,
                     AcceptanceCriteriaProposeResponse,
                     AcceptanceCriteriaConfirmResponse,
+                    InvestigationStartResponse,
+                    OperationCancelResponse,
                 ),
             )
             and success.idempotency.replayed is True
@@ -509,6 +521,22 @@ class PublicApiClient:
         if isinstance(success, ApplicationGetResponse):
             if success.application.application_id != spec.resource_id:
                 raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+            return
+        if isinstance(success, OperationGetResponse):
+            if success.operation.operation_id != spec.resource_id:
+                raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+            return
+        if isinstance(success, OperationListResponse):
+            return
+        if isinstance(success, (InvestigationStartResponse, OperationCancelResponse)):
+            self._validate_v5_async_mutation_binding(
+                spec,
+                success,
+                body,
+                idempotency_key,
+                raw_payload,
+                stable_request_id=stable_request_id,
+            )
             return
         if isinstance(success, ApplicationListResponse):
             requested_projects = [
@@ -739,11 +767,6 @@ class PublicApiClient:
         if isinstance(success, SystemManifestImportResponse):
             expected_principal = success.bootstrap_attestation.attester_principal_id
         else:
-            # Catalog records are sealed by the registered authority controller,
-            # while the idempotency receipt names the authenticated caller.  The
-            # opaque CLI credential does not expose a separately trusted caller
-            # principal, so only manifest import has an in-response exact actor
-            # binding (the bootstrap attester).
             expected_principal = None
         if (
             receipt.request_fingerprint != _canonical_digest(request_payload)
@@ -765,6 +788,64 @@ class PublicApiClient:
             or receipt.resource.id != resource_id
             or receipt.status != "COMPLETED"
             or receipt.operation_id is not None
+        ):
+            raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+
+    def _validate_v5_async_mutation_binding(
+        self,
+        spec: _OperationSpec,
+        success: BaseModel,
+        body: bytes | None,
+        idempotency_key: str | None,
+        raw_payload: dict[str, Any],
+        *,
+        stable_request_id: str,
+    ) -> None:
+        if body is None or idempotency_key is None:
+            raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+        try:
+            request_payload = json.loads(body)
+        except (json.JSONDecodeError, UnicodeDecodeError):
+            raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL) from None
+        if not isinstance(request_payload, dict):
+            raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+        path_field = (
+            "case_id" if spec.name == "investigations.start" else "operation_id"
+        )
+        request_payload = {path_field: spec.resource_id, **request_payload}
+        receipt = success.idempotency.receipt
+        raw_idempotency = raw_payload.get("idempotency")
+        raw_receipt = (
+            raw_idempotency.get("receipt")
+            if isinstance(raw_idempotency, dict)
+            else None
+        )
+        if not isinstance(raw_receipt, dict):
+            raise CliError("REMOTE_PROTOCOL_ERROR", ExitFamily.PROTOCOL)
+        response_without_idempotency = dict(raw_payload)
+        response_without_idempotency.pop("idempotency", None)
+        receipt_without_digest = dict(raw_receipt)
+        receipt_without_digest.pop("receipt_digest", None)
+        operation = success.operation
+        replayed = success.idempotency.replayed is True
+        if (
+            receipt.request_fingerprint != _canonical_digest(request_payload)
+            or receipt.response_digest != _canonical_digest(response_without_idempotency)
+            or receipt.receipt_digest != _canonical_digest(receipt_without_digest)
+            or receipt.workspace_id != self._config.workspace_id
+            or receipt.audit_ref != success.audit_ref
+            or receipt.intent != spec.name
+            or receipt.idempotency_key != idempotency_key
+            or receipt.request_id != success.request_id
+            or (not replayed and receipt.request_id != stable_request_id)
+            or receipt.resource.kind != "automation_request"
+            or receipt.resource.id != operation.automation_request_id
+            or receipt.status != "ACCEPTED"
+            or receipt.operation_id != operation.operation_id
+            or (
+                spec.name == "operations.cancel-request"
+                and operation.operation_id != spec.resource_id
+            )
         ):
             raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
 

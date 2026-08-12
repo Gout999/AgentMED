@@ -57,6 +57,10 @@ EXPECTED_ACTIVATED_INTENTS = frozenset(
         "acceptance-criteria.propose",
         "acceptance-criteria.get",
         "acceptance-criteria.confirm",
+        "investigations.start",
+        "operations.get",
+        "operations.list",
+        "operations.cancel-request",
     }
 )
 
@@ -79,7 +83,7 @@ def test_capability_runtime_table_matches_capability_manifest() -> None:
 
     manifest = _load_json(CAPABILITY_MANIFEST)
     manifest_entries = manifest["enabled_intents"]
-    assert manifest["enabled_intent_count"] == len(manifest_entries) == 19
+    assert manifest["enabled_intent_count"] == len(manifest_entries) == 23
 
     runtime = _triples(
         [
@@ -141,9 +145,9 @@ def test_operation_manifest_http_matches_public_v5_routes() -> None:
 
     manifest = _load_json(OPERATION_MANIFEST)
     operations = manifest["operations"]
-    assert manifest["activated_intent_count"] == len(operations) == 19
+    assert manifest["activated_intent_count"] == len(operations) == 23
     http_entries = [op["http"] for op in operations if op.get("http") is not None]
-    assert len(http_entries) == 19
+    assert len(http_entries) == 23
     assert {op["intent"] for op in operations} == EXPECTED_ACTIVATED_INTENTS
 
     expected = {
@@ -165,7 +169,7 @@ def test_operation_manifest_http_matches_public_v5_routes() -> None:
     # Only GET/POST; no activated intent may be reachable under another
     # method, and no unregistered handler may carry a route decorator.
     assert all(method in {"GET", "POST"} for method, _path, _op in expected)
-    assert len({operation_id for _m, _p, operation_id in expected}) == 19
+    assert len({operation_id for _m, _p, operation_id in expected}) == 23
 
 
 def test_public_v5_routes_and_v1_lane_majors_are_preserved() -> None:
@@ -300,7 +304,7 @@ def test_cli_allowlist_matches_operation_manifest() -> None:
         assert cli in " ".join(help_text.split()) or path_key[1] in command_help_flat, (
             f"manifest cli '{cli}' missing from CLI help"
         )
-    assert len(manifest_cli_pairs) == 19
+    assert len(manifest_cli_pairs) == 23
 
     v2_commands = (
         {key[0] for key in manifest_cli_pairs}
@@ -318,11 +322,12 @@ def test_cli_allowlist_matches_operation_manifest() -> None:
         or (command == "case" and action not in {"get", "timeline"})
     }
     manifest_path_keys = {key[:2] for key in manifest_cli_pairs}
-    # Exact: manifest path keys plus the local-only "system-manifest validate"
-    # and "case from-issue" (documented exceptions — never wire calls).
+        # Exact: manifest path keys plus local-only orchestration helpers.
     assert frozen_v2_pairs == manifest_path_keys | {
         ("system-manifest", "validate"),
-        ("case", "from-issue"),
+            ("case", "from-issue"),
+            ("operation", "wait"),
+            ("operation", "follow"),
     }, (
         f"frozen v2 surface {sorted(frozen_v2_pairs)} != "
         f"manifest {sorted(manifest_cli_pairs)} + validate"
@@ -343,5 +348,5 @@ def test_cli_default_api_major_stays_one() -> None:
     # v2 commands are explicitly gated on --api-version 2 (never implicit).
     assert sorted(cli_main._V2_COMMANDS) == sorted(
         {"application", "environment", "system-component", "dependency-edge",
-         "system-manifest", "system-version"}
+         "system-manifest", "system-version", "operation"}
     )

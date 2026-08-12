@@ -36,6 +36,7 @@ from app.models.v5_tables import (
     TopologyRevision,
 )
 from app.models.v5_work_tables import (
+    AutomationRequest,
     WorkAttempt,
     WorkProposal,
     WorkProposalDecision,
@@ -145,18 +146,23 @@ def _load_v5_catalog_cached(root_text: str) -> V5ContractCatalog:
     record_authority = ownership.get("record_authority")
     if not isinstance(record_authority, dict):
         raise V5AuthorityError("v5.authority.contract_catalog_invalid")
-    # V5-2A (D-016): Work aggregates keep their own authority section because
-    # they are state-machine projections, not record-envelope records.  The
-    # controller resolution view merges it so WORK_TASK/ATTEMPT/WORK_PROPOSAL/
-    # WORK_PROPOSAL_DECISION resolve through the same path as catalog kinds.
-    work_authority = ownership.get("schema_major_2_work_authority")
-    if work_authority is not None:
-        if not isinstance(work_authority, dict):
+    # V5-2A Work and V5-2B public-operation projections have dedicated
+    # authority sections because they are mutable state projections, not
+    # record-envelope records. The controller resolution view merges both
+    # closed sections while rejecting duplicate subject kinds.
+    for authority_section in (
+        "schema_major_2_work_authority",
+        "schema_major_2_public_operation_authority",
+    ):
+        projection_authority = ownership.get(authority_section)
+        if projection_authority is None:
+            continue
+        if not isinstance(projection_authority, dict):
             raise V5AuthorityError("v5.authority.contract_catalog_invalid")
-        overlap = set(record_authority) & set(work_authority)
+        overlap = set(record_authority) & set(projection_authority)
         if overlap:
             raise V5AuthorityError("v5.authority.contract_catalog_invalid")
-        record_authority = {**record_authority, **work_authority}
+        record_authority = {**record_authority, **projection_authority}
     return V5ContractCatalog(
         root=root,
         ownership_digest=canonical_digest(ownership),
@@ -348,6 +354,15 @@ _V5_SUBJECT_BINDINGS: dict[str, tuple[type[Any], str, str, str, str | None]] = {
         "authority_receipt_id",
         None,
     ),
+    # V5-2B: AutomationRequest owns public investigation admission and stop
+    # request facts.  Execution remains owned by the linked WorkTask.
+    "AUTOMATION_REQUEST": (
+        AutomationRequest,
+        "automation_request_id",
+        "record_digest",
+        "authority_receipt_id",
+        "revision",
+    ),
     # V5-2A (D-016): Work aggregates are state-machine projections without a
     # record envelope; their digest/receipt columns track the current head.
     "WORK_TASK": (
@@ -383,7 +398,13 @@ _V5_SUBJECT_BINDINGS: dict[str, tuple[type[Any], str, str, str, str | None]] = {
 # Kinds whose subject rows carry no record envelope; ``_validate_v5_subject``
 # verifies them against the projection row columns instead.
 _V5_ENVELOPELESS_SUBJECTS = frozenset(
-    {"WORK_TASK", "WORK_ATTEMPT", "WORK_PROPOSAL", "WORK_PROPOSAL_DECISION"}
+    {
+        "AUTOMATION_REQUEST",
+        "WORK_TASK",
+        "WORK_ATTEMPT",
+        "WORK_PROPOSAL",
+        "WORK_PROPOSAL_DECISION",
+    }
 )
 
 # Append-only lifecycle history is authoritative.  The original catalog rows
@@ -938,7 +959,7 @@ class V5AuthorityService:
         if row is None:
             raise V5AuthorityError("v5.authority.subject_missing")
         if kind in _V5_ENVELOPELESS_SUBJECTS:
-            # D-016 Work projections: no record envelope exists; the row's
+            # D-016 Work/public-operation projections: no record envelope exists; the row's
             # digest/receipt/revision columns are the current-head authority.
             if (
                 getattr(row, "workspace_id") != workspace_id
@@ -1050,6 +1071,7 @@ class V5AuthorityService:
         _model, id_attr, digest_attr, receipt_attr, revision_attr = binding
         payload = event.payload
         binding_field = {
+            "AUTOMATION_REQUEST": "exact_automation_request_binding",
             "WORK_TASK": "exact_work_task_binding",
             "WORK_ATTEMPT": "exact_attempt_binding",
             "WORK_PROPOSAL": "exact_proposal_binding",

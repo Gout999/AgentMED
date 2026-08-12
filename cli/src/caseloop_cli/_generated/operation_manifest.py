@@ -377,6 +377,48 @@ _FROZEN_OPERATIONS: tuple[dict[str, object], ...] = (
         "idempotency": "required",
         "scope": "acceptance_criteria:confirm",
     },
+    {
+        "intent": "investigations.start",
+        "cli": "case investigate",
+        "contract_major": 2,
+        "execution_mode": "asynchronous",
+        "kind": "mutation",
+        "command_target": {"resource": "v4.automation_request", "command": "automation-requests.start-investigation"},
+        "http": {"method": "POST", "operation_id": "startInvestigation", "path": "/api/v2/cases/{case_id}:investigate"},
+        "idempotency": "required",
+        "scope": "investigations:start",
+    },
+    {
+        "intent": "operations.get",
+        "cli": "operation get",
+        "contract_major": 2,
+        "execution_mode": "synchronous",
+        "kind": "query",
+        "http": {"method": "GET", "operation_id": "getOperation", "path": "/api/v2/operations/{operation_id}"},
+        "idempotency": "none",
+        "scope": "operations:read",
+    },
+    {
+        "intent": "operations.list",
+        "cli": "operation list",
+        "contract_major": 2,
+        "execution_mode": "synchronous",
+        "kind": "query",
+        "http": {"method": "GET", "operation_id": "listOperations", "path": "/api/v2/operations"},
+        "idempotency": "none",
+        "scope": "operations:read",
+    },
+    {
+        "intent": "operations.cancel-request",
+        "cli": "operation cancel",
+        "contract_major": 2,
+        "execution_mode": "asynchronous",
+        "kind": "mutation",
+        "command_target": {"resource": "v4.automation_request", "command": "automation-requests.request-stop"},
+        "http": {"method": "POST", "operation_id": "requestOperationCancel", "path": "/api/v2/operations/{operation_id}:cancel"},
+        "idempotency": "required",
+        "scope": "operations:cancel",
+    },
 )
 
 
@@ -489,7 +531,11 @@ def _derive_operation(operation: dict[str, Any]) -> CliOperation:
     """
     http = operation["http"]
     method = http["method"]
-    status_code = 201 if method in {"POST", "PUT", "PATCH"} else 200
+    status_code = (
+        202
+        if operation["execution_mode"] == "asynchronous"
+        else 201 if method in {"POST", "PUT", "PATCH"} else 200
+    )
     cli_match = _CLI_TOKENS.fullmatch(operation["cli"])
     command, action = cli_match.group(1), cli_match.group(2)
     subaction = cli_match.group(3)

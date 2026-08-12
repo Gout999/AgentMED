@@ -186,6 +186,7 @@ v5_2a_work_kernel_contract:
     exporter:
       may: [read_committed_facts]
       may_not: [append_domain_event, write_any_aggregate_row, create_authority_receipt]
+
   frozen_event_catalog:
     worker_task:
       - work.requested
@@ -258,6 +259,24 @@ v5_2a_work_kernel_contract:
     - public_route_or_transport_activation
     - v5_2b_async_public_intents
     - production_canary_or_external_write
+
+v5_2b_public_operation_contract:
+  stage: V5-2B
+  plan_ref: docs/plans/v5-master-execution-plan.md#v5-2b--async-public-intents
+  contract_status: FROZEN_FOR_IMPLEMENTATION
+  implementation_status: IMPLEMENTED_PENDING_VERIFIER
+  activation_status: ACTIVATED_LOCAL
+  projection_creates_business_state_machine: false
+  operation_state_derives_only_from: [v4.worker_task, v4.attempt, trusted_domain_artifact]
+  automation_request:
+    owner: automation-request-controller
+    events:
+      - automation_request.investigation_submitted
+      - automation_request.stop_requested
+  semantics:
+    detach_cancels_work: false
+    cancel_is_stop_request_not_terminal_success: true
+    completed_means_trusted_artifact_not_gate_or_release_pass: true
 
 event_envelope_v5:
   applies_to: every_event_in_this_major_2_catalog

@@ -129,6 +129,12 @@ def new_v4_operation_id() -> str:
     return f"op_{_ulid()}"
 
 
+def new_automation_request_id() -> str:
+    """V4 logical AutomationRequest carried by the V5 public operation wire."""
+
+    return f"arq_{_ulid()}"
+
+
 def new_application_id() -> str:
     """V5 AI application aggregate ID."""
 

@@ -35,6 +35,12 @@ R4_INTENTS = [
     "acceptance-criteria.get",
     "acceptance-criteria.confirm",
 ]
+V5_2B_INTENTS = [
+    "investigations.start",
+    "operations.get",
+    "operations.list",
+    "operations.cancel-request",
+]
 ACTIVATED_NAMES = [
     "capabilities.get",
     "applications.register",
@@ -55,6 +61,7 @@ ACTIVATED_NAMES = [
     "acceptance-criteria.propose",
     "acceptance-criteria.confirm",
     "acceptance-criteria.get",
+    *V5_2B_INTENTS,
 ]
 
 
@@ -133,6 +140,15 @@ def test_activated_surface_includes_r3_full_and_r4_full() -> None:
         assert intent["http"]["path"].startswith("/api/v2/")
         assert intent["cli_requires_explicit_api_major"] is True
 
+    for name in V5_2B_INTENTS:
+        intent = _registry_intent(registry, name)
+        assert intent["wire_status"] == "FROZEN_V5_2B"
+        assert intent["implementation_status"] == (
+            "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
+        )
+        assert intent["http"]["path"].startswith("/api/v2/")
+        assert intent["cli_requires_explicit_api_major"] is True
+
     # R3-full/R4-full 激活：八个 intent 进入 generated operation/capability
     # manifest；R2 历史 allowlist（r2_application_catalog_contract）仍保持
     # 11 个且与 R3/R4 激活集不相交。
@@ -142,6 +158,7 @@ def test_activated_surface_includes_r3_full_and_r4_full() -> None:
     assert len(r2_activated) == 11
     assert set(D2_INTENTS).isdisjoint(r2_activated)
     assert set(R4_INTENTS).isdisjoint(r2_activated)
+    assert set(V5_2B_INTENTS).isdisjoint(r2_activated)
     operation_names = [
         op["intent"] for op in _load_json("operation-manifest.json")["operations"]
     ]
@@ -153,6 +170,7 @@ def test_activated_surface_includes_r3_full_and_r4_full() -> None:
     assert capability_names == ACTIVATED_NAMES
     assert set(D2_INTENTS) <= set(capability_names)
     assert set(R4_INTENTS) <= set(capability_names)
+    assert set(V5_2B_INTENTS) <= set(capability_names)
 
     # R3-full 契约块：capability 发现开启；d2 块标记为已激活（语义部分不变）。
     r3 = registry["r3_full_contract"]
@@ -172,6 +190,13 @@ def test_activated_surface_includes_r3_full_and_r4_full() -> None:
     assert r4["runtime_status"] == "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
     assert r4["activated_contract_intents"] == R4_INTENTS
     assert r4["capability_discovery"] == "ENABLED"
+
+    v5_2b = registry["v5_2b_public_operation_contract"]
+    assert v5_2b["stage"] == "V5-2B"
+    assert v5_2b["contract_status"] == "FROZEN"
+    assert v5_2b["runtime_status"] == "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
+    assert v5_2b["activated_contract_intents"] == V5_2B_INTENTS
+    assert v5_2b["capability_discovery"] == "ENABLED"
 
     d2 = registry["d2_complete_version_graph_contract"]
     assert d2["activation_status"] == "ACTIVATED_AS_R3_FULL"

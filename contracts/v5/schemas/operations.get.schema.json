@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/schemas/v5/operations.get.schema.json",
+  "title": "operations.get",
+  "description": "V5-2B read of a durable governance operation projected from WorkTask/Attempt authority.",
+  "$defs": {
+    "request": {"type": "null"},
+    "exactCaseBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["case_id", "case_revision", "case_digest"],
+      "properties": {
+        "case_id": {"$ref": "common.schema.json#/$defs/idCaseId"},
+        "case_revision": {"type": "integer", "minimum": 1},
+        "case_digest": {"$ref": "common.schema.json#/$defs/digest"}
+      }
+    },
+    "exactWorkTaskBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": {"const": "WORK_TASK"},
+        "id": {"$ref": "common.schema.json#/$defs/idWorkTaskId"},
+        "revision": {"type": "integer", "minimum": 1},
+        "digest": {"$ref": "common.schema.json#/$defs/digest"}
+      }
+    },
+    "exactWorkAttemptBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": {"const": "WORK_ATTEMPT"},
+        "id": {"$ref": "common.schema.json#/$defs/idWorkAttemptId"},
+        "revision": {"type": "integer", "minimum": 1},
+        "digest": {"$ref": "common.schema.json#/$defs/digest"}
+      }
+    },
+    "exactDomainArtifactBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,63}$"},
+        "id": {"type": "string", "pattern": "^[a-z][a-z0-9_]*_[0-9A-Za-z]{8,128}$"},
+        "revision": {"type": "integer", "minimum": 1},
+        "digest": {"$ref": "common.schema.json#/$defs/digest"}
+      }
+    },
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifact_kind", "schema_major", "domain_verdict", "evidence_completeness", "exact_artifact_binding", "payload"],
+      "properties": {
+        "artifact_kind": {"type": "string", "pattern": "^[A-Z][A-Z0-9_]{2,63}$"},
+        "schema_major": {"type": "integer", "minimum": 1},
+        "domain_verdict": {"type": "string", "minLength": 1, "maxLength": 64},
+        "evidence_completeness": {"enum": ["COMPLETE", "PARTIAL", "UNKNOWN"]},
+        "exact_artifact_binding": {"$ref": "#/$defs/exactDomainArtifactBinding"},
+        "payload": {"type": "object", "additionalProperties": true}
+      }
+    },
+    "operation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["operation_id", "automation_request_id", "canonical_intent", "state", "requester_principal", "exact_case_binding", "application_id", "environment_id", "exact_work_task_binding", "exact_current_attempt_binding_or_null", "cancel_requested", "artifact_or_null", "created_at", "updated_at"],
+      "properties": {
+        "operation_id": {"$ref": "common.schema.json#/$defs/idOperationId"},
+        "automation_request_id": {"$ref": "common.schema.json#/$defs/idAutomationRequestId"},
+        "canonical_intent": {"const": "investigations.start"},
+        "state": {"enum": ["SUBMITTED", "WORKING", "INPUT_REQUIRED", "AUTH_REQUIRED", "CANCEL_REQUESTED", "CANCELED", "REJECTED", "FAILED", "COMPLETED"]},
+        "requester_principal": {"$ref": "common.schema.json#/$defs/idPrincipalId"},
+        "exact_case_binding": {"$ref": "#/$defs/exactCaseBinding"},
+        "application_id": {"$ref": "common.schema.json#/$defs/idApplicationId"},
+        "environment_id": {"$ref": "common.schema.json#/$defs/idEnvironmentId"},
+        "exact_work_task_binding": {"$ref": "#/$defs/exactWorkTaskBinding"},
+        "exact_current_attempt_binding_or_null": {"anyOf": [{"$ref": "#/$defs/exactWorkAttemptBinding"}, {"type": "null"}]},
+        "cancel_requested": {"type": "boolean"},
+        "artifact_or_null": {"anyOf": [{"$ref": "#/$defs/artifact"}, {"type": "null"}]},
+        "created_at": {"type": "string", "format": "date-time"},
+        "updated_at": {"type": "string", "format": "date-time"}
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "workspace_id", "request_id", "audit_ref", "operation"],
+      "properties": {
+        "schema_version": {"$ref": "common.schema.json#/$defs/schemaVersion2"},
+        "workspace_id": {"$ref": "common.schema.json#/$defs/idWorkspaceId"},
+        "request_id": {"$ref": "common.schema.json#/$defs/idRequestId"},
+        "audit_ref": {"$ref": "common.schema.json#/$defs/auditRef"},
+        "operation": {"$ref": "#/$defs/operation"}
+      }
+    },
+    "error": {"$ref": "common.schema.json#/$defs/errorEnvelope"}
+  }
+}

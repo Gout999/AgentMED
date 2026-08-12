@@ -57,7 +57,7 @@ CURSOR_KEY = "drill-c5-cursor"
 SCOPES = ["capabilities:read"]
 REQUEST_ID = "req_01J000000000000A"
 
-ALEMBIC_HEAD = "014"
+ALEMBIC_HEAD = "015"
 
 
 def _claims(workspace_id: str, project_ids: list[str], scopes: list[str]) -> str:
@@ -282,11 +282,11 @@ def test_v5_write_path_unreachable_produces_no_outbox_rows() -> None:
 
 
 # ---------------------------------------------------------------------------
-# 4. Schema/head unchanged: alembic head stays 012 (read-only script check)
+# 4. Rollback action preserves the repository's current migration head.
 # ---------------------------------------------------------------------------
 
 
-def test_alembic_head_unchanged_at_012() -> None:
+def test_rollback_drill_preserves_current_alembic_head() -> None:
     from alembic.config import Config
     from alembic.script import ScriptDirectory
 
@@ -294,9 +294,11 @@ def test_alembic_head_unchanged_at_012() -> None:
     config.set_main_option("script_location", str(REPO_ROOT / "control-plane" / "alembic"))
     script = ScriptDirectory.from_config(config)
 
-    # The migration chain is untouched by the drill (and by the rollback
-    # action): head remains 011 -> 012, and no migration file is deleted.
+    # The rollback drill itself must never delete or rewrite migrations.
     assert script.get_heads() == [ALEMBIC_HEAD]
+    assert script.get_revision("015").down_revision == "014"
     assert script.get_revision("012").down_revision == "011"
     assert (ALEMBIC_VERSIONS / "011_v5_lifecycle_authority_foundation.py").is_file()
     assert (ALEMBIC_VERSIONS / "012_v5_event_envelope.py").is_file()
+    assert (ALEMBIC_VERSIONS / "014_v5_work_kernel.py").is_file()
+    assert (ALEMBIC_VERSIONS / "015_v5_public_operations.py").is_file()

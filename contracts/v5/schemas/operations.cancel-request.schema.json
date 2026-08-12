@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/schemas/v5/operations.cancel-request.schema.json",
+  "title": "operations.cancel-request",
+  "description": "V5-2B best-effort stop request; acceptance is not cancellation confirmation.",
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "reason"],
+      "properties": {
+        "schema_version": {"$ref": "common.schema.json#/$defs/schemaVersion2"},
+        "reason": {"type": "string", "minLength": 1, "maxLength": 256}
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "workspace_id", "request_id", "audit_ref", "operation", "idempotency"],
+      "properties": {
+        "schema_version": {"$ref": "common.schema.json#/$defs/schemaVersion2"},
+        "workspace_id": {"$ref": "common.schema.json#/$defs/idWorkspaceId"},
+        "request_id": {"$ref": "common.schema.json#/$defs/idRequestId"},
+        "audit_ref": {"$ref": "common.schema.json#/$defs/auditRef"},
+        "operation": {"$ref": "operations.get.schema.json#/$defs/operation"},
+        "idempotency": {"$ref": "common.schema.json#/$defs/idempotencyDelivery"}
+      }
+    },
+    "error": {"$ref": "common.schema.json#/$defs/errorEnvelope"}
+  }
+}

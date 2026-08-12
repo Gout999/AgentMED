@@ -90,7 +90,7 @@ def test_sqlite_upgrade_head_allows_multi_stage_gate_binding(tmp_path: Path) -> 
     with engine.begin() as connection:
         assert (
             connection.execute(sa.text("select version_num from alembic_version")).scalar_one()
-            == "014"
+            == "015"
         )
         base = {
             "workorder_id": "wo-multi-stage",
@@ -415,7 +415,7 @@ def test_v5_r1_graph_and_legacy_preflight_precedes_every_ddl() -> None:
     root = Path(__file__).resolve().parents[2]
     script = ScriptDirectory.from_config(_config(root, "sqlite://"))
 
-    assert script.get_heads() == ["014"]
+    assert script.get_heads() == ["015"]
     assert [
         item.revision for item in script.iterate_revisions("013", "009")
     ] == ["013", "012", "011", "010"]
@@ -1163,7 +1163,7 @@ def test_v5_r1_fresh_postgresql_upgrade_reaches_exact_head() -> None:
         with engine.begin() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "014"
+            ).scalar_one() == "015"
     finally:
         try:
             _reset_pg_database_for_migrations(engine, TEST_DATABASE_URL)
@@ -1370,7 +1370,7 @@ def test_v5_2a_014_fresh_sqlite_upgrade_creates_work_tables(tmp_path: Path) -> N
     root = Path(__file__).resolve().parents[2]
     engine = sa.create_engine(database_url)
     try:
-        command.upgrade(_config(root, database_url), "head")
+        command.upgrade(_config(root, database_url), "014")
         inspector = sa.inspect(engine)
         assert _work_tables() <= set(inspector.get_table_names())
         task_checks = {
@@ -1427,7 +1427,7 @@ def test_v5_2a_014_populated_previous_head_is_untouched(tmp_path: Path) -> None:
                     " 'arec_2a_pre', 'txn_2a_pre', 'prn_2a_pre', 'sha256:abc')"
                 )
             )
-        command.upgrade(_config(root, database_url), "head")
+        command.upgrade(_config(root, database_url), "014")
         with engine.begin() as connection:
             assert connection.execute(
                 sa.text("SELECT COUNT(*) FROM events WHERE event_id = 'evt_2a_pre'")
@@ -1452,7 +1452,7 @@ def test_v5_2a_014_downgrade_guard_blocks_persisted_work_fact(
     root = Path(__file__).resolve().parents[2]
     engine = sa.create_engine(database_url)
     try:
-        command.upgrade(_config(root, database_url), "head")
+        command.upgrade(_config(root, database_url), "014")
         with engine.begin() as connection:
             connection.execute(
                 sa.text(
@@ -1484,7 +1484,7 @@ def test_v5_2a_014_empty_work_tables_downgrade_to_013(tmp_path: Path) -> None:
     root = Path(__file__).resolve().parents[2]
     engine = sa.create_engine(database_url)
     try:
-        command.upgrade(_config(root, database_url), "head")
+        command.upgrade(_config(root, database_url), "014")
         command.downgrade(_config(root, database_url), "013")
         inspector = sa.inspect(engine)
         assert _work_tables().isdisjoint(set(inspector.get_table_names()))
@@ -1492,7 +1492,7 @@ def test_v5_2a_014_empty_work_tables_downgrade_to_013(tmp_path: Path) -> None:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
             ).scalar_one() == "013"
-        command.upgrade(_config(root, database_url), "head")
+        command.upgrade(_config(root, database_url), "014")
         inspector = sa.inspect(engine)
         assert _work_tables() <= set(inspector.get_table_names())
     finally:
@@ -1517,7 +1517,7 @@ def test_v5_2a_014_fresh_postgresql_upgrade_creates_work_tables() -> None:
     engine = _new_pg_engine()
     try:
         _reset_pg_database_for_migrations(engine, TEST_DATABASE_URL)
-        command.upgrade(_config(root, TEST_DATABASE_URL), "head")
+        command.upgrade(_config(root, TEST_DATABASE_URL), "014")
         inspector = sa.inspect(engine)
         assert _work_tables() <= set(inspector.get_table_names())
         attempt_fks = inspector.get_foreign_keys("work_attempts")
@@ -1537,6 +1537,156 @@ def test_v5_2a_014_fresh_postgresql_upgrade_creates_work_tables() -> None:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
             ).scalar_one() == "014"
+    finally:
+        try:
+            _reset_pg_database_for_migrations(engine, TEST_DATABASE_URL)
+        finally:
+            engine.dispose()
+
+
+def test_v5_2b_015_fresh_sqlite_upgrade_creates_public_operation_table(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path}/public-operations-fresh.db"
+    root = Path(__file__).resolve().parents[2]
+    engine = sa.create_engine(database_url)
+    try:
+        command.upgrade(_config(root, database_url), "head")
+        inspector = sa.inspect(engine)
+        assert "automation_requests" in inspector.get_table_names()
+        columns = {item["name"] for item in inspector.get_columns("automation_requests")}
+        assert {
+            "automation_request_id",
+            "workspace_id",
+            "operation_id",
+            "task_id",
+            "application_case_binding_id",
+            "request_digest",
+            "budget_digest",
+            "stop_requested",
+            "record_digest",
+            "authority_receipt_id",
+        } <= columns
+        foreign_keys = inspector.get_foreign_keys("automation_requests")
+        assert any(
+            tuple(item["constrained_columns"]) == ("workspace_id", "task_id")
+            and item["referred_table"] == "work_tasks"
+            for item in foreign_keys
+        )
+        assert {
+            (
+                tuple(item["constrained_columns"]),
+                item["referred_table"],
+            )
+            for item in foreign_keys
+        } >= {
+            (("workspace_id", "application_case_binding_id"), "application_case_bindings"),
+            (("workspace_id", "application_id"), "ai_applications"),
+            (("workspace_id", "environment_id"), "environments"),
+            (("workspace_id", "requester_principal"), "public_principals"),
+        }
+        with engine.begin() as connection:
+            assert connection.execute(
+                sa.text("SELECT version_num FROM alembic_version")
+            ).scalar_one() == "015"
+    finally:
+        engine.dispose()
+
+
+def test_v5_2b_015_downgrade_guard_blocks_persisted_operation(
+    tmp_path: Path,
+) -> None:
+    database_url = f"sqlite:///{tmp_path}/public-operations-guard.db"
+    root = Path(__file__).resolve().parents[2]
+    engine = sa.create_engine(database_url)
+    try:
+        command.upgrade(_config(root, database_url), "head")
+        with engine.begin() as connection:
+            connection.execute(
+                sa.text(
+                    "INSERT INTO work_tasks (task_id, workspace_id, task_kind,"
+                    " input_payload, input_digest, requester_principal, state,"
+                    " attempt_count, max_attempts, idempotency_key, request_fingerprint,"
+                    " revision, record_digest, authority_receipt_id) VALUES"
+                    " ('task_2b_guard', 'ws_2b', 'investigation', '{}',"
+                    " 'sha256:input', 'prn_2b', 'QUEUED', 0, 3, 'idem-2b',"
+                    " 'sha256:request', 1, 'sha256:task', 'arec_2b_task')"
+                )
+            )
+            connection.execute(
+                sa.text(
+                    "INSERT INTO automation_requests (automation_request_id,"
+                    " workspace_id, operation_id, task_id, application_case_binding_id,"
+                    " case_id, case_revision,"
+                    " case_digest, application_id, environment_id, requester_principal,"
+                    " request_payload, request_digest, budget_digest, revision,"
+                    " stop_requested, record_digest, authority_receipt_id) VALUES"
+                    " ('arq_2b_guard', 'ws_2b', 'op_2b_guard', 'task_2b_guard',"
+                    " 'acb_2b_guard', 'case_2b_guard', 1, 'sha256:case', 'app_2b_guard',"
+                    " 'env_2b_guard', 'prn_2b', '{}', 'sha256:request',"
+                    " 'sha256:budget', 1, false, 'sha256:automation', 'arec_2b')"
+                )
+            )
+        before = _schema_fingerprint(engine)
+        with pytest.raises(
+            RuntimeError, match="015.v5_public_operation_facts_prevent_downgrade"
+        ):
+            command.downgrade(_config(root, database_url), "014")
+        assert _schema_fingerprint(engine) == before
+        with engine.begin() as connection:
+            assert connection.execute(
+                sa.text("SELECT version_num FROM alembic_version")
+            ).scalar_one() == "015"
+    finally:
+        engine.dispose()
+
+
+def test_v5_2b_015_empty_table_downgrades_to_014(tmp_path: Path) -> None:
+    database_url = f"sqlite:///{tmp_path}/public-operations-empty.db"
+    root = Path(__file__).resolve().parents[2]
+    engine = sa.create_engine(database_url)
+    try:
+        command.upgrade(_config(root, database_url), "head")
+        command.downgrade(_config(root, database_url), "014")
+        inspector = sa.inspect(engine)
+        assert "automation_requests" not in inspector.get_table_names()
+        assert _work_tables() <= set(inspector.get_table_names())
+        with engine.begin() as connection:
+            assert connection.execute(
+                sa.text("SELECT version_num FROM alembic_version")
+            ).scalar_one() == "014"
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    os.environ.get("CASELOOP_ALLOW_INTEGRATION_RESET") != "true",
+    reason="explicit disposable PostgreSQL reset opt-in required",
+)
+def test_v5_2b_015_fresh_postgresql_upgrade_creates_public_operation_table() -> None:
+    from conftest import (
+        TEST_DATABASE_URL,
+        _new_pg_engine,
+        _reset_pg_database_for_migrations,
+    )
+
+    root = Path(__file__).resolve().parents[2]
+    engine = _new_pg_engine()
+    try:
+        _reset_pg_database_for_migrations(engine, TEST_DATABASE_URL)
+        command.upgrade(_config(root, TEST_DATABASE_URL), "head")
+        inspector = sa.inspect(engine)
+        assert "automation_requests" in inspector.get_table_names()
+        assert any(
+            tuple(item["constrained_columns"]) == ("workspace_id", "task_id")
+            and item["referred_table"] == "work_tasks"
+            for item in inspector.get_foreign_keys("automation_requests")
+        )
+        with engine.begin() as connection:
+            assert connection.execute(
+                sa.text("SELECT version_num FROM alembic_version")
+            ).scalar_one() == "015"
     finally:
         try:
             _reset_pg_database_for_migrations(engine, TEST_DATABASE_URL)

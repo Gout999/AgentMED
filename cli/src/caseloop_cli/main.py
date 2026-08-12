@@ -53,6 +53,8 @@ _IDS = {
     "binding": re.compile(r"^acb_[0-9A-Za-z]{8,64}$"),
     "acceptance_revision": re.compile(r"^acr_[0-9A-Za-z]{8,64}$"),
     "digest": re.compile(r"^sha256:[0-9a-f]{64}$"),
+    "operation": re.compile(r"^op_[0-9A-Za-z]{8,64}$"),
+    "operation_cursor": re.compile(r"^opcur_[0-9A-Za-z_-]{8,512}$"),
 }
 
 _V1_COMMANDS = frozenset({"signal", "report", "evidence"})
@@ -289,6 +291,40 @@ def _case_from_issue_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--idempotency-key")
 
 
+def _case_investigate_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("case_id", nargs="?")
+    parser.add_argument("--case-id", dest="case_id_flag")
+    parser.add_argument("--case-revision", type=int, default=1)
+    parser.add_argument("--case-digest", required=True)
+    parser.add_argument("--instructions")
+    parser.add_argument("--max-attempts", type=int, default=3)
+    parser.add_argument("--idempotency-key")
+    wait_mode = parser.add_mutually_exclusive_group()
+    wait_mode.add_argument("--wait", action="store_true")
+    wait_mode.add_argument("--follow", action="store_true")
+    parser.add_argument("--timeout-seconds", type=float, default=300.0)
+
+
+def _operation_get_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("operation_id")
+
+
+def _operation_list_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--limit", type=int, default=50)
+    parser.add_argument("--cursor")
+
+
+def _operation_cancel_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("operation_id")
+    parser.add_argument("--reason", required=True)
+    parser.add_argument("--idempotency-key")
+
+
+def _operation_wait_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("operation_id")
+    parser.add_argument("--timeout-seconds", type=float, default=300.0)
+
+
 def _id_positional(argument: str) -> Callable[[argparse.ArgumentParser], None]:
     def _add(parser: argparse.ArgumentParser) -> None:
         parser.add_argument(argument)
@@ -326,6 +362,12 @@ _V2_ACTION_OPTIONS: dict[
     ("case", "application-binding"): _case_application_binding_options,
     ("case", "acceptance-criteria"): _case_acceptance_criteria_options,
     ("case", "from-issue"): _case_from_issue_options,
+    ("case", "investigate"): _case_investigate_options,
+    ("operation", "get"): _operation_get_options,
+    ("operation", "list"): _operation_list_options,
+    ("operation", "cancel"): _operation_cancel_options,
+    ("operation", "wait"): _operation_wait_options,
+    ("operation", "follow"): _operation_wait_options,
 }
 
 
@@ -383,6 +425,9 @@ def build_parser() -> argparse.ArgumentParser:
     # ``system-manifest validate`` is a local-only command (no HTTP operation)
     # and must remain available beside the derived ``import`` action.
     v2_actions.setdefault("system-manifest", []).append("validate")
+    # Local polling helpers over canonical operations.get. They create no
+    # transport intent and Ctrl-C only detaches the client wait.
+    v2_actions.setdefault("operation", []).extend(["wait", "follow"])
     for command in sorted(v2_actions):
         group = commands.add_parser(command)
         actions = group.add_subparsers(
@@ -488,6 +533,64 @@ def _operation_path(operation: CliOperation, **ids: str) -> str:
         return operation.path.format(**ids)
     except (KeyError, ValueError) as exc:
         raise CliError("CLI_USAGE_INVALID", ExitFamily.INPUT) from exc
+
+
+_OPERATION_TERMINAL_STATES = frozenset(
+    {"CANCELED", "REJECTED", "FAILED", "COMPLETED"}
+)
+
+
+def _wait_for_operation(
+    client: PublicApiClient,
+    operation_id: str,
+    *,
+    timeout_seconds: float,
+    follow: bool,
+    output_stream: TextIO,
+    sleep: Callable[[float], None],
+    clock: Callable[[], datetime],
+) -> dict[str, object]:
+    if timeout_seconds <= 0 or timeout_seconds > 86_400:
+        raise CliError("OPERATION_WAIT_INPUT_INVALID", ExitFamily.INPUT)
+    operation = _V2_OPERATIONS[("operation", "get", None)]
+    deadline = clock().timestamp() + timeout_seconds
+    last_state: str | None = None
+    last_response: dict[str, object] | None = None
+    try:
+        while True:
+            response = client.request(
+                operation.method,
+                _operation_path(operation, operation_id=operation_id),
+                api_major=2,
+            )
+            current = response.get("operation")
+            state = current.get("state") if isinstance(current, dict) else None
+            if not isinstance(state, str):
+                raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+            # The caller emits the final result exactly once.  Follow streams
+            # only non-terminal transitions to keep stdout valid JSONL without
+            # duplicating the terminal record.
+            if follow and state != last_state and state not in _OPERATION_TERMINAL_STATES:
+                _write_json(output_stream, response)
+            last_state = state
+            last_response = response
+            if state in _OPERATION_TERMINAL_STATES:
+                return response
+            if clock().timestamp() >= deadline:
+                raise CliError(
+                    "OPERATION_WAIT_TIMEOUT",
+                    ExitFamily.TEMPORARY,
+                    details={"operation_id": operation_id, "last_state": state},
+                )
+            sleep(0.5)
+    except KeyboardInterrupt:
+        # Detach is a client concern. No cancel request is emitted here.
+        return {
+            "schema_version": "2.0",
+            "operation_id": operation_id,
+            "detached": True,
+            "last_observation": last_response,
+        }
 
 
 def _id_or_flag(
@@ -1286,7 +1389,50 @@ def run(
                 "GET", capability_path, api_major=int(api_major)
             )
         elif args.command == "case":
-            if args.action == "bind-application":
+            if args.action == "investigate":
+                case_id = _id_or_flag(
+                    args, "case_id", "case_id_flag", "case", required=True
+                )
+                case_digest = _valid_id(args.case_digest, "digest", required=True)
+                if not 1 <= args.case_revision or not 1 <= args.max_attempts <= 10:
+                    raise CliError("INVESTIGATION_INPUT_INVALID", ExitFamily.INPUT)
+                if args.instructions is not None and not 1 <= len(args.instructions) <= 4000:
+                    raise CliError("INVESTIGATION_INPUT_INVALID", ExitFamily.INPUT)
+                idem = args.idempotency_key or f"investigation-start-{uuid_factory().hex}"
+                if not 8 <= len(idem) <= 128:
+                    raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+                payload = {
+                    "schema_version": "2.0",
+                    "case_revision": args.case_revision,
+                    "case_digest": case_digest,
+                    "instructions": args.instructions,
+                    "max_attempts": args.max_attempts,
+                }
+                operation = _V2_OPERATIONS[("case", "investigate", None)]
+                result = client.request(
+                    operation.method,
+                    _operation_path(operation, case_id=case_id),
+                    body=json.dumps(
+                        payload,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ).encode("utf-8"),
+                    idempotency_key=idem,
+                    api_major=2,
+                )
+                if args.wait or args.follow:
+                    operation_id = result["operation"]["operation_id"]
+                    result = _wait_for_operation(
+                        client,
+                        operation_id,
+                        timeout_seconds=args.timeout_seconds,
+                        follow=args.follow,
+                        output_stream=output_stream,
+                        sleep=sleep,
+                        clock=clock,
+                    )
+            elif args.action == "bind-application":
                 case_id = _id_or_flag(
                     args, "case_id", "case_id_flag", "case", required=True
                 )
@@ -1532,10 +1678,70 @@ def run(
             else:
                 raise CliError("CLI_USAGE_INVALID", ExitFamily.INPUT)
         elif args.command in _V2_COMMANDS:
+            if args.command == "operation" and args.action in {"wait", "follow"}:
+                operation_id = _valid_id(
+                    args.operation_id, "operation", required=True
+                )
+                result = _wait_for_operation(
+                    client,
+                    operation_id,
+                    timeout_seconds=args.timeout_seconds,
+                    follow=args.action == "follow",
+                    output_stream=output_stream,
+                    sleep=sleep,
+                    clock=clock,
+                )
+                _write_json(output_stream, result)
+                return int(ExitFamily.OK)
             operation = _V2_OPERATIONS.get((args.command, args.action, None))
             if operation is None:
                 raise CliError("CLI_USAGE_INVALID", ExitFamily.INPUT)
-            if args.command == "application" and args.action == "register":
+            if args.command == "operation" and args.action == "get":
+                operation_id = _valid_id(
+                    args.operation_id, "operation", required=True
+                )
+                result = client.request(
+                    operation.method,
+                    _operation_path(operation, operation_id=operation_id),
+                    api_major=2,
+                )
+            elif args.command == "operation" and args.action == "list":
+                if not 1 <= args.limit <= 100:
+                    raise CliError("OPERATION_LIST_INPUT_INVALID", ExitFamily.INPUT)
+                params = [("limit", str(args.limit))]
+                if args.cursor is not None:
+                    params.append(
+                        (
+                            "cursor",
+                            _valid_id(
+                                args.cursor, "operation_cursor", required=True
+                            ),
+                        )
+                    )
+                result = client.request(
+                    operation.method, operation.path, params=params, api_major=2
+                )
+            elif args.command == "operation" and args.action == "cancel":
+                operation_id = _valid_id(
+                    args.operation_id, "operation", required=True
+                )
+                idem = args.idempotency_key or f"operation-cancel-{uuid_factory().hex}"
+                if not 8 <= len(idem) <= 128:
+                    raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+                payload = {"schema_version": "2.0", "reason": args.reason}
+                result = client.request(
+                    operation.method,
+                    _operation_path(operation, operation_id=operation_id),
+                    body=json.dumps(
+                        payload,
+                        ensure_ascii=False,
+                        sort_keys=True,
+                        separators=(",", ":"),
+                    ).encode("utf-8"),
+                    idempotency_key=idem,
+                    api_major=2,
+                )
+            elif args.command == "application" and args.action == "register":
                 idem = args.idempotency_key or f"application-register-{uuid_factory().hex}"
                 if not 8 <= len(idem) <= 128:
                     raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)

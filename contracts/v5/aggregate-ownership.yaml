@@ -392,6 +392,17 @@ schema_major_2_work_authority:
     command_events:
       proposals.decide: [proposal.accepted, proposal.rejected]
 
+schema_major_2_public_operation_authority:
+  # V5-2B: the durable AutomationRequest projection owns public admission and
+  # stop-request facts. It is deliberately separate from the V5-2A Work
+  # Kernel state machines; execution and terminal state remain WorkTask-owned.
+  AUTOMATION_REQUEST:
+    resource: automation_request
+    owner: automation-request-controller
+    command_events:
+      automation-requests.start-investigation: [automation_request.investigation_submitted]
+      automation-requests.request-stop: [automation_request.stop_requested]
+
 schema_major_2_lifecycle_authority:
   SYSTEM_CANDIDATE_REVISION:
     logical_resource: v4.candidate_revision

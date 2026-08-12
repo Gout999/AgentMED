@@ -1,11 +1,12 @@
 {
-  "activated_intent_count": 19,
+  "activated_intent_count": 23,
   "activation_rule": {
     "activated_wire_statuses": [
       "FROZEN_R2",
       "FROZEN_R2_R3_BOOTSTRAP",
       "FROZEN_R3",
-      "FROZEN_R4"
+      "FROZEN_R4",
+      "FROZEN_V5_2B"
     ],
     "draft_or_deferred_intents_excluded": true,
     "not_a_route_or_capability_activation": true
@@ -664,6 +665,144 @@
       },
       "scope": "acceptance_criteria:read",
       "wire_status": "FROZEN_R4"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "external_agent",
+        "service"
+      ],
+      "authorization_condition": "case_authorized_actor",
+      "cli": "case investigate",
+      "cli_requires_explicit_api_major": true,
+      "command_target": {
+        "command": "automation-requests.start-investigation",
+        "resource": "v4.automation_request"
+      },
+      "contract_major": 2,
+      "delivery_slice": "V5-2B",
+      "execution_mode": "asynchronous",
+      "http": {
+        "method": "POST",
+        "operation_id": "startInvestigation",
+        "path": "/api/v2/cases/{case_id}:investigate"
+      },
+      "idempotency": "required",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "investigations.start",
+      "kind": "mutation",
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/investigations.start.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/investigations.start.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/investigations.start.schema.json#/$defs/response"
+      },
+      "scope": "investigations:start",
+      "wire_status": "FROZEN_V5_2B"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "external_agent",
+        "service",
+        "connector"
+      ],
+      "authorization_condition": "request_owner_or_application_authorized_reader",
+      "cli": "operation get",
+      "cli_requires_explicit_api_major": true,
+      "contract_major": 2,
+      "delivery_slice": "V5-2B",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "GET",
+        "operation_id": "getOperation",
+        "path": "/api/v2/operations/{operation_id}"
+      },
+      "idempotency": "none",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "operations.get",
+      "kind": "query",
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/operations.get.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/operations.get.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/operations.get.schema.json#/$defs/response"
+      },
+      "scope": "operations:read",
+      "wire_status": "FROZEN_V5_2B"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "external_agent",
+        "service",
+        "connector"
+      ],
+      "authorization_condition": "request_owner_or_application_authorized_reader",
+      "cli": "operation list",
+      "cli_requires_explicit_api_major": true,
+      "contract_major": 2,
+      "delivery_slice": "V5-2B",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "GET",
+        "operation_id": "listOperations",
+        "path": "/api/v2/operations",
+        "query_parameters": {
+          "optional": [
+            "limit",
+            "cursor"
+          ],
+          "required": []
+        }
+      },
+      "idempotency": "none",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "operations.list",
+      "kind": "query",
+      "pagination": {
+        "cursor": "opaque_signed_snapshot",
+        "default_limit": 50,
+        "max_limit": 100
+      },
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/operations.list.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/operations.list.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/operations.list.schema.json#/$defs/response"
+      },
+      "scope": "operations:read",
+      "wire_status": "FROZEN_V5_2B"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "external_agent",
+        "service"
+      ],
+      "authorization_condition": "request_owner_or_operations_controller",
+      "cli": "operation cancel",
+      "cli_requires_explicit_api_major": true,
+      "command_target": {
+        "command": "automation-requests.request-stop",
+        "resource": "v4.automation_request"
+      },
+      "contract_major": 2,
+      "delivery_slice": "V5-2B",
+      "execution_mode": "asynchronous",
+      "http": {
+        "method": "POST",
+        "operation_id": "requestOperationCancel",
+        "path": "/api/v2/operations/{operation_id}:cancel"
+      },
+      "idempotency": "required",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "operations.cancel-request",
+      "kind": "mutation",
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/operations.cancel-request.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/operations.cancel-request.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/operations.cancel-request.schema.json#/$defs/response"
+      },
+      "scope": "operations:cancel",
+      "wire_status": "FROZEN_V5_2B"
     }
   ],
   "schema_version": "1.0",

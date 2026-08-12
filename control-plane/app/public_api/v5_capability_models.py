@@ -46,6 +46,10 @@ V5PublicIntentName = Literal[
     "acceptance-criteria.propose",
     "acceptance-criteria.get",
     "acceptance-criteria.confirm",
+    "investigations.start",
+    "operations.get",
+    "operations.list",
+    "operations.cancel-request",
 ]
 
 
@@ -64,7 +68,9 @@ class V5CapabilityPrincipal(WireModel):
 class V5EnabledIntent(WireModel):
     name: V5PublicIntentName
     scope: Annotated[str, Field(min_length=1, max_length=128)]
-    execution_mode: Literal["synchronous", "synchronous_local_transaction"]
+    execution_mode: Literal[
+        "synchronous", "synchronous_local_transaction", "asynchronous"
+    ]
     http: StrictBool
     cli: StrictBool
 
@@ -75,6 +81,8 @@ class V5EnabledIntent(WireModel):
         expected_mode = (
             "synchronous_local_transaction"
             if self.name == "system-manifests.import"
+            else "asynchronous"
+            if self.name in {"investigations.start", "operations.cancel-request"}
             else "synchronous"
         )
         if self.execution_mode != expected_mode:

@@ -60,6 +60,12 @@ from app.public_api.v5_models import (
     EnvironmentGetResponse,
     EnvironmentRegisterRequest,
     EnvironmentRegisterResponse,
+    InvestigationStartRequest,
+    InvestigationStartResponse,
+    OperationCancelRequest,
+    OperationCancelResponse,
+    OperationGetResponse,
+    OperationListResponse,
     SystemManifestImportRequest,
     SystemManifestImportResponse,
     SystemVersionDiffResponse,
@@ -80,6 +86,10 @@ from app.services.v5_application_list import (
     V5ApplicationListReadDenial,
     V5ApplicationListService,
 )
+from app.services.public_operations import (
+    PublicOperationReadDenial,
+    PublicOperationService,
+)
 
 router = APIRouter(prefix="/api/v2", tags=["public-v5-1a-catalog"])
 
@@ -92,6 +102,7 @@ _EDGE_ID = re.compile(r"^de_[0-9A-Za-z]{8,64}$")
 _VERSION_SET_ID = re.compile(r"^vset_[0-9A-Za-z]{8,64}$")
 _CASE_ID = re.compile(r"^case_[0-9A-Za-z]{8,64}$")
 _ACCEPTANCE_REVISION_ID = re.compile(r"^acr_[0-9A-Za-z]{8,64}$")
+_OPERATION_ID = re.compile(r"^op_[0-9A-Za-z]{8,64}$")
 _REQUEST_ID = re.compile(r"^req_[0-9A-Za-z]{8,64}$")
 _MAX_BODY_BYTES = 256_000
 _PUBLIC_HEADER_NAMES = frozenset(
@@ -242,7 +253,12 @@ def _handle_failure(
         and principal is not None
         and isinstance(
             exc,
-            (V5ReadDenial, CatalogReadDenial, V5ApplicationListReadDenial),
+            (
+                V5ReadDenial,
+                CatalogReadDenial,
+                V5ApplicationListReadDenial,
+                PublicOperationReadDenial,
+            ),
         )
     ):
         code = getattr(exc, "code", None)
@@ -263,6 +279,7 @@ def _handle_failure(
                 isinstance(exc, V5ApplicationListReadDenial)
                 and details != {}
             )
+            or (isinstance(exc, PublicOperationReadDenial) and details != {})
         ):
             _rollback(session)
             return _error_response(
@@ -407,6 +424,19 @@ def _application_list_service(request: Request, session: Session) -> Any:
     )
 
 
+def _public_operation_service(
+    request: Request, session: Session
+) -> PublicOperationService:
+    factory = getattr(request.app.state, "public_operation_service_factory", None)
+    if factory is not None:
+        return factory(session)
+    signing_key = request.app.state.settings.public_cursor_signing_key
+    return PublicOperationService(
+        session,
+        cursor_signing_key=signing_key.get_secret_value(),
+    )
+
+
 def _system_versions_service(request: Request, session: Session) -> Any:
     factory = getattr(request.app.state, "system_versions_service_factory", None)
     if factory is not None:
@@ -472,6 +502,20 @@ def _application_list_query(request: Request) -> tuple[str | None, int, str | No
     except ValueError:
         raise _RouteFailure("VALIDATION_FAILED", {"fields": ["limit"]}) from None
     return project_id, limit, cursor
+
+
+def _operation_list_query(request: Request) -> tuple[int, str | None]:
+    allowed = {"limit", "cursor"}
+    if not set(request.query_params) <= allowed or any(
+        len(request.query_params.getlist(name)) != 1
+        for name in set(request.query_params)
+    ):
+        raise _RouteFailure("VALIDATION_FAILED", {"fields": ["query"]})
+    try:
+        limit = int(request.query_params.get("limit", "50"))
+    except ValueError:
+        raise _RouteFailure("VALIDATION_FAILED", {"fields": ["limit"]}) from None
+    return limit, request.query_params.get("cursor")
 
 
 async def _parse_body(request: Request, model: type[ResponseModel]) -> ResponseModel:
@@ -1855,6 +1899,224 @@ async def confirm_acceptance_criteria(
             exc,
             request_id=request_id,
             principal=principal,
+        )
+    finally:
+        if session is not None:
+            _close(session)
+
+
+# ---------------------------------------------------------------------------
+# V5-2B durable async public operations.
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/cases/{case_id}:investigate",
+    response_model=InvestigationStartResponse,
+    status_code=202,
+    operation_id="startInvestigation",
+)
+async def start_investigation(case_id: str, request: Request) -> JSONResponse:
+    request_id = _request_id(request)
+    session: Any | None = None
+    principal: AcceptedPrincipalContext | None = None
+    try:
+        headers = PublicV2RequestHeaders.from_headers(
+            _public_headers(request), mutation=True
+        )
+        submission = await _parse_body(request, InvestigationStartRequest)
+        session = _session_for(request)
+        principal, resolver = _authenticate(
+            request,
+            session,
+            headers=headers,
+            required_scope="investigations:start",
+        )
+        principal = resolver.bind_requested_context(
+            principal,
+            project_id=None,
+            environment_id=None,
+            required_scope="investigations:start",
+        )
+        request.state.public_principal = principal
+        _validate_path(case_id, _CASE_ID, "case_id")
+        result = _public_operation_service(request, session).start_investigation(
+            case_id,
+            submission,
+            principal=principal,
+            idempotency_key=headers.idempotency_key,
+            request_id=request_id,
+        )
+        response = InvestigationStartResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=202)
+        _commit(session)
+        return wire_response
+    except HeaderContractViolation as exc:
+        return _handle_header_violation(
+            session, request, exc, request_id=request_id, mutation=True
+        )
+    except Exception as exc:
+        return _handle_failure(
+            session, exc, request_id=request_id, principal=principal
+        )
+    finally:
+        if session is not None:
+            _close(session)
+
+
+@router.get(
+    "/operations/{operation_id}",
+    response_model=OperationGetResponse,
+    operation_id="getOperation",
+)
+def get_operation(operation_id: str, request: Request) -> JSONResponse:
+    request_id = _request_id(request)
+    session: Any | None = None
+    principal: AcceptedPrincipalContext | None = None
+    try:
+        headers = PublicV2RequestHeaders.from_headers(_public_headers(request))
+        session = _session_for(request)
+        principal, resolver = _authenticate(
+            request,
+            session,
+            headers=headers,
+            required_scope="operations:read",
+        )
+        principal = resolver.bind_requested_context(
+            principal,
+            project_id=None,
+            environment_id=None,
+            required_scope="operations:read",
+        )
+        request.state.public_principal = principal
+        _validate_path(operation_id, _OPERATION_ID, "operation_id")
+        result = _public_operation_service(request, session).get_operation(
+            operation_id, principal=principal, request_id=request_id
+        )
+        response = OperationGetResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=200)
+        _commit(session)
+        return wire_response
+    except HeaderContractViolation as exc:
+        return _handle_header_violation(
+            session, request, exc, request_id=request_id, mutation=False
+        )
+    except Exception as exc:
+        return _handle_failure(
+            session,
+            exc,
+            request_id=request_id,
+            principal=principal,
+            allow_read_denial_commit=True,
+        )
+    finally:
+        if session is not None:
+            _close(session)
+
+
+@router.get(
+    "/operations",
+    response_model=OperationListResponse,
+    operation_id="listOperations",
+)
+def list_operations(request: Request) -> JSONResponse:
+    request_id = _request_id(request)
+    session: Any | None = None
+    principal: AcceptedPrincipalContext | None = None
+    try:
+        headers = PublicV2RequestHeaders.from_headers(_public_headers(request))
+        limit, cursor = _operation_list_query(request)
+        session = _session_for(request)
+        principal, resolver = _authenticate(
+            request,
+            session,
+            headers=headers,
+            required_scope="operations:read",
+        )
+        principal = resolver.bind_requested_context(
+            principal,
+            project_id=None,
+            environment_id=None,
+            required_scope="operations:read",
+        )
+        request.state.public_principal = principal
+        result = _public_operation_service(request, session).list_operations(
+            principal=principal,
+            request_id=request_id,
+            limit=limit,
+            cursor=cursor,
+        )
+        response = OperationListResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=200)
+        _commit(session)
+        return wire_response
+    except HeaderContractViolation as exc:
+        return _handle_header_violation(
+            session, request, exc, request_id=request_id, mutation=False
+        )
+    except Exception as exc:
+        return _handle_failure(
+            session,
+            exc,
+            request_id=request_id,
+            principal=principal,
+            allow_read_denial_commit=True,
+        )
+    finally:
+        if session is not None:
+            _close(session)
+
+
+@router.post(
+    "/operations/{operation_id}:cancel",
+    response_model=OperationCancelResponse,
+    status_code=202,
+    operation_id="requestOperationCancel",
+)
+async def request_operation_cancel(
+    operation_id: str, request: Request
+) -> JSONResponse:
+    request_id = _request_id(request)
+    session: Any | None = None
+    principal: AcceptedPrincipalContext | None = None
+    try:
+        headers = PublicV2RequestHeaders.from_headers(
+            _public_headers(request), mutation=True
+        )
+        submission = await _parse_body(request, OperationCancelRequest)
+        session = _session_for(request)
+        principal, resolver = _authenticate(
+            request,
+            session,
+            headers=headers,
+            required_scope="operations:cancel",
+        )
+        principal = resolver.bind_requested_context(
+            principal,
+            project_id=None,
+            environment_id=None,
+            required_scope="operations:cancel",
+        )
+        request.state.public_principal = principal
+        _validate_path(operation_id, _OPERATION_ID, "operation_id")
+        result = _public_operation_service(request, session).request_cancel(
+            operation_id,
+            submission,
+            principal=principal,
+            idempotency_key=headers.idempotency_key,
+            request_id=request_id,
+        )
+        response = OperationCancelResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=202)
+        _commit(session)
+        return wire_response
+    except HeaderContractViolation as exc:
+        return _handle_header_violation(
+            session, request, exc, request_id=request_id, mutation=True
+        )
+    except Exception as exc:
+        return _handle_failure(
+            session, exc, request_id=request_id, principal=principal
         )
     finally:
         if session is not None:

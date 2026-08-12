@@ -376,7 +376,7 @@ def _setup(suffix: str) -> tuple[object, dict[str, str], Settings, object]:
     with engine.connect() as connection:
         assert (
             connection.execute(sa.text("SELECT version_num FROM alembic_version")).scalar_one()
-            == "014"
+            == "015"
         )
     with Session(engine) as session:
         seed = _seed_r4_workspace(session, suffix=suffix, pepper=pepper)

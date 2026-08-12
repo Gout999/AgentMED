@@ -4,7 +4,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from typing import Any
+from typing import Any, Callable
 
 from pydantic import BaseModel, ValidationError
 from sqlalchemy import select, text
@@ -88,11 +88,13 @@ class PublicIdempotencyService:
             return IdempotencyLookup(None, request_fingerprint)
         if row.request_fingerprint != request_fingerprint:
             raise PublicIdempotencyError("IDEMPOTENCY_CONFLICT")
-        if row.state != "COMPLETED":
+        if row.state not in {"ACCEPTED", "COMPLETED"}:
             raise PublicIdempotencyError("DEPENDENCY_UNAVAILABLE")
         if verify_terminal is not None:
             verify_terminal(row)
         else:
+            if row.state != "COMPLETED":
+                raise PublicIdempotencyError("INTERNAL_ERROR")
             self._verify_terminal(row)
         return IdempotencyLookup(row, request_fingerprint)
 
@@ -172,9 +174,10 @@ class PublicIdempotencyService:
         resource_kind: str,
         resource_field: str,
         resource_id_field: str,
+        expected_state: str = "COMPLETED",
     ) -> None:
         if (
-            row.state != "COMPLETED"
+            row.state != expected_state
             or row.response_payload is None
             or row.response_digest is None
             or row.resource_kind is None
@@ -266,6 +269,7 @@ class PublicIdempotencyService:
         resource_kind: str,
         resource_field: str,
         resource_id_field: str,
+        expected_state: str = "COMPLETED",
     ) -> BaseModel:
         self._verify_terminal_catalog(
             record,
@@ -274,6 +278,7 @@ class PublicIdempotencyService:
             resource_kind=resource_kind,
             resource_field=resource_field,
             resource_id_field=resource_id_field,
+            expected_state=expected_state,
         )
         assert record.response_payload is not None
         assert record.receipt_payload is not None
@@ -309,6 +314,8 @@ class PublicIdempotencyService:
         receipt_model: type[BaseModel],
         resource_field: str,
         resource_id_field: str,
+        operation_id: str | None = None,
+        state: str = "COMPLETED",
     ) -> PublicCommandIdempotency:
         row = PublicCommandIdempotency(
             idempotency_record_id=new_idempotency_record_id(),
@@ -317,10 +324,10 @@ class PublicIdempotencyService:
             intent=intent,
             idempotency_key=idempotency_key,
             request_fingerprint=request_fingerprint,
-            state="COMPLETED",
+            state=state,
             resource_kind=resource_kind,
             resource_id=resource_id,
-            operation_id=None,
+            operation_id=operation_id,
             request_id=request_id,
             audit_ref=audit_ref,
             response_payload=response_payload,
@@ -339,6 +346,7 @@ class PublicIdempotencyService:
             resource_kind=resource_kind,
             resource_field=resource_field,
             resource_id_field=resource_id_field,
+            expected_state=state,
         )
         self.session.add(row)
         self.session.flush()
@@ -350,7 +358,7 @@ class PublicIdempotencyService:
         the v5 replay/verify path with the intent-specific receipt model."""
 
         if (
-            row.state != "COMPLETED"
+            row.state not in {"ACCEPTED", "COMPLETED"}
             or row.response_payload is None
             or row.response_digest is None
             or row.resource_kind is None

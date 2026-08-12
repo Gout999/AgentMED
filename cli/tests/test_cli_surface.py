@@ -31,6 +31,10 @@ BASE = "http://127.0.0.1:8090"
 WORKSPACE = "ws_01J0000000000001"
 SOURCE = "src_01J0000000000001"
 TOKEN = "public-test-token-never-print"
+OPERATION_ID = "op_01J0000000000001"
+AUTOMATION_REQUEST_ID = "arq_01J0000000000001"
+TASK_ID = "task_01J0000000000001"
+CASE_ID = "case_01J0000000000001"
 
 
 def _globals() -> list[str]:
@@ -49,6 +53,102 @@ def _response(request: httpx.Request) -> httpx.Response:
             "x-caseloop-contract-version": "1.0",
         },
         json=success_for(request),
+    )
+
+
+def _operation_record(*, state: str = "SUBMITTED", cancel_requested: bool = False) -> dict[str, object]:
+    return {
+        "operation_id": OPERATION_ID,
+        "automation_request_id": AUTOMATION_REQUEST_ID,
+        "canonical_intent": "investigations.start",
+        "state": state,
+        "requester_principal": "prn_01J0000000000001",
+        "exact_case_binding": {
+            "case_id": CASE_ID,
+            "case_revision": 1,
+            "case_digest": "sha256:" + "c" * 64,
+        },
+        "application_id": "app_01J0000000000001",
+        "environment_id": "env_01J0000000000001",
+        "exact_work_task_binding": {
+            "kind": "WORK_TASK",
+            "id": TASK_ID,
+            "revision": 1,
+            "digest": "sha256:" + "d" * 64,
+        },
+        "exact_current_attempt_binding_or_null": None,
+        "cancel_requested": cancel_requested,
+        "artifact_or_null": None,
+        "created_at": "2026-08-13T03:00:00Z",
+        "updated_at": "2026-08-13T03:00:00Z",
+    }
+
+
+def _operation_get_response(request: httpx.Request, *, state: str) -> httpx.Response:
+    return httpx.Response(
+        200,
+        headers={
+            "content-type": "application/json",
+            "x-caseloop-contract-version": "2.0",
+        },
+        json={
+            "schema_version": "2.0",
+            "workspace_id": WORKSPACE,
+            "request_id": request.headers["x-request-id"],
+            "audit_ref": "audit://aud_01J0000000000001",
+            "operation": _operation_record(
+                state=state, cancel_requested=state in {"CANCEL_REQUESTED", "CANCELED"}
+            ),
+        },
+    )
+
+
+def _async_operation_response(
+    request: httpx.Request, *, intent: str, state: str
+) -> httpx.Response:
+    operation = _operation_record(
+        state=state, cancel_requested=state == "CANCEL_REQUESTED"
+    )
+    core = {
+        "schema_version": "2.0",
+        "workspace_id": WORKSPACE,
+        "request_id": request.headers["x-request-id"],
+        "audit_ref": "audit://aud_01J0000000000001",
+        "operation": operation,
+    }
+    request_payload = json.loads(request.content)
+    request_payload = {
+        ("case_id" if intent == "investigations.start" else "operation_id"): (
+            CASE_ID if intent == "investigations.start" else OPERATION_ID
+        ),
+        **request_payload,
+    }
+    receipt = {
+        "schema_version": "1.0",
+        "workspace_id": WORKSPACE,
+        "principal_id": "prn_01J0000000000001",
+        "intent": intent,
+        "idempotency_key": request.headers["x-caseloop-idempotency-key"],
+        "request_fingerprint": digest(request_payload),
+        "resource": {"kind": "automation_request", "id": AUTOMATION_REQUEST_ID},
+        "operation_id": OPERATION_ID,
+        "request_id": request.headers["x-request-id"],
+        "audit_ref": core["audit_ref"],
+        "status": "ACCEPTED",
+        "response_digest": digest(core),
+        "created_at": "2026-08-13T03:00:00Z",
+        "idempotency_receipt_id": "idemr_01J0000000000001",
+        "immutable": True,
+        "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+    }
+    receipt["receipt_digest"] = digest(receipt)
+    return httpx.Response(
+        202,
+        headers={
+            "content-type": "application/json",
+            "x-caseloop-contract-version": "2.0",
+        },
+        json={**core, "idempotency": {"receipt": receipt, "replayed": False}},
     )
 
 
@@ -160,12 +260,18 @@ def test_capabilities_supports_explicit_v2_without_changing_v1_default() -> None
         "acceptance-criteria.propose",
         "acceptance-criteria.get",
         "acceptance-criteria.confirm",
+        "investigations.start",
+        "operations.get",
+        "operations.list",
+        "operations.cancel-request",
     }
     modes = {
         item["name"]: item["execution_mode"]
         for item in payload["data"]["enabled_intents"]
     }
     assert modes["system-manifests.import"] == "synchronous_local_transaction"
+    assert modes["investigations.start"] == "asynchronous"
+    assert modes["operations.cancel-request"] == "asynchronous"
 
 
 def test_application_list_uses_authenticated_v2_collection_and_query() -> None:
@@ -1704,3 +1810,180 @@ def test_case_from_issue_composes_canonical_intents(tmp_path) -> None:
     retry = json.loads(stdout2.getvalue())
     assert retry["source_event_version"] == payload["source_event_version"]
     assert retry["acceptance_criteria_revision_id"] == payload["acceptance_criteria_revision_id"]
+
+
+def test_v5_investigation_start_then_new_cli_process_can_reconnect_and_wait() -> None:
+    start_requests: list[httpx.Request] = []
+
+    def start_handler(request: httpx.Request) -> httpx.Response:
+        start_requests.append(request)
+        return _async_operation_response(
+            request, intent="investigations.start", state="SUBMITTED"
+        )
+
+    started_stdout = io.StringIO()
+    started = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "case",
+            "investigate",
+            CASE_ID,
+            "--case-digest",
+            "sha256:" + "c" * 64,
+            "--instructions",
+            "Inspect the durable case binding.",
+            "--idempotency-key",
+            "investigation-cli-0001",
+        ],
+        env=_env(),
+        stdout=started_stdout,
+        stderr=io.StringIO(),
+        transport=httpx.MockTransport(start_handler),
+    )
+    assert started == ExitFamily.OK
+    assert json.loads(started_stdout.getvalue())["operation"]["operation_id"] == OPERATION_ID
+    assert len(start_requests) == 1
+    assert start_requests[0].url.path == f"/api/v2/cases/{CASE_ID}:investigate"
+    assert start_requests[0].headers["x-caseloop-idempotency-key"] == "investigation-cli-0001"
+    assert json.loads(start_requests[0].content)["max_attempts"] == 3
+
+    states = iter(["WORKING", "CANCELED"])
+    reconnect_requests: list[httpx.Request] = []
+
+    def reconnect_handler(request: httpx.Request) -> httpx.Response:
+        reconnect_requests.append(request)
+        return _operation_get_response(request, state=next(states))
+
+    reconnected_stdout = io.StringIO()
+    reconnected = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "operation",
+            "follow",
+            OPERATION_ID,
+            "--timeout-seconds",
+            "5",
+        ],
+        env=_env(),
+        stdout=reconnected_stdout,
+        stderr=io.StringIO(),
+        transport=httpx.MockTransport(reconnect_handler),
+        sleep=lambda _: None,
+    )
+    assert reconnected == ExitFamily.OK
+    lines = [json.loads(line) for line in reconnected_stdout.getvalue().splitlines()]
+    assert [line["operation"]["state"] for line in lines] == ["WORKING", "CANCELED"]
+    assert [request.url.path for request in reconnect_requests] == [
+        f"/api/v2/operations/{OPERATION_ID}",
+        f"/api/v2/operations/{OPERATION_ID}",
+    ]
+
+
+def test_operation_cancel_is_explicit_and_wait_ctrl_c_only_detaches() -> None:
+    requests: list[httpx.Request] = []
+
+    def cancel_handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return _async_operation_response(
+            request, intent="operations.cancel-request", state="CANCEL_REQUESTED"
+        )
+
+    cancel_stdout = io.StringIO()
+    canceled = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "operation",
+            "cancel",
+            OPERATION_ID,
+            "--reason",
+            "operator stop",
+            "--idempotency-key",
+            "operation-cancel-0001",
+        ],
+        env=_env(),
+        stdout=cancel_stdout,
+        stderr=io.StringIO(),
+        transport=httpx.MockTransport(cancel_handler),
+    )
+    assert canceled == ExitFamily.OK
+    assert json.loads(cancel_stdout.getvalue())["operation"]["state"] == "CANCEL_REQUESTED"
+    assert requests[0].url.path == f"/api/v2/operations/{OPERATION_ID}:cancel"
+
+    wait_requests: list[httpx.Request] = []
+
+    def wait_handler(request: httpx.Request) -> httpx.Response:
+        wait_requests.append(request)
+        return _operation_get_response(request, state="WORKING")
+
+    def interrupt_wait(_: float) -> None:
+        raise KeyboardInterrupt
+
+    detached_stdout = io.StringIO()
+    detached = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "operation",
+            "wait",
+            OPERATION_ID,
+            "--timeout-seconds",
+            "5",
+        ],
+        env=_env(),
+        stdout=detached_stdout,
+        stderr=io.StringIO(),
+        transport=httpx.MockTransport(wait_handler),
+        sleep=interrupt_wait,
+    )
+    assert detached == ExitFamily.OK
+    detached_payload = json.loads(detached_stdout.getvalue())
+    assert detached_payload["detached"] is True
+    assert detached_payload["last_observation"]["operation"]["state"] == "WORKING"
+    assert [request.method for request in wait_requests] == ["GET"]
+    assert all(":cancel" not in request.url.path for request in wait_requests)
+
+
+def test_operation_wait_timeout_is_temporary_and_preserves_last_state() -> None:
+    times = iter(
+        [
+            datetime(2026, 8, 13, 3, 0, 0, tzinfo=timezone.utc),
+            datetime(2026, 8, 13, 3, 0, 2, tzinfo=timezone.utc),
+        ]
+    )
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    exit_code = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "operation",
+            "wait",
+            OPERATION_ID,
+            "--timeout-seconds",
+            "1",
+        ],
+        env=_env(),
+        stdout=stdout,
+        stderr=stderr,
+        transport=httpx.MockTransport(
+            lambda request: _operation_get_response(request, state="WORKING")
+        ),
+        sleep=lambda _: None,
+        now=lambda: next(times),
+    )
+    assert exit_code == ExitFamily.TEMPORARY
+    assert stdout.getvalue() == ""
+    error = json.loads(stderr.getvalue())
+    assert error["error"]["code"] == "OPERATION_WAIT_TIMEOUT"
+    assert error["error"]["details"] == {
+        "operation_id": OPERATION_ID,
+        "last_state": "WORKING",
+    }

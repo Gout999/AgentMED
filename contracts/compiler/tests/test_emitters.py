@@ -4,7 +4,7 @@ Run from the repository root with the contracts path on sys.path:
 
     PYTHONPATH=contracts python3 -m pytest contracts/compiler/tests -q
 
-Coverage: deterministic regeneration (bytes), the exact 19-operation
+Coverage: deterministic regeneration (bytes), the exact 23-operation
 activated surface with no inactive intent, path/query parameter emission,
 external-schema refs, the omitted securitySchemes (C4 decision), the TS
 module's interface/guard/pattern extraction from the frozen schemas, and the
@@ -45,12 +45,14 @@ EXPECTED_ACTIVATED_NAMES = [
     "acceptance-criteria.propose",
     "acceptance-criteria.confirm",
     "acceptance-criteria.get",
+    "investigations.start",
+    "operations.get",
+    "operations.list",
+    "operations.cancel-request",
 ]
 
 INACTIVE_INTENTS = (
     "system-episodes.get",
-    "investigations.start",
-    "operations.get",
 )
 
 TS_EXPECTED_INTERFACES = (
@@ -110,13 +112,13 @@ def test_openapi_is_deterministic(tmp_path: Path) -> None:
     assert first["ts"].read_bytes() == second["ts"].read_bytes()
 
 
-def test_openapi_covers_all_19_activated_operations(
+def test_openapi_covers_all_23_activated_operations(
     operation_manifest: dict, openapi_document: dict
 ) -> None:
     operations = _all_operations(openapi_document)
-    assert len(operations) == 19
+    assert len(operations) == 23
     intents = [operation["x-caseloop-intent"] for _, _, operation in operations]
-    assert len(set(intents)) == 19
+    assert len(set(intents)) == 23
     # Path grouping reorders operations with the same path template; the
     # surface must match the activated set, not the manifest ordering.
     assert sorted(intents) == sorted(EXPECTED_ACTIVATED_NAMES)

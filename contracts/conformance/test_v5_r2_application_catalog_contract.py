@@ -537,7 +537,10 @@ def test_exactly_eleven_r2_plus_bootstrap_intents_are_contract_activated() -> No
     # （均为 IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER）。
     r3_full_intents = set(registry["r3_full_contract"]["activated_contract_intents"])
     r4_full_intents = set(registry["r4_full_contract"]["activated_contract_intents"])
-    activated_exceptions = r3_full_intents | r4_full_intents
+    v5_2b_intents = set(
+        registry["v5_2b_public_operation_contract"]["activated_contract_intents"]
+    )
+    activated_exceptions = r3_full_intents | r4_full_intents | v5_2b_intents
     assert all(
         row["implementation_status"]
         == (
@@ -664,16 +667,20 @@ def test_application_list_and_capabilities_are_scoped_closed_and_console_safe() 
     expected_intents = overlay["activated_contract_intents"]
     capability = profiles["capabilities_get"]
     assert len(expected_intents) == 11
-    # capabilities_get 的 contract allowlist 已随 R3-full/R4-full 扩展为 19
+    # capabilities_get 的 contract allowlist 已随 V5-2B 扩展为 23
     # （11 个 R2 + 三个 system-versions + 五个 first-system-case），R2 overlay
     # 的历史 11 个 allowlist 本身保持不变。
     r3_full_intents = registry["r3_full_contract"]["activated_contract_intents"]
     r4_full_intents = registry["r4_full_contract"]["activated_contract_intents"]
+    v5_2b_intents = registry["v5_2b_public_operation_contract"]["activated_contract_intents"]
     assert capability["contract_allowlist_exact_count"] == (
-        len(expected_intents) + len(r3_full_intents) + len(r4_full_intents)
+        len(expected_intents)
+        + len(r3_full_intents)
+        + len(r4_full_intents)
+        + len(v5_2b_intents)
     )
     assert capability["contract_allowlist_exact_names"] == (
-        expected_intents + r3_full_intents + r4_full_intents
+        expected_intents + r3_full_intents + r4_full_intents + v5_2b_intents
     )
     assert capability["scope_filtered"] is True
     assert capability["response_intents"] == (

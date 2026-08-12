@@ -466,7 +466,17 @@ def test_r2_openapi_exactly_matches_activated_intent_operations(client) -> None:
         (
             "POST",
             "/api/v2/acceptance-criteria/{acceptance_criteria_revision_id}:confirm",
-        ): "confirmAcceptanceCriteria",
+            ): "confirmAcceptanceCriteria",
+            (
+                "POST",
+                "/api/v2/cases/{case_id}:investigate",
+            ): "startInvestigation",
+            ("GET", "/api/v2/operations/{operation_id}"): "getOperation",
+            ("GET", "/api/v2/operations"): "listOperations",
+            (
+                "POST",
+                "/api/v2/operations/{operation_id}:cancel",
+            ): "requestOperationCancel",
     }
     openapi_paths = client.get("/openapi.json").json()["paths"]
     actual = {
@@ -795,14 +805,14 @@ def _registered_route_keys(router) -> set[tuple[str, str, str]]:
 def test_v5_route_registry_matches_operation_manifest_exactly() -> None:
     manifest = load_v5_operation_manifest()
     http_entries = manifest.http_entries
-    assert len(http_entries) == 19
+    assert len(http_entries) == 23
     check_registered_v5_routes(public_v5.router)  # must not raise
     expected = {
         (entry.method.upper(), entry.path, entry.operation_id)
         for entry in http_entries
     }
     registered = _registered_route_keys(public_v5.router)
-    assert len(registered) == 19
+    assert len(registered) == 23
     assert registered == expected
 
 
@@ -812,7 +822,7 @@ def test_v5_route_registry_matches_operation_manifest_exactly() -> None:
         (
             "drop",
             [],
-            [("GET", "/api/v2/cases/{case_id}/acceptance-criteria", "getAcceptanceCriteria")],
+            [("POST", "/api/v2/operations/{operation_id}:cancel", "requestOperationCancel")],
         ),
         (
             "add",

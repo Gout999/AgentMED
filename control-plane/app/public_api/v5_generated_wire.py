@@ -30,6 +30,8 @@ _REQUEST_INTENTS = {
     "CaseBindApplicationRequest": "cases.bind-application",
     "AcceptanceCriteriaProposeRequest": "acceptance-criteria.propose",
     "AcceptanceCriteriaConfirmRequest": "acceptance-criteria.confirm",
+    "InvestigationStartRequest": "investigations.start",
+    "OperationCancelRequest": "operations.cancel-request",
 }
 
 _RESPONSE_INTENTS = {
@@ -52,6 +54,10 @@ _RESPONSE_INTENTS = {
     "AcceptanceCriteriaProposeResponse": "acceptance-criteria.propose",
     "AcceptanceCriteriaGetResponse": "acceptance-criteria.get",
     "AcceptanceCriteriaConfirmResponse": "acceptance-criteria.confirm",
+    "InvestigationStartResponse": "investigations.start",
+    "OperationGetResponse": "operations.get",
+    "OperationListResponse": "operations.list",
+    "OperationCancelResponse": "operations.cancel-request",
 }
 
 

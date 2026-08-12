@@ -27,7 +27,11 @@
         "case-application-bindings.get",
         "acceptance-criteria.propose",
         "acceptance-criteria.get",
-        "acceptance-criteria.confirm"
+        "acceptance-criteria.confirm",
+        "investigations.start",
+        "operations.get",
+        "operations.list",
+        "operations.cancel-request"
       ]
     },
     "idWorkspaceId": {
@@ -49,6 +53,18 @@
     "idOperationId": {
       "type": "string",
       "pattern": "^op_[0-9A-Za-z]{8,64}$"
+    },
+    "idAutomationRequestId": {
+      "type": "string",
+      "pattern": "^arq_[0-9A-Za-z]{8,64}$"
+    },
+    "idWorkTaskId": {
+      "type": "string",
+      "pattern": "^task_[0-9A-Za-z]{8,64}$"
+    },
+    "idWorkAttemptId": {
+      "type": "string",
+      "pattern": "^att_[0-9A-Za-z]{8,64}$"
     },
     "idIdempotencyReceiptId": {
       "type": "string",
@@ -257,7 +273,9 @@
         "system-versions.record",
         "cases.bind-application",
         "acceptance-criteria.propose",
-        "acceptance-criteria.confirm"
+        "acceptance-criteria.confirm",
+        "investigations.start",
+        "operations.cancel-request"
       ]
     },
     "idempotencyResource": {
@@ -276,7 +294,8 @@
             "dependency_edge",
             "system_version_set",
             "application_case_binding",
-            "acceptance_criteria_revision"
+            "acceptance_criteria_revision",
+            "automation_request"
           ]
         },
         "id": {

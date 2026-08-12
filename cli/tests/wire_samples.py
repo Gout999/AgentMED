@@ -52,6 +52,10 @@ def capabilities(request: httpx.Request) -> dict[str, Any]:
             ("acceptance-criteria.propose", "acceptance_criteria:propose"),
             ("acceptance-criteria.get", "acceptance_criteria:read"),
             ("acceptance-criteria.confirm", "acceptance_criteria:confirm"),
+            ("investigations.start", "investigations:start"),
+            ("operations.get", "operations:read"),
+            ("operations.list", "operations:read"),
+            ("operations.cancel-request", "operations:cancel"),
         ]
         return {
             "schema_version": "2.0",
@@ -80,6 +84,8 @@ def capabilities(request: httpx.Request) -> dict[str, Any]:
                         "execution_mode": (
                             "synchronous_local_transaction"
                             if name == "system-manifests.import"
+                            else "asynchronous"
+                            if name in {"investigations.start", "operations.cancel-request"}
                             else "synchronous"
                         ),
                         "http": True,

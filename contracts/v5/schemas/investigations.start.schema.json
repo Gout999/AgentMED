@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/schemas/v5/investigations.start.schema.json",
+  "title": "investigations.start",
+  "description": "V5-2B durable investigation submission; 202 means accepted, never domain success.",
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "case_revision", "case_digest", "instructions", "max_attempts"],
+      "properties": {
+        "schema_version": {"$ref": "common.schema.json#/$defs/schemaVersion2"},
+        "case_revision": {"type": "integer", "minimum": 1},
+        "case_digest": {"$ref": "common.schema.json#/$defs/digest"},
+        "instructions": {"anyOf": [{"type": "string", "minLength": 1, "maxLength": 4000}, {"type": "null"}]},
+        "max_attempts": {"type": "integer", "minimum": 1, "maximum": 10}
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schema_version", "workspace_id", "request_id", "audit_ref", "operation", "idempotency"],
+      "properties": {
+        "schema_version": {"$ref": "common.schema.json#/$defs/schemaVersion2"},
+        "workspace_id": {"$ref": "common.schema.json#/$defs/idWorkspaceId"},
+        "request_id": {"$ref": "common.schema.json#/$defs/idRequestId"},
+        "audit_ref": {"$ref": "common.schema.json#/$defs/auditRef"},
+        "operation": {"$ref": "operations.get.schema.json#/$defs/operation"},
+        "idempotency": {"$ref": "common.schema.json#/$defs/idempotencyDelivery"}
+      }
+    },
+    "error": {"$ref": "common.schema.json#/$defs/errorEnvelope"}
+  }
+}

@@ -1,7 +1,7 @@
 """V5-1C PostgreSQL integration: First System Case from a real issue snapshot.
 
 Mirrors the Stage-1A / V5-1B integration proofs: disposable PG database, real
-Alembic chain (head = 010), real uvicorn server, real installed ``caseloop``
+Alembic chain (head = 015), real uvicorn server, real installed ``caseloop``
 CLI speaking /api/v2 with an explicit ``--api-version 2``.  The CLI pulls a
 local snapshot of simonw/llm issue #1466 (stored as a JSON fixture), composes
 signals.submit → cases.bind-application → acceptance-criteria.propose, never
@@ -560,7 +560,7 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
         with engine.connect() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "014"
+            ).scalar_one() == "015"
 
         now = datetime.now(timezone.utc)
         session = factory()

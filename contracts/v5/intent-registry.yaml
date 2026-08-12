@@ -33,6 +33,7 @@ wire_contract_rules:
   frozen_for_implementation_requires_schema_profile_ref: true
   r3_activation_status: FROZEN_R3
   r4_activation_status: FROZEN_R4
+  v5_2b_activation_status: FROZEN_V5_2B
 
 application_component_activation_lifecycle:
   decision_ref: docs/decisions/D-014-v5-application-component-activation-lifecycle.md
@@ -274,6 +275,20 @@ r4_full_contract:
     - acceptance-criteria.get
     - acceptance-criteria.confirm
   capability_discovery: ENABLED
+
+v5_2b_public_operation_contract:
+  stage: V5-2B
+  plan_ref: docs/plans/v5-master-execution-plan.md#v5-2b--async-public-intents
+  contract_status: FROZEN
+  runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+  activated_contract_intents:
+    - investigations.start
+    - operations.get
+    - operations.list
+    - operations.cancel-request
+  capability_discovery: ENABLED
+  projection_creates_business_state_machine: false
+  operation_state_derives_only_from: [v4.worker_task, v4.attempt, trusted_domain_artifact]
 
 api_major_selection:
   canonical_intent_identity: [api_major, intent_name]
@@ -741,9 +756,9 @@ intents:
   - name: investigations.start
     contract_major: 2
     delivery_slice: V5-2B
-    wire_status: DRAFT
-    implementation_status: NOT_IMPLEMENTED
-    field_contract_ref: null
+    wire_status: FROZEN_V5_2B
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    field_contract_ref: contracts/v5/schemas/investigations.start.schema.json
     kind: mutation
     execution_mode: asynchronous
     scope: investigations:start
@@ -758,9 +773,9 @@ intents:
   - name: operations.get
     contract_major: 2
     delivery_slice: V5-2B
-    wire_status: DRAFT
-    implementation_status: NOT_IMPLEMENTED
-    field_contract_ref: null
+    wire_status: FROZEN_V5_2B
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    field_contract_ref: contracts/v5/schemas/operations.get.schema.json
     kind: query
     execution_mode: synchronous
     scope: operations:read
@@ -775,9 +790,9 @@ intents:
   - name: operations.list
     contract_major: 2
     delivery_slice: V5-2B
-    wire_status: DRAFT
-    implementation_status: NOT_IMPLEMENTED
-    field_contract_ref: null
+    wire_status: FROZEN_V5_2B
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    field_contract_ref: contracts/v5/schemas/operations.list.schema.json
     kind: query
     execution_mode: synchronous
     scope: operations:read
@@ -786,16 +801,21 @@ intents:
     visibility_filter_before_count_and_pagination: true
     cursor_required_for_pagination: true
     idempotency: none
-    http: {method: GET, path: /api/v2/operations, operation_id: listOperations}
+    pagination: {cursor: opaque_signed_snapshot, default_limit: 50, max_limit: 100}
+    http:
+      method: GET
+      path: /api/v2/operations
+      operation_id: listOperations
+      query_parameters: {required: [], optional: [limit, cursor]}
     cli: operation list
     cli_requires_explicit_api_major: true
 
   - name: operations.cancel-request
     contract_major: 2
     delivery_slice: V5-2B
-    wire_status: DRAFT
-    implementation_status: NOT_IMPLEMENTED
-    field_contract_ref: null
+    wire_status: FROZEN_V5_2B
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+    field_contract_ref: contracts/v5/schemas/operations.cancel-request.schema.json
     kind: mutation
     execution_mode: asynchronous
     scope: operations:cancel

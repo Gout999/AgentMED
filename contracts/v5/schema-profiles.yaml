@@ -77,8 +77,8 @@ r2_wire_profiles:
     data_required_fields: [server_version, api_major, contract_version, principal, enabled_intents, disabled_intents, generated_at]
     data_constants: {api_major: 2, contract_version: "2.0", disabled_intents: []}
     enabled_intent_required_fields: [name, scope, execution_mode, http, cli]
-    contract_allowlist_exact_count: 19
-    contract_allowlist_exact_names: [capabilities.get, applications.register, applications.get, applications.list, environments.register, environments.get, system-components.register, system-components.get, dependency-edges.record, dependency-edges.get, system-manifests.import, system-versions.record, system-versions.get, system-versions.diff, cases.bind-application, case-application-bindings.get, acceptance-criteria.propose, acceptance-criteria.get, acceptance-criteria.confirm]
+    contract_allowlist_exact_count: 23
+    contract_allowlist_exact_names: [capabilities.get, applications.register, applications.get, applications.list, environments.register, environments.get, system-components.register, system-components.get, dependency-edges.record, dependency-edges.get, system-manifests.import, system-versions.record, system-versions.get, system-versions.diff, cases.bind-application, case-application-bindings.get, acceptance-criteria.propose, acceptance-criteria.get, acceptance-criteria.confirm, investigations.start, operations.get, operations.list, operations.cancel-request]
     scope_filtered: true
     response_intents: INTERSECTION_OF_CONTRACT_ALLOWLIST_AND_AUTHENTICATED_SCOPE_AUTHORIZED_INTENTS
     unauthorized_intent_names_omitted: true
@@ -402,6 +402,7 @@ common:
       - SYSTEM_APPROVAL_GRANT
       - SYSTEM_CAPABILITY_LEASE
       - SYSTEM_EXTERNAL_OPERATION
+      - AUTOMATION_REQUEST
       - WORK_TASK
       - WORK_ATTEMPT
       - WORK_PROPOSAL

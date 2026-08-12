@@ -609,3 +609,140 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/acceptance-criteria.get.schema.json#/$defs/error
+  /api/v2/cases/{case_id}:investigate:
+    post:
+      operationId: startInvestigation
+      x-caseloop-intent: investigations.start
+      x-caseloop-scope: investigations:start
+      x-caseloop-wire-status: FROZEN_V5_2B
+      x-caseloop-delivery-slice: V5-2B
+      parameters:
+      - name: case_id
+        in: path
+        required: true
+        description: case_id path parameter of investigations.start.
+        schema:
+          type: string
+          pattern: ^case_[0-9A-Za-z]{8,64}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/investigations.start.schema.json#/$defs/request
+      responses:
+        '201':
+          description: Successful investigations.start response (contract major 2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/investigations.start.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for investigations.start; audit
+            failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/investigations.start.schema.json#/$defs/error
+  /api/v2/operations/{operation_id}:
+    get:
+      operationId: getOperation
+      x-caseloop-intent: operations.get
+      x-caseloop-scope: operations:read
+      x-caseloop-wire-status: FROZEN_V5_2B
+      x-caseloop-delivery-slice: V5-2B
+      parameters:
+      - name: operation_id
+        in: path
+        required: true
+        description: operation_id path parameter of operations.get.
+        schema:
+          type: string
+          pattern: ^op_[0-9A-Za-z]{8,64}$
+      responses:
+        '200':
+          description: Successful operations.get response (contract major 2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/operations.get.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for operations.get; audit failure
+            uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/operations.get.schema.json#/$defs/error
+  /api/v2/operations:
+    get:
+      operationId: listOperations
+      x-caseloop-intent: operations.list
+      x-caseloop-scope: operations:read
+      x-caseloop-wire-status: FROZEN_V5_2B
+      x-caseloop-delivery-slice: V5-2B
+      parameters:
+      - name: limit
+        in: query
+        required: false
+        description: limit query parameter of operations.list.
+        schema:
+          type: integer
+          minimum: 1
+          maximum: 100
+      - name: cursor
+        in: query
+        required: false
+        description: cursor query parameter of operations.list.
+        schema:
+          type: string
+          pattern: ^opcur_[0-9A-Za-z_-]{8,512}$
+      responses:
+        '200':
+          description: Successful operations.list response (contract major 2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/operations.list.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for operations.list; audit
+            failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/operations.list.schema.json#/$defs/error
+  /api/v2/operations/{operation_id}:cancel:
+    post:
+      operationId: requestOperationCancel
+      x-caseloop-intent: operations.cancel-request
+      x-caseloop-scope: operations:cancel
+      x-caseloop-wire-status: FROZEN_V5_2B
+      x-caseloop-delivery-slice: V5-2B
+      parameters:
+      - name: operation_id
+        in: path
+        required: true
+        description: operation_id path parameter of operations.cancel-request.
+        schema:
+          type: string
+          pattern: ^op_[0-9A-Za-z]{8,64}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/operations.cancel-request.schema.json#/$defs/request
+      responses:
+        '201':
+          description: Successful operations.cancel-request response (contract major
+            2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/operations.cancel-request.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for operations.cancel-request;
+            audit failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/operations.cancel-request.schema.json#/$defs/error

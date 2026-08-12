@@ -305,7 +305,7 @@ def test_stage1a_signal_concurrency_real_postgres(
         with factory() as session:
             assert session.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "014"
+            ).scalar_one() == "015"
             execute_stage1a_local_bootstrap(
                 session,
                 _bootstrap_request(),

@@ -56,6 +56,10 @@ EXPECTED_ACTIVATED_INTENTS = {
     "acceptance-criteria.propose",
     "acceptance-criteria.get",
     "acceptance-criteria.confirm",
+    "investigations.start",
+    "operations.get",
+    "operations.list",
+    "operations.cancel-request",
 }
 
 
@@ -134,7 +138,7 @@ def test_v5_capabilities_advertise_only_r2_intents_in_principal_scope(
 
 def test_v5_capability_allowlist_is_exact_and_unique() -> None:
     names = [str(item["name"]) for item in IMPLEMENTED_V5_PUBLIC_INTENTS]
-    assert len(names) == 19
+    assert len(names) == 23
     assert set(names) == EXPECTED_ACTIVATED_INTENTS
     assert len(names) == len(set(names))
     assert all(
@@ -198,6 +202,10 @@ def test_v5_capabilities_fail_closed_when_audit_is_unavailable(
                 "case-application-bindings.get",
                 "acceptance-criteria.propose",
                 "acceptance-criteria.get",
+                "investigations.start",
+                "operations.get",
+                "operations.list",
+                "operations.cancel-request",
             },
         ),
         (
@@ -214,6 +222,8 @@ def test_v5_capabilities_fail_closed_when_audit_is_unavailable(
                 "case-application-bindings.get",
                 "acceptance-criteria.propose",
                 "acceptance-criteria.get",
+                "operations.get",
+                "operations.list",
             },
         ),
     ],
@@ -277,6 +287,8 @@ def test_v5_capabilities_hide_catalog_mutations_and_import_from_roleless_human(
         "system-versions.diff",
         "case-application-bindings.get",
         "acceptance-criteria.get",
+        "operations.get",
+        "operations.list",
     }
 
 

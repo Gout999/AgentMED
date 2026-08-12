@@ -434,6 +434,9 @@ def test_draft_intents_disable_every_transport_and_target_owned_commands() -> No
     r2_intents = set(
         registry["r2_application_catalog_contract"]["activated_contract_intents"]
     )
+    v5_2b_intents = set(
+        registry["v5_2b_public_operation_contract"]["activated_contract_intents"]
+    )
     assert registry["activation_flags"] == {
         "http_routes": False,
         "cli_commands": False,
@@ -453,6 +456,9 @@ def test_draft_intents_disable_every_transport_and_target_owned_commands() -> No
     for mapping in ownership["schema_major_2_lifecycle_authority"].values():
         for command in mapping["command_events"]:
             owned_commands.add(f'{mapping["profile_resource"]}:{command}')
+    for mapping in ownership["schema_major_2_public_operation_authority"].values():
+        for command in mapping["command_events"]:
+            owned_commands.add(f'{mapping["resource"]}:{command}')
     for resource_name, extension in ownership["v4_additive_command_profile"].items():
         for command in extension["commands"]:
             owned_commands.add(f"v4.{resource_name}:{command}")
@@ -481,8 +487,9 @@ def test_draft_intents_disable_every_transport_and_target_owned_commands() -> No
                 "FROZEN_FOR_IMPLEMENTATION",
                 "FROZEN_R3",
                 "FROZEN_R4",
+                "FROZEN_V5_2B",
             )
-            if intent["wire_status"] in ("FROZEN_R3", "FROZEN_R4"):
+            if intent["wire_status"] in ("FROZEN_R3", "FROZEN_R4", "FROZEN_V5_2B"):
                 assert intent["implementation_status"] == (
                     "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
                 )
@@ -496,6 +503,11 @@ def test_draft_intents_disable_every_transport_and_target_owned_commands() -> No
                 # contract ref (V5-0C/V5-1C slices predate the r2/d2 profile
                 # convention).
                 assert intent["field_contract_ref"] is None
+            elif intent["wire_status"] == "FROZEN_V5_2B":
+                assert intent["name"] in v5_2b_intents
+                assert intent["field_contract_ref"] == (
+                    f'contracts/v5/schemas/{intent["name"]}.schema.json'
+                )
             else:
                 assert intent["field_contract_ref"].startswith(
                     "contracts/v5/schema-profiles.yaml#d2_wire_profiles/"
@@ -1048,3 +1060,29 @@ def test_v5_2a_work_events_use_dedicated_channel_and_major_2_envelope() -> None:
     assert {mapping["resource"] for mapping in work_section.values()} == set(
         contract["frozen_event_catalog"]
     )
+
+
+def test_v5_2b_automation_request_has_separate_projection_authority() -> None:
+    ownership = _load("aggregate-ownership.yaml")
+    profiles = _load("schema-profiles.yaml")
+    events_v5 = _load("events.yaml")
+    section = ownership["schema_major_2_public_operation_authority"]
+    assert set(section) == {"AUTOMATION_REQUEST"}
+    mapping = section["AUTOMATION_REQUEST"]
+    assert mapping == {
+        "resource": "automation_request",
+        "owner": "automation-request-controller",
+        "command_events": {
+            "automation-requests.start-investigation": [
+                "automation_request.investigation_submitted"
+            ],
+            "automation-requests.request-stop": [
+                "automation_request.stop_requested"
+            ],
+        },
+    }
+    assert "AUTOMATION_REQUEST" in profiles["common"]["exact_record_binding_v5"]["kinds"]
+    assert set(events_v5["v5_2b_public_operation_contract"]["automation_request"]["events"]) == {
+        "automation_request.investigation_submitted",
+        "automation_request.stop_requested",
+    }

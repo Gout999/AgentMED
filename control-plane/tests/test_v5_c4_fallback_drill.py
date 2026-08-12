@@ -444,7 +444,7 @@ def test_drill_capability_manifest_unavailable_falls_back_without_byte_change(
         )
         # fallback: legacy runtime table (import-time bound) keeps serving.
     assert evidence.codes() == ["capability.operation_manifest_unavailable"]
-    assert len(fallback_table) == 19
+    assert len(fallback_table) == 23
 
     status1, bytes1 = _capabilities_bytes(drill_app)
     assert status1 == status0
@@ -495,7 +495,7 @@ def test_drill_route_registry_judge_raise_keeps_legacy_routes_serving(
         for route in public_v5.router.routes
         if isinstance(route, APIRoute) and route.path.startswith("/api/v2")
     ]
-    assert len(v5_routes) == 19
+    assert len(v5_routes) == 23
     status1, bytes1 = _capabilities_bytes(drill_app)
     assert status1 == status0
     assert _masked_canonical(bytes1) == _masked_canonical(bytes0)
@@ -579,7 +579,7 @@ def test_drill_cli_derived_table_fallback_keeps_frozen_help_unchanged() -> None:
 
     manifest = _load_json(OPERATION_MANIFEST)
     derived = _derive_cli_allowlist(manifest)
-    assert len(derived) == 19
+    assert len(derived) == 23
 
     # Frozen v2-gated command surface (mirror of cli/main.py ``_V2_COMMANDS``
     # plus the shared ``capabilities`` command): the fallback allowlist.
@@ -592,7 +592,8 @@ def test_drill_cli_derived_table_fallback_keeps_frozen_help_unchanged() -> None:
             "system-component",
             "dependency-edge",
             "system-manifest",
-            "system-version",
+                "system-version",
+                "operation",
             "case",
             "capabilities",
         }
@@ -618,8 +619,7 @@ def test_drill_cli_derived_table_fallback_keeps_frozen_help_unchanged() -> None:
         )
         derived = frozen_v2
     assert evidence.codes() == ["cli.operation_manifest_unavailable"]
-    # Fallback covers all 19 activated CLI commands; the only extra frozen
-    # pair is the local-only "system-manifest validate" (never a wire call).
+    # Fallback covers all 23 activated CLI commands plus local-only helpers.
     manifest_keys = {
         " ".join(
             (

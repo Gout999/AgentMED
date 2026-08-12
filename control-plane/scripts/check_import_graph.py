@@ -16,7 +16,7 @@ Module -> lane classification follows the C3 research matrix in
 - V5 domain: V5 models/contracts; Application Catalog, System Version,
   Case Binding, Acceptance, issue source and later admitted stage modules
   (``app/models/v5_tables.py``, ``app/services/{application_catalog,
-  system_versions,case_binding,acceptance,issue_source,v5_authority,
+  system_versions,case_binding,acceptance,issue_source,public_operations,v5_authority,
   v5_lifecycle_authority,v5_manifest_import_coordinator,v5_application_list,
   }``, ``app/public_api/v5_models.py``).
 - V4 compatibility: V4 models/contracts and the preserved public façade
@@ -152,6 +152,7 @@ MODULE_LANES: dict[str, str] = {
     "app.services.notification_service": LANE_V3_COMPAT,
     "app.services.outbox_relay": LANE_V3_COMPAT,
     "app.services.public_idempotency": LANE_SHARED_FOUNDATION,
+    "app.services.public_operations": LANE_V5_DOMAIN,
     "app.services.public_read": LANE_V4_COMPAT,
     "app.services.read_views": LANE_TRANSPORT,
     "app.services.release_service": LANE_V3_COMPAT,

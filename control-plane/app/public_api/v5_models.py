@@ -38,6 +38,7 @@ from app.public_api.models import (
     CaseId,
     Digest,
     IdempotencyReceiptId,
+    OperationId,
     PrincipalId,
     ProjectId,
     RequestId,
@@ -399,6 +400,8 @@ V5IdempotencyIntent = Literal[
     "cases.bind-application",
     "acceptance-criteria.propose",
     "acceptance-criteria.confirm",
+    "investigations.start",
+    "operations.cancel-request",
 ]
 
 
@@ -411,6 +414,7 @@ class V5IdempotencyResource(WireModel):
         "system_version_set",
         "application_case_binding",
         "acceptance_criteria_revision",
+        "automation_request",
     ]
     id: Annotated[str, Field(pattern=r"^[a-z][a-z0-9]*_[0-9A-Za-z]{8,64}$")]
 
@@ -463,17 +467,17 @@ class V5IdempotencyReceipt(WireModel):
                 False,
                 "COMPLETED",
             ),
-            "acceptance-criteria.propose": (
-                "acceptance_criteria_revision",
-                "acr_",
-                False,
-                "COMPLETED",
+            "investigations.start": (
+                "automation_request",
+                "arq_",
+                True,
+                "ACCEPTED",
             ),
-            "acceptance-criteria.confirm": (
-                "acceptance_criteria_revision",
-                "acr_",
-                False,
-                "COMPLETED",
+            "operations.cancel-request": (
+                "automation_request",
+                "arq_",
+                True,
+                "ACCEPTED",
             ),
         }
         kind, prefix, operation_required, status = expected[self.intent]
@@ -489,6 +493,143 @@ class V5IdempotencyReceipt(WireModel):
 class V5IdempotencyDelivery(WireModel):
     receipt: V5IdempotencyReceipt
     replayed: StrictBool
+
+
+AutomationRequestId = Annotated[str, Field(pattern=r"^arq_[0-9A-Za-z]{8,64}$")]
+WorkTaskId = Annotated[str, Field(pattern=r"^task_[0-9A-Za-z]{8,64}$")]
+WorkAttemptId = Annotated[str, Field(pattern=r"^att_[0-9A-Za-z]{8,64}$")]
+OperationCursor = Annotated[str, Field(pattern=r"^opcur_[0-9A-Za-z_-]{8,512}$")]
+OperationState = Literal[
+    "SUBMITTED",
+    "WORKING",
+    "INPUT_REQUIRED",
+    "AUTH_REQUIRED",
+    "CANCEL_REQUESTED",
+    "CANCELED",
+    "REJECTED",
+    "FAILED",
+    "COMPLETED",
+]
+
+
+class InvestigationStartRequest(WireModel):
+    schema_version: SchemaVersion2
+    case_revision: Annotated[StrictInt, Field(ge=1)]
+    case_digest: Digest
+    instructions: Annotated[str, Field(min_length=1, max_length=4000)] | None = None
+    max_attempts: Annotated[StrictInt, Field(ge=1, le=10)] = 3
+
+
+class ExactOperationCaseBinding(WireModel):
+    case_id: CaseId
+    case_revision: Annotated[StrictInt, Field(ge=1)]
+    case_digest: Digest
+
+
+class ExactWorkTaskBinding(WireModel):
+    kind: Literal["WORK_TASK"]
+    id: WorkTaskId
+    revision: Annotated[StrictInt, Field(ge=1)]
+    digest: Digest
+
+
+class ExactWorkAttemptBinding(WireModel):
+    kind: Literal["WORK_ATTEMPT"]
+    id: WorkAttemptId
+    revision: Annotated[StrictInt, Field(ge=1)]
+    digest: Digest
+
+
+class ExactDomainArtifactBinding(WireModel):
+    kind: Annotated[str, Field(pattern=r"^[A-Z][A-Z0-9_]{2,63}$")]
+    id: Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]*_[0-9A-Za-z]{8,128}$")]
+    revision: Annotated[StrictInt, Field(ge=1)]
+    digest: Digest
+
+
+class OperationArtifact(WireModel):
+    artifact_kind: Annotated[str, Field(pattern=r"^[A-Z][A-Z0-9_]{2,63}$")]
+    schema_major: Annotated[StrictInt, Field(ge=1)]
+    domain_verdict: Annotated[str, Field(min_length=1, max_length=64)]
+    evidence_completeness: Literal["COMPLETE", "PARTIAL", "UNKNOWN"]
+    exact_artifact_binding: ExactDomainArtifactBinding
+    payload: dict[str, Any]
+
+    @model_validator(mode="after")
+    def artifact_kind_matches_binding(self) -> "OperationArtifact":
+        if self.artifact_kind != self.exact_artifact_binding.kind:
+            raise ValueError("artifact kind does not match exact binding")
+        return self
+
+
+class OperationRecord(WireModel):
+    operation_id: OperationId
+    automation_request_id: AutomationRequestId
+    canonical_intent: Literal["investigations.start"]
+    state: OperationState
+    requester_principal: PrincipalId
+    exact_case_binding: ExactOperationCaseBinding
+    application_id: ApplicationId
+    environment_id: CatalogEnvironmentId
+    exact_work_task_binding: ExactWorkTaskBinding
+    exact_current_attempt_binding_or_null: ExactWorkAttemptBinding | None
+    cancel_requested: StrictBool
+    artifact_or_null: OperationArtifact | None
+    created_at: AwareDatetime
+    updated_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def terminal_artifact_semantics(self) -> "OperationRecord":
+        if (self.state == "COMPLETED") != (self.artifact_or_null is not None):
+            raise ValueError("only completed operations carry a trusted artifact")
+        return self
+
+
+class InvestigationStartResponse(WireModel):
+    schema_version: SchemaVersion2
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    operation: OperationRecord
+    idempotency: V5IdempotencyDelivery
+
+
+class OperationGetResponse(WireModel):
+    schema_version: SchemaVersion2
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    operation: OperationRecord
+
+
+class OperationListResponse(WireModel):
+    schema_version: SchemaVersion2
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    items: list[OperationRecord]
+    next_cursor: OperationCursor | None
+
+    @model_validator(mode="after")
+    def items_are_workspace_safe_and_unique(self) -> "OperationListResponse":
+        ids = [item.operation_id for item in self.items]
+        if len(ids) != len(set(ids)):
+            raise ValueError("operation list contains duplicate ids")
+        return self
+
+
+class OperationCancelRequest(WireModel):
+    schema_version: SchemaVersion2
+    reason: Annotated[str, Field(min_length=1, max_length=256)]
+
+
+class OperationCancelResponse(WireModel):
+    schema_version: SchemaVersion2
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    operation: OperationRecord
+    idempotency: V5IdempotencyDelivery
 
 
 class ApplicationRegisterResponse(WireModel):
@@ -1226,12 +1367,21 @@ __all__ = [
     "IdentityAssurance",
     "IssueSnapshotId",
     "IssueSnapshotRequest",
+    "InvestigationStartRequest",
+    "InvestigationStartResponse",
     "ManifestApplication",
     "ManifestComponent",
     "ManifestEdge",
     "ManifestEnvironment",
     "ManifestRevisionSpec",
     "RecordEnvelope",
+    "OperationArtifact",
+    "OperationCancelRequest",
+    "OperationCancelResponse",
+    "OperationGetResponse",
+    "OperationListResponse",
+    "OperationRecord",
+    "OperationState",
     "SchemaVersion2",
     "SystemAssignmentRecord",
     "SystemManifestId",

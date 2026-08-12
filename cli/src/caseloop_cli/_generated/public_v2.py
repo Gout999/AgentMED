@@ -299,6 +299,12 @@ V5PublicIntentName = Literal[
     "acceptance-criteria.propose",
     "acceptance-criteria.get",
     "acceptance-criteria.confirm",
+    "investigations.start",
+    "operations.get",
+    "operations.list",
+    "operations.cancel-request",
+    "investigations.start",
+    "operations.cancel-request",
 ]
 
 
@@ -319,7 +325,7 @@ class V5CapabilityPrincipal(WireModel):
 class V5EnabledIntent(WireModel):
     name: V5PublicIntentName
     scope: Annotated[str, Field(min_length=1, max_length=128)]
-    execution_mode: Literal["synchronous", "synchronous_local_transaction"]
+    execution_mode: Literal["synchronous", "synchronous_local_transaction", "asynchronous"]
     http: StrictBool
     cli: StrictBool
 
@@ -330,6 +336,8 @@ class V5EnabledIntent(WireModel):
         expected_mode = (
             "synchronous_local_transaction"
             if self.name == "system-manifests.import"
+            else "asynchronous"
+            if self.name in {"investigations.start", "operations.cancel-request"}
             else "synchronous"
         )
         if self.execution_mode != expected_mode:
@@ -391,6 +399,8 @@ V5IdempotencyIntent = Literal[
     "cases.bind-application",
     "acceptance-criteria.propose",
     "acceptance-criteria.confirm",
+    "investigations.start",
+    "operations.cancel-request",
 ]
 
 
@@ -403,6 +413,7 @@ class V5IdempotencyResource(WireModel):
         "system_version_set",
         "application_case_binding",
         "acceptance_criteria_revision",
+        "automation_request",
     ]
     id: Annotated[str, Field(pattern=r"^[a-z][a-z0-9]*_[0-9A-Za-z]{8,64}$")]
 
@@ -440,6 +451,8 @@ class V5IdempotencyReceipt(WireModel):
             "cases.bind-application": ("application_case_binding", "acb_", False, "COMPLETED"),
             "acceptance-criteria.propose": ("acceptance_criteria_revision", "acr_", False, "COMPLETED"),
             "acceptance-criteria.confirm": ("acceptance_criteria_revision", "acr_", False, "COMPLETED"),
+            "investigations.start": ("automation_request", "arq_", True, "ACCEPTED"),
+            "operations.cancel-request": ("automation_request", "arq_", True, "ACCEPTED"),
         }
         kind, prefix, operation_required, status = expected[self.intent]
         if self.resource.kind != kind or not self.resource.id.startswith(prefix):
@@ -524,6 +537,101 @@ class DependencyEdgeGetResponse(WireModel):
     edge: DependencyEdgeRecord
 
 
+AutomationRequestId = Annotated[str, Field(pattern=r"^arq_[0-9A-Za-z]{8,64}$")]
+WorkTaskId = Annotated[str, Field(pattern=r"^task_[0-9A-Za-z]{8,64}$")]
+WorkAttemptId = Annotated[str, Field(pattern=r"^att_[0-9A-Za-z]{8,64}$")]
+OperationCursor = Annotated[str, Field(pattern=r"^opcur_[0-9A-Za-z_-]{8,512}$")]
+
+
+class ExactOperationCaseBinding(WireModel):
+    case_id: Annotated[str, Field(pattern=r"^case_[0-9A-Za-z]{8,64}$")]
+    case_revision: Annotated[StrictInt, Field(ge=1)]
+    case_digest: Digest
+
+
+class ExactWorkTaskBinding(WireModel):
+    kind: Literal["WORK_TASK"]
+    id: WorkTaskId
+    revision: Annotated[StrictInt, Field(ge=1)]
+    digest: Digest
+
+
+class ExactWorkAttemptBinding(WireModel):
+    kind: Literal["WORK_ATTEMPT"]
+    id: WorkAttemptId
+    revision: Annotated[StrictInt, Field(ge=1)]
+    digest: Digest
+
+
+class ExactDomainArtifactBinding(WireModel):
+    kind: Annotated[str, Field(pattern=r"^[A-Z][A-Z0-9_]{2,63}$")]
+    id: Annotated[str, Field(pattern=r"^[a-z][a-z0-9_]*_[0-9A-Za-z]{8,128}$")]
+    revision: Annotated[StrictInt, Field(ge=1)]
+    digest: Digest
+
+
+class OperationArtifact(WireModel):
+    artifact_kind: Annotated[str, Field(pattern=r"^[A-Z][A-Z0-9_]{2,63}$")]
+    schema_major: Annotated[StrictInt, Field(ge=1)]
+    domain_verdict: Annotated[str, Field(min_length=1, max_length=64)]
+    evidence_completeness: Literal["COMPLETE", "PARTIAL", "UNKNOWN"]
+    exact_artifact_binding: ExactDomainArtifactBinding
+    payload: dict[str, Any]
+
+
+class OperationRecord(WireModel):
+    operation_id: OperationId
+    automation_request_id: AutomationRequestId
+    canonical_intent: Literal["investigations.start"]
+    state: Literal["SUBMITTED", "WORKING", "INPUT_REQUIRED", "AUTH_REQUIRED", "CANCEL_REQUESTED", "CANCELED", "REJECTED", "FAILED", "COMPLETED"]
+    requester_principal: PrincipalId
+    exact_case_binding: ExactOperationCaseBinding
+    application_id: ApplicationId
+    environment_id: CatalogEnvironmentId
+    exact_work_task_binding: ExactWorkTaskBinding
+    exact_current_attempt_binding_or_null: ExactWorkAttemptBinding | None
+    cancel_requested: StrictBool
+    artifact_or_null: OperationArtifact | None
+    created_at: AwareDatetime
+    updated_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def terminal_artifact_semantics(self) -> "OperationRecord":
+        if (self.state == "COMPLETED") != (self.artifact_or_null is not None):
+            raise ValueError("only completed operations carry a trusted artifact")
+        return self
+
+
+class InvestigationStartResponse(WireModel):
+    schema_version: SchemaVersion
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    operation: OperationRecord
+    idempotency: V5IdempotencyDelivery
+
+
+class OperationGetResponse(WireModel):
+    schema_version: SchemaVersion
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    operation: OperationRecord
+
+
+class OperationListResponse(WireModel):
+    schema_version: SchemaVersion
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    items: list[OperationRecord]
+    next_cursor: OperationCursor | None
+
+
+class OperationCancelResponse(InvestigationStartResponse):
+    pass
+
+
 __all__ = [
     "ApplicationGetResponse",
     "ApplicationId",
@@ -544,6 +652,11 @@ __all__ = [
     "EnvironmentGetResponse",
     "EnvironmentRecord",
     "EnvironmentRegisterResponse",
+    "InvestigationStartResponse",
+    "OperationCancelResponse",
+    "OperationGetResponse",
+    "OperationListResponse",
+    "OperationRecord",
     "ExactApplicationBinding",
     "ExactSystemComponentBinding",
     "RecordEnvelope",

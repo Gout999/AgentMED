@@ -109,7 +109,7 @@ def test_binding_kinds_match_frozen_contract() -> None:
     )
     v5_kinds = set(profiles["common"]["exact_record_binding_v5"]["kinds"])
     v4_kinds = set(profiles["common"]["exact_record_binding_v4_bridge"]["kinds"])
-    assert len(v5_kinds) == 35
+    assert len(v5_kinds) == 36
     assert len(v4_kinds) == 10
     assert bindings.V5_BINDING_KINDS == v5_kinds
     assert bindings.V4_BRIDGE_BINDING_KINDS == v4_kinds
