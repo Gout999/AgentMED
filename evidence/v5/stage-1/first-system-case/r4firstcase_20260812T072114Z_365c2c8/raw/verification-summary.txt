@@ -1,0 +1,9 @@
+detached clean checkout 365c2c8 (series df86662 + 7c17391 + 365c2c8)
+compiler determinism: zero generated diff
+compiler tests: 18 passed
+conformance: 557 passed
+control-plane unit + wave checkers: 996 passed, 12 PG skips
+cli: 130 passed
+disposable PostgreSQL journeys: 31 passed + 1 R2-era skip
+yaml dup/markdown link/secret-pii: 0 findings
+dirty paths: 0

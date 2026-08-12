@@ -1,0 +1,47 @@
+1. identity-clean-before
+cwd: repository root of detached worktree
+command: git rev-parse HEAD && git status --porcelain
+exit_code: 0
+result: PASS; subject=365c2c8; dirty=0 (evidence dir only untracked)
+
+2. compiler-determinism
+cwd: contracts/compiler
+command: PYTHONPATH=contracts python3 -m compiler emit && git diff --exit-code -- contracts/v5/generated/
+exit_code: 0
+result: PASS; 19 activated intents; zero generated diff
+
+3. compiler-tests / conformance
+cwd: contracts
+command: compiler pytest tests; conformance test_schemas/test_wilson/test_v4_*/test_v5_*
+exit_code: 0
+result: PASS; compiler 18; conformance 557
+
+4. control-plane-unit
+cwd: control-plane
+command: pytest tests/unit + C1-C5 wave checkers
+exit_code: 0
+result: PASS; 996 passed, 12 PG-gated skips
+
+5. cli
+cwd: cli
+command: pytest tests -q
+exit_code: 0
+result: PASS; 130 passed
+
+6. postgres-journeys
+cwd: control-plane
+command: pytest integration with disposable PostgreSQL
+exit_code: 0
+result: PASS; 31 passed + 1 R2-era from-issue e2e skip (covered by CLI unit tests and the R4 HTTP journey)
+
+7. yaml/markdown/secret scans
+cwd: repository root
+command: unique-key YAML; tracked markdown links; cumulative added-line secret/PII
+exit_code: 0
+result: PASS; dup=0; broken=0; secret=0 real (identifier-only hits); pii=0
+
+8. diff-check-and-clean-after
+cwd: repository root
+command: git diff --check && git status --porcelain
+exit_code: 0
+result: PASS; findings=0; dirty=0

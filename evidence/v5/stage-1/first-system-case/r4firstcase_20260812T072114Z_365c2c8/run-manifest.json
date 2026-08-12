@@ -1,0 +1,100 @@
+{
+  "schema_version": "1.0",
+  "run_id": "r4firstcase_20260812T072114Z_365c2c8",
+  "stage": "V5-R4",
+  "slice": "first-system-case-closure",
+  "started_at": "2026-08-12T06:30:00Z",
+  "completed_at": "2026-08-12T07:25:00Z",
+  "status": "PASS",
+  "subject": {
+    "commit": "365c2c8",
+    "tree": "289ee4543000039bfff6708b988fe45350785338",
+    "branch": "codex/v5-convergence",
+    "dirty_before": false,
+    "dirty_after": false,
+    "semantic_series": [
+      "df86662",
+      "7c17391",
+      "365c2c8"
+    ],
+    "semantic_series_base": "f266980",
+    "semantic_series_diff_sha256": "cdd2c6b05e53c45ca65f16889239e46ac3f376bede5f42f1de1359d1c3cc1ad7"
+  },
+  "scope": {
+    "included_path_count": 42,
+    "included_paths_ref": "raw/subject-paths.txt",
+    "allowlist_violations": 0,
+    "excluded_groups": [
+      "provider/live and Agent execution",
+      "repository sandbox and external side effects",
+      "historical evidence rewrites"
+    ]
+  },
+  "authority_sources_ref": "raw/authority-sources.sha256",
+  "contract_versions": {
+    "status": "PASS",
+    "api_major": 2,
+    "decision": "Master §17.5 First System Case closure",
+    "frozen_intents": [
+      "cases.bind-application",
+      "case-application-bindings.get",
+      "acceptance-criteria.propose",
+      "acceptance-criteria.get",
+      "acceptance-criteria.confirm"
+    ],
+    "wire_status": "FROZEN_R4",
+    "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
+  },
+  "migration_versions": {
+    "status": "NOT_APPLICABLE",
+    "reason": "R4 added no migration; head remains 013 (additive lineage column from R3)"
+  },
+  "environment": {
+    "os": "macOS",
+    "git": "Apple Git",
+    "python": "3.11",
+    "checkout": "detached temporary worktree",
+    "secrets_recorded": false,
+    "runtime_identities": {
+      "postgresql": "disposable control_plane_test (alembic head 013)",
+      "quality_api": "NOT_RUN",
+      "providers": "NOT_RUN"
+    }
+  },
+  "facets": {
+    "contract": "PASS",
+    "replay": "PASS (R4-scoped disposable PostgreSQL journey)",
+    "domain-provider-live": "NOT_RUN",
+    "agentteams-native": "NOT_RUN",
+    "claude-runtime-live": "NOT_RUN",
+    "agent-causal": "NOT_RUN",
+    "repo-sandbox": "NOT_RUN",
+    "human-authorized-external": "NOT_RUN",
+    "production-canary": "NOT_RUN"
+  },
+  "stop_gates": {
+    "compiler_determinism": "PASS (zero generated diff)",
+    "compiler_tests": "PASS (18)",
+    "full_conformance": "PASS (557)",
+    "control_plane_unit_and_wave_checkers": "PASS (996, 12 PG skips)",
+    "cli": "PASS (130)",
+    "postgres_journeys": "PASS (31 + 1 R2-era skip)",
+    "static_scans": "PASS (0 findings)",
+    "clean_before_after": "PASS (0 dirty)",
+    "independent_verifier": "P0=0/P1=0 (see verifier-report.md)"
+  },
+  "verifier": {
+    "verdict": "PASS",
+    "p0": 0,
+    "p1": 0,
+    "report_ref": "verifier-report.md"
+  },
+  "artifacts": {
+    "dir": "artifacts/",
+    "status": "NOT_APPLICABLE"
+  },
+  "receipts": {
+    "dir": "receipts/",
+    "status": "NOT_APPLICABLE"
+  }
+}

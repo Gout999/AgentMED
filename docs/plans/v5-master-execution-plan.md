@@ -991,6 +991,12 @@ Agent/external/production facets保持 `NOT_RUN`。只解锁 R4。
 
 ### 17.5 R4 — First System Case closure
 
+> **状态**：`DONE (contract + R4-scoped replay)`。semantic series `df86662` + `7c17391` +
+> `365c2c8`；evidence `evidence/v5/stage-1/first-system-case/r4firstcase_20260812T072114Z_365c2c8/`；
+> detached clean post-commit verifier PASS P0=0/P1=0；unit 996、CLI 130、conformance 557、
+> compiler 18、disposable PG 31+1 R2-skip。`contract=PASS`、R4-scope `replay=PASS`；live/
+> Agent/external/production facets `NOT_RUN`。只解锁 V5-2A 施工。
+
 **Owned outcome**：从已验证的 IssueSource 和 exact VersionSet 建立 Case/application binding，
 记录、读取、确认 AcceptanceCriteria，并提供 authenticated Case read model/CLI/Console。Case
 Controller 不创建 VersionSet，不把 acceptance CONFIRMED 冒充 executable readiness。
