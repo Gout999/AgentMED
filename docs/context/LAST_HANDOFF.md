@@ -34,12 +34,25 @@
   [`V5_CONVERGENCE_WIP_INVENTORY.md`](V5_CONVERGENCE_WIP_INVENTORY.md). No listed path may be
   bulk-promoted into the convergence branch.
 - `active_surface`: R2 exposes exactly the frozen 11-intent V2 surface only when V2 is explicitly
-  selected. Standalone activation, second VersionSet record/get/diff, R4 Case/Acceptance routes,
-  V5-2+, MCP/A2A, provider/live and production surfaces remain hidden or unimplemented.
-- `next_action`: begin D2 Entry audit and contract-only implementation from clean `b6fa629` plus
-  this status/plan commit. D2 must freeze the complete `system-versions.record/get/diff` bundle and
-  a non-trivial two-VersionSet fixture; the current execution path no longer uses the defer branch.
-  R3-full, R4 and V5-2+ remain blocked by the exact Master §17 predecessor chain.
+  selected. D2 froze `system-versions.record/get/diff` as `FROZEN_FOR_IMPLEMENTATION /
+  NOT_IMPLEMENTED` (contract-only, no transport, capability discovery stays hidden). Standalone
+  activation, second VersionSet record/get/diff runtime, R4 Case/Acceptance routes, V5-2+,
+  MCP/A2A, provider/live and production surfaces remain hidden or unimplemented.
+- `next_action`: begin R3-full Entry audit and runtime construction from clean `4852664` plus
+  this status/plan commit. R3-full implements the standalone `system-versions.record/get/diff`
+  runtime on the frozen D2 contract: request may only reference existing authority-valid objects,
+  exact lineage/CAS previous binding, one PostgreSQL UoW, `system_version_set.recorded` event
+  with outbox/audit/AuthorityReceipt, deterministic non-self diff, and a second-VersionSet PG E2E
+  with a real (non-self) diff. R4, V5-2+ remain blocked by the exact Master §17 predecessor chain.
+- `d2_closure`: `DONE (contract-only)` at semantic series `5717124` + `4852664`. Freezes the
+  complete `system-versions.record/get/diff` bundle: JSON Schema 2020-12 wire, authority,
+  idempotency, lineage/CAS, event/outbox/audit/receipt, capability discovery stays hidden, and a
+  non-trivial two-VersionSet diff fixture (changed/added/removed + topology edge change) with the
+  13-vector adversarial matrix. Post-commit verifier PASS P0=0/P1=0; focused D2 10; full
+  contract suite 557; compiler 18; `compiler emit` deterministic with zero generated diff; YAML
+  dup-key/link/secret-PII 0; only `contract=PASS`, other 8 facets `NOT_RUN`. SHA/evidence digest
+  remains `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`. Evidence:
+  `evidence/v5/decision-gates/d2-complete-version-graph-contract/d2versiongraph_20260812T020335Z_4852664/`.
 - `c0_closure`: `DONE` at `903e954` (semantic series `a14784a` + `903e954`; post-commit verifier
   PASS, P0=0/P1=0; not a runtime/public cutover; R2 stays `contract/replay PASS only` /
   `VERIFYING`; SHA/evidence digest remains `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`).

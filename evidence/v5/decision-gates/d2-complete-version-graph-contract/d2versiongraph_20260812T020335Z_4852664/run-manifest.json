@@ -1,0 +1,102 @@
+{
+  "schema_version": "1.0",
+  "run_id": "d2versiongraph_20260812T020335Z_4852664",
+  "stage": "V5-D2",
+  "slice": "complete-version-graph-contract",
+  "started_at": "2026-08-12T01:52:00Z",
+  "completed_at": "2026-08-12T02:08:00Z",
+  "status": "PASS",
+  "subject": {
+    "commit": "4852664c60f92e73ee349ec0e7b27e81d84c7b6a4",
+    "parent": "5717124ad9ad309d035276c17af199374e64b030",
+    "tree": "de18fe4c0609872d1e594b32559eb4e906c3ef94",
+    "branch": "codex/v5-convergence",
+    "dirty_before": false,
+    "dirty_after": false,
+    "direct_diff_sha256": "a2d8368805c087353ddd4c1383eab8081739001d626f6a69eae419eb68122938",
+    "semantic_series": [
+      "5717124ad9ad309d035276c17af199374e64b030",
+      "4852664c60f92e73ee349ec0e7b27e81d84c7b6a4"
+    ],
+    "semantic_series_base": "d8f876a993167cc08b47a987df3c0e8ca31eefec",
+    "semantic_series_diff_sha256": "a2d8368805c087353ddd4c1383eab8081739001d626f6a69eae419eb68122938"
+  },
+  "scope": {
+    "included_path_count": 16,
+    "included_paths_ref": "raw/subject-paths.txt",
+    "included_paths_sha256": "cf0f3d8ee4a1bc1d6003aa5b882f9a2643b7058b17ed91001607737d200abf79",
+    "allowlist_violations": 0,
+    "mode_symlink_binary_findings": 0,
+    "excluded_groups": [
+      "runtime and API",
+      "database migrations",
+      "CLI and capability activation",
+      "provider/live and Agent execution",
+      "repository sandbox and external side effects",
+      "historical evidence rewrites"
+    ]
+  },
+  "authority_sources_ref": "raw/authority-sources.sha256",
+  "contract_versions": {
+    "status": "PASS",
+    "api_major": 2,
+    "decision": "Master §17.3 complete version-graph contract gate",
+    "historical_freezes": ["8dd25ca", "b3727d7"],
+    "frozen_intents": ["system-versions.record", "system-versions.get", "system-versions.diff"],
+    "wire_status": "FROZEN_FOR_IMPLEMENTATION",
+    "implementation_status": "NOT_IMPLEMENTED",
+    "runtime_status": "NOT_IMPLEMENTED"
+  },
+  "migration_versions": {
+    "status": "NOT_APPLICABLE",
+    "reason": "D2 freezes wire/authority/lineage semantics only; R3-full owns the runtime implementation and its migration/recovery proof."
+  },
+  "environment": {
+    "os": "macOS",
+    "git": "Apple Git",
+    "python": "3.14",
+    "checkout": "detached temporary worktree",
+    "secrets_recorded": false,
+    "runtime_identities": {
+      "postgresql": "NOT_RUN",
+      "quality_api": "NOT_RUN",
+      "providers": "NOT_RUN"
+    }
+  },
+  "facets": {
+    "contract": "PASS",
+    "replay": "NOT_RUN",
+    "domain-provider-live": "NOT_RUN",
+    "agentteams-native": "NOT_RUN",
+    "claude-runtime-live": "NOT_RUN",
+    "agent-causal": "NOT_RUN",
+    "repo-sandbox": "NOT_RUN",
+    "human-authorized-external": "NOT_RUN",
+    "production-canary": "NOT_RUN"
+  },
+  "stop_gates": {
+    "focused_d2_contract": "PASS (10)",
+    "full_contract_suite": "PASS (557)",
+    "compiler_tests": "PASS (18)",
+    "compiler_determinism": "PASS (zero generated diff)",
+    "yaml_duplicate_key": "PASS (0)",
+    "markdown_link_scan": "PASS (0 broken)",
+    "secret_pii_scan": "PASS (0 findings)",
+    "clean_before_after": "PASS (0 dirty)",
+    "independent_verifier": "P0=0/P1=0 (see verifier-report.md)"
+  },
+  "verifier": {
+    "verdict": "PASS",
+    "p0": 0,
+    "p1": 0,
+    "report_ref": "verifier-report.md"
+  },
+  "artifacts": {
+    "dir": "artifacts/",
+    "status": "NOT_APPLICABLE"
+  },
+  "receipts": {
+    "dir": "receipts/",
+    "status": "NOT_APPLICABLE"
+  }
+}

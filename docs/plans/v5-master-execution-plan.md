@@ -85,8 +85,8 @@ migration、tests、evidence、rollback、commit 和 verifier。
 | V5-0B/0C | contract-only freeze 已独立 PASS | 保留历史 freeze；current runtime overlay 另行标注 |
 | D-015 | `ACCEPTED / NOT RUNTIME CUTOVER PROOF`；V5 是新产品/领域开发默认设计与施工基线，V3/V4 是 compatibility lanes | 不改变 public API/CLI 默认 major、active route 或历史 authority |
 | R2 | 只确认 exact scope 的 `contract=PASS`、`replay=PASS` | 不推导完整 runtime；最终 subject SHA/evidence digest 标记 `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE` |
-| C0–C5 | **`COMPLETE / REMEDIATED`** at `b6fa629`；D2 `ELIGIBLE / NOT STARTED`；R3-full 及后续 `LOCKED` | detached clean unified gate 8/8 PASS；后续严格按 §17 |
-| V5-1B/R3-full | standalone `system-versions.record`、第二 VersionSet 与真实 diff 仍未解锁 | 等 C5 后先过 D2 完整 version-graph contract gate |
+| C0–C5 | **`COMPLETE / REMEDIATED`** at `b6fa629`；D2 `DONE (contract-only)`；R3-full 已解锁施工，R4 及后续 `LOCKED` | detached clean unified gate 8/8 PASS；后续严格按 §17 |
+| V5-1B/R3-full | standalone `system-versions.record/get/diff` 契约已冻结（D2），第二 VersionSet 与真实 diff runtime 未实现 | D2 `contract=PASS` 后 R3-full 施工已解锁；runtime 需 R3-full 独立实现并取证 |
 | V5-1C/R4 | 仍锁定 | 不得用已有 local repair 或 one-shot bootstrap 提前关闭 |
 | V5-2+ | target/contract 或 skeleton | 不得 advertise 为 runtime；不得混入 C0–C5 structural waves |
 | live/external | 本轮均未执行 | 下一次 live 前仍需凭证轮换、redacted preflight 和逐动作授权 |
@@ -98,6 +98,7 @@ migration、tests、evidence、rollback、commit 和 verifier。
 | V5-0A clean-checkout closure | `DONE` | subject `4d15c1c81180386fa4852a53f8b8847e74cda050`；R0 evidence/verifier PASS |
 | V5-0B/0C | `DONE (contract-only)` | 历史 freeze，不重开 |
 | D1 lifecycle decision | `DONE (contract-only)` | subject `798531a`；evidence/verifier PASS；仅解锁 R1 施工，不证明 runtime |
+| D2 complete version-graph contract | `DONE (contract-only)` | semantic series `5717124` + `4852664`；evidence/verifier PASS P0=0/P1=0；仅解锁 R3-full 施工，不证明 runtime |
 | D-015 baseline decision | `ACCEPTED (decision-only)` | 不证明 runtime/public cutover；当前按 Master §17 只允许 D2 施工 |
 | R2 | `CONTRACT/REPLAY PASS ONLY` | 不等于完整 runtime closure；最终 SHA/evidence digest 延后至最终项目收口 |
 | C0 authority/clean branch/WIP characterization | `DONE` | clean base、WIP inventory、characterization、文档静态复核 + independent P0/P1 review；存在文件不等于关闭；semantic series `a14784a` + `903e954`；post-commit verifier PASS P0=0/P1=0 |
@@ -106,7 +107,7 @@ migration、tests、evidence、rollback、commit 和 verifier。
 | C3 convergence | `DONE` | semantic subject `3adaac0`；import-graph checker PASS |
 | C4 convergence | `DONE` | 前一 wave 独立 Exit；详见 convergence plan；semantic subject `1d7b59c`；generated transport cutover |
 | C5 convergence | `DONE / REMEDIATED` | original `19f26bf` + remediation `b6fa629`；detached clean unified gate 8/8 PASS |
-| D2 / V5-1B R3-full | D2 `ELIGIBLE / NOT STARTED`；R3-full `LOCKED` | D2 complete `record/get/diff` contract PASS 后解锁 R3-full |
+| D2 / V5-1B R3-full | D2 `DONE (contract-only)`；R3-full `LOCKED` until D2 status commit | R3-full Entry：clean D2 subject + status/plan commit；D2 只证明 contract，不证明 runtime |
 | V5-1C R4 | `LOCKED` | R3-full + 原有 R4 Entry |
 | V5-2A–V5-5 | `TODO` | 前置 stage completion commit + evidence + verifier |
 | V5-6 slices | `TODO / independently admitted after V5-5` | V5-5 completion evidence + 对应 slice Entry |
@@ -412,21 +413,23 @@ Console credential 仅由 UI 内存态提供，不进入 bundle、静态配置�
 
 ### D2 · standalone `system-versions.record` contract activation
 
-> 状态：**ELIGIBLE / NOT STARTED**。当前唯一目标是一次冻结完整
-> `system-versions.record/get/diff` bundle；详细验收以 §17.3 为准。
+> 状态：**DONE (contract-only)**。semantic series `5717124` + `4852664`；evidence
+> 位于 `evidence/v5/decision-gates/d2-complete-version-graph-contract/d2versiongraph_20260812T020335Z_4852664/`；
+> detached clean post-commit verifier PASS P0=0/P1=0；仅解锁 R3-full 施工，不证明 runtime。
 
-当前 product/JTBD 需要第二个 VersionSet 才能产生真实 diff，但 frozen/current contract 仍把
-standalone `system-versions.record` 标为未授权、未冻结 wire。R3 开工前必须：
+当前 product/JTBD 需要第二个 VersionSet 才能产生真实 diff。D2 已一次冻结完整
+`system-versions.record/get/diff` bundle（详见 §17.3 与 contracts/v5）：三 intent 为
+`FROZEN_FOR_IMPLEMENTATION / NOT_IMPLEMENTED`，未激活、不生成 transport、capability
+discovery 保持隐藏。R3-full 现在负责 standalone runtime 实现。
 
 R2 的 bootstrap-only `system-manifests.import` 是唯一前置例外：它只可在 authoritative V5
 domain 全空的 workspace 创建或幂等回放第一个完整 declared graph 和 initial VersionSet，不激活
-standalone `system-versions.record`，也不构成第二 VersionSet 或 diff evidence。D2 与 R3-full
-仍负责下面的 standalone wire 和第二 graph 能力。
+standalone `system-versions.record`，也不构成第二 VersionSet 或 diff evidence。R3-full
+负责下面的 standalone wire 和第二 graph 能力。
 
-- 冻结 request/response、scope/principal、idempotency、error、HTTP/CLI/capability mapping；
+- D2 已冻结 request/response、scope/principal、idempotency、error、HTTP/CLI/capability mapping；
 - 明确它只引用既有 catalog/revision/topology，不复用 first-import bootstrap authority；
-- 更新 compatibility/intent registry/conformance，并由独立 verifier 通过；
-- D2 不允许只冻结一个 record endpoint 或继续 defer；one-shot bootstrap 仅作为现有兼容事实。
+- D2 未冻结只一个 record endpoint 或继续 defer；one-shot bootstrap 仅作为现有兼容事实。
 
 ### R3-full · V5-1B SystemVersionSet closure
 
@@ -888,6 +891,11 @@ VersionSet 和真实 diff，因此 D2 必须冻结并激活完整 `record/get/di
 ADR 修改这一裁决。普通文件拆分、命名、测试组织和内部接口选择由施工 Agent 在既有
 owner/contract 内合理决定，不因可逆实现细节反复停工请示。
 
+2026-08-12：D2 complete version-graph contract gate 已按本节协议关闭（semantic series
+`5717124` + `4852664`，contract-only，post-commit verifier PASS P0=0/P1=0）。下一 package
+是 R3-full（§17.4）：从 clean D2 subject + 本 status commit 开工，实现 standalone
+`system-versions.record/get/diff` runtime 与第二 VersionSet 真实 diff。
+
 ### 17.2 每个 package 的统一施工协议
 
 每个 package 严格执行以下状态机：
@@ -911,10 +919,15 @@ owner/contract 内合理决定，不因可逆实现细节反复停工请示。
 指示不得生成文件 SHA-256 或 evidence digest。它们统一留到
 `FINAL-CHECKSUM-CLOSURE`，中途必须写 `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`。
 
-### 17.3 D2 — complete version-graph contract gate（下一 package）
+### 17.3 D2 — complete version-graph contract gate（DONE contract-only）
+
+> **状态**：`DONE (contract-only)`。semantic series `5717124` + `4852664`；evidence
+> `evidence/v5/decision-gates/d2-complete-version-graph-contract/d2versiongraph_20260812T020335Z_4852664/`；
+> detached clean post-commit verifier PASS P0=0/P1=0；只有 `contract=PASS`，其余 facets
+> `NOT_RUN`。Exit 已满足，只解锁 R3-full 施工，不证明 runtime。
 
 **Entry**：C5 remediation `b6fa629` 及其 status commit clean；统一 convergence gate 8/8
-PASS；R3-full routes/capabilities 仍不可发现。
+PASS；R3-full routes/capabilities 仍不可发现。（2026-08-12 满足并已关闭。）
 
 **唯一目标**：一次冻结三个不可拆分 intent：
 

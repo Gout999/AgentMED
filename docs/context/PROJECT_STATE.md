@@ -4,6 +4,8 @@
 - `r0_evidence`: `evidence/v5/stage-0/documentation-authority/r0docs_20260811T104032Z_4d15c1c/`
 - `d1_lifecycle_subject`: `798531af539cd37e797723f2985d55c70fa1046e` (semantic series starts at `66052a1`; independent detached-checkout PASS; P0=0/P1=0)
 - `d1_lifecycle_evidence`: `evidence/v5/decision-gates/d1-application-component-lifecycle/d1lifecycle_20260811T123512Z_798531a/` (`contract=PASS`; other 8 facets `NOT_RUN`)
+- `d2_version_graph_subject`: `4852664c60f92e73ee349ec0e7b27e81d84c7b6a4` (semantic series `5717124` + `4852664`; independent detached-checkout PASS; P0=0/P1=0)
+- `d2_version_graph_evidence`: `evidence/v5/decision-gates/d2-complete-version-graph-contract/d2versiongraph_20260812T020335Z_4852664/` (`contract=PASS`; other 8 facets `NOT_RUN`)
 - `r1_authority_subject`: `8e216939f9126b0bcef57b8ce9d292c27ba23717` (independent clean post-commit PASS; foundation-scoped `contract/replay=PASS`; other 7 facets `NOT_RUN`)
 - `r2_catalog_bootstrap_subject`: `c838b2bcefb80c8458aefa17934e190a5d8485f3` (independent detached clean post-commit PASS; P0=0/P1=0)
 - `c0_convergence_subject`: `903e954` (semantic series starts at `a14784a`; C0 DONE; independent clean post-commit PASS; P0=0/P1=0; cumulative `c838b2b..903e954` = 2 commits / 17 paths; SHA/evidence digest DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE)
@@ -13,12 +15,12 @@
 - `c4_transport_subject`: `1d7b59c` (C4 original cutover; `b6fa629` remediation makes generated structural + semantic validation jointly mandatory and fail-closed; Python parity covers 11 ops/103 cases)
 - `c5_cleanup_subject`: `19f26bf` (original C5 semantic package; superseded for execution by the remediation below)
 - `c5_remediation_subject`: `b6fa629` (owner port, generated structural+semantic fail-closed, real V5 route switch, unified Console/PG gate; detached clean `verify_convergence.sh` 8/8 PASS; compiler 18; conformance 547; control-plane 998 collected/12 PG safety skip; CLI 118; Console 20+build; disposable PG 17/17)
-- `convergence_series`: `COMPLETE / REMEDIATED` (D2 is the only `ELIGIBLE / NOT STARTED` package; R3-full, R4, V5-2+ remain LOCKED by Master §17)
+- `convergence_series`: `COMPLETE / REMEDIATED` (D2 closed contract-only; R3-full is the only `ELIGIBLE` package; R4, V5-2+ remain LOCKED by Master §17)
 - `r2_verification`: contracts 541; control-plane unit 876 plus 12 explicitly PG-gated skips; CLI 118; Console 17 plus build; disposable PostgreSQL 17/17
 - `checksum_policy`: SHA-256 and digest-bearing final evidence are deferred by the product owner until final whole-project closure; this deferral does not convert an unrun facet to PASS
 - `pre_r0_baseline`: `4a0a421cc669bf98d9b882d149d5d3df4c8dc36e`
-- `last_clean_verified_semantic_subject_commit`: `b6fa629` (C5 remediation; detached clean unified gate PASS; the receiving Agent must still perform the normal independent Entry audit before closing D2)
-- `last_digest_closed_evidence_subject_commit`: `798531af539cd37e797723f2985d55c70fa1046e` (V5-D1 contract-only; retained separately because R1/R2 checksums are owner-deferred)
+- `last_clean_verified_semantic_subject_commit`: `4852664` (D2 contract freeze + remediation; detached clean gates PASS; R3-full must still perform the normal independent Entry audit before closing)
+- `last_digest_closed_evidence_subject_commit`: `4852664c60f92e73ee349ec0e7b27e81d84c7b6a4` (V5-D2 contract-only; retained separately because R1/R2 checksums are owner-deferred)
 - `stage0_documentation_commit`: `b7889a7e200f76bd5985188ff6fb7e9e1860fd28`
 - `previous_v3_evidence_commit`: `cef1598b4ac1d42fdd4f206c5747eb89a06f24fc`
 - `active_branch`: `codex/v5-convergence`

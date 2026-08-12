@@ -25,8 +25,12 @@ digest-bearing final evidence 延后到全项目最终收口，因此 R1/R2 仍�
 generated-wire、rollback 与 final-PG gate 缺口已由 remediation subject `b6fa629` 关闭。
 `b6fa629` detached clean 统一门禁 8/8 PASS（compiler 18、contracts 547、control-plane
 998 collected/12 safety skip、CLI 118、Console 20+build、disposable PG 17/17）。
-**C0–C5 架构收敛系列现在具备真实可执行基线。** D2 为唯一 `ELIGIBLE / NOT STARTED`
-package；R3-full、R4、V5-2+ 继续按 Master 锁定。
+**C0–C5 架构收敛系列现在具备真实可执行基线。** D2 已关闭（semantic series
+`5717124` + `4852664`；contract-only：三 intent `system-versions.record/get/diff`
+冻结为 `FROZEN_FOR_IMPLEMENTATION / NOT_IMPLEMENTED`，detached clean post-commit
+verifier PASS P0=0/P1=0，仅 `contract=PASS`）。R3-full 为唯一 `ELIGIBLE` package
+（standalone record/get/diff runtime，D2 契约是它的实现基线）；R4、V5-2+ 继续按
+Master 锁定。
 
 D-015 接受 V5 为所有新产品/领域开发的默认设计与施工基线，并把 V3/V4 固定为兼容
 lane；这不改变 public API/CLI 默认 major，不激活新 route/capability，也不追溯改写既有
@@ -63,8 +67,9 @@ lane；这不改变 public API/CLI 默认 major，不激活新 route/capability�
 | V5-C3 | Capability/import-cycle elimination and coordinator/service decomposition | DONE | previous convergence wave DONE | modular monolith；single PG UoW；no local import cycles；compat facades preserve signatures/errors/bytes；no new product capability | per-wave characterization + offline/PG parity + verifier | post-commit verifier PASS P0=0/P1=0；import-graph checker PASS（0 cycles/lane 100%）；unit 876+12 skip；conformance 547 | 3adaac0 |
 | V5-C4 | Generated transport cutover | DONE | previous convergence wave DONE | modular monolith；single PG UoW；no local import cycles；compat facades preserve signatures/errors/bytes；no new product capability | per-wave characterization + offline/PG parity + verifier | post-commit verifier PASS P0=0/P1=0；unit 886+12 skip；conformance 547；CLI 118；compiler 18 | 1d7b59c |
 | V5-C5 | Compatibility cleanup, effective enforcement and recovery verification | DONE | previous convergence wave DONE | canonical catalog owner port；generated structural + semantic fail-closed；real V5 route switch；single reproducible offline/Console/PG gate | detached clean unified gate 8/8；compiler 18；contracts 547；control 998 collected/12 safety skip；CLI 118；Console 20+build；PG 17/17 | SHA/evidence digest deferred；P0=0/P1=0 | `19f26bf` + remediation `b6fa629` |
-| V5-D2 | Complete version-graph contract | ELIGIBLE / NOT STARTED | C5 remediation/status DONE | 一次冻结 standalone `system-versions.record/get/diff` 的完整 wire、authority、idempotency、lineage、generated transport 与 non-trivial two-VersionSet diff；不再保留 defer 分支 | Master §17.3 exact contract/fixture/conformance/verifier matrix | pending；contract-only | pending |
-| V5-R3-full / R4 / V5-2+ | Feature progression after convergence | BLOCKED | stage-specific decision/contract gate | resume only from the accepted Master dependency graph；no dormant route/capability or dirty WIP promotion | stage-specific | pending | pending |
+| V5-D2 | Complete version-graph contract | DONE (contract-only) | C5 remediation/status DONE | 一次冻结 standalone `system-versions.record/get/diff` 的完整 wire、authority、idempotency、lineage、generated transport 与 non-trivial two-VersionSet diff；不再保留 defer 分支 | Master §17.3 exact contract/fixture/conformance/verifier matrix；detached clean post-commit verifier PASS P0=0/P1=0 | [`d2versiongraph_20260812T020335Z_4852664`](evidence/v5/decision-gates/d2-complete-version-graph-contract/d2versiongraph_20260812T020335Z_4852664/)；contract-only | `5717124` + `4852664` |
+| V5-R3-full | Second VersionSet + standalone record/get/diff runtime | ELIGIBLE / NOT STARTED | D2 DONE | 实现 standalone `system-versions.record/get/diff`：只引用已存在 authority-valid 对象、exact lineage/CAS、单 PG UoW、`system_version_set.recorded` event/outbox/audit/AuthorityReceipt、deterministic 非 self diff、second-version PG E2E 真实差异 | Master §17.4 exact matrix（mutable alias/UNKNOWN、dependency substitution、fan-out、dataset role、dirty repository identity、same label/different digest、concurrent record、tampered GET/diff、cross-application/environment binding） | pending | pending |
+| V5-R4 / V5-2+ | Feature progression after convergence | BLOCKED | stage-specific decision/contract gate | resume only from the accepted Master dependency graph；no dormant route/capability or dirty WIP promotion | stage-specific | pending | pending |
 
 ## Active v4 delivery
 

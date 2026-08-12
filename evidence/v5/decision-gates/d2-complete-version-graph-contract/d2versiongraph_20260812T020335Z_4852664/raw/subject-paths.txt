@@ -1,0 +1,16 @@
+M	contracts/conformance/test_v5_c1_schemas.py
+M	contracts/conformance/test_v5_compatibility.py
+A	contracts/conformance/test_v5_d2_version_graph_contract.py
+M	contracts/conformance/test_v5_draft.py
+M	contracts/v5/compatibility.yaml
+M	contracts/v5/corpus/capabilities.get.json
+M	contracts/v5/domain-model.yaml
+M	contracts/v5/events.yaml
+A	contracts/v5/fixtures/system-versions-graph.yaml
+M	contracts/v5/intent-registry.yaml
+M	contracts/v5/schema-profiles.yaml
+M	contracts/v5/schemas/common.schema.json
+A	contracts/v5/schemas/system-versions.diff.schema.json
+A	contracts/v5/schemas/system-versions.get.schema.json
+A	contracts/v5/schemas/system-versions.record.schema.json
+M	contracts/v5/state-machines.yaml
