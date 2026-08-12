@@ -256,9 +256,10 @@ def test_full_fact_chain_is_exact_on_postgres(pg_engine) -> None:
         events = session.scalars(
             sa.select(Event).where(Event.workspace_id == WORKSPACE)
         ).all()
-        # requested, claimed, attempt.created, attempt.started,
-        # attempt.output_recorded, attempt.succeeded, work.completed
-        assert len(events) == 7
+        # requested, claimed, attempt.created, attempt.starting,
+        # attempt.started, attempt.output_recorded, attempt.succeeded,
+        # work.completed
+        assert len(events) == 8
         work_events = {
             e.event_type
             for e in events
@@ -342,6 +343,16 @@ def test_ambiguous_retry_blocked_until_reconcile_on_postgres(pg_engine) -> None:
             worker_identity="worker-pg",
             transaction_id="txn_pg_amb_claim",
             request_id="req_pg_amb_claim",
+        )
+        kernel.start_attempt(
+            workspace_id=WORKSPACE,
+            task_id=task_id,
+            attempt_id=claim.attempt.attempt_id,
+            fencing_token=1,
+            runtime_adapter="fixture",
+            runtime_session="pg-amb-session",
+            transaction_id="txn_pg_amb_start",
+            request_id="req_pg_amb_start",
         )
         kernel.mark_attempt_unknown(
             workspace_id=WORKSPACE,

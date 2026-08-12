@@ -165,7 +165,7 @@ class WorkReactionDispatcher:
         if (
             task.state == "CANCEL_REQUESTED"
             and attempt is not None
-            and attempt.state in ("CREATED", "STARTING", "RUNNING", "OUTPUT_RECORDED")
+            and attempt.state in ("CREATED", "STARTING", "RUNNING")
         ):
             try:
                 self.kernel.cancel_attempt(

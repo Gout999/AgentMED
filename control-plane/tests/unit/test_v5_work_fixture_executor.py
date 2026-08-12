@@ -125,34 +125,24 @@ def test_happy_path_runs_to_completed(executor, sqlite_session) -> None:
     assert task.state == "COMPLETED"
 
 
-def test_crash_after_claim_then_recover_via_reconcile(
+def test_crash_after_claim_then_recover_via_cancel_and_retry(
     executor, sqlite_session
 ) -> None:
+    """CREATED-stage crash: the worker claimed but never started, so nothing
+    is ambiguous.  The expired lease cancels the attempt on legal hops and
+    returns the task to WAITING_RETRY; the next claim mints attempt 2."""
     clock = {"now": NOW}
     executor.kernel.clock = lambda: clock["now"]
     claim = executor.crash_after_claim(
         workspace_id=WORKSPACE, probe="beta", idempotency_key="fx-2"
     )
     task_id = claim.task.task_id
-    # Lease expires with the attempt still CREATED (worker gone).
-    clock["now"] = NOW + timedelta(seconds=300)
-    with pytest.raises(V5WorkKernelError) as exc:
-        executor.claim(workspace_id=WORKSPACE, task_id=task_id)
-    assert exc.value.code == "v5.work.reconcile_required"
-    executor.kernel.reconcile_attempt(
-        workspace_id=WORKSPACE,
-        task_id=task_id,
-        attempt_id=claim.attempt.attempt_id,
-        outcome="failed",
-        reconciliation_receipt_digest="sha256:recovery",
-        transaction_id="txn_fx_recon",
-        request_id="req_fx_recon",
-    )
-    sqlite_session.expire_all()
-    task = sqlite_session.get(WorkTask, task_id)
-    assert task.state == "WAITING_RETRY"
+    clock["now"] = NOW + timedelta(seconds=300)  # lease (60s) expired
     recovered = executor.claim(workspace_id=WORKSPACE, task_id=task_id)
     assert recovered.attempt.attempt_number == 2
+    sqlite_session.expire_all()
+    first = sqlite_session.get(WorkAttempt, claim.attempt.attempt_id)
+    assert first.state == "CANCELLED"
 
 
 def test_crash_after_output_complete_then_task_settles(
@@ -181,14 +171,18 @@ def test_crash_after_output_complete_then_task_settles(
 def test_ambiguous_outcome_rejected_until_reconciled(
     executor, sqlite_session
 ) -> None:
+    """Crash after output (a started attempt): the outcome is genuinely
+    ambiguous, so the lease expiry fails closed into UNKNOWN and re-claim is
+    rejected until an explicit reconcile."""
     clock = {"now": NOW}
     executor.kernel.clock = lambda: clock["now"]
-    claim = executor.crash_after_claim(
+    claim = executor.crash_after_output(
         workspace_id=WORKSPACE, probe="delta", idempotency_key="fx-4"
     )
     clock["now"] = NOW + timedelta(seconds=300)
-    with pytest.raises(V5WorkKernelError):
+    with pytest.raises(V5WorkKernelError) as exc:
         executor.claim(workspace_id=WORKSPACE, task_id=claim.task.task_id)
+    assert exc.value.code == "v5.work.reconcile_required"
     sqlite_session.expire_all()
     attempt = sqlite_session.get(WorkAttempt, claim.attempt.attempt_id)
     assert attempt.state == "UNKNOWN"

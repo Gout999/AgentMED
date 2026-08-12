@@ -236,7 +236,18 @@ def test_claim_after_lease_expiry_with_active_attempt_blocks_unknown(
     clock = {"now": NOW}
     service.clock = lambda: clock["now"]
     task = _request(service)
-    _claim(service, task)
+    result = _claim(service, task)
+    # A started attempt that disappears mid-run is genuinely ambiguous.
+    service.start_attempt(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        attempt_id=result.attempt.attempt_id,
+        fencing_token=1,
+        runtime_adapter="fixture-executor",
+        runtime_session="session-x1",
+        transaction_id="txn_start_x1",
+        request_id="req_start_x1",
+    )
     clock["now"] = NOW + timedelta(seconds=120)  # lease (60s) expired
     with pytest.raises(V5WorkKernelError) as exc:
         _claim(service, task)
@@ -246,6 +257,27 @@ def test_claim_after_lease_expiry_with_active_attempt_blocks_unknown(
     attempt = sqlite_session.get(WorkAttempt, task.current_attempt_id)
     assert task.state == "BLOCKED_UNKNOWN"
     assert attempt.state == "UNKNOWN"
+
+
+def test_claim_after_lease_expiry_with_unstarted_attempt_cancels_and_retries(
+    service, sqlite_session
+) -> None:
+    clock = {"now": NOW}
+    service.clock = lambda: clock["now"]
+    task = _request(service)
+    result = _claim(service, task)
+    clock["now"] = NOW + timedelta(seconds=120)
+    recovered = service.claim(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        worker_identity="worker-retry",
+        transaction_id="txn_claim_retry",
+        request_id="req_claim_retry",
+    )
+    assert recovered.attempt.attempt_number == 2
+    sqlite_session.expire_all()
+    first = sqlite_session.get(WorkAttempt, result.attempt.attempt_id)
+    assert first.state == "CANCELLED"
 
 
 def test_heartbeat_extends_lease_and_stale_fence_rejected(service) -> None:
@@ -335,6 +367,16 @@ def test_fail_then_retry_then_exhaust(service, sqlite_session) -> None:
         request_id="req_req2",
     )
     first = _claim(service, task)
+    service.start_attempt(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        attempt_id=first.attempt.attempt_id,
+        fencing_token=1,
+        runtime_adapter="fixture-executor",
+        runtime_session="session-r1",
+        transaction_id="txn_start_r1",
+        request_id="req_start_r1",
+    )
     service.fail_attempt(
         workspace_id=WORKSPACE,
         task_id=task.task_id,
@@ -356,6 +398,16 @@ def test_fail_then_retry_then_exhaust(service, sqlite_session) -> None:
     )
     assert second.attempt.attempt_number == 2
     assert second.attempt.fence_token == 2
+    service.start_attempt(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        attempt_id=second.attempt.attempt_id,
+        fencing_token=2,
+        runtime_adapter="fixture-executor",
+        runtime_session="session-r2",
+        transaction_id="txn_start_r2",
+        request_id="req_start_r2",
+    )
     service.fail_attempt(
         workspace_id=WORKSPACE,
         task_id=task.task_id,
@@ -388,6 +440,16 @@ def test_fail_then_retry_then_exhaust(service, sqlite_session) -> None:
 def test_unknown_reconcile_failed_then_retry(service, sqlite_session) -> None:
     task = _request(service)
     result = _claim(service, task)
+    service.start_attempt(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        attempt_id=result.attempt.attempt_id,
+        fencing_token=1,
+        runtime_adapter="fixture-executor",
+        runtime_session="session-u1",
+        transaction_id="txn_start_u1",
+        request_id="req_start_u1",
+    )
     service.mark_attempt_unknown(
         workspace_id=WORKSPACE,
         task_id=task.task_id,
@@ -421,6 +483,16 @@ def test_unknown_reconcile_failed_then_retry(service, sqlite_session) -> None:
 def test_reconcile_succeeded_requires_output(service, sqlite_session) -> None:
     task = _request(service)
     result = _claim(service, task)
+    service.start_attempt(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        attempt_id=result.attempt.attempt_id,
+        fencing_token=1,
+        runtime_adapter="fixture-executor",
+        runtime_session="session-u2",
+        transaction_id="txn_start_u2",
+        request_id="req_start_u2",
+    )
     service.mark_attempt_unknown(
         workspace_id=WORKSPACE,
         task_id=task.task_id,

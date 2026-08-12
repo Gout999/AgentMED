@@ -63,6 +63,10 @@ ATTEMPT_TERMINAL = frozenset({"SUCCEEDED", "FAILED", "TIMED_OUT", "CANCELLED"})
 ATTEMPT_ACTIVE = frozenset(
     {"CREATED", "STARTING", "RUNNING", "OUTPUT_RECORDED", "CANCEL_REQUESTED"}
 )
+# V4 attempt machine source-state restrictions (reused verbatim):
+ATTEMPT_FAILABLE = frozenset({"STARTING", "RUNNING", "OUTPUT_RECORDED"})
+ATTEMPT_CANCELLABLE = frozenset({"CREATED", "STARTING", "RUNNING"})
+ATTEMPT_UNKNOWABLE = frozenset({"STARTING", "RUNNING", "OUTPUT_RECORDED"})
 DEFAULT_LEASE_SECONDS = 60
 DEFAULT_MAX_ATTEMPTS = 3
 
@@ -385,11 +389,11 @@ class WorkKernelService:
             expires = _as_utc(task.lease_expires_at)
             if expires > now:
                 raise V5WorkKernelError("v5.work.lease_held")
-            # Lease expired underneath a live-looking attempt: the outcome is
-            # ambiguous, so fail closed into UNKNOWN/BLOCKED_UNKNOWN rather
-            # than silently re-leasing (Master §517: reconcile before retry).
             current = self.session.get(WorkAttempt, task.current_attempt_id)
-            if current is not None and current.state in ATTEMPT_ACTIVE:
+            if current is not None and current.state in ATTEMPT_UNKNOWABLE:
+                # Started but outcome ambiguous (crash mid-execution): fail
+                # closed into UNKNOWN/BLOCKED_UNKNOWN; reconcile must precede
+                # retry (Master §517).
                 self._mark_attempt_unknown_locked(
                     task,
                     current,
@@ -399,6 +403,49 @@ class WorkKernelService:
                     now=now,
                 )
                 raise V5WorkKernelError("v5.work.reconcile_required")
+            if current is not None and current.state == "CREATED":
+                # Claimed but never started: no execution happened, so there
+                # is nothing ambiguous — cancel the attempt and return the
+                # task to WAITING_RETRY, both on legal V4 hops.
+                self._cancel_attempt_locked(
+                    task,
+                    current,
+                    reason="lease_expired_before_start",
+                    transaction_id=transaction_id,
+                    request_id=request_id,
+                    now=now,
+                )
+                self._schedule_retry_locked(
+                    task,
+                    failed_attempt_id=current.attempt_id,
+                    reason="lease_expired_before_start",
+                    transaction_id=transaction_id,
+                    request_id=request_id,
+                    now=now,
+                )
+            elif current is not None and current.state == "CANCEL_REQUESTED":
+                # Cancellation was already requested; finish it on the legal
+                # CANCEL_REQUESTED -> CANCELLED hop and settle the task.
+                self._finish_cancel_locked(
+                    task,
+                    current,
+                    transaction_id=transaction_id,
+                    request_id=request_id,
+                    now=now,
+                )
+                raise V5WorkKernelError("v5.work.cancel_pending")
+            elif task.state == "LEASED":
+                # Attempt already terminal (defensive): the lease is dead, so
+                # step the task back to WAITING_RETRY before re-leasing —
+                # the V4 machine has no LEASED -> LEASED hop.
+                self._schedule_retry_locked(
+                    task,
+                    failed_attempt_id=task.current_attempt_id,
+                    reason="lease_expired",
+                    transaction_id=transaction_id,
+                    request_id=request_id,
+                    now=now,
+                )
 
         if task.attempt_count >= task.max_attempts:
             self._exhaust_locked(
@@ -631,6 +678,38 @@ class WorkKernelService:
             raise V5WorkKernelError("v5.work.capability_consumed")
         capability.consumed_at = now
 
+        # V4 machine: CREATED --attempt.starting--> STARTING
+        # --attempt.started--> RUNNING.  Both hops happen in this one unit of
+        # work; neither event may be skipped.
+        attempt.state = "STARTING"
+        starting_receipt_id = new_authority_receipt_id()
+        self._refresh_attempt_head(attempt, starting_receipt_id)
+        self.session.flush()
+        self._write_fact(
+            workspace_id=workspace_id,
+            subject_kind="WORK_ATTEMPT",
+            subject_id=attempt.attempt_id,
+            subject_revision=attempt.revision,
+            subject_digest=attempt.record_digest,
+            aggregate_type="attempt",
+            event_type="attempt.starting",
+            payload={
+                "exact_attempt_binding": _binding(
+                    "WORK_ATTEMPT",
+                    attempt.attempt_id,
+                    attempt.revision,
+                    attempt.record_digest,
+                ),
+                "capability_id": capability.capability_id,
+                "runtime_adapter": runtime_adapter,
+            },
+            command="attempts.start",
+            transaction_id=transaction_id,
+            request_id=request_id,
+            now=now,
+            authority_receipt_id=starting_receipt_id,
+        )
+
         attempt.state = "RUNNING"
         attempt.started_at = now
         receipt_id = new_authority_receipt_id()
@@ -824,7 +903,7 @@ class WorkKernelService:
         task = self._locked_task(workspace_id, task_id)
         attempt = self._locked_attempt(workspace_id, attempt_id)
         self._require_live_lease(task, attempt, fencing_token, now)
-        if attempt.state not in ATTEMPT_ACTIVE:
+        if attempt.state not in ATTEMPT_FAILABLE:
             raise V5WorkKernelError("v5.work.attempt_state_invalid")
 
         attempt.state = "FAILED"
@@ -900,6 +979,184 @@ class WorkKernelService:
             )
         return attempt
 
+    def _cancel_attempt_locked(
+        self,
+        task: WorkTask,
+        attempt: WorkAttempt,
+        *,
+        reason: str,
+        transaction_id: str,
+        request_id: str,
+        now: datetime,
+    ) -> None:
+        """CREATED/STARTING/RUNNING -> CANCEL_REQUESTED -> CANCELLED, two
+        legal hops with both events, in one unit of work."""
+        attempt.state = "CANCEL_REQUESTED"
+        receipt_id = new_authority_receipt_id()
+        self._refresh_attempt_head(attempt, receipt_id)
+        self.session.flush()
+        self._write_fact(
+            workspace_id=task.workspace_id,
+            subject_kind="WORK_ATTEMPT",
+            subject_id=attempt.attempt_id,
+            subject_revision=attempt.revision,
+            subject_digest=attempt.record_digest,
+            aggregate_type="attempt",
+            event_type="attempt.cancel_requested",
+            payload={
+                "exact_attempt_binding": _binding(
+                    "WORK_ATTEMPT",
+                    attempt.attempt_id,
+                    attempt.revision,
+                    attempt.record_digest,
+                ),
+                "reason": reason,
+            },
+            command="attempts.cancel",
+            transaction_id=transaction_id,
+            request_id=request_id,
+            now=now,
+            authority_receipt_id=receipt_id,
+        )
+        self._finish_cancel_attempt_row(attempt, now)
+        cancelled_receipt_id = new_authority_receipt_id()
+        self._refresh_attempt_head(attempt, cancelled_receipt_id)
+        self.session.flush()
+        self._write_fact(
+            workspace_id=task.workspace_id,
+            subject_kind="WORK_ATTEMPT",
+            subject_id=attempt.attempt_id,
+            subject_revision=attempt.revision,
+            subject_digest=attempt.record_digest,
+            aggregate_type="attempt",
+            event_type="attempt.cancelled",
+            payload={
+                "exact_attempt_binding": _binding(
+                    "WORK_ATTEMPT",
+                    attempt.attempt_id,
+                    attempt.revision,
+                    attempt.record_digest,
+                ),
+                "cancellation_receipt_digest": attempt.record_digest,
+            },
+            command="attempts.cancel",
+            transaction_id=transaction_id,
+            request_id=request_id,
+            now=now,
+            authority_receipt_id=cancelled_receipt_id,
+        )
+
+    @staticmethod
+    def _finish_cancel_attempt_row(attempt: WorkAttempt, now: datetime) -> None:
+        attempt.state = "CANCELLED"
+        attempt.ended_at = now
+
+    def _finish_cancel_locked(
+        self,
+        task: WorkTask,
+        attempt: WorkAttempt,
+        *,
+        transaction_id: str,
+        request_id: str,
+        now: datetime,
+    ) -> None:
+        """Finish an in-flight cancellation: attempt CANCEL_REQUESTED ->
+        CANCELLED, then task CANCEL_REQUESTED -> CANCELLED."""
+        self._finish_cancel_attempt_row(attempt, now)
+        attempt_receipt_id = new_authority_receipt_id()
+        self._refresh_attempt_head(attempt, attempt_receipt_id)
+        self.session.flush()
+        self._write_fact(
+            workspace_id=task.workspace_id,
+            subject_kind="WORK_ATTEMPT",
+            subject_id=attempt.attempt_id,
+            subject_revision=attempt.revision,
+            subject_digest=attempt.record_digest,
+            aggregate_type="attempt",
+            event_type="attempt.cancelled",
+            payload={
+                "exact_attempt_binding": _binding(
+                    "WORK_ATTEMPT",
+                    attempt.attempt_id,
+                    attempt.revision,
+                    attempt.record_digest,
+                ),
+                "cancellation_receipt_digest": attempt.record_digest,
+            },
+            command="attempts.cancel",
+            transaction_id=transaction_id,
+            request_id=request_id,
+            now=now,
+            authority_receipt_id=attempt_receipt_id,
+        )
+        task.state = "CANCELLED"
+        task.terminal_reason = "cancelled"
+        task.lease_owner = None
+        task.lease_expires_at = None
+        task_receipt_id = new_authority_receipt_id()
+        self._refresh_task_head(task, task_receipt_id)
+        self.session.flush()
+        self._write_fact(
+            workspace_id=task.workspace_id,
+            subject_kind="WORK_TASK",
+            subject_id=task.task_id,
+            subject_revision=task.revision,
+            subject_digest=task.record_digest,
+            aggregate_type="worker_task",
+            event_type="work.cancelled",
+            payload={
+                "exact_work_task_binding": _binding(
+                    "WORK_TASK", task.task_id, task.revision, task.record_digest
+                ),
+                "terminal_attempt_id": attempt.attempt_id,
+                "cancellation_receipt_digest": attempt.record_digest,
+            },
+            command="attempts.cancel",
+            transaction_id=transaction_id,
+            request_id=request_id,
+            now=now,
+            authority_receipt_id=task_receipt_id,
+        )
+
+    def _schedule_retry_locked(
+        self,
+        task: WorkTask,
+        *,
+        failed_attempt_id: str | None,
+        reason: str,
+        transaction_id: str,
+        request_id: str,
+        now: datetime,
+    ) -> None:
+        """LEASED -> WAITING_RETRY with the work.retry_scheduled event."""
+        task.state = "WAITING_RETRY"
+        task.lease_owner = None
+        task.lease_expires_at = None
+        receipt_id = new_authority_receipt_id()
+        self._refresh_task_head(task, receipt_id)
+        self.session.flush()
+        self._write_fact(
+            workspace_id=task.workspace_id,
+            subject_kind="WORK_TASK",
+            subject_id=task.task_id,
+            subject_revision=task.revision,
+            subject_digest=task.record_digest,
+            aggregate_type="worker_task",
+            event_type="work.retry_scheduled",
+            payload={
+                "exact_work_task_binding": _binding(
+                    "WORK_TASK", task.task_id, task.revision, task.record_digest
+                ),
+                "failed_attempt_id": failed_attempt_id,
+                "reason": reason,
+            },
+            command="attempts.fail",
+            transaction_id=transaction_id,
+            request_id=request_id,
+            now=now,
+            authority_receipt_id=receipt_id,
+        )
+
     def _exhaust_locked(
         self,
         task: WorkTask,
@@ -965,6 +1222,11 @@ class WorkKernelService:
             raise V5WorkKernelError("v5.work.task_terminal")
         if task.state == "CANCEL_REQUESTED":
             return task
+        # V4 worker_task machine: cancel_requested only from LEASED or
+        # WAITING_RETRY.  A QUEUED task cannot be cancelled (it has nothing
+        # in flight); BLOCKED_UNKNOWN must be reconciled first.
+        if task.state not in ("LEASED", "WAITING_RETRY"):
+            raise V5WorkKernelError("v5.work.cancel_not_cancellable")
         task.state = "CANCEL_REQUESTED"
         receipt_id = new_authority_receipt_id()
         self._refresh_task_head(task, receipt_id)
@@ -1006,62 +1268,15 @@ class WorkKernelService:
         transaction_id = transaction_id or new_transaction_id()
         task = self._locked_task(workspace_id, task_id)
         attempt = self._locked_attempt(workspace_id, attempt_id)
-        if attempt.state in ATTEMPT_TERMINAL:
+        if attempt.state not in ATTEMPT_CANCELLABLE:
             raise V5WorkKernelError("v5.work.attempt_state_invalid")
-        attempt.state = "CANCEL_REQUESTED"
-        attempt_receipt_id = new_authority_receipt_id()
-        self._refresh_attempt_head(attempt, attempt_receipt_id)
-        self.session.flush()
-        self._write_fact(
-            workspace_id=workspace_id,
-            subject_kind="WORK_ATTEMPT",
-            subject_id=attempt.attempt_id,
-            subject_revision=attempt.revision,
-            subject_digest=attempt.record_digest,
-            aggregate_type="attempt",
-            event_type="attempt.cancel_requested",
-            payload={
-                "exact_attempt_binding": _binding(
-                    "WORK_ATTEMPT",
-                    attempt.attempt_id,
-                    attempt.revision,
-                    attempt.record_digest,
-                ),
-                "reason": reason,
-            },
-            command="attempts.cancel",
+        self._cancel_attempt_locked(
+            task,
+            attempt,
+            reason=reason,
             transaction_id=transaction_id,
             request_id=request_id,
             now=now,
-            authority_receipt_id=attempt_receipt_id,
-        )
-        attempt.state = "CANCELLED"
-        attempt.ended_at = now
-        cancelled_receipt_id = new_authority_receipt_id()
-        self._refresh_attempt_head(attempt, cancelled_receipt_id)
-        self.session.flush()
-        self._write_fact(
-            workspace_id=workspace_id,
-            subject_kind="WORK_ATTEMPT",
-            subject_id=attempt.attempt_id,
-            subject_revision=attempt.revision,
-            subject_digest=attempt.record_digest,
-            aggregate_type="attempt",
-            event_type="attempt.cancelled",
-            payload={
-                "exact_attempt_binding": _binding(
-                    "WORK_ATTEMPT",
-                    attempt.attempt_id,
-                    attempt.revision,
-                    attempt.record_digest,
-                ),
-                "cancellation_receipt_digest": attempt.record_digest,
-            },
-            command="attempts.cancel",
-            transaction_id=transaction_id,
-            request_id=request_id,
-            now=now,
-            authority_receipt_id=cancelled_receipt_id,
         )
         if task.state == "CANCEL_REQUESTED":
             task.state = "CANCELLED"
@@ -1181,7 +1396,7 @@ class WorkKernelService:
         transaction_id = transaction_id or new_transaction_id()
         task = self._locked_task(workspace_id, task_id)
         attempt = self._locked_attempt(workspace_id, attempt_id)
-        if attempt.state not in ATTEMPT_ACTIVE:
+        if attempt.state not in ATTEMPT_UNKNOWABLE:
             raise V5WorkKernelError("v5.work.attempt_state_invalid")
         self._mark_attempt_unknown_locked(
             task,
@@ -1262,13 +1477,10 @@ class WorkKernelService:
                 "reconciliation_receipt_digest": reconciliation_receipt_digest,
                 "failure_code": "reconciled_failed",
             }
-            if task.attempt_count < task.max_attempts:
-                task.state = "WAITING_RETRY"
-                task_event_type = "work.unknown_reconciled_retry"
-            else:
-                task.state = "EXHAUSTED"
-                task.terminal_reason = "max_attempts"
-                task_event_type = "work.unknown_reconciled_retry"
+            # V4 machine: unknown_reconciled_retry only ever lands on
+            # WAITING_RETRY.  Exhaustion is a separate hop with its own event.
+            task.state = "WAITING_RETRY"
+            task_event_type = "work.unknown_reconciled_retry"
             self._refresh_task_head(task, task_receipt_id)
             task_payload = {
                 "exact_work_task_binding": _binding(
@@ -1278,11 +1490,14 @@ class WorkKernelService:
                 "reconciliation_receipt_digest": reconciliation_receipt_digest,
             }
         task.lease_owner = None
-        # fencing tokens are monotonic for the task lifetime: the last
-        # issued token is retained so a later claim mints a strictly
-    # greater one, and stale writers stay rejected.
+        # fencing tokens are monotonic for the task lifetime: the last issued
+        # token is retained so a later claim mints a strictly greater one and
+        # stale writers stay rejected.
         task.lease_expires_at = None
         self.session.flush()
+        reconcile_exhausts = (
+            outcome == "failed" and task.attempt_count >= task.max_attempts
+        )
         self._write_fact(
             workspace_id=workspace_id,
             subject_kind="WORK_ATTEMPT",
@@ -1313,6 +1528,16 @@ class WorkKernelService:
             now=now,
             authority_receipt_id=task_receipt_id,
         )
+        if reconcile_exhausts:
+            # Second legal hop: WAITING_RETRY --work.exhausted--> EXHAUSTED.
+            self._exhaust_locked(
+                task,
+                reason="max_attempts",
+                terminal_attempt_id=attempt.attempt_id,
+                transaction_id=transaction_id,
+                request_id=request_id,
+                now=now,
+            )
         return attempt
 
     # ------------------------------------------------------------------
