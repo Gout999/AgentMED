@@ -332,7 +332,7 @@ def test_r2_manifest_activation_atomic_graph_and_concurrency_postgres() -> None:
         _reset_pg_database_for_migrations(engine, TEST_DATABASE_URL)
         command.upgrade(_alembic_config(control_plane_root), "head")
         with engine.connect() as connection:
-            assert connection.execute(sa.text("SELECT version_num FROM alembic_version")).scalar_one() == "012"
+            assert connection.execute(sa.text("SELECT version_num FROM alembic_version")).scalar_one() == "013"
 
         pepper = secrets.token_urlsafe(48)
         with Session(engine) as session:
