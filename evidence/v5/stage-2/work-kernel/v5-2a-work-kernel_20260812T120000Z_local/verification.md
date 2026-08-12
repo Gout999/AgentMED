@@ -40,12 +40,15 @@ Master §6 V5-2A (Durable Work Kernel), sub-packages 2A-0 through 2A-5:
 - s1 compiler determinism: PASS (zero diff)
 - s2 compiler tests: 18
 - s3 conformance: 559 (557 + 2 new V5-2A guards)
-- s4 control-plane unit + C1–C5 wave checkers: 1021 passed, 13 PG-gated skips
+- s4 control-plane unit + C1–C5 wave checkers: 1035 passed, 13 PG-gated skips
 - s5 import-graph: PASS
 - s6 CLI: 130
 - s7 Console: 20 + build
 - s8 disposable PostgreSQL: migration matrix 13 passed; integration matrix
-  13 passed (lifecycle 3, R2/R3/R4 5, work-kernel closure 5)
+  14 passed (lifecycle 3, catalog CLI loopback 1 [G20-repaired], R2/R3/R4 5,
+  work-kernel closure 5)
+
+Final `verify_convergence.sh`: **8/8 ALL SECTIONS PASS**.
 
 ## Facet report (honest)
 
@@ -82,11 +85,11 @@ closure 5/5; integration matrix 13/13; conformance 559; import-graph PASS.
 ## Known exclusion (pre-existing, not from this stage)
 
 `tests/integration/test_v5_application_catalog_postgres.py` (s8 member):
-**NOT_RUN** — it deadlocks on this machine via a leaked connection
-(idle-in-transaction on `alembic_version`) against the fixture's
-`DROP SCHEMA public CASCADE`.  Reproduced and root-caused independently of
-V5-2A; tracked as `wiki/build-guide.md` G20.  It exercises the R2 catalog CLI
-loopback, not the Work Kernel, so the 2A closure claims are unaffected.
+**REPAIRED during this stage (G20, commit `f1598bd`)** — it deadlocked via a
+leaked connection (idle-in-transaction on `alembic_version`) against the
+fixture's `DROP SCHEMA public CASCADE`, and its CLI install step could not
+find a build backend on PEP 668 / uv-managed base interpreters.  Both fixed;
+the e2e now passes in ~9s and the full gate runs **8/8** on this tree.
 
 ## Environment
 

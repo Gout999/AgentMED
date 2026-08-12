@@ -47,7 +47,8 @@
     "cli": "130 passed",
     "console": "20 passed + production build PASS",
     "postgres_migration_matrix": "13 passed (fresh upgrade to 014, populated-head preservation, downgrade guard, empty downgrade round-trip)",
-    "postgres_integration_matrix": "13 passed (lifecycle 3, r2/r3/r4 5, work-kernel closure 5)",
+    "postgres_integration_matrix": "14 passed (lifecycle 3, catalog CLI loopback 1 — repaired under G20, r2/r3/r4 5, work-kernel closure 5)",
+    "verify_convergence_full_gate": "8/8 ALL SECTIONS PASS (first full pass on this tree, including s8 on disposable PostgreSQL)",
     "postgres_closure_focus": {
       "concurrent_double_claim_one_task": "exactly one lease/attempt/capability; loser gets v5.work.lease_held",
       "concurrent_claims_distinct_tasks": "4/4 succeed",
@@ -70,9 +71,9 @@
   "known_exclusions": [
     {
       "item": "tests/integration/test_v5_application_catalog_postgres.py (s8 member)",
-      "status": "NOT_RUN",
-      "reason": "pre-existing test defect, not introduced by V5-2A: the installed-CLI loopback e2e leaks a connection holding an alembic_version read in an idle-in-transaction session, which deadlocks against the fixture's DROP SCHEMA public CASCADE.  Reproduced and root-caused independently of this stage; registered as wiki/build-guide.md G20.",
-      "impact": "none on the 2A closure claims: the file exercises the R2 catalog CLI loopback, not the Work Kernel"
+      "status": "PASS (repaired under G20 during this stage)",
+      "reason": "was a pre-existing deadlock (leaked connection vs DROP SCHEMA) plus a CLI build-backend gap on PEP 668 base interpreters; both fixed in f1598bd.  Full gate now runs 8/8.",
+      "impact": "none remaining"
     }
   ],
   "raw_artifacts": [
