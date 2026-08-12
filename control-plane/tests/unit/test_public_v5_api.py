@@ -390,24 +390,22 @@ def test_list_applications_v2_is_authenticated_project_scoped_graph(client) -> N
     assert foreign.json()["items"] == []
 
 
-def test_r2_does_not_register_system_version_read_or_diff_routes(client) -> None:
-    version = client.get(
-        "/api/v2/system-versions/vset_01J0000000000001",
-        headers=_headers(),
-    )
+def test_r3_registers_system_version_read_and_diff_routes(client) -> None:
+    openapi_paths = client.get("/openapi.json").json()["paths"]
+    assert "/api/v2/system-versions" in openapi_paths
+    assert "/api/v2/system-versions/{system_version_set_id}" in openapi_paths
+    assert "/api/v2/system-versions:diff" in openapi_paths
+    # registered routes require authentication before any lookup
+    version = client.get("/api/v2/system-versions/vset_01J0000000000001")
+    assert version.status_code == 401
     diff = client.get(
         "/api/v2/system-versions:diff",
         params={
-            "base_system_version_set_id": "vset_01J0000000000001",
-            "target_system_version_set_id": "vset_01J0000000000002",
+            "source_version_set_id": "vset_01J0000000000001",
+            "target_version_set_id": "vset_01J0000000000002",
         },
-        headers=_headers(),
     )
-
-    assert version.status_code == 404
-    assert diff.status_code == 404
-    openapi_paths = client.get("/openapi.json").json()["paths"]
-    assert not any(path.startswith("/api/v2/system-versions") for path in openapi_paths)
+    assert diff.status_code == 401
 
 
 def test_r2_does_not_register_r4_case_or_acceptance_routes(client) -> None:
@@ -465,6 +463,12 @@ def test_r2_openapi_exactly_matches_activated_intent_operations(client) -> None:
             "/api/v2/dependency-edges/{dependency_edge_id}",
         ): "getDependencyEdge",
         ("POST", "/api/v2/system-manifests:import"): "importSystemManifest",
+        ("POST", "/api/v2/system-versions"): "recordSystemVersion",
+        (
+            "GET",
+            "/api/v2/system-versions/{system_version_set_id}",
+        ): "getSystemVersion",
+        ("GET", "/api/v2/system-versions:diff"): "diffSystemVersions",
     }
     openapi_paths = client.get("/openapi.json").json()["paths"]
     actual = {
@@ -793,14 +797,14 @@ def _registered_route_keys(router) -> set[tuple[str, str, str]]:
 def test_v5_route_registry_matches_operation_manifest_exactly() -> None:
     manifest = load_v5_operation_manifest()
     http_entries = manifest.http_entries
-    assert len(http_entries) == 11
+    assert len(http_entries) == 14
     check_registered_v5_routes(public_v5.router)  # must not raise
     expected = {
         (entry.method.upper(), entry.path, entry.operation_id)
         for entry in http_entries
     }
     registered = _registered_route_keys(public_v5.router)
-    assert len(registered) == 11
+    assert len(registered) == 14
     assert registered == expected
 
 
@@ -810,7 +814,7 @@ def test_v5_route_registry_matches_operation_manifest_exactly() -> None:
         (
             "drop",
             [],
-            [("POST", "/api/v2/system-manifests:import", "importSystemManifest")],
+            [("GET", "/api/v2/system-versions:diff", "diffSystemVersions")],
         ),
         (
             "add",

@@ -38,6 +38,9 @@ V5PublicIntentName = Literal[
     "dependency-edges.record",
     "dependency-edges.get",
     "system-manifests.import",
+    "system-versions.record",
+    "system-versions.get",
+    "system-versions.diff",
 ]
 
 

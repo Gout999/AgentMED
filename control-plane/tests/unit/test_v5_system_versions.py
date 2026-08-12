@@ -37,6 +37,9 @@ from app.public_api.v5_models import SystemManifestImportRequest
 from app.services.application_catalog import ApplicationCatalogService
 from app.services.system_versions import SystemVersionsError, SystemVersionsService
 from app.services.v4_audit import V4AuditService
+from app.services.v4_event_store import V4EventStore
+from app.services.v5_authority import V5AuthorityService
+from app.utils.v4_integrity import record_digest
 from app.utils.v5_integrity import v5_record_digest
 
 from test_v5_application_catalog import (
@@ -252,6 +255,88 @@ def _import(session, manifest, *, key="import-key-0001", principal=None, request
 
 def _count(session, model) -> int:
     return int(session.scalar(select(sa.func.count()).select_from(model)) or 0)
+
+
+def _seed_authority_chain(
+    session,
+    *,
+    subject_kind: str,
+    subject_id: str,
+    subject_revision: int,
+    subject_digest: str,
+    command: str,
+    event_type: str,
+    aggregate_type: str,
+    event_payload: dict,
+    transaction_id: str,
+    resource: str,
+    authority_receipt_id: str,
+) -> None:
+    """Persist a complete major-2 event/outbox/controller-audit/receipt chain.
+
+    Mirrors the version-controller write path used by _write_construct so that
+    seeded records pass the recursive verification in get/diff.
+    """
+    registration = session.scalar(
+        select(ControllerRegistration).where(
+            ControllerRegistration.workspace_id == WORKSPACE,
+            ControllerRegistration.controller_registration_id
+            == VERSION_CONTROLLER_REGISTRATION,
+        )
+    )
+    assert registration is not None, "seed the version controller first"
+    session.flush()
+    event = V4EventStore(session)._append_event(
+        workspace_id=WORKSPACE,
+        aggregate_type=aggregate_type,
+        aggregate_id=subject_id,
+        event_type=event_type,
+        payload=event_payload,
+        causation_id=transaction_id,
+        correlation_id=transaction_id,
+        actor_principal=registration.controller_principal,
+        transaction_id=transaction_id,
+        occurred_at=NOW,
+        authority_receipt_id=authority_receipt_id,
+        allow_manifest_activation=True,
+    )
+    audit = V4AuditService(session, clock=lambda: NOW).record(
+        workspace_id=WORKSPACE,
+        actor_principal=registration.controller_principal,
+        action=f"controller.{event_type}",
+        target=subject_id,
+        params={"command": command},
+        transaction_id=transaction_id,
+        trace_id=transaction_id,
+        evidence_refs={
+            "subject_kind": subject_kind,
+            "subject_id": subject_id,
+            "subject_revision": subject_revision,
+            "subject_digest": subject_digest,
+            "event_id": event.event_id,
+        },
+        occurred_at=NOW,
+    )
+    authority = V5AuthorityService(session)
+    resolved = authority.resolve_controller(
+        workspace_id=WORKSPACE,
+        subject_kind=subject_kind,
+        command=command,
+        event_type=event_type,
+        recorded_at=NOW,
+    )
+    authority.record_receipt(
+        resolved=resolved,
+        authority_receipt_id=authority_receipt_id,
+        workspace_id=WORKSPACE,
+        subject_id=subject_id,
+        subject_revision=subject_revision,
+        subject_digest=subject_digest,
+        event_id=event.event_id,
+        transaction_id=transaction_id,
+        audit_ref=audit.audit_ref,
+        recorded_at=NOW,
+    )
 
 
 def _mk_envelope(workspace_id: str, subject_id: str) -> dict:
@@ -1173,7 +1258,30 @@ def _seed_version_set_row(
     topology_binding: dict,
     version_set_digest: str = _DIGEST_A,
 ) -> SystemVersionSet:
-    envelope = _mk_envelope(WORKSPACE, version_set_id)
+    receipt_id = new_authority_receipt_id()
+    payload = {
+        "system_version_set_id": version_set_id,
+        "workspace_id": WORKSPACE,
+        "application_id": "app_01J0000000000001",
+        "declared_environment_id": "env_01J0000000000001",
+        "exact_component_revision_bindings": bindings,
+        "exact_topology_revision_binding": topology_binding,
+        "identity_assurance_summary": {"component_assurances": []},
+        "provenance_receipt_ids": [],
+        "version_set_digest": version_set_digest,
+        "record_envelope": {
+            "schema_version": "2.0",
+            "workspace_id": WORKSPACE,
+            "revision": 1,
+            "recorded_by_principal": OWNER,
+            "recorded_at": "2026-08-11T09:00:00Z",
+            "immutable": True,
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "record_digest": "",
+            "authority_receipt_id": receipt_id,
+        },
+    }
+    payload["record_envelope"]["record_digest"] = v5_record_digest(payload)
     row = SystemVersionSet(
         system_version_set_id=version_set_id,
         workspace_id=WORKSPACE,
@@ -1185,13 +1293,40 @@ def _seed_version_set_row(
         provenance_receipt_ids=[],
         version_set_digest=version_set_digest,
         manifest_digest=None,
-        envelope_payload=envelope,
-        record_digest=envelope["record_envelope"]["record_digest"],
-        authority_receipt_id=envelope["record_envelope"]["authority_receipt_id"],
+        envelope_payload=payload,
+        record_digest=payload["record_envelope"]["record_digest"],
+        authority_receipt_id=receipt_id,
         recorded_by_principal=OWNER,
         created_at=NOW,
     )
     session.add(row)
+    session.flush()
+    _seed_authority_chain(
+        session,
+        subject_kind="SYSTEM_VERSION_SET",
+        subject_id=version_set_id,
+        subject_revision=1,
+        subject_digest=payload["record_envelope"]["record_digest"],
+        command="system-versions.record",
+        event_type="system_version_set.recorded",
+        aggregate_type="system_version_set",
+        event_payload={
+            "exact_system_version_set_binding": {
+                "kind": "SYSTEM_VERSION_SET",
+                "id": version_set_id,
+                "revision": 1,
+                "digest": payload["record_envelope"]["record_digest"],
+            },
+            "application_id": "app_01J0000000000001",
+            "declared_environment_id": "env_01J0000000000001",
+            "exact_component_revision_bindings": bindings,
+            "exact_topology_revision_binding": topology_binding,
+            "version_set_digest": version_set_digest,
+        },
+        transaction_id=f"txn_seed_vset_{version_set_id[-12:]}",
+        resource="system_version_set",
+        authority_receipt_id=receipt_id,
+    )
     return row
 
 
@@ -1205,7 +1340,36 @@ def _seed_component_revision(
     permission_manifest_digest: str | None = None,
     identity_assurance: str = "IMMUTABLE_DIGEST",
 ) -> None:
-    envelope = _mk_envelope(WORKSPACE, revision_id)
+    receipt_id = new_authority_receipt_id()
+    payload = {
+        "component_revision_id": revision_id,
+        "workspace_id": WORKSPACE,
+        "application_id": "app_01J0000000000001",
+        "component_id": component_id,
+        "component_kind": component_kind,
+        "identity_locator": {"type": "git", "path": "."},
+        "identity_assurance": identity_assurance,
+        "configuration_digest": configuration_digest,
+        "exact_system_component_binding": {
+            "kind": "SYSTEM_COMPONENT",
+            "id": component_id,
+            "revision": 2,
+            "digest": "sha256:" + "0" * 64,
+        },
+        "exact_provenance_receipt_bindings": [],
+        "record_envelope": {
+            "schema_version": "2.0",
+            "workspace_id": WORKSPACE,
+            "revision": 1,
+            "recorded_by_principal": OWNER,
+            "recorded_at": "2026-08-11T09:00:00Z",
+            "immutable": True,
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "record_digest": "",
+            "authority_receipt_id": receipt_id,
+        },
+    }
+    payload["record_envelope"]["record_digest"] = v5_record_digest(payload)
     session.add(
         ComponentRevision(
             component_revision_id=revision_id,
@@ -1218,12 +1382,43 @@ def _seed_component_revision(
             configuration_digest=configuration_digest,
             exact_provenance_receipt_bindings=[],
             permission_manifest_digest=permission_manifest_digest,
-            envelope_payload=envelope,
-            record_digest=envelope["record_envelope"]["record_digest"],
-            authority_receipt_id=envelope["record_envelope"]["authority_receipt_id"],
+            envelope_payload=payload,
+            record_digest=payload["record_envelope"]["record_digest"],
+            authority_receipt_id=receipt_id,
             recorded_by_principal=OWNER,
             created_at=NOW,
         )
+    )
+    session.flush()
+    _seed_authority_chain(
+        session,
+        subject_kind="COMPONENT_REVISION",
+        subject_id=revision_id,
+        subject_revision=1,
+        subject_digest=payload["record_envelope"]["record_digest"],
+        command="component-revisions.record",
+        event_type="component_revision.recorded",
+        aggregate_type="component_revision",
+        event_payload={
+            "exact_component_revision_binding": {
+                "kind": "COMPONENT_REVISION",
+                "id": revision_id,
+                "revision": 1,
+                "digest": payload["record_envelope"]["record_digest"],
+            },
+            "exact_system_component_binding": {
+                "kind": "SYSTEM_COMPONENT",
+                "id": component_id,
+                "revision": 2,
+                "digest": "sha256:" + "0" * 64,
+            },
+            "component_kind": component_kind,
+            "identity_assurance": identity_assurance,
+            "configuration_digest": configuration_digest,
+        },
+        transaction_id=f"txn_seed_crev_{revision_id[-12:]}",
+        resource="component_revision",
+        authority_receipt_id=receipt_id,
     )
 
 
@@ -1250,6 +1445,78 @@ def _seed_component(session, *, component_id: str, kind: str, logical_name: str)
             created_at=NOW,
             updated_at=NOW,
         )
+    )
+
+
+def _seed_topology_revision(
+    session,
+    *,
+    topology_id: str,
+    edge_bindings: list[dict],
+    digest: str,
+) -> None:
+    receipt_id = new_authority_receipt_id()
+    payload = {
+        "topology_revision_id": topology_id,
+        "workspace_id": WORKSPACE,
+        "application_id": "app_01J0000000000001",
+        "component_ids": ["cmp_01J0000000000A01"],
+        "exact_edge_revision_bindings": edge_bindings,
+        "topology_digest": digest,
+        "provenance_receipt_ids": [],
+        "record_envelope": {
+            "schema_version": "2.0",
+            "workspace_id": WORKSPACE,
+            "revision": 1,
+            "recorded_by_principal": OWNER,
+            "recorded_at": "2026-08-11T09:00:00Z",
+            "immutable": True,
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "record_digest": "",
+            "authority_receipt_id": receipt_id,
+        },
+    }
+    payload["record_envelope"]["record_digest"] = v5_record_digest(payload)
+    session.add(
+        TopologyRevision(
+            topology_revision_id=topology_id,
+            workspace_id=WORKSPACE,
+            application_id="app_01J0000000000001",
+            component_ids=["cmp_01J0000000000A01"],
+            exact_edge_revision_bindings=edge_bindings,
+            topology_digest=digest,
+            provenance_receipt_ids=[],
+            envelope_payload=payload,
+            record_digest=payload["record_envelope"]["record_digest"],
+            authority_receipt_id=receipt_id,
+            recorded_by_principal=OWNER,
+            created_at=NOW,
+        )
+    )
+    session.flush()
+    _seed_authority_chain(
+        session,
+        subject_kind="TOPOLOGY_REVISION",
+        subject_id=topology_id,
+        subject_revision=1,
+        subject_digest=payload["record_envelope"]["record_digest"],
+        command="topology-revisions.record",
+        event_type="topology_revision.recorded",
+        aggregate_type="topology_revision",
+        event_payload={
+            "exact_topology_revision_binding": {
+                "kind": "TOPOLOGY_REVISION",
+                "id": topology_id,
+                "revision": 1,
+                "digest": payload["record_envelope"]["record_digest"],
+            },
+            "application_id": "app_01J0000000000001",
+            "exact_edge_revision_bindings": edge_bindings,
+            "topology_digest": digest,
+        },
+        transaction_id=f"txn_seed_topo_{topology_id[-12:]}",
+        resource="topology_revision",
+        authority_receipt_id=receipt_id,
     )
 
 
@@ -1317,26 +1584,52 @@ def _seed_diff_pair(session) -> tuple[str, str]:
         component_kind="POLICY", configuration_digest=_DIGEST_C,
         permission_manifest_digest="sha256:" + "2" * 64,
     )
+    _seed_topology_revision(
+        session,
+        topology_id="tpr_01J0000000000C01",
+        edge_bindings=[
+            {
+                "kind": "DEPENDENCY_EDGE",
+                "id": "de_01J0000000000D01",
+                "revision": 1,
+                "digest": _DIGEST_A,
+            }
+        ],
+        digest=_DIGEST_A,
+    )
+    _seed_topology_revision(
+        session,
+        topology_id="tpr_01J0000000000C02",
+        edge_bindings=[
+            {
+                "kind": "DEPENDENCY_EDGE",
+                "id": "de_01J0000000000D02",
+                "revision": 1,
+                "digest": _DIGEST_B,
+            }
+        ],
+        digest=_DIGEST_B,
+    )
     base = _seed_version_set_row(
         session,
         version_set_id="vset_01J0000000000C01",
         bindings=[
-            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B01", "revision": None, "digest": _DIGEST_A},
-            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B02", "revision": None, "digest": _DIGEST_B},
-            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B03", "revision": None, "digest": _DIGEST_C},
+            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B01", "revision": 1, "digest": _DIGEST_A},
+            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B02", "revision": 1, "digest": _DIGEST_B},
+            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B03", "revision": 1, "digest": _DIGEST_C},
         ],
-        topology_binding={"kind": "TOPOLOGY_REVISION", "id": "tpr_01J0000000000C01", "revision": None, "digest": _DIGEST_A},
+        topology_binding={"kind": "TOPOLOGY_REVISION", "id": "tpr_01J0000000000C01", "revision": 1, "digest": _DIGEST_A},
     )
     target = _seed_version_set_row(
         session,
         version_set_id="vset_01J0000000000C02",
         bindings=[
-            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B11", "revision": None, "digest": _DIGEST_D},
-            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B12", "revision": None, "digest": _DIGEST_B},
-            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B13", "revision": None, "digest": _DIGEST_C},
-            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B14", "revision": None, "digest": _DIGEST_C},
+            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B11", "revision": 1, "digest": _DIGEST_D},
+            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B12", "revision": 1, "digest": _DIGEST_B},
+            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B13", "revision": 1, "digest": _DIGEST_C},
+            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B14", "revision": 1, "digest": _DIGEST_C},
         ],
-        topology_binding={"kind": "TOPOLOGY_REVISION", "id": "tpr_01J0000000000C02", "revision": None, "digest": _DIGEST_B},
+        topology_binding={"kind": "TOPOLOGY_REVISION", "id": "tpr_01J0000000000C02", "revision": 1, "digest": _DIGEST_B},
         version_set_digest=_DIGEST_B,
     )
     session.commit()
@@ -1353,24 +1646,26 @@ def test_diff_semantics_digest_substitution_permission_expansion(sqlite_session)
         request_id="req_01J000000000000A",
     )
     sqlite_session.commit()
-    assert {item.component_id for item in diff.removed} == set()
-    assert {item.component_id for item in diff.added} == {"cmp_01J0000000000A03"}
-    changed = {item.component_id: item for item in diff.changed}
-    assert "cmp_01J0000000000A01" in changed
-    assert changed["cmp_01J0000000000A01"].diff_kind == "DIGEST_CHANGED"
-    assert changed["cmp_01J0000000000A01"].base_digest == _DIGEST_A
-    assert changed["cmp_01J0000000000A01"].target_digest == _DIGEST_D
-    expansions = {
-        item.component_id: item for item in diff.policy_permission_expansions
+    # D2-shaped diff: removed/added are exact component revision bindings;
+    # changed carries from/to bindings per component; policy permission and
+    # digest changes both surface as binding changes.
+    assert diff.diff.removed == []
+    assert [b.id for b in diff.diff.added] == ["crv_01J0000000000B13"]
+    changed = {item.component_id: item for item in diff.diff.changed}
+    assert set(changed) == {
+        "cmp_01J0000000000A01",
+        "cmp_01J0000000000A02",
+        "cmp_01J0000000000A04",
     }
-    assert "cmp_01J0000000000A04" in expansions
-    assert expansions["cmp_01J0000000000A04"].diff_kind == "PERMISSION_EXPANSION"
-    assert (
-        expansions["cmp_01J0000000000A04"].base_digest == "sha256:" + "1" * 64
-    )
-    assert (
-        expansions["cmp_01J0000000000A04"].target_digest == "sha256:" + "2" * 64
-    )
+    assert changed["cmp_01J0000000000A01"].from_binding.id == "crv_01J0000000000B01"
+    assert changed["cmp_01J0000000000A01"].to_binding.id == "crv_01J0000000000B11"
+    assert changed["cmp_01J0000000000A04"].from_binding.id == "crv_01J0000000000B03"
+    assert changed["cmp_01J0000000000A04"].to_binding.id == "crv_01J0000000000B14"
+    # topology: base edge replaced by a new edge -> EDGE_REMOVED + EDGE_ADDED
+    kinds = {item.kind for item in diff.diff.topology_changes}
+    assert kinds == {"EDGE_REMOVED", "EDGE_ADDED"}
+    assert diff.diff.deterministic is True
+    assert diff.diff.assurance_delta.identity_assurance_changes == []
 
 
 def test_diff_same_label_different_digest_uses_component_identity(sqlite_session) -> None:
@@ -1384,10 +1679,14 @@ def test_diff_same_label_different_digest_uses_component_identity(sqlite_session
         request_id="req_01J000000000000B",
     )
     sqlite_session.commit()
-    changed_components = {item.component_id for item in diff.changed}
+    changed_components = {item.component_id for item in diff.diff.changed}
     assert "cmp_01J0000000000A01" in changed_components
-    assert not any(item.component_id == "cmp_01J0000000000A01" for item in diff.added)
-    assert not any(item.component_id == "cmp_01J0000000000A01" for item in diff.removed)
+    added_ids = {b.id for b in diff.diff.added}
+    removed_ids = {b.id for b in diff.diff.removed}
+    assert "crv_01J0000000000B01" not in added_ids
+    assert "crv_01J0000000000B01" not in removed_ids
+    assert "crv_01J0000000000B11" not in added_ids
+    assert "crv_01J0000000000B11" not in removed_ids
 
 
 def test_diff_requires_visibility_of_both_versions(sqlite_session) -> None:

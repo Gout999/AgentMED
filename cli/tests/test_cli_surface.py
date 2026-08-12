@@ -152,6 +152,9 @@ def test_capabilities_supports_explicit_v2_without_changing_v1_default() -> None
         "dependency-edges.record",
         "dependency-edges.get",
         "system-manifests.import",
+        "system-versions.record",
+        "system-versions.get",
+        "system-versions.diff",
     }
     modes = {
         item["name"]: item["execution_mode"]
@@ -606,7 +609,7 @@ def test_cli_bootstrap_nested_bindings_match_closed_server_shape() -> None:
             model.model_validate(invalid)
 
 
-def test_r2_system_manifest_help_hides_version_routes(capsys) -> None:
+def test_r3_system_manifest_help_has_only_import_and_validate(capsys) -> None:
     with pytest.raises(SystemExit) as exc_info:
         build_parser().parse_args(["system-manifest", "--help"])
 
@@ -615,6 +618,179 @@ def test_r2_system_manifest_help_hides_version_routes(capsys) -> None:
     assert "import" in help_text
     assert "validate" in help_text
     assert all(action not in help_text for action in ("record", "get", "diff"))
+
+
+def test_system_version_commands_in_help(capsys) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        build_parser().parse_args(["system-version", "--help"])
+
+    assert exc_info.value.code == 0
+    help_text = capsys.readouterr().out
+    assert all(action in help_text for action in ("record", "get", "diff"))
+
+
+def test_system_version_record_sends_canonical_body_and_idempotency() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            201,
+            headers={
+                "content-type": "application/json",
+                "x-caseloop-contract-version": "2.0",
+            },
+            json=success_for(request),
+        )
+
+    expected_body = {
+        "schema_version": "2.0",
+        "application_id": "app_01J0000000000001",
+        "environment_id": "env_01J0000000000001",
+        "exact_component_revision_bindings": [
+            {
+                "kind": "COMPONENT_REVISION",
+                "id": "crv_01J0000000000001",
+                "revision": 1,
+                "digest": "sha256:" + "b" * 64,
+            }
+        ],
+        "exact_topology_revision_binding": {
+            "kind": "TOPOLOGY_REVISION",
+            "id": "tpr_01J0000000000001",
+            "revision": 1,
+            "digest": "sha256:" + "c" * 64,
+        },
+        "exact_previous_system_version_set_binding_or_null": None,
+    }
+    stdout = io.StringIO()
+    exit_code = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "system-version",
+            "record",
+            "--application-id",
+            "app_01J0000000000001",
+            "--environment-id",
+            "env_01J0000000000001",
+            "--component-revisions",
+            json.dumps(expected_body["exact_component_revision_bindings"]),
+            "--topology-revision",
+            json.dumps(expected_body["exact_topology_revision_binding"]),
+            "--idempotency-key",
+            "system-version-record-key",
+        ],
+        env=_env(),
+        stdout=stdout,
+        stderr=io.StringIO(),
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert exit_code == ExitFamily.OK
+    assert len(requests) == 1
+    request = requests[0]
+    assert request.method == "POST"
+    assert request.url.path == "/api/v2/system-versions"
+    assert request.headers["x-caseloop-contract-version"] == "2.0"
+    assert request.headers["x-caseloop-idempotency-key"] == "system-version-record-key"
+    assert request.content == json.dumps(
+        expected_body, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    assert json.loads(stdout.getvalue())["system_version_set"][
+        "system_version_set_id"
+    ] == "vset_01J0000000000001"
+
+
+def test_system_version_get_path_parameter() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            headers={
+                "content-type": "application/json",
+                "x-caseloop-contract-version": "2.0",
+            },
+            json=success_for(request),
+        )
+
+    stdout = io.StringIO()
+    exit_code = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "system-version",
+            "get",
+            "--system-version-set-id",
+            "vset_01J0000000000001",
+        ],
+        env=_env(),
+        stdout=stdout,
+        stderr=io.StringIO(),
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert exit_code == ExitFamily.OK
+    assert len(requests) == 1
+    request = requests[0]
+    assert request.method == "GET"
+    assert request.url.path == "/api/v2/system-versions/vset_01J0000000000001"
+    assert request.url.query.decode() == ""
+    assert json.loads(stdout.getvalue())["system_version_set"][
+        "system_version_set_id"
+    ] == "vset_01J0000000000001"
+
+
+def test_system_version_diff_query_parameters() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            headers={
+                "content-type": "application/json",
+                "x-caseloop-contract-version": "2.0",
+            },
+            json=success_for(request),
+        )
+
+    stdout = io.StringIO()
+    exit_code = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "system-version",
+            "diff",
+            "--source-version-set-id",
+            "vset_01J0000000000001",
+            "--target-version-set-id",
+            "vset_01J0000000000002",
+        ],
+        env=_env(),
+        stdout=stdout,
+        stderr=io.StringIO(),
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert exit_code == ExitFamily.OK
+    assert len(requests) == 1
+    request = requests[0]
+    assert request.method == "GET"
+    assert request.url.path == "/api/v2/system-versions:diff"
+    assert dict(request.url.params) == {
+        "source_version_set_id": "vset_01J0000000000001",
+        "target_version_set_id": "vset_01J0000000000002",
+    }
+    payload = json.loads(stdout.getvalue())
+    assert payload["source_binding"]["id"] == "vset_01J0000000000001"
+    assert payload["target_binding"]["id"] == "vset_01J0000000000002"
+    assert payload["diff"]["deterministic"] is True
 
 
 def test_r2_manifest_validate_is_local_only_and_needs_no_http_or_credential(
@@ -701,8 +877,6 @@ def test_r2_init_is_hidden_but_local_validate_remains_available() -> None:
     [
         ("POST", "/api/v2/cases/case_01J0000000000001:bind-application"),
         ("GET", "/api/v2/cases/case_01J0000000000001/application-binding"),
-        ("GET", "/api/v2/system-versions/vset_01J0000000000001"),
-        ("GET", "/api/v2/system-versions:diff"),
     ],
 )
 def test_r2_client_rejects_unactivated_operations_before_http(

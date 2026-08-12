@@ -49,6 +49,9 @@ EXPECTED_ACTIVATED_INTENTS = frozenset(
         "dependency-edges.record",
         "dependency-edges.get",
         "system-manifests.import",
+        "system-versions.record",
+        "system-versions.get",
+        "system-versions.diff",
     }
 )
 
@@ -71,7 +74,7 @@ def test_capability_runtime_table_matches_capability_manifest() -> None:
 
     manifest = _load_json(CAPABILITY_MANIFEST)
     manifest_entries = manifest["enabled_intents"]
-    assert manifest["enabled_intent_count"] == len(manifest_entries) == 11
+    assert manifest["enabled_intent_count"] == len(manifest_entries) == 14
 
     runtime = _triples(
         [
@@ -133,9 +136,9 @@ def test_operation_manifest_http_matches_public_v5_routes() -> None:
 
     manifest = _load_json(OPERATION_MANIFEST)
     operations = manifest["operations"]
-    assert manifest["activated_intent_count"] == len(operations) == 11
+    assert manifest["activated_intent_count"] == len(operations) == 14
     http_entries = [op["http"] for op in operations if op.get("http") is not None]
-    assert len(http_entries) == 11
+    assert len(http_entries) == 14
     assert {op["intent"] for op in operations} == EXPECTED_ACTIVATED_INTENTS
 
     expected = {
@@ -157,7 +160,7 @@ def test_operation_manifest_http_matches_public_v5_routes() -> None:
     # Only GET/POST; no activated intent may be reachable under another
     # method, and no unregistered handler may carry a route decorator.
     assert all(method in {"GET", "POST"} for method, _path, _op in expected)
-    assert len({operation_id for _m, _p, operation_id in expected}) == 11
+    assert len({operation_id for _m, _p, operation_id in expected}) == 14
 
 
 def test_public_v5_routes_and_v1_lane_majors_are_preserved() -> None:
@@ -281,7 +284,7 @@ def test_cli_allowlist_matches_operation_manifest() -> None:
         assert cli in " ".join(help_text.split()) or action in command_help_flat, (
             f"manifest cli '{cli}' missing from CLI help"
         )
-    assert len(manifest_cli_pairs) == 11
+    assert len(manifest_cli_pairs) == 14
 
     v2_commands = {command for command, _action in manifest_cli_pairs} - {"capabilities"}
     assert v2_commands == set(cli_main._V2_COMMANDS), (
@@ -315,5 +318,6 @@ def test_cli_default_api_major_stays_one() -> None:
     assert api_version.default == "1", "CLI default API major must stay 1"
     # v2 commands are explicitly gated on --api-version 2 (never implicit).
     assert sorted(cli_main._V2_COMMANDS) == sorted(
-        {"application", "environment", "system-component", "dependency-edge", "system-manifest"}
+        {"application", "environment", "system-component", "dependency-edge",
+         "system-manifest", "system-version"}
     )

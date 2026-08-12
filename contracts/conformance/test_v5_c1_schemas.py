@@ -43,6 +43,9 @@ EXPECTED_ACTIVATED_NAMES = [
     "dependency-edges.record",
     "dependency-edges.get",
     "system-manifests.import",
+    "system-versions.record",
+    "system-versions.get",
+    "system-versions.diff",
 ]
 
 
@@ -83,7 +86,7 @@ def test_operation_manifest_matches_schemas() -> None:
     manifest = _load_json(GENERATED_DIR / "operation-manifest.json")
     names = [op["intent"] for op in manifest["operations"]]
     assert names == EXPECTED_ACTIVATED_NAMES
-    assert manifest["activated_intent_count"] == 11
+    assert manifest["activated_intent_count"] == 14
     for op in manifest["operations"]:
         for definition in ("request", "response", "error"):
             assert (
@@ -92,9 +95,9 @@ def test_operation_manifest_matches_schemas() -> None:
             )
 
 
-def test_capability_manifest_is_exact_11() -> None:
+def test_capability_manifest_is_exact_14() -> None:
     manifest = _load_json(GENERATED_DIR / "capability-manifest.json")
-    assert manifest["enabled_intent_count"] == 11
+    assert manifest["enabled_intent_count"] == 14
     assert manifest["disabled_intents"] == []
     names = [entry["name"] for entry in manifest["enabled_intents"]]
     assert names == EXPECTED_ACTIVATED_NAMES

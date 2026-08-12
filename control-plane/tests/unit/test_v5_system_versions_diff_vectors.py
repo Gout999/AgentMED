@@ -21,6 +21,7 @@ from tests.unit.test_v5_system_versions import (
     _seed_component,
     _seed_component_revision,
     _seed_env,
+    _seed_topology_revision,
     _seed_version_set_row,
     _reader_principal,
     _service,
@@ -51,32 +52,6 @@ def _seed_edge(
             relation=relation,
             required=True,
             edge_digest=digest,
-            envelope_payload=envelope,
-            record_digest=envelope["record_envelope"]["record_digest"],
-            authority_receipt_id=envelope["record_envelope"]["authority_receipt_id"],
-            recorded_by_principal=OWNER,
-            created_at=NOW,
-        )
-    )
-
-
-def _seed_topology(
-    session,
-    *,
-    topology_id: str,
-    edge_bindings: list[dict],
-    digest: str,
-) -> None:
-    envelope = _mk_envelope(WORKSPACE, topology_id)
-    session.add(
-        TopologyRevision(
-            topology_revision_id=topology_id,
-            workspace_id=WORKSPACE,
-            application_id="app_01J0000000000001",
-            component_ids=["cmp_01J0000000000A01"],
-            exact_edge_revision_bindings=edge_bindings,
-            topology_digest=digest,
-            provenance_receipt_ids=[],
             envelope_payload=envelope,
             record_digest=envelope["record_envelope"]["record_digest"],
             authority_receipt_id=envelope["record_envelope"]["authority_receipt_id"],
@@ -161,27 +136,27 @@ def _seed_substitution_pair(session) -> tuple[str, str]:
         to_component_id="cmp_01J0000000000A03",
         digest=_DIGEST_D,
     )
-    _seed_topology(
+    _seed_topology_revision(
         session,
         topology_id="tpr_01J0000000000C01",
         edge_bindings=[
             {
                 "kind": "DEPENDENCY_EDGE",
                 "id": "de_01J0000000000E01",
-                "revision": None,
+                "revision": 1,
                 "digest": _DIGEST_A,
             }
         ],
         digest=_DIGEST_A,
     )
-    _seed_topology(
+    _seed_topology_revision(
         session,
         topology_id="tpr_01J0000000000C02",
         edge_bindings=[
             {
                 "kind": "DEPENDENCY_EDGE",
                 "id": "de_01J0000000000E02",
-                "revision": None,
+                "revision": 1,
                 "digest": _DIGEST_D,
             }
         ],
@@ -195,20 +170,20 @@ def _seed_substitution_pair(session) -> tuple[str, str]:
             {
                 "kind": "COMPONENT_REVISION",
                 "id": "crv_01J0000000000B01",
-                "revision": None,
+                "revision": 1,
                 "digest": _DIGEST_A,
             },
             {
                 "kind": "COMPONENT_REVISION",
                 "id": "crv_01J0000000000B02",
-                "revision": None,
+                "revision": 1,
                 "digest": _DIGEST_B,
             },
         ],
         topology_binding={
             "kind": "TOPOLOGY_REVISION",
             "id": "tpr_01J0000000000C01",
-            "revision": None,
+            "revision": 1,
             "digest": _DIGEST_A,
         },
     )
@@ -219,20 +194,20 @@ def _seed_substitution_pair(session) -> tuple[str, str]:
             {
                 "kind": "COMPONENT_REVISION",
                 "id": "crv_01J0000000000B11",
-                "revision": None,
+                "revision": 1,
                 "digest": _DIGEST_D,
             },
             {
                 "kind": "COMPONENT_REVISION",
                 "id": "crv_01J0000000000B13",
-                "revision": None,
+                "revision": 1,
                 "digest": _DIGEST_C,
             },
         ],
         topology_binding={
             "kind": "TOPOLOGY_REVISION",
             "id": "tpr_01J0000000000C02",
-            "revision": None,
+            "revision": 1,
             "digest": _DIGEST_D,
         },
         version_set_digest=_DIGEST_D,
@@ -252,35 +227,38 @@ def test_diff_dependency_substitution_and_removal_vectors(sqlite_session) -> Non
     )
     sqlite_session.commit()
 
-    # REMOVED: model is in base but not target.
-    removed = {item.component_id: item for item in diff.removed}
-    assert set(removed) == {"cmp_01J0000000000A02"}
-    assert removed["cmp_01J0000000000A02"].diff_kind == "REMOVED"
+    # REMOVED: model revision binding is in base but not target.
+    removed_ids = {b.id for b in diff.diff.removed}
+    assert removed_ids == {"crv_01J0000000000B02"}
 
-    # ADDED: retriever is in target but not base.
-    added = {item.component_id: item for item in diff.added}
-    assert set(added) == {"cmp_01J0000000000A03"}
-    assert added["cmp_01J0000000000A03"].diff_kind == "ADDED"
+    # ADDED: retriever revision binding is in target but not base.
+    added_ids = {b.id for b in diff.diff.added}
+    assert added_ids == {"crv_01J0000000000B13"}
 
-    # DIGEST_CHANGED: code revision digest changed.
-    changed = {item.component_id: item for item in diff.changed}
+    # DIGEST_CHANGED: code revision digest changed (from/to bindings).
+    changed = {item.component_id: item for item in diff.diff.changed}
     assert set(changed) == {"cmp_01J0000000000A01"}
-    assert changed["cmp_01J0000000000A01"].diff_kind == "DIGEST_CHANGED"
-    assert changed["cmp_01J0000000000A01"].base_digest == _DIGEST_A
-    assert changed["cmp_01J0000000000A01"].target_digest == _DIGEST_D
+    assert changed["cmp_01J0000000000A01"].from_binding.id == "crv_01J0000000000B01"
+    assert changed["cmp_01J0000000000A01"].to_binding.id == "crv_01J0000000000B11"
 
-    # DEPENDENCY_SUBSTITUTION: code's INVOKES edge now points at the retriever.
-    substitutions = list(diff.dependency_substitutions)
-    assert len(substitutions) == 1
-    substitution = substitutions[0]
-    assert substitution.component_id == "cmp_01J0000000000A01"
-    assert substitution.diff_kind == "DEPENDENCY_SUBSTITUTION"
-    assert substitution.details["relation"] == "INVOKES"
-    assert substitution.details["base_to_component_id"] == "cmp_01J0000000000A02"
-    assert substitution.details["target_to_component_id"] == "cmp_01J0000000000A03"
+    # DEPENDENCY_SUBSTITUTION: code's INVOKES edge now points at the retriever,
+    # surfaced as edge-level EDGE_REMOVED + EDGE_ADDED topology changes.
+    kinds = {item.kind for item in diff.diff.topology_changes}
+    assert kinds == {"EDGE_REMOVED", "EDGE_ADDED"}
+    removed_edges = {
+        item.from_edge_binding_or_null.id
+        for item in diff.diff.topology_changes
+        if item.kind == "EDGE_REMOVED"
+    }
+    added_edges = {
+        item.to_edge_binding_or_null.id
+        for item in diff.diff.topology_changes
+        if item.kind == "EDGE_ADDED"
+    }
+    assert removed_edges == {"de_01J0000000000E01"}
+    assert added_edges == {"de_01J0000000000E02"}
 
-    # No permission expansion: neither side carries a POLICY revision change.
-    assert diff.policy_permission_expansions == []
+    assert diff.diff.assurance_delta.identity_assurance_changes == []
 
 
 def test_diff_unchanged_edges_do_not_emit_substitution(sqlite_session) -> None:
@@ -295,20 +273,20 @@ def test_diff_unchanged_edges_do_not_emit_substitution(sqlite_session) -> None:
             {
                 "kind": "COMPONENT_REVISION",
                 "id": "crv_01J0000000000B01",
-                "revision": None,
+                "revision": 1,
                 "digest": _DIGEST_A,
             },
             {
                 "kind": "COMPONENT_REVISION",
                 "id": "crv_01J0000000000B02",
-                "revision": None,
+                "revision": 1,
                 "digest": _DIGEST_B,
             },
         ],
         topology_binding={
             "kind": "TOPOLOGY_REVISION",
             "id": "tpr_01J0000000000C01",
-            "revision": None,
+            "revision": 1,
             "digest": _DIGEST_A,
         },
         version_set_digest=_DIGEST_B,
@@ -321,7 +299,7 @@ def test_diff_unchanged_edges_do_not_emit_substitution(sqlite_session) -> None:
         request_id="req_01J000000000000T",
     )
     sqlite_session.commit()
-    assert diff.dependency_substitutions == []
-    assert diff.added == []
-    assert diff.removed == []
-    assert diff.changed == []
+    assert diff.diff.topology_changes == []
+    assert diff.diff.added == []
+    assert diff.diff.removed == []
+    assert diff.diff.changed == []

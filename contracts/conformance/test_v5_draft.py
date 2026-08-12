@@ -476,8 +476,17 @@ def test_draft_intents_disable_every_transport_and_target_owned_commands() -> No
                 "contracts/v5/schema-profiles.yaml#r2_wire_profiles/"
             )
         else:
-            assert intent["wire_status"] in ("DRAFT", "FROZEN_FOR_IMPLEMENTATION")
-            assert intent["implementation_status"] == "NOT_IMPLEMENTED"
+            assert intent["wire_status"] in (
+                "DRAFT",
+                "FROZEN_FOR_IMPLEMENTATION",
+                "FROZEN_R3",
+            )
+            if intent["wire_status"] == "FROZEN_R3":
+                assert intent["implementation_status"] == (
+                    "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
+                )
+            else:
+                assert intent["implementation_status"] == "NOT_IMPLEMENTED"
             if intent["wire_status"] == "DRAFT":
                 assert intent["field_contract_ref"] is None
             else:

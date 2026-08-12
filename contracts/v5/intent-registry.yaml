@@ -31,6 +31,7 @@ wire_contract_rules:
   frozen_for_implementation_must_not_generate_any_transport: true
   frozen_for_implementation_must_not_enter_capability_discovery: true
   frozen_for_implementation_requires_schema_profile_ref: true
+  r3_activation_status: FROZEN_R3
 
 application_component_activation_lifecycle:
   decision_ref: docs/decisions/D-014-v5-application-component-activation-lifecycle.md
@@ -196,15 +197,15 @@ d2_complete_version_graph_contract:
     - system-versions.record
     - system-versions.get
     - system-versions.diff
-  activation_status: NOT_ACTIVATED
+  activation_status: ACTIVATED_AS_R3_FULL
   transports:
-    http: FORBIDDEN
-    cli: FORBIDDEN
+    http: ENABLED
+    cli: ENABLED
     sdk: FORBIDDEN
     mcp: FORBIDDEN
     a2a: FORBIDDEN
-    capability_discovery: FORBIDDEN
-  r3_full_capability_discovery_remains_hidden: true
+    capability_discovery: ENABLED
+  r3_full_capability_discovery_remains_hidden: false
   record_contract:
     references_existing_authority_valid_objects_only: true
     never_creates_prerequisite_objects: true
@@ -247,6 +248,18 @@ d2_complete_version_graph_contract:
     - transport_route_or_capability_activation
     - second_version_set_persisted
     - semantic_diff_runtime
+
+r3_full_contract:
+  stage: R3_FULL
+  plan_ref: docs/plans/v5-master-execution-plan.md#17.4
+  contract_status: FROZEN
+  runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+  activated_contract_intents:
+    - system-versions.record
+    - system-versions.get
+    - system-versions.diff
+  capability_discovery: ENABLED
+  r2_activated_allowlist_unchanged: true
 
 api_major_selection:
   canonical_intent_identity: [api_major, intent_name]
@@ -539,8 +552,8 @@ intents:
   - name: system-versions.record
     contract_major: 2
     delivery_slice: V5-1B
-    wire_status: FROZEN_FOR_IMPLEMENTATION
-    implementation_status: NOT_IMPLEMENTED
+    wire_status: FROZEN_R3
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
     field_contract_ref: contracts/v5/schema-profiles.yaml#d2_wire_profiles/system_versions_record
     kind: mutation
     execution_mode: synchronous
@@ -557,8 +570,8 @@ intents:
   - name: system-versions.get
     contract_major: 2
     delivery_slice: V5-1B
-    wire_status: FROZEN_FOR_IMPLEMENTATION
-    implementation_status: NOT_IMPLEMENTED
+    wire_status: FROZEN_R3
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
     field_contract_ref: contracts/v5/schema-profiles.yaml#d2_wire_profiles/system_versions_get
     kind: query
     execution_mode: synchronous
@@ -573,8 +586,8 @@ intents:
   - name: system-versions.diff
     contract_major: 2
     delivery_slice: V5-1B
-    wire_status: FROZEN_FOR_IMPLEMENTATION
-    implementation_status: NOT_IMPLEMENTED
+    wire_status: FROZEN_R3
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
     field_contract_ref: contracts/v5/schema-profiles.yaml#d2_wire_profiles/system_versions_diff
     kind: query
     execution_mode: synchronous
@@ -582,7 +595,11 @@ intents:
     allowed_principal_types: [human, external_agent, service, connector]
     authorization_condition: authorized_reader_for_both_versions
     idempotency: none
-    http: {method: GET, path: /api/v2/system-versions:diff, operation_id: diffSystemVersions}
+    http:
+      method: GET
+      path: /api/v2/system-versions:diff
+      operation_id: diffSystemVersions
+      query_parameters: {required: [source_version_set_id, target_version_set_id], optional: []}
     cli: system-version diff
     cli_requires_explicit_api_major: true
 

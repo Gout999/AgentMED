@@ -637,6 +637,9 @@ class SystemVersionSet(Base):
     exact_topology_revision_binding: Mapped[dict[str, Any]] = mapped_column(
         JSON, nullable=False
     )
+    exact_previous_system_version_set_binding_or_null: Mapped[Optional[dict[str, Any]]] = (
+        mapped_column(JSON, nullable=True)
+    )
     identity_assurance_summary: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     provenance_receipt_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False)
     version_set_digest: Mapped[str] = mapped_column(String(80), nullable=False)

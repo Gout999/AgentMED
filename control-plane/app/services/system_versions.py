@@ -45,10 +45,14 @@ from app.models.v5_tables import (
 from app.public_api.auth_contract import AcceptedPrincipalContext
 from app.public_api.credential_resolver import digest_public_subject
 from app.public_api.v5_models import (
+    ExactComponentRevisionBinding,
+    ExactTopologyRevisionBinding,
     SystemManifestImportRequest,
     SystemManifestImportResponse,
     SystemVersionDiffResponse,
     SystemVersionGetResponse,
+    SystemVersionRecordRequest,
+    SystemVersionRecordResponse,
     V5IdempotencyReceipt,
 )
 from app.services.public_idempotency import (
@@ -85,6 +89,10 @@ Clock = Callable[[], datetime]
 
 _IMPORT_INTENT = "system-manifests.import"
 _IMPORT_SCOPE = "system_manifests:import"
+_RECORD_INTENT = "system-versions.record"
+_RECORD_SCOPE = "system_versions:record"
+_RECORD_PRINCIPAL_TYPES = frozenset({"human", "service"})
+_RECORD_TRUST_ROLES = frozenset({"integrator", "trusted_builder"})
 _READ_SCOPE = "system_versions:read"
 _IMPORT_PRINCIPAL_TYPES = frozenset({"human", "service"})
 _READ_PRINCIPAL_TYPES = frozenset({"human", "external_agent", "service", "connector"})
@@ -228,6 +236,71 @@ class SystemVersionsService:
             or row.scopes != principal.scopes
         ):
             raise SystemVersionsError("TOKEN_INVALID", workspace_id=principal.workspace_id)
+
+    def _validate_version_set_graph(self, row: SystemVersionSet) -> None:
+        """Recursively verify a version set and its exact dependencies.
+
+        Envelope/digest/receipt of the version set itself, every bound
+        component revision and the bound topology revision must be intact;
+        a missing or tampered dependency fails closed.
+        """
+        self._validate_receipt_backed_record(
+            row=row,
+            subject_kind="SYSTEM_VERSION_SET",
+            id_attr="system_version_set_id",
+            subject_revision=int(row.envelope_payload["record_envelope"]["revision"]),
+            scalar_fields=(
+                "application_id",
+                "declared_environment_id",
+                "exact_component_revision_bindings",
+                "exact_topology_revision_binding",
+                "version_set_digest",
+            ),
+        )
+        for binding in row.exact_component_revision_bindings:
+            revision = self.session.get(ComponentRevision, binding["id"])
+            if revision is None or revision.workspace_id != row.workspace_id:
+                raise SystemVersionsError(
+                    "INTERNAL_ERROR",
+                    details={"reason": "SYSTEM_VERSION_SET_DEPENDENCY_MISSING"},
+                    workspace_id=row.workspace_id,
+                )
+            self._validate_receipt_backed_record(
+                row=revision,
+                subject_kind="COMPONENT_REVISION",
+                id_attr="component_revision_id",
+                subject_revision=int(
+                    revision.envelope_payload["record_envelope"]["revision"]
+                ),
+                scalar_fields=(
+                    "component_id",
+                    "component_kind",
+                    "identity_assurance",
+                    "configuration_digest",
+                ),
+            )
+        topology = self.session.get(
+            TopologyRevision, row.exact_topology_revision_binding["id"]
+        )
+        if topology is None or topology.workspace_id != row.workspace_id:
+            raise SystemVersionsError(
+                "INTERNAL_ERROR",
+                details={"reason": "SYSTEM_VERSION_SET_DEPENDENCY_MISSING"},
+                workspace_id=row.workspace_id,
+            )
+        self._validate_receipt_backed_record(
+            row=topology,
+            subject_kind="TOPOLOGY_REVISION",
+            id_attr="topology_revision_id",
+            subject_revision=int(
+                topology.envelope_payload["record_envelope"]["revision"]
+            ),
+            scalar_fields=(
+                "component_ids",
+                "exact_edge_revision_bindings",
+                "topology_digest",
+            ),
+        )
 
     def _record_read_audit(
         self,
@@ -419,6 +492,7 @@ class SystemVersionsService:
         manifest_digest: str,
         idempotency_key: str,
         initiating_audit_ref: str,
+        subject_revision: int | None = None,
     ) -> tuple[Any, dict[str, Any], str]:
         spec = _SPECS[kind]
         now = _as_utc(recorded_at)
@@ -448,7 +522,8 @@ class SystemVersionsService:
                 workspace_id=workspace_id,
             ) from exc
 
-        subject_revision = 1 if spec.subject_revisioned else None
+        if subject_revision is None:
+            subject_revision = 1 if spec.subject_revisioned else None
         self_binding_fields = {
             "COMPONENT_REVISION": "exact_component_revision_binding",
             "TOPOLOGY_REVISION": "exact_topology_revision_binding",
@@ -459,7 +534,7 @@ class SystemVersionsService:
         exact_subject_binding = {
             "kind": kind,
             "id": subject_id,
-            "revision": 1,
+            "revision": subject_revision if subject_revision is not None else 1,
             "digest": digest,
         }
         major2_business_fields = {
@@ -2362,6 +2437,575 @@ class SystemVersionsService:
             {**response_core, "idempotency": {"receipt": receipt, "replayed": replayed}}
         )
 
+    # ------------------------------------------------- standalone version record
+
+    def record_system_version(
+        self,
+        request: SystemVersionRecordRequest,
+        *,
+        principal: AcceptedPrincipalContext,
+        idempotency_key: str,
+        request_id: str | None = None,
+    ) -> SystemVersionRecordResponse:
+        """Standalone record of the next immutable SystemVersionSet (D2 wire).
+
+        References only existing authority-valid objects: the ACTIVE
+        application and environment, an exact component revision set and an
+        exact topology revision.  The exact previous version set binding is
+        CAS-verified against the current authoritative head under a
+        workspace/application/environment advisory lock.  The version set
+        row, its major-2 event, exactly-one outbox, controller audit, closed
+        AuthorityReceipt and success idempotency share one PostgreSQL unit of
+        work; any failure rolls back with zero partial rows.
+        """
+        request_id = request_id or new_request_id()
+        body = request.model_dump(mode="json")
+        request_fingerprint = self.idempotency.fingerprint(body)
+        workspace_id = principal.workspace_id
+        self._validate_principal_row(principal)
+        self._require_record_principal(principal)
+        application = self._require_active_application(principal, request.application_id)
+        self._require_environment(
+            principal, request.application_id, request.environment_id
+        )
+        self._validate_component_revision_bindings(
+            workspace_id, request.exact_component_revision_bindings
+        )
+        self._validate_topology_binding(
+            workspace_id, request.exact_topology_revision_binding
+        )
+        self._lock_version_lineage(
+            workspace_id, request.application_id, request.environment_id
+        )
+        try:
+            lookup = self.idempotency.acquire(
+                workspace_id=workspace_id,
+                principal_id=principal.principal_id,
+                intent=_RECORD_INTENT,
+                idempotency_key=idempotency_key,
+                request_fingerprint=request_fingerprint,
+                verify_terminal=self._verify_record_terminal,
+            )
+        except PublicIdempotencyError as exc:
+            raise SystemVersionsError(exc.code, workspace_id=workspace_id) from exc
+        if lookup.record is not None:
+            try:
+                return self.idempotency.replay_catalog_response(  # type: ignore[return-value]
+                    lookup.record,
+                    response_model=SystemVersionRecordResponse,
+                    receipt_model=V5IdempotencyReceipt,
+                    resource_kind="system_version_set",
+                    resource_field="system_version_set",
+                    resource_id_field="system_version_set_id",
+                )
+            except PublicIdempotencyError as exc:
+                raise SystemVersionsError(exc.code, workspace_id=workspace_id) from exc
+
+        previous = request.exact_previous_system_version_set_binding_or_null
+        if previous is None:
+            raise SystemVersionsError(
+                "REQUEST_INVALID",
+                details={
+                    "reason": "EXACT_PREVIOUS_BINDING_REQUIRED_FROM_SECOND_VERSION",
+                },
+                workspace_id=workspace_id,
+            )
+        current_head = self._current_version_set_head(
+            workspace_id, request.application_id, request.environment_id
+        )
+        if current_head is None:
+            raise SystemVersionsError(
+                "CATALOG_CONFLICT",
+                details={"reason": "NO_VERSION_SET_HEAD_BOOTSTRAP_FIRST"},
+                workspace_id=workspace_id,
+            )
+        # Every version set is a distinct immutable subject created at
+        # revision 1; lineage is expressed by the exact previous binding.
+        head_binding = {
+            "kind": "SYSTEM_VERSION_SET",
+            "id": current_head.system_version_set_id,
+            "revision": 1,
+            "digest": current_head.record_digest,
+        }
+        if previous.model_dump(mode="json") != head_binding:
+            raise SystemVersionsError(
+                "CATALOG_CONFLICT",
+                details={"reason": "STALE_EXACT_PREVIOUS_BINDING"},
+                workspace_id=workspace_id,
+            )
+
+        transaction_id = new_transaction_id()
+        now = _as_utc(self.clock())
+        try:
+            command_audit = self.audit.record(
+                workspace_id=workspace_id,
+                actor_principal=principal.principal_id,
+                action=_RECORD_INTENT,
+                target="",
+                params={
+                    "authenticated_request_digest": request_fingerprint,
+                    "idempotency_key": idempotency_key,
+                },
+                transaction_id=transaction_id,
+                trace_id=request_id,
+                occurred_at=now,
+            )
+        except V4AuditUnavailable as exc:
+            raise SystemVersionsError(
+                "AUDIT_UNAVAILABLE", workspace_id=workspace_id
+            ) from exc
+
+        bindings_sorted = sorted(
+            (
+                binding.model_dump(mode="json")
+                for binding in request.exact_component_revision_bindings
+            ),
+            key=lambda item: item["id"],
+        )
+        topology_binding = request.exact_topology_revision_binding.model_dump(
+            mode="json"
+        )
+        assurance_summary = self._assurance_summary_from_bindings(
+            workspace_id, bindings_sorted
+        )
+        version_set_id = new_system_version_set_id()
+        version_set_digest = self._version_set_digest(
+            application_id=request.application_id,
+            declared_environment_id=request.environment_id,
+            component_bindings=bindings_sorted,
+            topology_binding=topology_binding,
+            provenance_receipt_ids=[],
+            assurance_summary=assurance_summary,
+        )
+        version_set_payload = {
+            "system_version_set_id": version_set_id,
+            "workspace_id": workspace_id,
+            "application_id": request.application_id,
+            "declared_environment_id": request.environment_id,
+            "exact_component_revision_bindings": bindings_sorted,
+            "exact_topology_revision_binding": topology_binding,
+            "identity_assurance_summary": assurance_summary,
+            "provenance_receipt_ids": [],
+            "version_set_digest": version_set_digest,
+            "manifest_digest": None,
+            "manifest": None,
+            "exact_previous_system_version_set_binding_or_null": previous.model_dump(
+                mode="json"
+            ),
+            "record_envelope": self._envelope(
+                workspace_id=workspace_id,
+                revision=1,
+                recorded_by_principal=principal.principal_id,
+                recorded_at=now,
+                authority_receipt_id=new_authority_receipt_id(),
+            ),
+        }
+        manifest_coordinator = V5ManifestImportCoordinator(
+            self.session,
+            audit_service=self.audit,
+            authority_service=self.authority,
+        )
+        # Standalone record write path: the version set row, its major-2
+        # event + exactly-one outbox, the controller audit and the closed
+        # AuthorityReceipt all share one PG unit of work.  Unlike the
+        # bootstrap import, this path is NOT a manifest composition, so it
+        # does not go through the manifest coordinator's composition gate.
+        try:
+            controller = self.authority.resolve_controller(
+                workspace_id=workspace_id,
+                subject_kind="SYSTEM_VERSION_SET",
+                command=_RECORD_INTENT,
+                event_type="system_version_set.recorded",
+                recorded_at=now,
+            )
+        except V5AuthorityError as exc:
+            raise SystemVersionsError(
+                "INTERNAL_ERROR", workspace_id=workspace_id
+            ) from exc
+        envelope = version_set_payload["record_envelope"]
+        digest = v5_record_digest(version_set_payload)
+        envelope["record_digest"] = digest
+        row = SystemVersionSet(
+            system_version_set_id=version_set_id,
+            workspace_id=workspace_id,
+            application_id=request.application_id,
+            declared_environment_id=request.environment_id,
+            exact_component_revision_bindings=bindings_sorted,
+            exact_topology_revision_binding=topology_binding,
+            identity_assurance_summary=assurance_summary,
+            provenance_receipt_ids=[],
+            version_set_digest=version_set_digest,
+            manifest_digest=None,
+            exact_previous_system_version_set_binding_or_null=(
+                previous.model_dump(mode="json")
+            ),
+            envelope_payload=version_set_payload,
+            record_digest=digest,
+            authority_receipt_id=envelope["authority_receipt_id"],
+            recorded_by_principal=principal.principal_id,
+            created_at=now,
+        )
+        self.session.add(row)
+        try:
+            self.session.flush()
+        except IntegrityError as exc:
+            raise SystemVersionsError(
+                "CATALOG_CONFLICT",
+                details={"reason": "DUPLICATE_CATALOG_IDENTITY"},
+                workspace_id=workspace_id,
+            ) from exc
+        exact_subject_binding = {
+            "kind": "SYSTEM_VERSION_SET",
+            "id": version_set_id,
+            "revision": 1,
+            "digest": digest,
+        }
+        event_payload = {
+            "exact_system_version_set_binding": exact_subject_binding,
+            "application_id": request.application_id,
+            "declared_environment_id": request.environment_id,
+            "exact_component_revision_bindings": bindings_sorted,
+            "exact_topology_revision_binding": topology_binding,
+            "version_set_digest": version_set_digest,
+        }
+        try:
+            event = self.events._append_event(
+                workspace_id=workspace_id,
+                aggregate_type="system_version_set",
+                aggregate_id=version_set_id,
+                event_type="system_version_set.recorded",
+                payload=event_payload,
+                causation_id=request_id,
+                correlation_id=request.application_id,
+                actor_principal=controller.controller_principal,
+                transaction_id=transaction_id,
+                occurred_at=now,
+                authority_receipt_id=envelope["authority_receipt_id"],
+                allow_manifest_activation=True,
+            )
+            audit = self.audit.record(
+                workspace_id=workspace_id,
+                actor_principal=controller.controller_principal,
+                action="controller.system_version_set.recorded",
+                target=version_set_id,
+                params={"command": _RECORD_INTENT},
+                transaction_id=transaction_id,
+                trace_id=request_id,
+                evidence_refs={
+                    "subject_kind": "SYSTEM_VERSION_SET",
+                    "subject_id": version_set_id,
+                    "subject_revision": 1,
+                    "subject_digest": digest,
+                    "event_id": event.event_id,
+                },
+                occurred_at=now,
+            )
+            self.authority.record_receipt(
+                resolved=controller,
+                authority_receipt_id=envelope["authority_receipt_id"],
+                workspace_id=workspace_id,
+                subject_id=version_set_id,
+                subject_revision=1,
+                subject_digest=digest,
+                event_id=event.event_id,
+                transaction_id=transaction_id,
+                audit_ref=audit.audit_ref,
+                recorded_at=now,
+            )
+        except (V4EventStoreError, V5AuthorityError, V4AuditIntegrityError) as exc:
+            raise SystemVersionsError(
+                "INTERNAL_ERROR", workspace_id=workspace_id
+            ) from exc
+        except V4AuditUnavailable as exc:
+            raise SystemVersionsError(
+                "AUDIT_UNAVAILABLE", workspace_id=workspace_id
+            ) from exc
+        return self._persist_record_response(
+            principal=principal,
+            idempotency_key=idempotency_key,
+            request_fingerprint=request_fingerprint,
+            request_id=request_id,
+            audit_ref=command_audit.audit_ref,
+            resource_id=version_set_id,
+            response_core={
+                "schema_version": "2.0",
+                "workspace_id": workspace_id,
+                "request_id": request_id,
+                "audit_ref": command_audit.audit_ref,
+                "system_version_set": version_set_payload,
+            },
+            completed_at=now,
+        )
+
+    def _require_record_principal(self, principal: AcceptedPrincipalContext) -> None:
+        if (
+            principal.principal_type not in _RECORD_PRINCIPAL_TYPES
+            or _RECORD_SCOPE not in principal.scopes
+        ):
+            raise SystemVersionsError(
+                "SCOPE_FORBIDDEN", workspace_id=principal.workspace_id
+            )
+        row = self.session.get(PublicPrincipal, principal.principal_id)
+        if (
+            row is None
+            or row.workspace_id != principal.workspace_id
+            or not (set(row.trust_roles or []) & _RECORD_TRUST_ROLES)
+        ):
+            raise SystemVersionsError(
+                "SCOPE_FORBIDDEN", workspace_id=principal.workspace_id
+            )
+
+    def _require_active_application(
+        self, principal: AcceptedPrincipalContext, application_id: str
+    ) -> AIApplication:
+        application = self.session.get(AIApplication, application_id)
+        if (
+            application is None
+            or application.workspace_id != principal.workspace_id
+            or application.lifecycle_state != "ACTIVE"
+        ):
+            raise SystemVersionsError(
+                "VALIDATION_FAILED",
+                details={"reason": "APPLICATION_NOT_ACTIVE_OR_UNKNOWN"},
+                workspace_id=principal.workspace_id,
+            )
+        return application
+
+    def _require_environment(
+        self,
+        principal: AcceptedPrincipalContext,
+        application_id: str,
+        environment_id: str,
+    ) -> None:
+        environment = self.session.get(Environment, environment_id)
+        if (
+            environment is None
+            or environment.workspace_id != principal.workspace_id
+            or environment.application_id != application_id
+        ):
+            raise SystemVersionsError(
+                "VALIDATION_FAILED",
+                details={"reason": "ENVIRONMENT_UNKNOWN_OR_CROSS_APPLICATION"},
+                workspace_id=principal.workspace_id,
+            )
+
+    def _validate_component_revision_bindings(
+        self,
+        workspace_id: str,
+        bindings: list[ExactComponentRevisionBinding],
+    ) -> list[ComponentRevision]:
+        rows: list[ComponentRevision] = []
+        seen: set[str] = set()
+        for binding in bindings:
+            if binding.id in seen:
+                raise SystemVersionsError(
+                    "REQUEST_INVALID",
+                    details={"reason": "DUPLICATE_COMPONENT_REVISION_BINDING"},
+                    workspace_id=workspace_id,
+                )
+            seen.add(binding.id)
+            row = self.session.get(ComponentRevision, binding.id)
+            if row is None or row.workspace_id != workspace_id:
+                raise SystemVersionsError(
+                    "REQUEST_INVALID",
+                    details={"reason": "UNKNOWN_COMPONENT_REVISION_BINDING"},
+                    workspace_id=workspace_id,
+                )
+            self._validate_receipt_backed_record(
+                row=row,
+                subject_kind="COMPONENT_REVISION",
+                id_attr="component_revision_id",
+                subject_revision=binding.revision,
+                scalar_fields=(
+                    "component_id",
+                    "component_kind",
+                    "identity_assurance",
+                    "configuration_digest",
+                ),
+            )
+            envelope_revision = int(
+                row.envelope_payload["record_envelope"]["revision"]
+            )
+            if binding.revision != envelope_revision or binding.digest != row.record_digest:
+                raise SystemVersionsError(
+                    "REQUEST_INVALID",
+                    details={"reason": "COMPONENT_REVISION_BINDING_MISMATCH"},
+                    workspace_id=workspace_id,
+                )
+            rows.append(row)
+        return rows
+
+    def _validate_topology_binding(
+        self, workspace_id: str, binding: ExactTopologyRevisionBinding
+    ) -> TopologyRevision:
+        row = self.session.get(TopologyRevision, binding.id)
+        if row is None or row.workspace_id != workspace_id:
+            raise SystemVersionsError(
+                "REQUEST_INVALID",
+                details={"reason": "UNKNOWN_TOPOLOGY_REVISION_BINDING"},
+                workspace_id=workspace_id,
+            )
+        self._validate_receipt_backed_record(
+            row=row,
+            subject_kind="TOPOLOGY_REVISION",
+            id_attr="topology_revision_id",
+            subject_revision=binding.revision,
+            scalar_fields=(
+                "component_ids",
+                "exact_edge_revision_bindings",
+                "topology_digest",
+            ),
+        )
+        envelope_revision = int(row.envelope_payload["record_envelope"]["revision"])
+        if binding.revision != envelope_revision or binding.digest != row.record_digest:
+            raise SystemVersionsError(
+                "REQUEST_INVALID",
+                details={"reason": "TOPOLOGY_REVISION_BINDING_MISMATCH"},
+                workspace_id=workspace_id,
+            )
+        return row
+
+    def _lock_version_lineage(
+        self, workspace_id: str, application_id: str, environment_id: str
+    ) -> None:
+        if self.session.get_bind().dialect.name != "postgresql":
+            return
+        self.session.execute(
+            text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
+            {
+                "lock_key": (
+                    f"v5:system-versions:{workspace_id}:{application_id}:{environment_id}"
+                )
+            },
+        )
+
+    def _current_version_set_head(
+        self, workspace_id: str, application_id: str, environment_id: str
+    ) -> SystemVersionSet | None:
+        return self.session.scalar(
+            select(SystemVersionSet)
+            .where(
+                SystemVersionSet.workspace_id == workspace_id,
+                SystemVersionSet.application_id == application_id,
+                SystemVersionSet.declared_environment_id == environment_id,
+            )
+            .order_by(
+                SystemVersionSet.created_at.desc(),
+                SystemVersionSet.system_version_set_id.desc(),
+            )
+            .limit(1)
+        )
+
+    def _assurance_summary_from_bindings(
+        self, workspace_id: str, bindings: list[dict[str, Any]]
+    ) -> dict[str, Any]:
+        entries: list[dict[str, str]] = []
+        for binding in bindings:
+            row = self.session.get(ComponentRevision, binding["id"])
+            if row is None or row.workspace_id != workspace_id:
+                raise SystemVersionsError(
+                    "INTERNAL_ERROR", workspace_id=workspace_id
+                )
+            entries.append(
+                {
+                    "component_revision_id": row.component_revision_id,
+                    "component_id": row.component_id,
+                    "identity_assurance": row.identity_assurance,
+                }
+            )
+        return self._assurance_summary(entries)
+
+    def _verify_record_terminal(self, row: Any) -> None:
+        PublicIdempotencyService.verify_terminal_presence(row)
+        if row.resource_kind != "system_version_set" or not isinstance(
+            row.resource_id, str
+        ):
+            raise PublicIdempotencyError("INTERNAL_ERROR")
+        version_set = self.session.get(SystemVersionSet, row.resource_id)
+        if version_set is None or version_set.workspace_id != row.workspace_id:
+            raise PublicIdempotencyError("INTERNAL_ERROR")
+        try:
+            self._validate_receipt_backed_record(
+                row=version_set,
+                subject_kind="SYSTEM_VERSION_SET",
+                id_attr="system_version_set_id",
+                subject_revision=int(
+                    version_set.envelope_payload["record_envelope"]["revision"]
+                ),
+                scalar_fields=(
+                    "application_id",
+                    "declared_environment_id",
+                    "exact_component_revision_bindings",
+                    "exact_topology_revision_binding",
+                    "version_set_digest",
+                ),
+            )
+        except SystemVersionsError as exc:
+            raise PublicIdempotencyError("INTERNAL_ERROR") from exc
+
+    def _persist_record_response(
+        self,
+        *,
+        principal: AcceptedPrincipalContext,
+        idempotency_key: str,
+        request_fingerprint: str,
+        request_id: str,
+        audit_ref: str,
+        resource_id: str,
+        response_core: dict[str, Any],
+        completed_at: datetime,
+    ) -> SystemVersionRecordResponse:
+        response_digest = canonical_digest(response_core)
+        receipt_id = new_idempotency_receipt_id()
+        receipt: dict[str, Any] = {
+            "schema_version": "1.0",
+            "workspace_id": principal.workspace_id,
+            "principal_id": principal.principal_id,
+            "intent": _RECORD_INTENT,
+            "idempotency_key": idempotency_key,
+            "request_fingerprint": request_fingerprint,
+            "resource": {"kind": "system_version_set", "id": resource_id},
+            "operation_id": None,
+            "request_id": request_id,
+            "audit_ref": audit_ref,
+            "status": "COMPLETED",
+            "response_digest": response_digest,
+            "created_at": _wire_time(completed_at),
+            "idempotency_receipt_id": receipt_id,
+            "immutable": True,
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/receipt_digest)",
+            "receipt_digest": "",
+        }
+        receipt_digest = record_digest(receipt, self_digest_field="receipt_digest")
+        receipt["receipt_digest"] = receipt_digest
+        try:
+            self.idempotency.store_completed_catalog(
+                workspace_id=principal.workspace_id,
+                principal_id=principal.principal_id,
+                intent=_RECORD_INTENT,
+                idempotency_key=idempotency_key,
+                request_fingerprint=request_fingerprint,
+                resource_kind="system_version_set",
+                resource_id=resource_id,
+                request_id=request_id,
+                audit_ref=audit_ref,
+                response_payload=response_core,
+                response_digest=response_digest,
+                receipt_payload=receipt,
+                receipt_digest=receipt_digest,
+                idempotency_receipt_id=receipt_id,
+                completed_at=completed_at,
+                response_model=SystemVersionRecordResponse,
+                receipt_model=V5IdempotencyReceipt,
+                resource_field="system_version_set",
+                resource_id_field="system_version_set_id",
+            )
+        except PublicIdempotencyError as exc:
+            raise SystemVersionsError(exc.code, workspace_id=principal.workspace_id) from exc
+        return SystemVersionRecordResponse.model_validate(
+            {**response_core, "idempotency": {"receipt": receipt, "replayed": False}}
+        )
+
     # ------------------------------------------------------------------- reads
 
     def get_system_version(
@@ -2396,6 +3040,7 @@ class SystemVersionsService:
         self._assert_application_readable(
             principal, row.application_id, action, request_id
         )
+        self._validate_version_set_graph(row)
         audit = self._record_read_audit(
             principal=principal,
             action=action,
@@ -2407,19 +3052,23 @@ class SystemVersionsService:
                 "record_digest": row.record_digest,
             },
         )
+        payload = dict(row.envelope_payload)
+        payload["exact_previous_system_version_set_binding_or_null"] = (
+            row.exact_previous_system_version_set_binding_or_null
+        )
         return SystemVersionGetResponse.model_validate(
             {
                 "schema_version": "2.0",
                 "workspace_id": principal.workspace_id,
                 "request_id": request_id,
                 "audit_ref": audit.audit_ref,
-                "system_version_set": row.envelope_payload,
+                "system_version_set": payload,
             }
         )
 
     def diff_system_versions(
         self,
-        base_system_version_set_id: str,
+        source_system_version_set_id: str,
         target_system_version_set_id: str,
         *,
         principal: AcceptedPrincipalContext,
@@ -2439,51 +3088,62 @@ class SystemVersionsService:
             principal=principal, request_id=request_id, action=action,
             target="system_version_set:diff",
         )
-        base = self.session.get(SystemVersionSet, base_system_version_set_id)
+        source = self.session.get(SystemVersionSet, source_system_version_set_id)
         target = self.session.get(SystemVersionSet, target_system_version_set_id)
         if (
-            base is None
+            source is None
             or target is None
-            or base.workspace_id != principal.workspace_id
+            or source.workspace_id != principal.workspace_id
             or target.workspace_id != principal.workspace_id
+            or source.application_id != target.application_id
+            or source.system_version_set_id == target.system_version_set_id
         ):
+            # Cross-workspace/application and self-diff all fail closed as
+            # opaque denials (D2 diff_contract).
             self._deny_not_found(
                 principal=principal,
                 request_id=request_id,
                 action=action,
                 target="system_version_set:diff",
             )
-        self._assert_application_readable(principal, base.application_id, action, request_id)
+        self._assert_application_readable(principal, source.application_id, action, request_id)
         self._assert_application_readable(principal, target.application_id, action, request_id)
+        self._validate_version_set_graph(source)
+        self._validate_version_set_graph(target)
 
-        added, removed, changed, substitutions, expansions = self._semantic_diff(base, target)
+        diff = self._semantic_diff(source, target)
         audit = self._record_read_audit(
             principal=principal,
             action=action,
             target="system_version_set:diff",
             params={
                 "request_id": request_id,
-                "base_system_version_set_id": base_system_version_set_id,
+                "source_system_version_set_id": source_system_version_set_id,
                 "target_system_version_set_id": target_system_version_set_id,
             },
             evidence_refs={
-                "base_system_version_set_id": base_system_version_set_id,
+                "source_system_version_set_id": source_system_version_set_id,
                 "target_system_version_set_id": target_system_version_set_id,
             },
         )
+
+        def _binding(row: SystemVersionSet) -> dict[str, Any]:
+            return {
+                "kind": "SYSTEM_VERSION_SET",
+                "id": row.system_version_set_id,
+                "revision": int(row.envelope_payload["record_envelope"]["revision"]),
+                "digest": row.record_digest,
+            }
+
         return SystemVersionDiffResponse.model_validate(
             {
                 "schema_version": "2.0",
                 "workspace_id": principal.workspace_id,
                 "request_id": request_id,
                 "audit_ref": audit.audit_ref,
-                "base_system_version_set_id": base_system_version_set_id,
-                "target_system_version_set_id": target_system_version_set_id,
-                "added": added,
-                "removed": removed,
-                "changed": changed,
-                "dependency_substitutions": substitutions,
-                "policy_permission_expansions": expansions,
+                "source_binding": _binding(source),
+                "target_binding": _binding(target),
+                "diff": diff,
             }
         )
 
@@ -2508,14 +3168,18 @@ class SystemVersionsService:
             )
 
     def _semantic_diff(
-        self, base: SystemVersionSet, target: SystemVersionSet
-    ) -> tuple[
-        list[dict[str, Any]],
-        list[dict[str, Any]],
-        list[dict[str, Any]],
-        list[dict[str, Any]],
-        list[dict[str, Any]],
-    ]:
+        self, source: SystemVersionSet, target: SystemVersionSet
+    ) -> dict[str, Any]:
+        """Deterministic D2-shaped diff between two exact version sets.
+
+        Components are compared by component identity: added/removed carry the
+        exact component revision binding, changed carries from/to bindings.
+        Topology differences are emitted as edge-level EDGE_ADDED / EDGE_REMOVED
+        / EDGE_REVISION_CHANGED changes.  The assurance delta lists
+        identity-assurance changes per component revision.  Output is
+        deterministic (sorted) and never a self-diff.
+        """
+
         def _load_revisions(version_set: SystemVersionSet) -> dict[str, ComponentRevision]:
             rows = {
                 binding["id"]: self.session.get(ComponentRevision, binding["id"])
@@ -2527,148 +3191,108 @@ class SystemVersionsService:
                 if row is not None
             }
 
-        base_revs = _load_revisions(base)
-        target_revs = _load_revisions(target)
-        base_by_component = {rev.component_id: rev for rev in base_revs.values()}
-        target_by_component = {rev.component_id: rev for rev in target_revs.values()}
-        components = {
-            component_id: self.session.get(SystemComponent, component_id)
-            for component_id in set(base_by_component) | set(target_by_component)
-        }
-        base_components = {
-            component_id: row
-            for component_id, row in components.items()
-            if row is not None and component_id in base_by_component
-        }
-        target_components = {
-            component_id: row
-            for component_id, row in components.items()
-            if row is not None and component_id in target_by_component
-        }
+        def _revision_binding(row: ComponentRevision) -> dict[str, Any]:
+            return {
+                "kind": "COMPONENT_REVISION",
+                "id": row.component_revision_id,
+                "revision": int(row.envelope_payload["record_envelope"]["revision"]),
+                "digest": row.record_digest,
+            }
 
-        added: list[dict[str, Any]] = []
-        removed: list[dict[str, Any]] = []
-        changed: list[dict[str, Any]] = []
-        for component_id in sorted(set(target_by_component) - set(base_by_component)):
-            component = target_components[component_id]
-            added.append(
-                {
-                    "component_id": component_id,
-                    "logical_name": component.logical_name,
-                    "base_digest": None,
-                    "target_digest": target_by_component[component_id].configuration_digest,
-                    "diff_kind": "ADDED",
-                    "details": {},
-                }
-            )
-        for component_id in sorted(set(base_by_component) - set(target_by_component)):
-            component = base_components[component_id]
-            removed.append(
-                {
-                    "component_id": component_id,
-                    "logical_name": component.logical_name,
-                    "base_digest": base_by_component[component_id].configuration_digest,
-                    "target_digest": None,
-                    "diff_kind": "REMOVED",
-                    "details": {},
-                }
-            )
-        for component_id in sorted(set(base_by_component) & set(target_by_component)):
-            base_rev = base_by_component[component_id]
-            target_rev = target_by_component[component_id]
-            component = base_components[component_id]
-            if base_rev.configuration_digest != target_rev.configuration_digest:
-                changed.append(
-                    {
-                        "component_id": component_id,
-                        "logical_name": component.logical_name,
-                        "base_digest": base_rev.configuration_digest,
-                        "target_digest": target_rev.configuration_digest,
-                        "diff_kind": "DIGEST_CHANGED",
-                        "details": {
-                            "identity_assurance": target_rev.identity_assurance,
-                            "component_kind": target_rev.component_kind,
-                        },
-                    }
-                )
-
-        def _load_edges(version_set: SystemVersionSet) -> list[DependencyEdge]:
+        def _load_edges(version_set: SystemVersionSet) -> dict[str, dict[str, Any]]:
             topology = self.session.get(
                 TopologyRevision, version_set.exact_topology_revision_binding["id"]
             )
             if topology is None:
-                return []
-            return [
-                row
-                for row in (
-                    self.session.get(DependencyEdge, binding["id"])
-                    for binding in topology.exact_edge_revision_bindings
-                )
-                if row is not None
-            ]
+                return {}
+            return {
+                binding["id"]: binding
+                for binding in topology.exact_edge_revision_bindings
+            }
 
-        base_edges = _load_edges(base)
+        source_revs = _load_revisions(source)
+        target_revs = _load_revisions(target)
+        source_by_component = {rev.component_id: rev for rev in source_revs.values()}
+        target_by_component = {rev.component_id: rev for rev in target_revs.values()}
+
+        added = [
+            _revision_binding(target_by_component[component_id])
+            for component_id in sorted(set(target_by_component) - set(source_by_component))
+        ]
+        removed = [
+            _revision_binding(source_by_component[component_id])
+            for component_id in sorted(set(source_by_component) - set(target_by_component))
+        ]
+        changed = [
+            {
+                "component_id": component_id,
+                "from_binding": _revision_binding(source_by_component[component_id]),
+                "to_binding": _revision_binding(target_by_component[component_id]),
+            }
+            for component_id in sorted(set(source_by_component) & set(target_by_component))
+            if source_by_component[component_id].record_digest
+            != target_by_component[component_id].record_digest
+        ]
+
+        source_edges = _load_edges(source)
         target_edges = _load_edges(target)
-        base_edge_map: dict[tuple[str, str], DependencyEdge] = {
-            (edge.from_component_id, edge.relation): edge for edge in base_edges
-        }
-        target_edge_map: dict[tuple[str, str], DependencyEdge] = {
-            (edge.from_component_id, edge.relation): edge for edge in target_edges
-        }
-        substitutions: list[dict[str, Any]] = []
-        for (from_id, relation) in sorted(set(base_edge_map) & set(target_edge_map)):
-            base_edge = base_edge_map[(from_id, relation)]
-            target_edge = target_edge_map[(from_id, relation)]
-            if base_edge.to_component_id != target_edge.to_component_id:
-                from_component = base_components.get(from_id)
-                substitutions.append(
+        topology_changes: list[dict[str, Any]] = []
+        for edge_id in sorted(set(source_edges) | set(target_edges)):
+            in_source = edge_id in source_edges
+            in_target = edge_id in target_edges
+            if in_source and in_target:
+                if source_edges[edge_id]["digest"] != target_edges[edge_id]["digest"]:
+                    topology_changes.append(
+                        {
+                            "kind": "EDGE_REVISION_CHANGED",
+                            "from_edge_binding_or_null": source_edges[edge_id],
+                            "to_edge_binding_or_null": target_edges[edge_id],
+                        }
+                    )
+            elif in_source:
+                topology_changes.append(
                     {
-                        "component_id": from_id,
-                        "logical_name": (
-                            from_component.logical_name if from_component is not None else from_id
-                        ),
-                        "base_digest": base_edge.edge_digest,
-                        "target_digest": target_edge.edge_digest,
-                        "diff_kind": "DEPENDENCY_SUBSTITUTION",
-                        "details": {
-                            "relation": relation,
-                            "from_component_id": from_id,
-                            "base_to_component_id": base_edge.to_component_id,
-                            "target_to_component_id": target_edge.to_component_id,
-                        },
+                        "kind": "EDGE_REMOVED",
+                        "from_edge_binding_or_null": source_edges[edge_id],
+                        "to_edge_binding_or_null": None,
+                    }
+                )
+            else:
+                topology_changes.append(
+                    {
+                        "kind": "EDGE_ADDED",
+                        "from_edge_binding_or_null": None,
+                        "to_edge_binding_or_null": target_edges[edge_id],
                     }
                 )
 
-        expansions: list[dict[str, Any]] = []
-        for component_id in sorted(set(base_by_component) & set(target_by_component)):
-            base_rev = base_by_component[component_id]
-            target_rev = target_by_component[component_id]
-            component = base_components[component_id]
-            if component.component_kind != "POLICY":
-                continue
-            base_permission = base_rev.permission_manifest_digest
-            target_permission = target_rev.permission_manifest_digest
-            if base_permission != target_permission:
-                expansions.append(
-                    {
-                        "component_id": component_id,
-                        "logical_name": component.logical_name,
-                        "base_digest": base_permission,
-                        "target_digest": target_permission,
-                        "diff_kind": "PERMISSION_EXPANSION",
-                        "details": {
-                            "component_kind": "POLICY",
-                            "component_permission_classification": (
-                                component.permission_classification
-                            ),
-                        },
-                    }
-                )
-        return added, removed, changed, substitutions, expansions
+        def _assurance_map(version_set: SystemVersionSet) -> dict[str, str]:
+            entries = version_set.identity_assurance_summary.get(
+                "component_assurances", []
+            )
+            return {
+                entry["component_revision_id"]: entry["identity_assurance"]
+                for entry in entries
+            }
 
+        source_assurance = _assurance_map(source)
+        target_assurance = _assurance_map(target)
+        identity_assurance_changes = [
+            (
+                f"component_revision {revision_id} identity_assurance "
+                f"{source_assurance.get(revision_id)} -> {target_assurance.get(revision_id)}"
+            )
+            for revision_id in sorted(set(source_assurance) | set(target_assurance))
+            if source_assurance.get(revision_id) != target_assurance.get(revision_id)
+        ]
 
-__all__ = [
-    "SystemVersionsError",
-    "SystemVersionsService",
-    "V5ReadDenial",
-]
+        return {
+            "added": added,
+            "removed": removed,
+            "changed": changed,
+            "topology_changes": topology_changes,
+            "assurance_delta": {
+                "identity_assurance_changes": identity_assurance_changes,
+            },
+            "deterministic": True,
+        }

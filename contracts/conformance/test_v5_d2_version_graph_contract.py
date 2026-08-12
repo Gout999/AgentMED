@@ -1,10 +1,12 @@
-"""D2 complete version-graph contract freeze.
+"""D2 complete version-graph contract freeze + R3-full activation.
 
-Freezes system-versions.record/get/diff as FROZEN_FOR_IMPLEMENTATION /
-NOT_IMPLEMENTED: complete standalone wire, authority, idempotency, lineage/CAS,
-event/outbox/audit/receipt semantics, and a non-trivial two-VersionSet diff
-fixture. Contract-only: nothing is activated, no transport is generated, and
-R3-full capability discovery stays hidden. Run from the repository root
+Freezes system-versions.record/get/diff wire, authority, idempotency,
+lineage/CAS, event/outbox/audit/receipt semantics, and a non-trivial
+two-VersionSet diff fixture. The D2 freeze itself stays contract-only and
+its fixture/schemas are immutable; R3-full activates the three intents
+(FROZEN_R3 / IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER), so they enter the
+generated operation/capability manifests while r2_application_catalog_contract
+keeps its 11-intent historical allowlist. Run from the repository root
 (conformance convention):
 
     cd contracts
@@ -37,6 +39,9 @@ ACTIVATED_NAMES = [
     "dependency-edges.record",
     "dependency-edges.get",
     "system-manifests.import",
+    "system-versions.record",
+    "system-versions.get",
+    "system-versions.diff",
 ]
 
 
@@ -89,36 +94,61 @@ def test_fixture_freeze_metadata_is_contract_only() -> None:
     } <= set(fixture["does_not_prove"])
 
 
-def test_three_intents_frozen_but_not_activated() -> None:
+def test_three_intents_activated_as_r3_full() -> None:
     registry = _load_yaml(V5 / "intent-registry.yaml")
     compatibility = _load_yaml(V5 / "compatibility.yaml")
 
     for name in D2_INTENTS:
         intent = _registry_intent(registry, name)
-        assert intent["wire_status"] == "FROZEN_FOR_IMPLEMENTATION"
-        assert intent["implementation_status"] == "NOT_IMPLEMENTED"
+        assert intent["wire_status"] == "FROZEN_R3"
+        assert intent["implementation_status"] == (
+            "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
+        )
         assert intent["field_contract_ref"].startswith(
             "contracts/v5/schema-profiles.yaml#d2_wire_profiles/"
         )
         assert intent["http"]["path"].startswith("/api/v2/")
         assert intent["cli_requires_explicit_api_major"] is True
 
-    # 未激活：不在 R2 激活 allowlist，且不进入任何 generated manifest。
-    r2_activated = registry["r2_application_catalog_contract"]["activated_contract_intents"]
+    # R3-full 激活：三个 intent 进入 generated operation/capability manifest；
+    # R2 历史 allowlist（r2_application_catalog_contract）仍保持 11 个且不相交。
+    r2_activated = registry["r2_application_catalog_contract"][
+        "activated_contract_intents"
+    ]
+    assert len(r2_activated) == 11
     assert set(D2_INTENTS).isdisjoint(r2_activated)
-    operation_names = [op["intent"] for op in _load_json("operation-manifest.json")["operations"]]
+    operation_names = [
+        op["intent"] for op in _load_json("operation-manifest.json")["operations"]
+    ]
     assert operation_names == ACTIVATED_NAMES
     capability_names = [
-        entry["name"] for entry in _load_json("capability-manifest.json")["enabled_intents"]
+        entry["name"]
+        for entry in _load_json("capability-manifest.json")["enabled_intents"]
     ]
     assert capability_names == ACTIVATED_NAMES
-    assert set(D2_INTENTS).isdisjoint(capability_names)
+    assert set(D2_INTENTS) <= set(capability_names)
 
-    # capability 发现保持隐藏。
+    # R3-full 契约块：capability 发现开启；d2 块标记为已激活（语义部分不变）。
+    r3 = registry["r3_full_contract"]
+    assert r3["stage"] == "R3_FULL"
+    assert r3["plan_ref"] == "docs/plans/v5-master-execution-plan.md#17.4"
+    assert r3["contract_status"] == "FROZEN"
+    assert r3["runtime_status"] == "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
+    assert r3["activated_contract_intents"] == D2_INTENTS
+    assert r3["capability_discovery"] == "ENABLED"
+    assert r3["r2_activated_allowlist_unchanged"] is True
+
     d2 = registry["d2_complete_version_graph_contract"]
-    assert d2["activation_status"] == "NOT_ACTIVATED"
-    assert set(d2["transports"].values()) == {"FORBIDDEN"}
-    assert d2["r3_full_capability_discovery_remains_hidden"] is True
+    assert d2["activation_status"] == "ACTIVATED_AS_R3_FULL"
+    assert d2["transports"]["http"] == "ENABLED"
+    assert d2["transports"]["cli"] == "ENABLED"
+    assert d2["transports"]["capability_discovery"] == "ENABLED"
+    assert d2["transports"]["sdk"] == "FORBIDDEN"
+    assert d2["transports"]["mcp"] == "FORBIDDEN"
+    assert d2["transports"]["a2a"] == "FORBIDDEN"
+    assert d2["r3_full_capability_discovery_remains_hidden"] is False
+
+    # compatibility.yaml 的 d2_frozen_contract_surfaces 是 D2 历史冻结记录，保持原状。
     for name in D2_INTENTS:
         surface = compatibility["d015_development_and_compatibility_lanes"][
             "d2_frozen_contract_surfaces"

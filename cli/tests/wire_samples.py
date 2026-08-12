@@ -44,6 +44,9 @@ def capabilities(request: httpx.Request) -> dict[str, Any]:
             ("dependency-edges.record", "applications:manage"),
             ("dependency-edges.get", "applications:read"),
             ("system-manifests.import", "system_manifests:import"),
+            ("system-versions.record", "system_versions:record"),
+            ("system-versions.get", "system_versions:read"),
+            ("system-versions.diff", "system_versions:read"),
         ]
         return {
             "schema_version": "2.0",
@@ -341,6 +344,12 @@ def success_for(request: httpx.Request) -> dict[str, Any]:
         return acceptance_get(request)
     if path.endswith(":confirm"):
         return acceptance_confirm(request)
+    if path == "/api/v2/system-versions" and request.method == "POST":
+        return system_version_record(request)
+    if path.startswith("/api/v2/system-versions/") and request.method == "GET":
+        return system_version_get(request)
+    if path == "/api/v2/system-versions:diff" and request.method == "GET":
+        return system_version_diff(request)
     raise AssertionError(path)
 
 
@@ -548,3 +557,126 @@ def acceptance_confirm(request: httpx.Request) -> dict[str, Any]:
         core=core,
     )
     return {**core, "idempotency": {"receipt": receipt, "replayed": False}}
+
+
+# ---------------------------------------------------------------------------
+# R3 wire samples (system-versions.record / get / diff).
+
+
+def _system_version_set_record(
+    request: httpx.Request, version_set_id: str, previous_binding_or_null: Any
+) -> dict[str, Any]:
+    workspace_id = request.headers["x-caseloop-workspace-id"]
+    return {
+        "record_envelope": {
+            "schema_version": "2.0",
+            "workspace_id": workspace_id,
+            "revision": 1,
+            "recorded_by_principal": "prn_01J0000000000001",
+            "recorded_at": "2026-08-11T10:00:00Z",
+            "immutable": True,
+            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+            "record_digest": "sha256:" + "a" * 64,
+            "authority_receipt_id": "arec_01J0000000000001",
+        },
+        "system_version_set_id": version_set_id,
+        "workspace_id": workspace_id,
+        "application_id": "app_01J0000000000001",
+        "declared_environment_id": "env_01J0000000000001",
+        "exact_component_revision_bindings": [
+            {
+                "kind": "COMPONENT_REVISION",
+                "id": "crv_01J0000000000001",
+                "revision": 1,
+                "digest": "sha256:" + "b" * 64,
+            }
+        ],
+        "exact_topology_revision_binding": {
+            "kind": "TOPOLOGY_REVISION",
+            "id": "tpr_01J0000000000001",
+            "revision": 1,
+            "digest": "sha256:" + "c" * 64,
+        },
+        "identity_assurance_summary": {
+            "component_assurances": [
+                {
+                    "component_revision_id": "crv_01J0000000000001",
+                    "component_id": "cmp_01J0000000000001",
+                    "identity_assurance": "IMMUTABLE_DIGEST",
+                }
+            ]
+        },
+        "provenance_receipt_ids": ["arec_01J0000000000001"],
+        "version_set_digest": "sha256:" + "d" * 64,
+        "manifest_digest": None,
+        "manifest": None,
+        "exact_previous_system_version_set_binding_or_null": previous_binding_or_null,
+    }
+
+
+def system_version_record(request: httpx.Request) -> dict[str, Any]:
+    submission = json.loads(request.content)
+    version_set_id = "vset_01J0000000000001"
+    core = {
+        **_v5_core(request, resource_kind="system_version_set", resource_field="x"),
+        "system_version_set": _system_version_set_record(
+            request,
+            version_set_id,
+            previous_binding_or_null=submission[
+                "exact_previous_system_version_set_binding_or_null"
+            ],
+        ),
+    }
+    core["audit_ref"] = "audit://aud_01J0000000000007"
+    receipt = _case_v2_receipt(
+        request,
+        intent="system-versions.record",
+        resource_kind="system_version_set",
+        resource_id=version_set_id,
+        audit_ref=core["audit_ref"],
+        core=core,
+    )
+    return {**core, "idempotency": {"receipt": receipt, "replayed": False}}
+
+
+def system_version_get(request: httpx.Request) -> dict[str, Any]:
+    version_set_id = request.url.path.rsplit("/", 1)[-1]
+    return {
+        **_v5_core(request, resource_kind="system_version_set", resource_field="x"),
+        "system_version_set": _system_version_set_record(
+            request, version_set_id, previous_binding_or_null=None
+        ),
+    }
+
+
+def system_version_diff(request: httpx.Request) -> dict[str, Any]:
+    return {
+        **_v5_core(request, resource_kind="system_version_set", resource_field="x"),
+        "source_binding": {
+            "kind": "SYSTEM_VERSION_SET",
+            "id": request.url.params["source_version_set_id"],
+            "revision": 1,
+            "digest": "sha256:" + "e" * 64,
+        },
+        "target_binding": {
+            "kind": "SYSTEM_VERSION_SET",
+            "id": request.url.params["target_version_set_id"],
+            "revision": 2,
+            "digest": "sha256:" + "f" * 64,
+        },
+        "diff": {
+            "added": [
+                {
+                    "kind": "COMPONENT_REVISION",
+                    "id": "crv_01J0000000000001",
+                    "revision": 1,
+                    "digest": "sha256:" + "b" * 64,
+                }
+            ],
+            "removed": [],
+            "changed": [],
+            "topology_changes": [],
+            "assurance_delta": {"identity_assurance_changes": []},
+            "deterministic": True,
+        },
+    }

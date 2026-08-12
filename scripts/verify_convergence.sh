@@ -119,7 +119,8 @@ s8_postgres() {
         && "$PYTHON" -m pytest \
         tests/integration/test_v5_lifecycle_authority_postgres.py \
         tests/integration/test_v5_application_catalog_postgres.py \
-        tests/integration/test_v5_r2_manifest_activation_postgres.py
+        tests/integration/test_v5_r2_manifest_activation_postgres.py \
+        tests/integration/test_v5_system_versions_r3_postgres.py
 }
 
 run_section "1-compiler-determinism" "compiler emit + zero diff on contracts/v5/generated/" s1_compiler_determinism

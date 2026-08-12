@@ -14,7 +14,10 @@ from typing import Callable, Sequence, TextIO
 import httpx
 from pydantic import ValidationError
 
-from ._generated.manifest_v2 import SystemManifestImportRequest
+from ._generated.manifest_v2 import (
+    SystemManifestImportRequest,
+    SystemVersionRecordRequest,
+)
 from ._generated.operation_manifest import (
     CliOperation,
     CliOperationManifestError,
@@ -173,6 +176,26 @@ def _manifest_import_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--idempotency-key")
 
 
+def _system_version_record_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--application-id", required=True)
+    parser.add_argument("--environment-id", required=True)
+    # Exact bindings are JSON documents: component revisions are a list,
+    # topology revision is a single binding object.
+    parser.add_argument("--component-revisions", required=True)
+    parser.add_argument("--topology-revision", required=True)
+    parser.add_argument("--exact-previous-version-set")
+    parser.add_argument("--idempotency-key")
+
+
+def _system_version_get_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--system-version-set-id", required=True)
+
+
+def _system_version_diff_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--source-version-set-id", required=True)
+    parser.add_argument("--target-version-set-id", required=True)
+
+
 def _id_positional(argument: str) -> Callable[[argparse.ArgumentParser], None]:
     def _add(parser: argparse.ArgumentParser) -> None:
         parser.add_argument(argument)
@@ -199,6 +222,9 @@ _V2_ACTION_OPTIONS: dict[
     # ``validate`` is a local-only command, not an activated operation; it
     # stays registered beside the derived ``import`` action.
     ("system-manifest", "validate"): _manifest_import_options,
+    ("system-version", "record"): _system_version_record_options,
+    ("system-version", "get"): _system_version_get_options,
+    ("system-version", "diff"): _system_version_diff_options,
 }
 
 
@@ -580,6 +606,98 @@ def run(
                         manifest_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
                     ).encode("utf-8"),
                     idempotency_key=idem,
+                    api_major=2,
+                )
+            elif args.command == "system-version" and args.action == "record":
+                idem = args.idempotency_key or f"system-version-record-{uuid_factory().hex}"
+                if not 8 <= len(idem) <= 128:
+                    raise CliError("IDEMPOTENCY_KEY_INVALID", ExitFamily.INPUT)
+                try:
+                    component_bindings = json.loads(args.component_revisions)
+                    topology_binding = json.loads(args.topology_revision)
+                except (json.JSONDecodeError, UnicodeDecodeError):
+                    raise CliError("SYSTEM_VERSION_INPUT_INVALID", ExitFamily.INPUT) from None
+                if not isinstance(component_bindings, list) or not isinstance(
+                    topology_binding, dict
+                ):
+                    raise CliError("SYSTEM_VERSION_INPUT_INVALID", ExitFamily.INPUT)
+                if args.exact_previous_version_set is not None:
+                    try:
+                        previous_binding = json.loads(args.exact_previous_version_set)
+                    except (json.JSONDecodeError, UnicodeDecodeError):
+                        raise CliError(
+                            "SYSTEM_VERSION_INPUT_INVALID", ExitFamily.INPUT
+                        ) from None
+                else:
+                    previous_binding = None
+                request_payload = {
+                    "schema_version": "2.0",
+                    "application_id": _valid_id(
+                        args.application_id, "application", required=True
+                    ),
+                    "environment_id": _valid_id(
+                        args.environment_id, "environment", required=True
+                    ),
+                    "exact_component_revision_bindings": component_bindings,
+                    "exact_topology_revision_binding": topology_binding,
+                    "exact_previous_system_version_set_binding_or_null": previous_binding,
+                }
+                try:
+                    model = SystemVersionRecordRequest.model_validate(request_payload)
+                except ValidationError as exc:
+                    fields = sorted(
+                        {
+                            ".".join(str(part) for part in item["loc"])
+                            for item in exc.errors()
+                        }
+                    )
+                    raise CliError(
+                        "SYSTEM_VERSION_INPUT_INVALID",
+                        ExitFamily.INPUT,
+                        payload={"fields": fields},
+                    ) from None
+                # Canonical dump (defaults included) so the request-fingerprint
+                # binding on the record receipt matches the server model dump.
+                payload = model.model_dump(mode="json")
+                result = client.request(
+                    operation.method,
+                    operation.path,
+                    body=json.dumps(
+                        payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+                    ).encode("utf-8"),
+                    idempotency_key=idem,
+                    api_major=2,
+                )
+            elif args.command == "system-version" and args.action == "get":
+                system_version_set_id = _valid_id(
+                    args.system_version_set_id, "version_set", required=True
+                )
+                result = client.request(
+                    operation.method,
+                    _operation_path(
+                        operation, system_version_set_id=system_version_set_id
+                    ),
+                    api_major=2,
+                )
+            elif args.command == "system-version" and args.action == "diff":
+                params = [
+                    (
+                        "source_version_set_id",
+                        _valid_id(
+                            args.source_version_set_id, "version_set", required=True
+                        ),
+                    ),
+                    (
+                        "target_version_set_id",
+                        _valid_id(
+                            args.target_version_set_id, "version_set", required=True
+                        ),
+                    ),
+                ]
+                result = client.request(
+                    operation.method,
+                    operation.path,
+                    params=params,
                     api_major=2,
                 )
             else:

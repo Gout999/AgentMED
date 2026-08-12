@@ -148,7 +148,7 @@ def _headers(*, idempotency_key: str | None = "manifest-import-0001") -> dict[st
     return headers
 
 
-def test_import_cross_key_conflicts_while_get_and_diff_remain_unregistered(client) -> None:
+def test_import_cross_key_conflicts_with_r3_version_reads_registered(client) -> None:
     imported = client.post(
         "/api/v2/system-manifests:import",
         headers=_headers(),
@@ -178,16 +178,21 @@ def test_import_cross_key_conflicts_while_get_and_diff_remain_unregistered(clien
         f"/api/v2/system-versions/{version_set_id}",
         headers=_headers(idempotency_key=None),
     )
-    assert got.status_code == 404
+    assert got.status_code == 200, got.text
+    assert got.json()["system_version_set"]["system_version_set_id"] == version_set_id
+    assert got.json()["system_version_set"][
+        "exact_previous_system_version_set_binding_or_null"
+    ] is None
 
     diff = client.get(
         "/api/v2/system-versions:diff",
         params={
-            "base_system_version_set_id": version_set_id,
-            "target_system_version_set_id": version_set_id,
+            "source_version_set_id": version_set_id,
+            "target_version_set_id": version_set_id,
         },
         headers=_headers(idempotency_key=None),
     )
+    # self-diff fails closed as an opaque denial
     assert diff.status_code == 404
 
     # Bootstrap is one-shot per workspace.  Only the original key may replay;

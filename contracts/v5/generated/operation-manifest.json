@@ -1,9 +1,10 @@
 {
-  "activated_intent_count": 11,
+  "activated_intent_count": 14,
   "activation_rule": {
     "activated_wire_statuses": [
       "FROZEN_R2",
-      "FROZEN_R2_R3_BOOTSTRAP"
+      "FROZEN_R2_R3_BOOTSTRAP",
+      "FROZEN_R3"
     ],
     "draft_or_deferred_intents_excluded": true,
     "not_a_route_or_capability_activation": true
@@ -379,6 +380,109 @@
       "trust_roles_source": "authenticated_server_registration",
       "wire_status": "FROZEN_R2_R3_BOOTSTRAP",
       "workflow_owner": "manifest_import_coordinator"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "service"
+      ],
+      "cli": "system-version record",
+      "cli_requires_explicit_api_major": true,
+      "command_target": {
+        "command": "system-versions.record",
+        "resource": "system_version_set"
+      },
+      "contract_major": 2,
+      "delivery_slice": "V5-1B",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "POST",
+        "operation_id": "recordSystemVersion",
+        "path": "/api/v2/system-versions"
+      },
+      "idempotency": "required",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "system-versions.record",
+      "kind": "mutation",
+      "required_trust_roles_any_of": [
+        "integrator",
+        "trusted_builder"
+      ],
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/system-versions.record.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/system-versions.record.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/system-versions.record.schema.json#/$defs/response"
+      },
+      "scope": "system_versions:record",
+      "trust_roles_source": "authenticated_server_registration",
+      "wire_status": "FROZEN_R3"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "external_agent",
+        "service",
+        "connector"
+      ],
+      "authorization_condition": "application_authorized_reader",
+      "cli": "system-version get",
+      "cli_requires_explicit_api_major": true,
+      "contract_major": 2,
+      "delivery_slice": "V5-1B",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "GET",
+        "operation_id": "getSystemVersion",
+        "path": "/api/v2/system-versions/{system_version_set_id}"
+      },
+      "idempotency": "none",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "system-versions.get",
+      "kind": "query",
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/system-versions.get.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/system-versions.get.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/system-versions.get.schema.json#/$defs/response"
+      },
+      "scope": "system_versions:read",
+      "wire_status": "FROZEN_R3"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "external_agent",
+        "service",
+        "connector"
+      ],
+      "authorization_condition": "authorized_reader_for_both_versions",
+      "cli": "system-version diff",
+      "cli_requires_explicit_api_major": true,
+      "contract_major": 2,
+      "delivery_slice": "V5-1B",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "GET",
+        "operation_id": "diffSystemVersions",
+        "path": "/api/v2/system-versions:diff",
+        "query_parameters": {
+          "optional": [],
+          "required": [
+            "source_version_set_id",
+            "target_version_set_id"
+          ]
+        }
+      },
+      "idempotency": "none",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "system-versions.diff",
+      "kind": "query",
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/system-versions.diff.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/system-versions.diff.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/system-versions.diff.schema.json#/$defs/response"
+      },
+      "scope": "system_versions:read",
+      "wire_status": "FROZEN_R3"
     }
   ],
   "schema_version": "1.0",

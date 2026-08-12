@@ -403,6 +403,12 @@ class SystemVersionSetRecord(WireModel):
     version_set_digest: Digest
     manifest_digest: Digest | None = None
     manifest: dict[str, Any] | None = None
+    # D2 standalone record/get shapes (system-versions.record/get) carry the
+    # CAS lineage binding as a required field; the import response omits it.
+    # Optional so one model accepts both wire shapes.
+    exact_previous_system_version_set_binding_or_null: (
+        ExactSystemVersionSetBinding | None
+    ) = None
 
 
 class BootstrapAttestationRecord(WireModel):
@@ -464,6 +470,30 @@ class SystemManifestImportResponse(WireModel):
     idempotency: V5IdempotencyDelivery
 
 
+class SystemVersionRecordRequest(WireModel):
+    """D2 frozen standalone record request (system-versions.record)."""
+
+    schema_version: SchemaVersion2
+    application_id: ApplicationId
+    environment_id: CatalogEnvironmentId
+    exact_component_revision_bindings: Annotated[
+        list[ExactComponentRevisionBinding], Field(min_length=1, max_length=256)
+    ]
+    exact_topology_revision_binding: ExactTopologyRevisionBinding
+    exact_previous_system_version_set_binding_or_null: (
+        ExactSystemVersionSetBinding | None
+    )
+
+
+class SystemVersionRecordResponse(WireModel):
+    schema_version: SchemaVersion2
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    system_version_set: SystemVersionSetRecord
+    idempotency: V5IdempotencyDelivery
+
+
 class SystemVersionGetResponse(WireModel):
     schema_version: SchemaVersion2
     workspace_id: WorkspaceId
@@ -472,30 +502,40 @@ class SystemVersionGetResponse(WireModel):
     system_version_set: SystemVersionSetRecord
 
 
-class VersionDiffItem(WireModel):
+class SystemVersionChangedComponent(WireModel):
     component_id: ComponentId
-    logical_name: LogicalName
-    base_digest: Digest | None
-    target_digest: Digest | None
-    diff_kind: Literal[
-        "DIGEST_CHANGED",
-        "DEPENDENCY_SUBSTITUTION",
-        "PERMISSION_EXPANSION",
-        "ADDED",
-        "REMOVED",
+    from_binding: ExactComponentRevisionBinding
+    to_binding: ExactComponentRevisionBinding
+
+
+class SystemVersionTopologyChange(WireModel):
+    kind: Literal["EDGE_ADDED", "EDGE_REMOVED", "EDGE_REVISION_CHANGED"]
+    from_edge_binding_or_null: ExactDependencyEdgeBinding | None
+    to_edge_binding_or_null: ExactDependencyEdgeBinding | None
+
+
+class SystemVersionAssuranceDelta(WireModel):
+    identity_assurance_changes: list[
+        Annotated[str, Field(min_length=1, max_length=128)]
     ]
-    details: dict[str, Any] = {}
+
+
+class SystemVersionDiff(WireModel):
+    added: list[ExactComponentRevisionBinding]
+    removed: list[ExactComponentRevisionBinding]
+    changed: list[SystemVersionChangedComponent]
+    topology_changes: list[SystemVersionTopologyChange]
+    assurance_delta: SystemVersionAssuranceDelta
+    deterministic: Literal[True]
 
 
 class SystemVersionDiffResponse(WireModel):
+    """D2 frozen deterministic diff shape (system-versions.diff)."""
+
     schema_version: SchemaVersion2
     workspace_id: WorkspaceId
     request_id: RequestId
     audit_ref: AuditRef
-    base_system_version_set_id: SystemVersionSetId
-    target_system_version_set_id: SystemVersionSetId
-    added: list[VersionDiffItem] = []
-    removed: list[VersionDiffItem] = []
-    changed: list[VersionDiffItem] = []
-    dependency_substitutions: list[VersionDiffItem] = []
-    policy_permission_expansions: list[VersionDiffItem] = []
+    source_binding: ExactSystemVersionSetBinding
+    target_binding: ExactSystemVersionSetBinding
+    diff: SystemVersionDiff

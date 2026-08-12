@@ -36,6 +36,23 @@ EXPECTED_R2_INTENTS = {
     "system-manifests.import",
 }
 
+EXPECTED_ACTIVATED_INTENTS = {
+    "capabilities.get",
+    "applications.register",
+    "applications.get",
+    "applications.list",
+    "environments.register",
+    "environments.get",
+    "system-components.register",
+    "system-components.get",
+    "dependency-edges.record",
+    "dependency-edges.get",
+    "system-manifests.import",
+    "system-versions.record",
+    "system-versions.get",
+    "system-versions.diff",
+}
+
 
 def _seed_capability_principal(
     sqlite_session,
@@ -96,8 +113,6 @@ def test_v5_capabilities_advertise_only_r2_intents_in_principal_scope(
         "applications.activate",
         "system-components.activate",
         "system-versions.record",
-        "system-versions.get",
-        "system-versions.diff",
         "cases.bind-application",
         "acceptance-criteria.propose",
     }
@@ -114,8 +129,8 @@ def test_v5_capabilities_advertise_only_r2_intents_in_principal_scope(
 
 def test_v5_capability_allowlist_is_exact_and_unique() -> None:
     names = [str(item["name"]) for item in IMPLEMENTED_V5_PUBLIC_INTENTS]
-    assert len(names) == 11
-    assert set(names) == EXPECTED_R2_INTENTS
+    assert len(names) == 14
+    assert set(names) == EXPECTED_ACTIVATED_INTENTS
     assert len(names) == len(set(names))
     assert all(
         set(item["principal_types"])
@@ -162,8 +177,8 @@ def test_v5_capabilities_fail_closed_when_audit_is_unavailable(
 @pytest.mark.parametrize(
     ("principal_type", "expected"),
     [
-        ("human", EXPECTED_R2_INTENTS),
-        ("service", EXPECTED_R2_INTENTS),
+        ("human", EXPECTED_ACTIVATED_INTENTS),
+        ("service", EXPECTED_ACTIVATED_INTENTS),
         (
             "external_agent",
             {
@@ -173,6 +188,8 @@ def test_v5_capabilities_fail_closed_when_audit_is_unavailable(
                 "environments.get",
                 "system-components.get",
                 "dependency-edges.get",
+                "system-versions.get",
+                "system-versions.diff",
             },
         ),
         (
@@ -184,6 +201,8 @@ def test_v5_capabilities_fail_closed_when_audit_is_unavailable(
                 "environments.get",
                 "system-components.get",
                 "dependency-edges.get",
+                "system-versions.get",
+                "system-versions.diff",
             },
         ),
     ],
@@ -243,6 +262,8 @@ def test_v5_capabilities_hide_catalog_mutations_and_import_from_roleless_human(
         "environments.get",
         "system-components.get",
         "dependency-edges.get",
+        "system-versions.get",
+        "system-versions.diff",
     }
 
 

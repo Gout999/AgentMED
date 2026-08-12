@@ -90,7 +90,7 @@ def test_sqlite_upgrade_head_allows_multi_stage_gate_binding(tmp_path: Path) -> 
     with engine.begin() as connection:
         assert (
             connection.execute(sa.text("select version_num from alembic_version")).scalar_one()
-            == "012"
+            == "013"
         )
         base = {
             "workorder_id": "wo-multi-stage",
@@ -415,10 +415,10 @@ def test_v5_r1_graph_and_legacy_preflight_precedes_every_ddl() -> None:
     root = Path(__file__).resolve().parents[2]
     script = ScriptDirectory.from_config(_config(root, "sqlite://"))
 
-    assert script.get_heads() == ["012"]
+    assert script.get_heads() == ["013"]
     assert [
-        item.revision for item in script.iterate_revisions("012", "009")
-    ] == ["012", "011", "010"]
+        item.revision for item in script.iterate_revisions("013", "009")
+    ] == ["013", "012", "011", "010"]
 
     for filename in (
         "011_v5_lifecycle_authority_foundation.py",
@@ -647,6 +647,7 @@ def test_v5_r1_fresh_schema_accepts_registered_history_and_blocks_downgrade(
                 },
             )
 
+    command.downgrade(config, "012")
     before = _schema_fingerprint(engine)
     with pytest.raises(RuntimeError, match="012.v5_r1_history_prevents_downgrade"):
         command.downgrade(config, "010")
@@ -1071,7 +1072,7 @@ def _assert_event_preflight_preserves_schema(
         RuntimeError,
         match="012.legacy_v5_event_envelope_requires_explicit_recovery",
     ):
-        command.upgrade(config, "012")
+        command.upgrade(config, "013")
     assert _schema_fingerprint(engine) == before
     inspector = sa.inspect(engine)
     assert "event_contract_major" not in {
@@ -1162,7 +1163,7 @@ def test_v5_r1_fresh_postgresql_upgrade_reaches_exact_head() -> None:
         with engine.begin() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "012"
+            ).scalar_one() == "013"
     finally:
         try:
             _reset_pg_database_for_migrations(engine, TEST_DATABASE_URL)
@@ -1268,6 +1269,9 @@ def _assert_012_downgrade_preserves_schema(
     config = _config(root, database_url)
     command.upgrade(config, "head")
     _insert_012_downgrade_guard_fact(engine, fact_kind)
+    # 013 downgrade is a legal additive-column drop (no history rewrite); the
+    # 012 guard then must fail closed and preserve the 012 schema exactly.
+    command.downgrade(config, "012")
     before = _schema_fingerprint(engine)
     with pytest.raises(RuntimeError, match="012.v5_r1_history_prevents_downgrade"):
         command.downgrade(config, "010")

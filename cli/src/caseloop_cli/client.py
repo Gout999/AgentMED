@@ -34,7 +34,12 @@ from ._generated.public_v2 import (
     EnvironmentRegisterResponse,
     V5ServerCapabilitiesResponse,
 )
-from ._generated.manifest_v2 import SystemManifestImportResponse
+from ._generated.manifest_v2 import (
+    SystemManifestImportResponse,
+    SystemVersionDiffResponse,
+    SystemVersionGetResponse,
+    SystemVersionRecordResponse,
+)
 from ._generated.operation_manifest import (
     CliOperationManifestError,
     V2_CLI_OPERATIONS,
@@ -71,6 +76,9 @@ _V2_RESPONSE_MODELS: dict[str, SuccessModel] = {
     "dependency-edges.record": DependencyEdgeRecordResponse,
     "dependency-edges.get": DependencyEdgeGetResponse,
     "system-manifests.import": SystemManifestImportResponse,
+    "system-versions.record": SystemVersionRecordResponse,
+    "system-versions.get": SystemVersionGetResponse,
+    "system-versions.diff": SystemVersionDiffResponse,
 }
 
 # Strict id pattern per manifest path parameter.  Preserving the exact
@@ -81,6 +89,7 @@ _V2_PATH_PARAM_ID_PATTERN: dict[str, str] = {
     "environment_id": "env_[0-9A-Za-z]{8,64}",
     "component_id": "cmp_[0-9A-Za-z]{8,64}",
     "dependency_edge_id": "de_[0-9A-Za-z]{8,64}",
+    "system_version_set_id": "vset_[0-9A-Za-z]{8,64}",
 }
 
 SuccessModel: TypeAlias = type[BaseModel]
@@ -475,6 +484,7 @@ class PublicApiClient:
                     ComponentRegisterResponse,
                     DependencyEdgeRecordResponse,
                     SystemManifestImportResponse,
+                    SystemVersionRecordResponse,
                 ),
             )
             and success.idempotency.replayed is True
@@ -534,6 +544,17 @@ class PublicApiClient:
                 resource_id=success.system_version_set.system_version_set_id,
                 stable_request_id=stable_request_id,
             )
+            return
+        if isinstance(success, SystemVersionRecordResponse):
+            self._validate_v5_mutation_binding(
+                spec, success, body, idempotency_key, raw_payload,
+                resource_id=success.system_version_set.system_version_set_id,
+                stable_request_id=stable_request_id,
+            )
+            return
+        if isinstance(success, SystemVersionGetResponse):
+            if success.system_version_set.system_version_set_id != spec.resource_id:
+                raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
             return
         if isinstance(success, DependencyEdgeRecordResponse):
             self._validate_v5_mutation_binding(

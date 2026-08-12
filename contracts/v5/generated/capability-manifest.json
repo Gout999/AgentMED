@@ -1,6 +1,6 @@
 {
   "disabled_intents": [],
-  "enabled_intent_count": 11,
+  "enabled_intent_count": 14,
   "enabled_intents": [
     {
       "cli": true,
@@ -78,6 +78,27 @@
       "http": true,
       "name": "system-manifests.import",
       "scope": "system_manifests:import"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "system-versions.record",
+      "scope": "system_versions:record"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "system-versions.get",
+      "scope": "system_versions:read"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "system-versions.diff",
+      "scope": "system_versions:read"
     }
   ],
   "generated_by": "caseloop-v5-compiler",

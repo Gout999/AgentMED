@@ -395,6 +395,7 @@ V5IdempotencyIntent = Literal[
     "system-components.register",
     "dependency-edges.record",
     "system-manifests.import",
+    "system-versions.record",
     "cases.bind-application",
     "acceptance-criteria.propose",
     "acceptance-criteria.confirm",
@@ -443,6 +444,7 @@ class V5IdempotencyReceipt(WireModel):
             "system-components.register": ("system_component", "cmp_", False, "COMPLETED"),
             "dependency-edges.record": ("dependency_edge", "de_", False, "COMPLETED"),
             "system-manifests.import": ("system_version_set", "vset_", False, "COMPLETED"),
+            "system-versions.record": ("system_version_set", "vset_", False, "COMPLETED"),
             "cases.bind-application": (
                 "application_case_binding",
                 "acb_",
@@ -860,6 +862,50 @@ class SystemVersionSetRecord(WireModel):
     manifest: dict[str, Any] | None = None
 
 
+class RecordedSystemVersionSet(SystemVersionSetRecord):
+    """D2-frozen standalone-record wire shape: adds exact previous lineage.
+
+    Bootstrap-created first version sets carry a NULL previous binding;
+    standalone records of the second and later version sets must bind the
+    exact previous authoritative version set (CAS lineage).
+    """
+
+    exact_previous_system_version_set_binding_or_null: (
+        ExactSystemVersionSetBinding | None
+    ) = None
+
+
+class SystemVersionRecordRequest(WireModel):
+    """D2-frozen standalone record request.
+
+    References only existing authority-valid objects: ACTIVE application and
+    environment, exact component revision bindings, exact topology revision
+    binding, and (from the second version set on) the exact previous version
+    set binding.  Server derives ``identity_assurance_summary`` and
+    ``version_set_digest``.
+    """
+
+    schema_version: SchemaVersion2
+    application_id: ApplicationId
+    environment_id: CatalogEnvironmentId
+    exact_component_revision_bindings: Annotated[
+        list[ExactComponentRevisionBinding], Field(min_length=1, max_length=256)
+    ]
+    exact_topology_revision_binding: ExactTopologyRevisionBinding
+    exact_previous_system_version_set_binding_or_null: (
+        ExactSystemVersionSetBinding | None
+    ) = None
+
+
+class SystemVersionRecordResponse(WireModel):
+    schema_version: SchemaVersion2
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    system_version_set: RecordedSystemVersionSet
+    idempotency: V5IdempotencyDelivery
+
+
 class BootstrapAttestationRecord(WireModel):
     record_envelope: RecordEnvelope
     bootstrap_attestation_id: BootstrapAttestationId
@@ -924,22 +970,34 @@ class SystemVersionGetResponse(WireModel):
     workspace_id: WorkspaceId
     request_id: RequestId
     audit_ref: AuditRef
-    system_version_set: SystemVersionSetRecord
+    system_version_set: RecordedSystemVersionSet
 
 
-class VersionDiffItem(WireModel):
+class ChangedComponent(WireModel):
     component_id: ComponentId
-    logical_name: LogicalName
-    base_digest: Digest | None
-    target_digest: Digest | None
-    diff_kind: Literal[
-        "DIGEST_CHANGED",
-        "DEPENDENCY_SUBSTITUTION",
-        "PERMISSION_EXPANSION",
-        "ADDED",
-        "REMOVED",
-    ]
-    details: dict[str, Any] = {}
+    from_binding: ExactComponentRevisionBinding
+    to_binding: ExactComponentRevisionBinding
+
+
+class TopologyChange(WireModel):
+    kind: Literal["EDGE_ADDED", "EDGE_REMOVED", "EDGE_REVISION_CHANGED"]
+    from_edge_binding_or_null: ExactDependencyEdgeBinding | None = None
+    to_edge_binding_or_null: ExactDependencyEdgeBinding | None = None
+
+
+class AssuranceDelta(WireModel):
+    identity_assurance_changes: list[str] = []
+
+
+class VersionDiff(WireModel):
+    """D2-frozen deterministic diff between two exact version sets."""
+
+    added: list[ExactComponentRevisionBinding] = []
+    removed: list[ExactComponentRevisionBinding] = []
+    changed: list[ChangedComponent] = []
+    topology_changes: list[TopologyChange] = []
+    assurance_delta: AssuranceDelta = AssuranceDelta()
+    deterministic: Literal[True] = True
 
 
 class SystemVersionDiffResponse(WireModel):
@@ -947,13 +1005,9 @@ class SystemVersionDiffResponse(WireModel):
     workspace_id: WorkspaceId
     request_id: RequestId
     audit_ref: AuditRef
-    base_system_version_set_id: SystemVersionSetId
-    target_system_version_set_id: SystemVersionSetId
-    added: list[VersionDiffItem] = []
-    removed: list[VersionDiffItem] = []
-    changed: list[VersionDiffItem] = []
-    dependency_substitutions: list[VersionDiffItem] = []
-    policy_permission_expansions: list[VersionDiffItem] = []
+    source_binding: ExactSystemVersionSetBinding
+    target_binding: ExactSystemVersionSetBinding
+    diff: VersionDiff
 
 
 # ----------------------------------------------------------------------------

@@ -96,6 +96,7 @@
         "system-components.register",
         "dependency-edges.record",
         "system-manifests.import",
+        "system-versions.record",
         "cases.bind-application",
         "acceptance-criteria.propose",
         "acceptance-criteria.confirm"

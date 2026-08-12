@@ -26,6 +26,7 @@ _REQUEST_INTENTS = {
     "ComponentRegisterRequest": "system-components.register",
     "DependencyEdgeRecordRequest": "dependency-edges.record",
     "SystemManifestImportRequest": "system-manifests.import",
+    "SystemVersionRecordRequest": "system-versions.record",
 }
 
 _RESPONSE_INTENTS = {
@@ -40,6 +41,9 @@ _RESPONSE_INTENTS = {
     "DependencyEdgeRecordResponse": "dependency-edges.record",
     "DependencyEdgeGetResponse": "dependency-edges.get",
     "SystemManifestImportResponse": "system-manifests.import",
+    "SystemVersionRecordResponse": "system-versions.record",
+    "SystemVersionGetResponse": "system-versions.get",
+    "SystemVersionDiffResponse": "system-versions.diff",
 }
 
 

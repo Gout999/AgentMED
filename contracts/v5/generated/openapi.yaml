@@ -3,8 +3,8 @@ info:
   title: CaseLoop V5 Public API
   version: '2.0'
   description: Generated OpenAPI 3.1 document for the activated V5 wire surface. Contains
-    only activated operations (FROZEN_R2 / FROZEN_R2_R3_BOOTSTRAP intents from the
-    intent registry); draft and deferred intents never generate paths. request/response/error
+    only activated operations (FROZEN_R2 / FROZEN_R2_R3_BOOTSTRAP / FROZEN_R3 intents
+    from the intent registry); draft and deferred intents never generate paths. request/response/error
     contracts are external $refs into the frozen ../schemas/*.schema.json files. components.securitySchemes
     is intentionally not emitted (C4 decision; the V5 auth surface is not cut over,
     and a later wave may add it with the cutover).
@@ -330,3 +330,94 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/system-manifests.import.schema.json#/$defs/error
+  /api/v2/system-versions:
+    post:
+      operationId: recordSystemVersion
+      x-caseloop-intent: system-versions.record
+      x-caseloop-scope: system_versions:record
+      x-caseloop-wire-status: FROZEN_R3
+      x-caseloop-delivery-slice: V5-1B
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/system-versions.record.schema.json#/$defs/request
+      responses:
+        '201':
+          description: Successful system-versions.record response (contract major
+            2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/system-versions.record.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for system-versions.record;
+            audit failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/system-versions.record.schema.json#/$defs/error
+  /api/v2/system-versions/{system_version_set_id}:
+    get:
+      operationId: getSystemVersion
+      x-caseloop-intent: system-versions.get
+      x-caseloop-scope: system_versions:read
+      x-caseloop-wire-status: FROZEN_R3
+      x-caseloop-delivery-slice: V5-1B
+      parameters:
+      - name: system_version_set_id
+        in: path
+        required: true
+        description: system_version_set_id path parameter of system-versions.get.
+        schema:
+          type: string
+          pattern: ^vset_[0-9A-Za-z]{8,64}$
+      responses:
+        '200':
+          description: Successful system-versions.get response (contract major 2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/system-versions.get.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for system-versions.get; audit
+            failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/system-versions.get.schema.json#/$defs/error
+  /api/v2/system-versions:diff:
+    get:
+      operationId: diffSystemVersions
+      x-caseloop-intent: system-versions.diff
+      x-caseloop-scope: system_versions:read
+      x-caseloop-wire-status: FROZEN_R3
+      x-caseloop-delivery-slice: V5-1B
+      parameters:
+      - name: source_version_set_id
+        in: query
+        required: true
+        description: source_version_set_id query parameter of system-versions.diff.
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/idSystemVersionSetId
+      - name: target_version_set_id
+        in: query
+        required: true
+        description: target_version_set_id query parameter of system-versions.diff.
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/idSystemVersionSetId
+      responses:
+        '200':
+          description: Successful system-versions.diff response (contract major 2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/system-versions.diff.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for system-versions.diff; audit
+            failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/system-versions.diff.schema.json#/$defs/error

@@ -242,6 +242,52 @@ _FROZEN_OPERATIONS: tuple[dict[str, object], ...] = (
         "idempotency": "required",
         "scope": "system_manifests:import",
     },
+    {
+        "intent": "system-versions.record",
+        "cli": "system-version record",
+        "contract_major": 2,
+        "execution_mode": "synchronous",
+        "kind": "mutation",
+        "command_target": {
+            "command": "system-versions.record",
+            "resource": "system_version_set",
+        },
+        "http": {
+            "method": "POST",
+            "operation_id": "recordSystemVersion",
+            "path": "/api/v2/system-versions",
+        },
+        "idempotency": "required",
+        "scope": "system_versions:record",
+    },
+    {
+        "intent": "system-versions.get",
+        "cli": "system-version get",
+        "contract_major": 2,
+        "execution_mode": "synchronous",
+        "kind": "query",
+        "http": {
+            "method": "GET",
+            "operation_id": "getSystemVersion",
+            "path": "/api/v2/system-versions/{system_version_set_id}",
+        },
+        "idempotency": "none",
+        "scope": "system_versions:read",
+    },
+    {
+        "intent": "system-versions.diff",
+        "cli": "system-version diff",
+        "contract_major": 2,
+        "execution_mode": "synchronous",
+        "kind": "query",
+        "http": {
+            "method": "GET",
+            "operation_id": "diffSystemVersions",
+            "path": "/api/v2/system-versions:diff",
+        },
+        "idempotency": "none",
+        "scope": "system_versions:read",
+    },
 )
 
 

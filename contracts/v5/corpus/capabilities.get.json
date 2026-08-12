@@ -219,7 +219,7 @@
         "schema_version": "2.0",
         "workspace_id": "ws_9f3c2e1a7b8d4f6e"
       },
-      "reason": "disabled_intents must stay empty: generated schema const [] and legacy skeletons_remain_undiscoverable reject any listed intent (here the frozen-for-implementation not-activated system-versions.record)"
+      "reason": "disabled_intents must stay empty: generated schema const [] and legacy skeletons_remain_undiscoverable reject any listed intent (here the R3-full activated system-versions.record listed in disabled_intents is still rejected by const [])"
     },
     {
       "direction": "response",

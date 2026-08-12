@@ -4,7 +4,7 @@ Run from the repository root with the contracts path on sys.path:
 
     PYTHONPATH=contracts python3 -m pytest contracts/compiler/tests -q
 
-Coverage: deterministic regeneration (bytes), the exact 11-operation
+Coverage: deterministic regeneration (bytes), the exact 14-operation
 activated surface with no inactive intent, path/query parameter emission,
 external-schema refs, the omitted securitySchemes (C4 decision), the TS
 module's interface/guard/pattern extraction from the frozen schemas, and the
@@ -37,12 +37,12 @@ EXPECTED_ACTIVATED_NAMES = [
     "dependency-edges.record",
     "dependency-edges.get",
     "system-manifests.import",
-]
-
-INACTIVE_INTENTS = (
     "system-versions.record",
     "system-versions.get",
     "system-versions.diff",
+]
+
+INACTIVE_INTENTS = (
     "cases.bind-application",
     "acceptance-criteria.propose",
     "acceptance-criteria.confirm",
@@ -105,13 +105,13 @@ def test_openapi_is_deterministic(tmp_path: Path) -> None:
     assert first["ts"].read_bytes() == second["ts"].read_bytes()
 
 
-def test_openapi_covers_all_11_activated_operations(
+def test_openapi_covers_all_14_activated_operations(
     operation_manifest: dict, openapi_document: dict
 ) -> None:
     operations = _all_operations(openapi_document)
-    assert len(operations) == 11
+    assert len(operations) == 14
     intents = [operation["x-caseloop-intent"] for _, _, operation in operations]
-    assert len(set(intents)) == 11
+    assert len(set(intents)) == 14
     # Path grouping reorders operations with the same path template; the
     # surface must match the activated set, not the manifest ordering.
     assert sorted(intents) == sorted(EXPECTED_ACTIVATED_NAMES)
@@ -181,10 +181,22 @@ def test_openapi_path_and_query_parameters(openapi_document: dict) -> None:
         ("environments.get", "^env_[0-9A-Za-z]{8,64}$"),
         ("system-components.get", "^cmp_[0-9A-Za-z]{8,64}$"),
         ("dependency-edges.get", "^de_[0-9A-Za-z]{8,64}$"),
+        ("system-versions.get", "^vset_[0-9A-Za-z]{8,64}$"),
     ):
         parameters = by_intent[intent]["parameters"]
         assert parameters[0]["required"] is True
         assert parameters[0]["schema"]["pattern"] == pattern
+
+    diff_parameters = by_intent["system-versions.diff"]["parameters"]
+    diff_by_name = {parameter["name"]: parameter for parameter in diff_parameters}
+    assert set(diff_by_name) == {"source_version_set_id", "target_version_set_id"}
+    for name in ("source_version_set_id", "target_version_set_id"):
+        assert diff_by_name[name]["in"] == "query"
+        assert diff_by_name[name]["required"] is True
+        assert (
+            diff_by_name[name]["schema"]["$ref"]
+            == "../schemas/common.schema.json#/$defs/idSystemVersionSetId"
+        )
 
 
 def test_openapi_schema_refs_and_request_body(openapi_document: dict) -> None:

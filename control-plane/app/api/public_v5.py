@@ -64,6 +64,8 @@ from app.public_api.v5_models import (
     SystemManifestImportResponse,
     SystemVersionDiffResponse,
     SystemVersionGetResponse,
+    SystemVersionRecordRequest,
+    SystemVersionRecordResponse,
 )
 from app.services.acceptance import AcceptanceError, AcceptanceService
 from app.services.application_catalog import ApplicationCatalogError, V5ReadDenial as CatalogReadDenial
@@ -1283,10 +1285,78 @@ async def import_system_manifest(request: Request) -> JSONResponse:
             _close(session)
 
 
-def _unregistered_get_system_version(
-    system_version_set_id: str, request: Request
-) -> JSONResponse:
-    """Reserved implementation helper; R2 intentionally registers no route."""
+@router.post(
+    "/system-versions",
+    response_model=SystemVersionRecordResponse,
+    status_code=201,
+    operation_id="recordSystemVersion",
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": SystemVersionRecordRequest.model_json_schema()
+                }
+            },
+        }
+    },
+)
+async def record_system_version(request: Request) -> JSONResponse:
+    """R3-activated standalone record of the next immutable version set."""
+    request_id = _request_id(request)
+    session: Any | None = None
+    principal: AcceptedPrincipalContext | None = None
+    try:
+        headers = PublicV2RequestHeaders.from_headers(
+            _public_headers(request), mutation=True
+        )
+        submission = await _parse_body(request, SystemVersionRecordRequest)
+        session = _session_for(request)
+        principal, _resolver = _authenticate(
+            request,
+            session,
+            headers=headers,
+            required_scope="system_versions:record",
+        )
+        request.state.public_principal = principal
+        service = _system_versions_service(request, session)
+        result = service.record_system_version(
+            submission,
+            principal=principal,
+            idempotency_key=headers.idempotency_key,
+            request_id=request_id,
+        )
+        response = SystemVersionRecordResponse.model_validate(result)
+        wire_response = _json_response(response, status_code=201)
+        _commit(session)
+        return wire_response
+    except HeaderContractViolation as exc:
+        return _handle_header_violation(
+            session,
+            request,
+            exc,
+            request_id=request_id,
+            mutation=True,
+        )
+    except Exception as exc:
+        return _handle_failure(
+            session,
+            exc,
+            request_id=request_id,
+            principal=principal,
+        )
+    finally:
+        if session is not None:
+            _close(session)
+
+
+@router.get(
+    "/system-versions/{system_version_set_id}",
+    response_model=SystemVersionGetResponse,
+    operation_id="getSystemVersion",
+)
+def get_system_version(system_version_set_id: str, request: Request) -> JSONResponse:
+    """R3-activated standalone version set read."""
     request_id = _request_id(request)
     session: Any | None = None
     principal: AcceptedPrincipalContext | None = None
@@ -1337,12 +1407,13 @@ def _unregistered_get_system_version(
             _close(session)
 
 
-def _unregistered_diff_system_versions(
-    base_system_version_set_id: str,
-    target_system_version_set_id: str,
-    request: Request,
-) -> JSONResponse:
-    """Reserved implementation helper; R2 intentionally registers no route."""
+@router.get(
+    "/system-versions:diff",
+    response_model=SystemVersionDiffResponse,
+    operation_id="diffSystemVersions",
+)
+def diff_system_versions(request: Request) -> JSONResponse:
+    """R3-activated deterministic diff between two exact version sets."""
     request_id = _request_id(request)
     session: Any | None = None
     principal: AcceptedPrincipalContext | None = None
@@ -1352,15 +1423,21 @@ def _unregistered_diff_system_versions(
         principal, _resolver = _authenticate(
             request, session, headers=headers, required_scope="system_versions:read"
         )
-        _validate_path(
-            base_system_version_set_id, _VERSION_SET_ID, "base_system_version_set_id"
-        )
-        _validate_path(
-            target_system_version_set_id, _VERSION_SET_ID, "target_system_version_set_id"
-        )
+        allowed = {"source_version_set_id", "target_version_set_id"}
+        if not set(request.query_params) <= allowed or any(
+            len(request.query_params.getlist(name)) != 1
+            for name in set(request.query_params)
+        ):
+            raise _RouteFailure("VALIDATION_FAILED", {"fields": ["query"]})
+        source_id = request.query_params.get("source_version_set_id")
+        target_id = request.query_params.get("target_version_set_id")
+        if source_id is None or target_id is None:
+            raise _RouteFailure("VALIDATION_FAILED", {"fields": ["query"]})
+        _validate_path(source_id, _VERSION_SET_ID, "source_version_set_id")
+        _validate_path(target_id, _VERSION_SET_ID, "target_version_set_id")
         result = _system_versions_service(request, session).diff_system_versions(
-            base_system_version_set_id,
-            target_system_version_set_id,
+            source_id,
+            target_id,
             principal=principal,
             request_id=request_id,
         )

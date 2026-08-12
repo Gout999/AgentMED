@@ -532,8 +532,16 @@ def test_exactly_eleven_r2_plus_bootstrap_intents_are_contract_activated() -> No
         "system-versions.get",
         "system-versions.diff",
     }.isdisjoint(overlay["activated_contract_intents"])
+    # 非 R2 intent 保持 NOT_IMPLEMENTED，唯一例外是 R3-full 激活的三个
+    # system-versions intent（IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER）。
+    r3_full_intents = set(registry["r3_full_contract"]["activated_contract_intents"])
     assert all(
-        row["implementation_status"] == "NOT_IMPLEMENTED"
+        row["implementation_status"]
+        == (
+            "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
+            if row["name"] in r3_full_intents
+            else "NOT_IMPLEMENTED"
+        )
         for row in registry["intents"]
         if row["name"] not in expected_intents
     )
@@ -653,8 +661,15 @@ def test_application_list_and_capabilities_are_scoped_closed_and_console_safe() 
     expected_intents = overlay["activated_contract_intents"]
     capability = profiles["capabilities_get"]
     assert len(expected_intents) == 11
-    assert capability["contract_allowlist_exact_count"] == 11
-    assert capability["contract_allowlist_exact_names"] == expected_intents
+    # capabilities_get 的 contract allowlist 已随 R3-full 扩展为 14（11 个 R2 + 三个
+    # system-versions），R2 overlay 的历史 11 个 allowlist 本身保持不变。
+    r3_full_intents = registry["r3_full_contract"]["activated_contract_intents"]
+    assert capability["contract_allowlist_exact_count"] == (
+        len(expected_intents) + len(r3_full_intents)
+    )
+    assert capability["contract_allowlist_exact_names"] == (
+        expected_intents + r3_full_intents
+    )
     assert capability["scope_filtered"] is True
     assert capability["response_intents"] == (
         "INTERSECTION_OF_CONTRACT_ALLOWLIST_AND_AUTHENTICATED_SCOPE_AUTHORIZED_INTENTS"

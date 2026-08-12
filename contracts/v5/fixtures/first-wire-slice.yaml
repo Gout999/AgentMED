@@ -33,7 +33,11 @@ slice:
       idempotency: none
     - name: system-versions.diff
       kind: query
-      http: {method: GET, path: /api/v2/system-versions:diff, operation_id: diffSystemVersions}
+      http:
+        method: GET
+        path: /api/v2/system-versions:diff
+        operation_id: diffSystemVersions
+        query_parameters: {required: [source_version_set_id, target_version_set_id], optional: []}
       scope: system_versions:read
       idempotency: none
     - name: cases.bind-application

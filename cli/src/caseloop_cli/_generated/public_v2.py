@@ -291,6 +291,9 @@ V5PublicIntentName = Literal[
     "dependency-edges.record",
     "dependency-edges.get",
     "system-manifests.import",
+    "system-versions.record",
+    "system-versions.get",
+    "system-versions.diff",
 ]
 
 
@@ -379,6 +382,7 @@ V5IdempotencyIntent = Literal[
     "system-components.register",
     "dependency-edges.record",
     "system-manifests.import",
+    "system-versions.record",
 ]
 
 
@@ -422,6 +426,7 @@ class V5IdempotencyReceipt(WireModel):
             "system-components.register": ("system_component", "cmp_", False, "COMPLETED"),
             "dependency-edges.record": ("dependency_edge", "de_", False, "COMPLETED"),
             "system-manifests.import": ("system_version_set", "vset_", False, "COMPLETED"),
+            "system-versions.record": ("system_version_set", "vset_", False, "COMPLETED"),
         }
         kind, prefix, operation_required, status = expected[self.intent]
         if self.resource.kind != kind or not self.resource.id.startswith(prefix):

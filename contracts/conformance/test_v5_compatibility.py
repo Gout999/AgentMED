@@ -241,8 +241,16 @@ def test_first_wire_slice_matches_registry_and_compatibility() -> None:
                 "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
             )
         else:
-            assert intent["wire_status"] in ("DRAFT", "FROZEN_FOR_IMPLEMENTATION")
-            assert intent["implementation_status"] == "NOT_IMPLEMENTED"
+            assert intent["wire_status"] in (
+                "DRAFT",
+                "FROZEN_FOR_IMPLEMENTATION",
+                "FROZEN_R3",
+            )
+            assert intent["implementation_status"] == (
+                "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
+                if intent["wire_status"] == "FROZEN_R3"
+                else "NOT_IMPLEMENTED"
+            )
         assert intent["cli_requires_explicit_api_major"] is True
         assert intent["http"]["path"].startswith("/api/v2/")
         fixture_intent = next(i for i in fixture["slice"]["intents"] if i["name"] == name)

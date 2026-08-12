@@ -4,7 +4,7 @@ Run from the repository root with the contracts path on sys.path:
 
     PYTHONPATH=contracts python3 -m pytest contracts/compiler/tests -q
 
-Coverage: exact 11-intent allowlist, deterministic regeneration, schema
+Coverage: exact 14-intent allowlist, deterministic regeneration, schema
 referential integrity, registry metadata parity, capability manifest shape and
 the no-side-effect import rule (convergence plan C1 verification list).
 """
@@ -33,6 +33,9 @@ EXPECTED_ACTIVATED_NAMES = [
     "dependency-edges.record",
     "dependency-edges.get",
     "system-manifests.import",
+    "system-versions.record",
+    "system-versions.get",
+    "system-versions.diff",
 ]
 
 FORBIDDEN_IMPORT_MARKERS = (
@@ -59,18 +62,15 @@ def operation_manifest(registry: dict) -> dict:
     return build_operation_manifest(registry, SCHEMAS_DIR)
 
 
-def test_activated_allowlist_is_exact_11(operation_manifest: dict) -> None:
+def test_activated_allowlist_is_exact_14(operation_manifest: dict) -> None:
     names = [op["intent"] for op in operation_manifest["operations"]]
     assert names == EXPECTED_ACTIVATED_NAMES
-    assert operation_manifest["activated_intent_count"] == 11
+    assert operation_manifest["activated_intent_count"] == 14
 
 
 def test_draft_and_unregistered_intents_are_excluded(operation_manifest: dict) -> None:
     names = {op["intent"] for op in operation_manifest["operations"]}
     for excluded in (
-        "system-versions.record",
-        "system-versions.get",
-        "system-versions.diff",
         "cases.bind-application",
         "acceptance-criteria.propose",
         "acceptance-criteria.confirm",
@@ -120,7 +120,7 @@ def test_operation_metadata_parity_with_registry(
 
 def test_capability_manifest_shape(operation_manifest: dict) -> None:
     capability_manifest = build_capability_manifest(operation_manifest)
-    assert capability_manifest["enabled_intent_count"] == 11
+    assert capability_manifest["enabled_intent_count"] == 14
     assert capability_manifest["disabled_intents"] == []
     by_name = {op["intent"]: op for op in operation_manifest["operations"]}
     for entry in capability_manifest["enabled_intents"]:
