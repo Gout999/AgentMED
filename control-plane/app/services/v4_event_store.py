@@ -651,7 +651,7 @@ class V4EventStore:
             event_contract_major = 2
             routing_key = _v5_routing_key(exact_subject_binding)
             owner = v5_route.owner
-            channel = V5_DOMAIN_EVENT_CHANNEL
+            channel = v5_route.channel or V5_DOMAIN_EVENT_CHANNEL
         else:
             assert v4_route is not None
             if aggregate_id != payload.get(v4_route.aggregate_id_field):
@@ -741,7 +741,11 @@ class V4EventStore:
                 subject_digest=exact_subject_binding["digest"],
                 authority_receipt_id=authority_receipt_id,
             )
-            validate_v5_outbox_row(outbox, event=event)
+            validate_v5_outbox_row(
+                outbox,
+                event=event,
+                expected_channel=v5_route.channel or V5_DOMAIN_EVENT_CHANNEL,
+            )
         return event
 
 

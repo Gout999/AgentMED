@@ -5,11 +5,14 @@ Revises: 013
 Create Date: 2026-08-12
 
 D-016 / Master §6 2A-1: the Work aggregates (worker_task, attempt, proposal,
-proposal_decision) get their first runtime persistence.  The migration is
-purely additive: five new tables, no existing column, row, constraint, event,
-receipt or audit is touched.  Work domain events continue to live on the
-existing ``events``/``outbox``/``authority_receipts`` tables under the
-``contract_version='v5'`` branch, so this migration adds no event table.
+proposal_decision) get their first runtime persistence.  The migration adds
+six new tables (work_tasks, work_attempts, work_attempt_capabilities,
+work_proposals, work_proposal_decisions, work_reaction_ledger) and widens
+exactly one existing check: the v5 branch of ``ck_outbox_v4_context`` now
+accepts the dedicated ``v5.work.events`` channel alongside
+``v5.domain.events`` (D-016 routes Work events there).  No existing column,
+row, event, receipt or audit is rewritten; the widened check only admits an
+additional channel value.
 
 The tables are the mutable aggregate projections (state machines advance in
 place; delete is forbidden at the ORM layer).  Fencing is task-scoped: every
@@ -45,6 +48,7 @@ def _create_work_tasks() -> None:
         "work_tasks",
         sa.Column("task_id", sa.String(128), nullable=False),
         sa.Column("workspace_id", sa.String(128), nullable=False),
+        sa.Column("revision", sa.BigInteger(), nullable=False, server_default="1"),
         sa.Column("task_kind", sa.String(64), nullable=False),
         sa.Column("input_payload", sa.JSON(), nullable=False),
         sa.Column("input_digest", sa.String(80), nullable=False),
@@ -62,6 +66,8 @@ def _create_work_tasks() -> None:
         sa.Column("idempotency_key", sa.String(128), nullable=True),
         sa.Column("request_fingerprint", sa.String(80), nullable=True),
         sa.Column("terminal_reason", sa.String(64), nullable=True),
+        sa.Column("record_digest", sa.String(80), nullable=True),
+        sa.Column("authority_receipt_id", sa.String(128), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -115,6 +121,7 @@ def _create_work_attempts() -> None:
         sa.Column("attempt_id", sa.String(128), nullable=False),
         sa.Column("workspace_id", sa.String(128), nullable=False),
         sa.Column("task_id", sa.String(128), nullable=False),
+        sa.Column("revision", sa.BigInteger(), nullable=False, server_default="1"),
         sa.Column("attempt_number", sa.Integer(), nullable=False),
         sa.Column(
             "state", sa.String(32), nullable=False, server_default="CREATED"
@@ -127,6 +134,8 @@ def _create_work_attempts() -> None:
         sa.Column("fallback_of_attempt_id", sa.String(128), nullable=True),
         sa.Column("started_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("ended_at", sa.DateTime(timezone=True), nullable=True),
+        sa.Column("record_digest", sa.String(80), nullable=True),
+        sa.Column("authority_receipt_id", sa.String(128), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -214,6 +223,7 @@ def _create_work_proposals() -> None:
         "work_proposals",
         sa.Column("proposal_id", sa.String(128), nullable=False),
         sa.Column("workspace_id", sa.String(128), nullable=False),
+        sa.Column("revision", sa.BigInteger(), nullable=False, server_default="1"),
         sa.Column("task_id", sa.String(128), nullable=False),
         sa.Column("attempt_id", sa.String(128), nullable=True),
         sa.Column("proposer_principal", sa.String(128), nullable=False),
@@ -228,6 +238,8 @@ def _create_work_proposals() -> None:
             nullable=False,
             server_default=sa.text("CURRENT_TIMESTAMP"),
         ),
+        sa.Column("record_digest", sa.String(80), nullable=True),
+        sa.Column("authority_receipt_id", sa.String(128), nullable=True),
         sa.Column("decided_at", sa.DateTime(timezone=True), nullable=True),
         sa.PrimaryKeyConstraint("proposal_id", name="pk_work_proposals"),
         sa.ForeignKeyConstraint(
@@ -260,11 +272,14 @@ def _create_work_proposal_decisions() -> None:
         "work_proposal_decisions",
         sa.Column("decision_id", sa.String(128), nullable=False),
         sa.Column("workspace_id", sa.String(128), nullable=False),
+        sa.Column("revision", sa.BigInteger(), nullable=False, server_default="1"),
         sa.Column("proposal_id", sa.String(128), nullable=False),
         sa.Column("decision", sa.String(16), nullable=False),
         sa.Column("decided_by_principal", sa.String(128), nullable=False),
         sa.Column("rationale", sa.String(1024), nullable=True),
         sa.Column("downstream_intent", sa.String(128), nullable=True),
+        sa.Column("record_digest", sa.String(80), nullable=True),
+        sa.Column("authority_receipt_id", sa.String(128), nullable=True),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -337,6 +352,35 @@ def _create_work_reaction_ledger() -> None:
     )
 
 
+_OUTBOX_CONTEXT_WITH_WORK = (
+    "(contract_version IS NULL AND event_contract_major IS NULL) OR "
+    "(contract_version IS NOT NULL AND ((contract_version = 'v4' AND "
+    "workspace_id IS NOT NULL AND aggregate_type IS NOT NULL AND "
+    "event_version = '1.0' AND event_contract_major IS NULL AND "
+    "transaction_id IS NOT NULL AND actor_principal IS NOT NULL AND "
+    "payload_digest IS NOT NULL AND channel = 'v4.domain.events') OR "
+    "(contract_version = 'v5' AND workspace_id IS NOT NULL AND "
+    "aggregate_type IS NOT NULL AND event_version = '2.0' AND "
+    "event_contract_major = 2 AND transaction_id IS NOT NULL AND "
+    "actor_principal IS NOT NULL AND payload_digest IS NOT NULL AND "
+    "channel IN ('v5.domain.events', 'v5.work.events'))))"
+)
+
+_OUTBOX_CONTEXT_WITHOUT_WORK = (
+    "(contract_version IS NULL AND event_contract_major IS NULL) OR "
+    "(contract_version IS NOT NULL AND ((contract_version = 'v4' AND "
+    "workspace_id IS NOT NULL AND aggregate_type IS NOT NULL AND "
+    "event_version = '1.0' AND event_contract_major IS NULL AND "
+    "transaction_id IS NOT NULL AND actor_principal IS NOT NULL AND "
+    "payload_digest IS NOT NULL AND channel = 'v4.domain.events') OR "
+    "(contract_version = 'v5' AND workspace_id IS NOT NULL AND "
+    "aggregate_type IS NOT NULL AND event_version = '2.0' AND "
+    "event_contract_major = 2 AND transaction_id IS NOT NULL AND "
+    "actor_principal IS NOT NULL AND payload_digest IS NOT NULL AND "
+    "channel = 'v5.domain.events')))"
+)
+
+
 def upgrade() -> None:
     _create_work_tasks()
     _create_work_attempts()
@@ -344,6 +388,13 @@ def upgrade() -> None:
     _create_work_proposals()
     _create_work_proposal_decisions()
     _create_work_reaction_ledger()
+    # D-016 routes Work events to the dedicated ``v5.work.events`` outbox
+    # channel; the v5 branch of the outbox context constraint must accept it.
+    with op.batch_alter_table("outbox") as batch:
+        batch.drop_constraint("ck_outbox_v4_context", type_="check")
+        batch.create_check_constraint(
+            "ck_outbox_v4_context", _OUTBOX_CONTEXT_WITH_WORK
+        )
 
 
 def _assert_downgrade_safe() -> None:
@@ -354,9 +405,21 @@ def _assert_downgrade_safe() -> None:
             is not None
         ):
             raise RuntimeError(_DOWNGRADE_BLOCKED)
+    if (
+        bind.execute(
+            sa.text("SELECT 1 FROM outbox WHERE channel = 'v5.work.events' LIMIT 1")
+        ).first()
+        is not None
+    ):
+        raise RuntimeError(_DOWNGRADE_BLOCKED)
 
 
 def downgrade() -> None:
     _assert_downgrade_safe()
+    with op.batch_alter_table("outbox") as batch:
+        batch.drop_constraint("ck_outbox_v4_context", type_="check")
+        batch.create_check_constraint(
+            "ck_outbox_v4_context", _OUTBOX_CONTEXT_WITHOUT_WORK
+        )
     for table in reversed(_NEW_TABLES):
         op.drop_table(table)

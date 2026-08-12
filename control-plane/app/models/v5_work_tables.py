@@ -125,6 +125,7 @@ class WorkTask(Base):
 
     task_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     workspace_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=1)
     task_kind: Mapped[str] = mapped_column(String(64), nullable=False)
     input_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     input_digest: Mapped[str] = mapped_column(String(80), nullable=False)
@@ -152,6 +153,10 @@ class WorkTask(Base):
         String(80), nullable=True
     )
     terminal_reason: Mapped[Optional[str]] = mapped_column(String(64), nullable=True)
+    record_digest: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    authority_receipt_id: Mapped[Optional[str]] = mapped_column(
+        String(128), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -206,6 +211,7 @@ class WorkAttempt(Base):
     attempt_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     workspace_id: Mapped[str] = mapped_column(String(128), nullable=False)
     task_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=1)
     attempt_number: Mapped[int] = mapped_column(Integer, nullable=False)
     state: Mapped[str] = mapped_column(String(32), nullable=False, default="CREATED")
     worker_identity: Mapped[str] = mapped_column(String(128), nullable=False)
@@ -225,6 +231,10 @@ class WorkAttempt(Base):
     )
     ended_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
+    )
+    record_digest: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    authority_receipt_id: Mapped[Optional[str]] = mapped_column(
+        String(128), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
@@ -323,12 +333,17 @@ class WorkProposal(Base):
 
     proposal_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     workspace_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=1)
     task_id: Mapped[str] = mapped_column(String(128), nullable=False)
     attempt_id: Mapped[Optional[str]] = mapped_column(String(128), nullable=True)
     proposer_principal: Mapped[str] = mapped_column(String(128), nullable=False)
     payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     payload_digest: Mapped[str] = mapped_column(String(80), nullable=False)
     status: Mapped[str] = mapped_column(String(32), nullable=False, default="SUBMITTED")
+    record_digest: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    authority_receipt_id: Mapped[Optional[str]] = mapped_column(
+        String(128), nullable=True
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
@@ -372,11 +387,16 @@ class WorkProposalDecision(Base):
 
     decision_id: Mapped[str] = mapped_column(String(128), primary_key=True)
     workspace_id: Mapped[str] = mapped_column(String(128), nullable=False)
+    revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=1)
     proposal_id: Mapped[str] = mapped_column(String(128), nullable=False)
     decision: Mapped[str] = mapped_column(String(16), nullable=False)
     decided_by_principal: Mapped[str] = mapped_column(String(128), nullable=False)
     rationale: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
     downstream_intent: Mapped[Optional[str]] = mapped_column(
+        String(128), nullable=True
+    )
+    record_digest: Mapped[Optional[str]] = mapped_column(String(80), nullable=True)
+    authority_receipt_id: Mapped[Optional[str]] = mapped_column(
         String(128), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(

@@ -210,3 +210,27 @@ def new_issue_snapshot_id() -> str:
 def short_token(n: int = 16) -> str:
     alphabet = string.ascii_lowercase + string.digits
     return "".join(secrets.choice(alphabet) for _ in range(n))
+
+
+def new_work_task_id() -> str:
+    return f"task_{_ulid()}"
+
+
+def new_work_attempt_id() -> str:
+    return f"att_{_ulid()}"
+
+
+def new_work_capability_id() -> str:
+    return f"wcap_{_ulid()}"
+
+
+def new_work_proposal_id() -> str:
+    return f"prop_{_ulid()}"
+
+
+def new_work_decision_id() -> str:
+    return f"dec_{_ulid()}"
+
+
+def new_work_reaction_id() -> str:
+    return f"rxn_{_ulid()}"

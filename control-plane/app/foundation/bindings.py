@@ -49,6 +49,10 @@ V5_BINDING_KINDS = frozenset(
         "SYSTEM_APPROVAL_GRANT",
         "SYSTEM_CAPABILITY_LEASE",
         "SYSTEM_EXTERNAL_OPERATION",
+        "WORK_TASK",
+        "WORK_ATTEMPT",
+        "WORK_PROPOSAL",
+        "WORK_PROPOSAL_DECISION",
     }
 )
 

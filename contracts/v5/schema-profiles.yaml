@@ -402,6 +402,10 @@ common:
       - SYSTEM_APPROVAL_GRANT
       - SYSTEM_CAPABILITY_LEASE
       - SYSTEM_EXTERNAL_OPERATION
+      - WORK_TASK
+      - WORK_ATTEMPT
+      - WORK_PROPOSAL
+      - WORK_PROPOSAL_DECISION
     digest_rule: digest_equals_target_record_envelope_record_digest
   exact_evidence_binding_union:
     one_of:

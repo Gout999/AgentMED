@@ -109,7 +109,7 @@ def test_binding_kinds_match_frozen_contract() -> None:
     )
     v5_kinds = set(profiles["common"]["exact_record_binding_v5"]["kinds"])
     v4_kinds = set(profiles["common"]["exact_record_binding_v4_bridge"]["kinds"])
-    assert len(v5_kinds) == 31
+    assert len(v5_kinds) == 35
     assert len(v4_kinds) == 10
     assert bindings.V5_BINDING_KINDS == v5_kinds
     assert bindings.V4_BRIDGE_BINDING_KINDS == v4_kinds
@@ -187,4 +187,7 @@ def test_events_route_tables_are_major_aware() -> None:
     for route in events.V5_EVENT_ROUTES.values():
         assert isinstance(route, events.V5EventRoute)
         assert route.self_binding_field
-        assert route.self_revision is not None
+        # V5-2A Work routes advance one revision per event, so they pin
+        # dynamic_revision instead of a fixed self_revision; either way the
+        # self binding must carry an integer revision >= 1.
+        assert route.self_revision is not None or route.dynamic_revision

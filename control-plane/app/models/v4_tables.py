@@ -218,7 +218,7 @@ def _augment_legacy_metadata() -> None:
                 "aggregate_type IS NOT NULL AND event_version = '2.0' AND "
                 "event_contract_major = 2 AND transaction_id IS NOT NULL AND "
                 "actor_principal IS NOT NULL AND payload_digest IS NOT NULL AND "
-                "channel = 'v5.domain.events')))",
+                "channel IN ('v5.domain.events', 'v5.work.events'))))",
                 name="ck_outbox_v4_context",
             )
         )

@@ -342,6 +342,56 @@ record_authority:
     command_events:
       release-plans.freeze: [release_plan.frozen]
 
+schema_major_2_work_authority:
+  # V5-2A-0 (D-016): Work Kernel record authority.  Work aggregates are
+  # state-machine projections, NOT record-envelope records — Master §6 2A-0
+  # forbids automatically applying the V5 catalog/record envelope to
+  # WorkerTask/Attempt.  They therefore live in their own authority section
+  # rather than ``record_authority`` (whose members must use the record
+  # envelope).  Owners and command names are exactly the V4 ones, reused by
+  # reference; one command may emit across its owner's aggregates inside a
+  # single unit of work (e.g. work.claim also creates the attempt), matching
+  # the V4 machine semantics.  Events are restricted to the frozen
+  # v5_2a_work_kernel_contract catalog.
+  WORK_TASK:
+    resource: worker_task
+    owner: work-controller
+    command_events:
+      work.request: [work.requested]
+      work.claim: [work.claimed]
+      work.heartbeat: [work.heartbeat_recorded]
+      work.cancel-request: [work.cancel_requested]
+      work.exhaust: [work.exhausted]
+      attempts.complete: [work.completed]
+      attempts.fail: [work.retry_scheduled, work.exhausted]
+      attempts.mark-unknown: [work.blocked_unknown]
+      attempts.reconcile: [work.unknown_reconciled_retry, work.unknown_reconciled_completed]
+      attempts.cancel: [work.cancelled]
+  WORK_ATTEMPT:
+    resource: attempt
+    owner: work-controller
+    command_events:
+      # attempt.created is produced inside the work.claim unit of work
+      # (V4 events.yaml marks work.claimed as creates_attempt).
+      work.claim: [attempt.created]
+      attempts.start: [attempt.starting, attempt.started]
+      attempts.record-receipt: [attempt.receipt_recorded, attempt.output_recorded]
+      attempts.complete: [attempt.succeeded]
+      attempts.fail: [attempt.failed, attempt.timed_out]
+      attempts.cancel: [attempt.cancel_requested, attempt.cancelled]
+      attempts.mark-unknown: [attempt.unknown]
+      attempts.reconcile: [attempt.reconciled_succeeded, attempt.reconciled_failed]
+  WORK_PROPOSAL:
+    resource: proposal
+    owner: proposal-controller
+    command_events:
+      proposals.submit: [proposal.submitted]
+  WORK_PROPOSAL_DECISION:
+    resource: proposal_decision
+    owner: proposal-controller
+    command_events:
+      proposals.decide: [proposal.accepted, proposal.rejected]
+
 schema_major_2_lifecycle_authority:
   SYSTEM_CANDIDATE_REVISION:
     logical_resource: v4.candidate_revision

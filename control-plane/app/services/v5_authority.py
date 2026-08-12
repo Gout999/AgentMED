@@ -35,9 +35,17 @@ from app.models.v5_tables import (
     SystemVersionSet,
     TopologyRevision,
 )
+from app.models.v5_work_tables import (
+    WorkAttempt,
+    WorkProposal,
+    WorkProposalDecision,
+    WorkTask,
+)
 from app.services.v4_audit import V4AuditIntegrityError, validate_v4_audit_row
 from app.foundation.events import (
     V4EventIntegrityError,
+    V5_DOMAIN_EVENT_CHANNEL,
+    V5_EVENT_ROUTES,
     validate_v4_event_row,
     validate_v4_outbox_row,
     validate_v5_event_row,
@@ -137,6 +145,18 @@ def _load_v5_catalog_cached(root_text: str) -> V5ContractCatalog:
     record_authority = ownership.get("record_authority")
     if not isinstance(record_authority, dict):
         raise V5AuthorityError("v5.authority.contract_catalog_invalid")
+    # V5-2A (D-016): Work aggregates keep their own authority section because
+    # they are state-machine projections, not record-envelope records.  The
+    # controller resolution view merges it so WORK_TASK/ATTEMPT/WORK_PROPOSAL/
+    # WORK_PROPOSAL_DECISION resolve through the same path as catalog kinds.
+    work_authority = ownership.get("schema_major_2_work_authority")
+    if work_authority is not None:
+        if not isinstance(work_authority, dict):
+            raise V5AuthorityError("v5.authority.contract_catalog_invalid")
+        overlap = set(record_authority) & set(work_authority)
+        if overlap:
+            raise V5AuthorityError("v5.authority.contract_catalog_invalid")
+        record_authority = {**record_authority, **work_authority}
     return V5ContractCatalog(
         root=root,
         ownership_digest=canonical_digest(ownership),
@@ -328,7 +348,43 @@ _V5_SUBJECT_BINDINGS: dict[str, tuple[type[Any], str, str, str, str | None]] = {
         "authority_receipt_id",
         None,
     ),
+    # V5-2A (D-016): Work aggregates are state-machine projections without a
+    # record envelope; their digest/receipt columns track the current head.
+    "WORK_TASK": (
+        WorkTask,
+        "task_id",
+        "record_digest",
+        "authority_receipt_id",
+        "revision",
+    ),
+    "WORK_ATTEMPT": (
+        WorkAttempt,
+        "attempt_id",
+        "record_digest",
+        "authority_receipt_id",
+        "revision",
+    ),
+    "WORK_PROPOSAL": (
+        WorkProposal,
+        "proposal_id",
+        "record_digest",
+        "authority_receipt_id",
+        "revision",
+    ),
+    "WORK_PROPOSAL_DECISION": (
+        WorkProposalDecision,
+        "decision_id",
+        "record_digest",
+        "authority_receipt_id",
+        "revision",
+    ),
 }
+
+# Kinds whose subject rows carry no record envelope; ``_validate_v5_subject``
+# verifies them against the projection row columns instead.
+_V5_ENVELOPELESS_SUBJECTS = frozenset(
+    {"WORK_TASK", "WORK_ATTEMPT", "WORK_PROPOSAL", "WORK_PROPOSAL_DECISION"}
+)
 
 # Append-only lifecycle history is authoritative.  The original catalog rows
 # remain mutable current-head projections and therefore are never sufficient
@@ -881,6 +937,18 @@ class V5AuthorityService:
         row = self.session.get(model, subject_id)
         if row is None:
             raise V5AuthorityError("v5.authority.subject_missing")
+        if kind in _V5_ENVELOPELESS_SUBJECTS:
+            # D-016 Work projections: no record envelope exists; the row's
+            # digest/receipt/revision columns are the current-head authority.
+            if (
+                getattr(row, "workspace_id") != workspace_id
+                or getattr(row, id_attr) != subject_id
+                or getattr(row, digest_attr) != subject_digest
+                or getattr(row, receipt_attr) != authority_receipt_id
+                or getattr(row, revision_attr) != subject_revision
+            ):
+                raise V5AuthorityError("v5.authority.subject_binding_mismatch")
+            return row
         envelope = row.envelope_payload
         try:
             verified_digest = records.validate_record_envelope_payload(envelope)
@@ -929,6 +997,11 @@ class V5AuthorityService:
     ) -> None:
         """Bind frozen major-2 business payload fields back to history."""
 
+        if subject_kind in _V5_ENVELOPELESS_SUBJECTS:
+            self._validate_v5_work_event_business_payload(
+                event, subject_kind=subject_kind, row=row
+            )
+            return
         lifecycle_kind = subject_kind in _V5_LIFECYCLE_BINDINGS
         lifecycle_binding: dict[str, Any] | None = None
         lifecycle_previous_binding: dict[str, Any] | None = None
@@ -961,6 +1034,43 @@ class V5AuthorityService:
             )
         except receipts.EventBusinessFieldsError as exc:
             raise V5AuthorityError(exc.code) from exc
+
+    def _validate_v5_work_event_business_payload(
+        self, event: Event, *, subject_kind: str, row: Any
+    ) -> None:
+        """Bind a Work event payload back to its projection row (D-016).
+
+        Work projections carry no record envelope.  The event's exact self
+        binding must match the row's current head (kind/id/revision/digest),
+        the workspace must match, and lease-bearing events must carry the
+        row's live fencing token, so a stale-fence event can never be
+        receipted.
+        """
+        binding = _V5_SUBJECT_BINDINGS[subject_kind]
+        _model, id_attr, digest_attr, receipt_attr, revision_attr = binding
+        payload = event.payload
+        binding_field = {
+            "WORK_TASK": "exact_work_task_binding",
+            "WORK_ATTEMPT": "exact_attempt_binding",
+            "WORK_PROPOSAL": "exact_proposal_binding",
+            "WORK_PROPOSAL_DECISION": "exact_proposal_decision_binding",
+        }[subject_kind]
+        self_binding = payload.get(binding_field)
+        expected = {
+            "kind": subject_kind,
+            "id": getattr(row, id_attr),
+            "revision": getattr(row, revision_attr),
+            "digest": getattr(row, digest_attr),
+        }
+        if (
+            not isinstance(self_binding, dict)
+            or self_binding != expected
+            or payload.get("workspace_id", row.workspace_id) != row.workspace_id
+        ):
+            raise V5AuthorityError("v5.authority.event_binding_mismatch")
+        if event.event_type in ("work.claimed", "work.heartbeat_recorded"):
+            if payload.get("fencing_token") != row.lease_fencing_token:
+                raise V5AuthorityError("v5.authority.event_binding_mismatch")
 
     def _validate_v5_event_business_payload_by_event(
         self,
@@ -1065,8 +1175,17 @@ class V5AuthorityService:
             )
             if len(outboxes) != 1:
                 raise V4EventIntegrityError("v4.outbox_cardinality_mismatch")
+            expected_channel = V5_DOMAIN_EVENT_CHANNEL
+            if exact_event.event_contract_major == 2:
+                route = V5_EVENT_ROUTES.get(
+                    (exact_event.aggregate_type, exact_event.event_type)
+                )
+                if route is not None and route.channel is not None:
+                    expected_channel = route.channel
             exact_outbox = (
-                validate_v5_outbox_row(outboxes[0], event=exact_event)
+                validate_v5_outbox_row(
+                    outboxes[0], event=exact_event, expected_channel=expected_channel
+                )
                 if exact_event.event_contract_major == 2
                 else validate_v4_outbox_row(outboxes[0], event=exact_event)
             )

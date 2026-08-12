@@ -58,6 +58,15 @@ class V5EventRoute:
     manifest_only_activation: bool = False
     dependent_bindings: tuple[tuple[str, str, int | None], ...] = ()
     dependent_binding_lists: tuple[tuple[str, str, int | None], ...] = ()
+    # V5-2A: routes may pin a dedicated outbox channel (e.g. the versioned
+    # Work event channel from D-016).  None keeps the shared V5 domain
+    # channel, preserving every pre-2A route byte-for-byte.
+    channel: str | None = None
+    # V5-2A: state-machine aggregates advance one revision per event, so the
+    # exact self binding cannot pin a fixed revision.  True requires an
+    # integer revision >= 1 of any value (unlike self_revision=None, which
+    # requires a null revision).
+    dynamic_revision: bool = False
 
 
 _CONTROLLER_FIELDS = frozenset(
@@ -488,6 +497,231 @@ V5_EVENT_ROUTES: dict[tuple[str, str], V5EventRoute] = {
             ("exact_initial_system_version_set_binding", "SYSTEM_VERSION_SET", 1),
         ),
     ),
+    # ---------------------------------------------------------------
+    # V5-2A Work Kernel (D-016).  27 events across worker_task / attempt /
+    # proposal / proposal_decision, owner and machine semantics reused from
+    # V4, envelope major-2, dedicated outbox channel ``v5.work.events`` so the
+    # Work dispatcher never shares a consumer lane with the catalog stream.
+    # ``self_revision=None`` allows the monotonically increasing aggregate
+    # revision that state-machine projection advance produces.
+    # ---------------------------------------------------------------
+    ("worker_task", "work.requested"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_TASK",
+        required=frozenset({"exact_work_task_binding", "task_kind", "input_digest", "requester_principal"}),
+        self_binding_field="exact_work_task_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("worker_task", "work.claimed"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_TASK",
+        required=frozenset({"exact_work_task_binding", "exact_attempt_binding", "worker_principal", "fencing_token", "lease_expires_at"}),
+        self_binding_field="exact_work_task_binding",
+        dependent_bindings=(("exact_attempt_binding", "WORK_ATTEMPT", None),),
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("worker_task", "work.heartbeat_recorded"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_TASK",
+        required=frozenset({"exact_work_task_binding", "attempt_id", "fencing_token", "lease_expires_at"}),
+        self_binding_field="exact_work_task_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("worker_task", "work.retry_scheduled"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_TASK",
+        required=frozenset({"exact_work_task_binding", "failed_attempt_id", "reason"}),
+        self_binding_field="exact_work_task_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("worker_task", "work.cancel_requested"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_TASK",
+        required=frozenset({"exact_work_task_binding", "reason", "requested_by_principal"}),
+        self_binding_field="exact_work_task_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("worker_task", "work.cancelled"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_TASK",
+        required=frozenset({"exact_work_task_binding", "terminal_attempt_id", "cancellation_receipt_digest"}),
+        self_binding_field="exact_work_task_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("worker_task", "work.completed"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_TASK",
+        required=frozenset({"exact_work_task_binding", "terminal_attempt_id", "accepted_proposal_id_or_null"}),
+        self_binding_field="exact_work_task_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("worker_task", "work.exhausted"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_TASK",
+        required=frozenset({"exact_work_task_binding", "terminal_attempt_id", "attempts_used", "reason"}),
+        self_binding_field="exact_work_task_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("worker_task", "work.blocked_unknown"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_TASK",
+        required=frozenset({"exact_work_task_binding", "unknown_attempt_id", "reconciliation_required"}),
+        self_binding_field="exact_work_task_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("worker_task", "work.unknown_reconciled_retry"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_TASK",
+        required=frozenset({"exact_work_task_binding", "unknown_attempt_id", "reconciliation_receipt_digest"}),
+        self_binding_field="exact_work_task_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("worker_task", "work.unknown_reconciled_completed"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_TASK",
+        required=frozenset({"exact_work_task_binding", "unknown_attempt_id", "reconciliation_receipt_digest", "accepted_proposal_id_or_null"}),
+        self_binding_field="exact_work_task_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("attempt", "attempt.created"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_ATTEMPT",
+        required=frozenset({"exact_attempt_binding", "worker_task_id", "attempt_number", "worker_identity", "fence_token", "claim_event_id", "fallback_of_attempt_id_or_null"}),
+        self_binding_field="exact_attempt_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("attempt", "attempt.starting"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_ATTEMPT",
+        required=frozenset({"exact_attempt_binding", "capability_id", "runtime_adapter"}),
+        self_binding_field="exact_attempt_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("attempt", "attempt.started"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_ATTEMPT",
+        required=frozenset({"exact_attempt_binding", "runtime_session"}),
+        self_binding_field="exact_attempt_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("attempt", "attempt.receipt_recorded"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_ATTEMPT",
+        required=frozenset({"exact_attempt_binding", "receipt_kind", "receipt_digest", "issuer"}),
+        self_binding_field="exact_attempt_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("attempt", "attempt.output_recorded"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_ATTEMPT",
+        required=frozenset({"exact_attempt_binding", "output_digest", "stream_complete"}),
+        self_binding_field="exact_attempt_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("attempt", "attempt.succeeded"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_ATTEMPT",
+        required=frozenset({"exact_attempt_binding", "output_digest", "terminal_receipt_digest"}),
+        self_binding_field="exact_attempt_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("attempt", "attempt.failed"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_ATTEMPT",
+        required=frozenset({"exact_attempt_binding", "failure_code", "terminal_receipt_digest_or_null"}),
+        self_binding_field="exact_attempt_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("attempt", "attempt.timed_out"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_ATTEMPT",
+        required=frozenset({"exact_attempt_binding", "timeout_kind"}),
+        self_binding_field="exact_attempt_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("attempt", "attempt.cancel_requested"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_ATTEMPT",
+        required=frozenset({"exact_attempt_binding", "reason"}),
+        self_binding_field="exact_attempt_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("attempt", "attempt.cancelled"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_ATTEMPT",
+        required=frozenset({"exact_attempt_binding", "cancellation_receipt_digest"}),
+        self_binding_field="exact_attempt_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("attempt", "attempt.unknown"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_ATTEMPT",
+        required=frozenset({"exact_attempt_binding", "ambiguity_reason", "reconciliation_required"}),
+        self_binding_field="exact_attempt_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("attempt", "attempt.reconciled_succeeded"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_ATTEMPT",
+        required=frozenset({"exact_attempt_binding", "reconciliation_receipt_digest", "output_digest"}),
+        self_binding_field="exact_attempt_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("attempt", "attempt.reconciled_failed"): V5EventRoute(
+        owner="work-controller",
+        subject_kind="WORK_ATTEMPT",
+        required=frozenset({"exact_attempt_binding", "reconciliation_receipt_digest", "failure_code"}),
+        self_binding_field="exact_attempt_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("proposal", "proposal.submitted"): V5EventRoute(
+        owner="proposal-controller",
+        subject_kind="WORK_PROPOSAL",
+        required=frozenset({"exact_proposal_binding", "proposal_digest", "worker_task_id", "authored_by_principal", "submitted_by_principal", "controlled_action_not_started"}),
+        self_binding_field="exact_proposal_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("proposal_decision", "proposal.accepted"): V5EventRoute(
+        owner="proposal-controller",
+        subject_kind="WORK_PROPOSAL_DECISION",
+        required=frozenset({"exact_proposal_decision_binding", "proposal_id", "proposal_digest", "downstream_intent", "downstream_command", "downstream_reaction_id"}),
+        self_binding_field="exact_proposal_decision_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
+    ("proposal_decision", "proposal.rejected"): V5EventRoute(
+        owner="proposal-controller",
+        subject_kind="WORK_PROPOSAL_DECISION",
+        required=frozenset({"exact_proposal_decision_binding", "proposal_id", "proposal_digest", "reason_code"}),
+        self_binding_field="exact_proposal_decision_binding",
+        channel="v5.work.events",
+        dynamic_revision=True,
+    ),
 }
 
 
@@ -600,7 +834,9 @@ def _validate_v5_route_payload(
         contract_major=2,
         kind=route.subject_kind,
         revision=route.self_revision,
-        allow_null_revision=route.self_revision is None,
+        allow_null_revision=(
+            route.self_revision is None and not route.dynamic_revision
+        ),
     )
     if route.null_previous_binding_field is not None and payload.get(
         route.null_previous_binding_field
@@ -642,7 +878,9 @@ def _validate_v5_route_payload(
             contract_major=2,
             kind=kind,
             revision=revision,
-            allow_null_revision=revision is None,
+            allow_null_revision=(
+                revision is None and not route.dynamic_revision
+            ),
         )
     for field, kind, revision in route.dependent_binding_lists:
         bindings = payload.get(field)
@@ -894,7 +1132,12 @@ def v5_outbox_envelope(event: Event) -> dict[str, Any]:
     }
 
 
-def validate_v5_outbox_row(row: Outbox | None, *, event: Event) -> Outbox:
+def validate_v5_outbox_row(
+    row: Outbox | None,
+    *,
+    event: Event,
+    expected_channel: str | None = None,
+) -> Outbox:
     """Verify a major-2 event and outbox carry the exact same envelope."""
 
     if row is None:
@@ -906,7 +1149,7 @@ def validate_v5_outbox_row(row: Outbox | None, *, event: Event) -> Outbox:
         or row.event_contract_major != 2
         or row.source_event_id != event.event_id
         or row.source_event_seq != event.seq
-        or row.channel != V5_DOMAIN_EVENT_CHANNEL
+        or row.channel != (expected_channel or V5_DOMAIN_EVENT_CHANNEL)
         or row.workspace_id != event.workspace_id
         or row.aggregate_type != event.aggregate_type
         or row.aggregate_id != event.aggregate_id

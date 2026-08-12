@@ -982,3 +982,69 @@ def test_competition_profile_requires_cli_but_not_generic_protocol_runtime() -> 
         "generic_cancel_required": False,
         "competition_slice_is_delivery_sequence_not_product_scope_reduction": True,
     }
+
+
+def test_v5_2a_work_authority_section_reuses_v4_owners_and_frozen_events() -> None:
+    """The V5-2A work authority section (D-016) is structurally closed:
+    kinds are registered, owners match the V4 logical owners, every mapped
+    command/event exists in the V4 ownership contract, and the command set
+    matches the frozen v5_2a_work_kernel_contract catalog exactly."""
+    ownership = _load("aggregate-ownership.yaml")
+    profiles = _load("schema-profiles.yaml")
+    events_v5 = _load("events.yaml")
+    v4 = yaml.safe_load(V4_OWNERSHIP.read_text(encoding="utf-8"))
+
+    section = ownership["schema_major_2_work_authority"]
+    exact_kinds = set(profiles["common"]["exact_record_binding_v5"]["kinds"])
+    assert set(section) <= exact_kinds
+
+    frozen_catalog = events_v5["v5_2a_work_kernel_contract"]["frozen_event_catalog"]
+    frozen_events = {
+        event for events in frozen_catalog.values() for event in events
+    }
+
+    v4_resources = v4["resources"]
+    seen_events: set[str] = set()
+    for kind, mapping in section.items():
+        logical = mapping["resource"]
+        v4_resource = v4_resources[logical]
+        assert mapping["owner"] == v4_resource["owner"]
+        owner_commands = {
+            command
+            for resource in v4_resources.values()
+            if resource["owner"] == mapping["owner"]
+            for command in resource.get("commands", [])
+        }
+        for command, mapped_events in mapping["command_events"].items():
+            # The command must be registered on a V4 resource of the same
+            # owner; a same-owner command may emit across aggregates inside
+            # one unit of work (e.g. work.claim also emits attempt.created).
+            assert command in owner_commands
+            assert mapped_events
+            for event in mapped_events:
+                assert event in v4_resource["events"]
+                seen_events.add(event)
+    assert seen_events == frozen_events
+    assert len(frozen_events) == 27
+
+
+def test_v5_2a_work_events_use_dedicated_channel_and_major_2_envelope() -> None:
+    """Every frozen Work event resolves to a major-2 V5 route on the
+    dedicated work channel, with the V4 owner reused."""
+    events_v5 = _load("events.yaml")
+    ownership = _load("aggregate-ownership.yaml")
+    contract = events_v5["v5_2a_work_kernel_contract"]
+    assert contract["contract_status"] == "FROZEN_FOR_IMPLEMENTATION"
+    assert contract["activation_status"] == "NOT_ACTIVATED"
+    assert contract["schema_major_routing"]["mode"] == (
+        "semantic_reuse_with_schema_major_routing"
+    )
+    assert set(contract["transports"].values()) == {"FORBIDDEN"}
+    reused = contract["reused_v4_semantic_owners"]
+    v4 = yaml.safe_load(V4_OWNERSHIP.read_text(encoding="utf-8"))
+    for logical, owner in reused.items():
+        assert v4["resources"][logical]["owner"] == owner
+    work_section = ownership["schema_major_2_work_authority"]
+    assert {mapping["resource"] for mapping in work_section.values()} == set(
+        contract["frozen_event_catalog"]
+    )
