@@ -125,6 +125,11 @@ def _install_cli(repo_root: Path, tmp_path: Path) -> tuple[Path, str]:
         "PATH": os.environ.get("PATH", ""),
         "PIP_DISABLE_PIP_VERSION_CHECK": "1",
         "PIP_NO_INDEX": "1",
+        # --no-build-isolation resolves the build backend from the *calling*
+        # interpreter's importable path.  Modern base interpreters (PEP 668 /
+        # uv-managed) no longer ship setuptools, so expose the pinned
+        # control-plane venv's site-packages to the disposable venv's pip.
+        "PYTHONPATH": str(Path(httpx.__file__).resolve().parents[1]),
     }
     created = _safe_process(
         [sys.executable, "-m", "venv", "--system-site-packages", str(venv)],

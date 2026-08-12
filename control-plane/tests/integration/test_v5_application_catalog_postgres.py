@@ -161,12 +161,13 @@ def test_v5_catalog_installed_cli_real_postgres_loopback(
             side_effect=AssertionError("v5.e2e_must_not_use_create_all"),
         ):
             command.upgrade(_alembic_config(control_plane_root), "head")
-        assert (
-            engine.connect()
-            .execute(sa.text("SELECT version_num FROM alembic_version"))
-            .scalar_one()
-            == "014"
-        )
+        with engine.connect() as version_connection:
+            assert (
+                version_connection.execute(
+                    sa.text("SELECT version_num FROM alembic_version")
+                ).scalar_one()
+                == "014"
+            )
 
         cli, pinned_site_packages = _install_cli(repo_root, tmp_path)
 
