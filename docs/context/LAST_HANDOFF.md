@@ -6,8 +6,9 @@
 
 ## 2026-08-13 V5-2A review remediation handoff (current)
 
-- `primary_truth`: `/Users/xiejiachen/caseloop-wt-v5-convergence` remains clean
-  at `codex/v5-convergence@92bde3c`. No V5-2A commit has been merged there.
+- `primary_truth`: `/Users/xiejiachen/caseloop-wt-v5-convergence` was
+  fast-forwarded from `92bde3c` through `cb89cad`; the exact merged result passed
+  `verify_convergence.sh` 8/8. The branch has not been pushed.
 - `reviewed_candidate`: GitHub branch `origin/codex/v5-2a-work-kernel@6b30a83`
   (12 commits over `92bde3c`). No open PR/CI object represented the branch during
   this review, so the exact branch head was the review subject.
@@ -24,14 +25,15 @@
 - `verified`: focused Work 47; PostgreSQL Work Kernel/relay 8; PostgreSQL migration
   13; import-graph tests 20 plus checker PASS; Compose config PASS; unified gate
   8/8 PASS twice after the final receipt hardening. A separate detached clean
-  checkout of exact subject `3677be3` also passed 8/8 and remained clean.
+  checkout of exact subject `3677be3` also passed 8/8 and remained clean; the
+  fast-forwarded convergence head `cb89cad` then passed another complete 8/8 gate.
 - `evidence`: `evidence/v5/stage-2/work-kernel/v5-2a-review-remediation_20260812T165557Z_local/`.
+- `post_merge_evidence`: `evidence/v5/stage-2/work-kernel/v5-2a-post-merge_20260812T172809Z_local/`.
 - `facet_truth`: `contract=PASS`, deterministic/local-PostgreSQL `replay=PASS`;
   `domain-provider-live`, `agentteams-native`, `claude-runtime-live`, `agent-causal`,
   `repo-sandbox`, `human-authorized-external` and `production-canary` are `NOT_RUN`.
-- `decision`: GO for merge consideration. The branch and commits are local only;
-  nothing was pushed or merged. V5-2B+ remain locked until the user accepts and
-  integrates this exact predecessor.
+- `decision`: locally merged by user authorization via `--ff-only`; merge-result
+  gate PASS. Nothing was pushed. V5-2B+ remain locked pending their own entry decision.
 - `non_blocking_existing_risk`: clean `npm audit --omit=dev` reports two moderate
   React Router advisories; the automated fix is a major-version upgrade. Neither
   Console dependency file changed in `92bde3c..3677be3`.

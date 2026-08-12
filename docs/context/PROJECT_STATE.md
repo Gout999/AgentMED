@@ -1,8 +1,9 @@
 # Project State
 
 - `v5_2a_reviewed_candidate`: `6b30a83` on `origin/codex/v5-2a-work-kernel` (12 commits over base `92bde3c`; original review verdict NO-GO due to authority/recovery defects)
-- `v5_2a_work_kernel_subject`: `3677be3a97daa1b28d2e4835b7665bd388449006` on local branch `codex/v5-2a-review-remediation` (candidate + exact Task/attempt/Proposal binding, server-owned idempotency, persisted terminal receipt, leased retry/DLQ worker, immutable delivery receipt/audit, and gate repair; not pushed or merged)
+- `v5_2a_work_kernel_subject`: code remediation `3677be3a97daa1b28d2e4835b7665bd388449006` + evidence closure `cb89cad56c7d27949bf885014bc5dc6a0c9569b9`; fast-forwarded into local `codex/v5-convergence`, not pushed
 - `v5_2a_work_kernel_evidence`: `evidence/v5/stage-2/work-kernel/v5-2a-review-remediation_20260812T165557Z_local/` (`contract=PASS`, deterministic/local-PG `replay=PASS`; all other 7 facets `NOT_RUN`)
+- `v5_2a_post_merge_evidence`: `evidence/v5/stage-2/work-kernel/v5-2a-post-merge_20260812T172809Z_local/` (local convergence merge-result `verify_convergence.sh` 8/8 PASS)
 - `v5_2a_gate_on_subject`: focused Work 47; compiler determinism CLEAN; compiler 18; conformance 559; control-plane unit + C1–C5 wave checkers 1047 passed / 13 PG-gated skips; CLI 130; Console 20 + build; import-graph PASS; Docker Compose config PASS; disposable PostgreSQL 16 migration matrix 13 passed and integration matrix 17 passed, including Work Kernel/relay 8; unified gate 8/8 PASS
 - `r0_documentation_subject`: `4d15c1c81180386fa4852a53f8b8847e74cda050` (independent detached-checkout PASS; P0=0/P1=0)
 - `r0_evidence`: `evidence/v5/stage-0/documentation-authority/r0docs_20260811T104032Z_4d15c1c/`
@@ -19,21 +20,21 @@
 - `c4_transport_subject`: `1d7b59c` (C4 original cutover; `b6fa629` remediation makes generated structural + semantic validation jointly mandatory and fail-closed; Python parity covers 11 ops/103 cases)
 - `c5_cleanup_subject`: `19f26bf` (original C5 semantic package; superseded for execution by the remediation below)
 - `c5_remediation_subject`: `b6fa629` (owner port, generated structural+semantic fail-closed, real V5 route switch, unified Console/PG gate; detached clean `verify_convergence.sh` 8/8 PASS; compiler 18; conformance 547; control-plane 998 collected/12 PG safety skip; CLI 118; Console 20+build; disposable PG 17/17)
-- `convergence_series`: `COMPLETE / REMEDIATED` (D2, R3-full and R4 closed; V5-2A remediation is clean-verified on its local review branch but not merged; V5-2B+ remain LOCKED by Master §17)
+- `convergence_series`: `COMPLETE / REMEDIATED` (D2, R3-full and R4 closed; V5-2A is locally merged and post-merge verified but not pushed; V5-2B+ remain LOCKED by Master §17)
 - `r2_verification`: contracts 541; control-plane unit 876 plus 12 explicitly PG-gated skips; CLI 118; Console 17 plus build; disposable PostgreSQL 17/17
 - `checksum_policy`: SHA-256 and digest-bearing final evidence are deferred by the product owner until final whole-project closure; this deferral does not convert an unrun facet to PASS
 - `pre_r0_baseline`: `4a0a421cc669bf98d9b882d149d5d3df4c8dc36e`
-- `last_clean_verified_semantic_subject_commit`: `3677be3a97daa1b28d2e4835b7665bd388449006` (V5-2A local remediation; detached clean `verify_convergence.sh` 8/8 PASS; not pushed or merged)
+- `last_clean_verified_semantic_subject_commit`: `cb89cad56c7d27949bf885014bc5dc6a0c9569b9` (V5-2A evidence closure; local convergence merge-result `verify_convergence.sh` 8/8 PASS; not pushed)
 - `last_digest_closed_evidence_subject_commit`: `4852664c60f92e73ee349ec0e7b27e81d84c7b6a4` (V5-D2 contract-only; retained separately because R1/R2 checksums are owner-deferred)
 - `stage0_documentation_commit`: `b7889a7e200f76bd5985188ff6fb7e9e1860fd28`
 - `previous_v3_evidence_commit`: `cef1598b4ac1d42fdd4f206c5747eb89a06f24fc`
-- `primary_branch`: `codex/v5-convergence` at `92bde3c` (clean and unchanged during review)
-- `active_review_branch`: `codex/v5-2a-review-remediation` at `3677be3` plus this evidence/status commit; local only
+- `primary_branch`: `codex/v5-convergence` fast-forwarded from `92bde3c` through `cb89cad`; merge-result gate 8/8 PASS; local only
+- `review_branch`: `codex/v5-2a-review-remediation` also points to `cb89cad`; retained as review provenance
 - `origin/main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `local main commit`: `81ae70654eeef55d60e96cac90e181609dea4f29`
 - `collaborator_sync_merge`: `4b5377dae317eaeadbf23ab85481881096b6d6d2`
-- `working_tree`: primary `~/caseloop-wt-v5-convergence` remains clean at `92bde3c`; review/remediation work is isolated in `/tmp/caseloop-v5-2a-review.G9m8Dj`; a separate detached `3677be3` checkout passed the full 8/8 gate clean. The original `codex/v4-foundation` mixed WIP remains preserved and excluded.
-- `construction_division_2026_08_12`: remote construction produced candidate `6b30a83`; local review found and remediated authority/recovery defects at `3677be3`, reran disposable PostgreSQL and detached clean gates, and left merge authority with the user.
+- `working_tree`: primary `~/caseloop-wt-v5-convergence` now contains the local fast-forwarded V5-2A series; review/remediation provenance remains in `/tmp/caseloop-v5-2a-review.G9m8Dj`; exact `3677be3` detached and `cb89cad` merge-result gates both passed 8/8. The original `codex/v4-foundation` mixed WIP remains preserved and excluded.
+- `construction_division_2026_08_12`: remote construction produced candidate `6b30a83`; local review remediated it at `3677be3`, closed evidence at `cb89cad`, fast-forwarded local convergence and verified the merged result. Push remains separately unauthorized.
 - `last_updated`: `2026-08-13` (Asia/Hong_Kong)
 
 ## Current V5 convergence truth (supersedes the historical repair snapshot below)
@@ -61,8 +62,9 @@
   Architecture convergence is `COMPLETE / REMEDIATED` at `b6fa629`; D2 (contract-only),
   R3-full and R4 are each closed with their own evidence. V5-2A candidate `6b30a83` was
   remote-constructed, locally reviewed NO-GO, then remediated and detached-clean verified at
-  `3677be3`. It remains unmerged; V5-2B+ stay locked behind the exact predecessor chain and
-  the user's merge decision.
+  `3677be3`, closed evidence at `cb89cad`, and was fast-forwarded into local convergence with
+  merge-result gate 8/8 PASS. It remains unpushed; V5-2B+ stay locked behind their exact entry
+  decision.
 - The original dirty worktree is not a candidate baseline. It remains preserved on
   `codex/v4-foundation`; C0 uses `codex/v5-convergence` and exact allowlists. No path from the
   preserved WIP inventory may be promoted without clean-base hunk reconstruction and provenance

@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "run_id": "v5-2a-post-merge_20260812T172809Z_local",
+  "stage": "V5-2A",
+  "slice": "post-merge-verification",
+  "status": "PASS",
+  "completed_at": "2026-08-12T17:28:09Z",
+  "target": {
+    "branch": "codex/v5-convergence",
+    "previous_head": "92bde3c497ac7882249c476099f30734ac341b39",
+    "integrated_head": "cb89cad56c7d27949bf885014bc5dc6a0c9569b9",
+    "mode": "fast-forward",
+    "pushed": false
+  },
+  "verification": {
+    "unified_gate": "8/8 ALL SECTIONS PASS",
+    "postgresql": "disposable control_plane_test on 127.0.0.1:55432",
+    "worktree_before": "clean",
+    "worktree_after": "clean"
+  },
+  "facet_report": {
+    "contract": "PASS",
+    "replay": "PASS (deterministic fixture and local PostgreSQL only)",
+    "domain-provider-live": "NOT_RUN",
+    "agentteams-native": "NOT_RUN",
+    "claude-runtime-live": "NOT_RUN",
+    "agent-causal": "NOT_RUN",
+    "repo-sandbox": "NOT_RUN",
+    "human-authorized-external": "NOT_RUN",
+    "production-canary": "NOT_RUN"
+  }
+}
