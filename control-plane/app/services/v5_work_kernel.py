@@ -944,6 +944,157 @@ class WorkKernelService:
         )
 
     # ------------------------------------------------------------------
+    # work.cancel-request / attempts.cancel — best-effort cancellation
+    # ------------------------------------------------------------------
+    def cancel_task(
+        self,
+        *,
+        workspace_id: str,
+        task_id: str,
+        reason: str,
+        requested_by_principal: str,
+        transaction_id: str | None = None,
+        request_id: str,
+    ) -> WorkTask:
+        if not reason:
+            raise V5WorkKernelError("v5.work.cancel_reason_required")
+        now = self.clock()
+        transaction_id = transaction_id or new_transaction_id()
+        task = self._locked_task(workspace_id, task_id)
+        if task.state in TASK_TERMINAL:
+            raise V5WorkKernelError("v5.work.task_terminal")
+        if task.state == "CANCEL_REQUESTED":
+            return task
+        task.state = "CANCEL_REQUESTED"
+        receipt_id = new_authority_receipt_id()
+        self._refresh_task_head(task, receipt_id)
+        self.session.flush()
+        self._write_fact(
+            workspace_id=workspace_id,
+            subject_kind="WORK_TASK",
+            subject_id=task.task_id,
+            subject_revision=task.revision,
+            subject_digest=task.record_digest,
+            aggregate_type="worker_task",
+            event_type="work.cancel_requested",
+            payload={
+                "exact_work_task_binding": _binding(
+                    "WORK_TASK", task.task_id, task.revision, task.record_digest
+                ),
+                "reason": reason,
+                "requested_by_principal": requested_by_principal,
+            },
+            command="work.cancel-request",
+            transaction_id=transaction_id,
+            request_id=request_id,
+            now=now,
+            authority_receipt_id=receipt_id,
+        )
+        return task
+
+    def cancel_attempt(
+        self,
+        *,
+        workspace_id: str,
+        task_id: str,
+        attempt_id: str,
+        reason: str,
+        transaction_id: str | None = None,
+        request_id: str,
+    ) -> WorkAttempt:
+        now = self.clock()
+        transaction_id = transaction_id or new_transaction_id()
+        task = self._locked_task(workspace_id, task_id)
+        attempt = self._locked_attempt(workspace_id, attempt_id)
+        if attempt.state in ATTEMPT_TERMINAL:
+            raise V5WorkKernelError("v5.work.attempt_state_invalid")
+        attempt.state = "CANCEL_REQUESTED"
+        attempt_receipt_id = new_authority_receipt_id()
+        self._refresh_attempt_head(attempt, attempt_receipt_id)
+        self.session.flush()
+        self._write_fact(
+            workspace_id=workspace_id,
+            subject_kind="WORK_ATTEMPT",
+            subject_id=attempt.attempt_id,
+            subject_revision=attempt.revision,
+            subject_digest=attempt.record_digest,
+            aggregate_type="attempt",
+            event_type="attempt.cancel_requested",
+            payload={
+                "exact_attempt_binding": _binding(
+                    "WORK_ATTEMPT",
+                    attempt.attempt_id,
+                    attempt.revision,
+                    attempt.record_digest,
+                ),
+                "reason": reason,
+            },
+            command="attempts.cancel",
+            transaction_id=transaction_id,
+            request_id=request_id,
+            now=now,
+            authority_receipt_id=attempt_receipt_id,
+        )
+        attempt.state = "CANCELLED"
+        attempt.ended_at = now
+        cancelled_receipt_id = new_authority_receipt_id()
+        self._refresh_attempt_head(attempt, cancelled_receipt_id)
+        self.session.flush()
+        self._write_fact(
+            workspace_id=workspace_id,
+            subject_kind="WORK_ATTEMPT",
+            subject_id=attempt.attempt_id,
+            subject_revision=attempt.revision,
+            subject_digest=attempt.record_digest,
+            aggregate_type="attempt",
+            event_type="attempt.cancelled",
+            payload={
+                "exact_attempt_binding": _binding(
+                    "WORK_ATTEMPT",
+                    attempt.attempt_id,
+                    attempt.revision,
+                    attempt.record_digest,
+                ),
+                "cancellation_receipt_digest": attempt.record_digest,
+            },
+            command="attempts.cancel",
+            transaction_id=transaction_id,
+            request_id=request_id,
+            now=now,
+            authority_receipt_id=cancelled_receipt_id,
+        )
+        if task.state == "CANCEL_REQUESTED":
+            task.state = "CANCELLED"
+            task.terminal_reason = "cancelled"
+            task.lease_owner = None
+            task.lease_expires_at = None
+            task_receipt_id = new_authority_receipt_id()
+            self._refresh_task_head(task, task_receipt_id)
+            self.session.flush()
+            self._write_fact(
+                workspace_id=workspace_id,
+                subject_kind="WORK_TASK",
+                subject_id=task.task_id,
+                subject_revision=task.revision,
+                subject_digest=task.record_digest,
+                aggregate_type="worker_task",
+                event_type="work.cancelled",
+                payload={
+                    "exact_work_task_binding": _binding(
+                        "WORK_TASK", task.task_id, task.revision, task.record_digest
+                    ),
+                    "terminal_attempt_id": attempt.attempt_id,
+                    "cancellation_receipt_digest": attempt.record_digest,
+                },
+                command="attempts.cancel",
+                transaction_id=transaction_id,
+                request_id=request_id,
+                now=now,
+                authority_receipt_id=task_receipt_id,
+            )
+        return attempt
+
+    # ------------------------------------------------------------------
     # attempts.mark-unknown / reconcile — the crash-recovery boundary
     # ------------------------------------------------------------------
     def _mark_attempt_unknown_locked(

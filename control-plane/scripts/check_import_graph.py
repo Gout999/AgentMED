@@ -166,6 +166,7 @@ MODULE_LANES: dict[str, str] = {
     "app.services.v5_catalog_composition": LANE_V5_DOMAIN,
     "app.services.v5_composition": LANE_V5_DOMAIN,
     "app.services.v5_lifecycle_authority": LANE_V5_DOMAIN,
+    "app.services.v5_work_dispatcher": LANE_V5_DOMAIN,
     "app.services.v5_work_kernel": LANE_V5_DOMAIN,
     "app.services.v5_manifest_import_coordinator": LANE_V5_DOMAIN,
     "app.utils": LANE_SHARED_FOUNDATION,
