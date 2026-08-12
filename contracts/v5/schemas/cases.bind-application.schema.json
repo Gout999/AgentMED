@@ -12,10 +12,6 @@
       "type": "string",
       "pattern": "^acb_[0-9A-Za-z]{8,64}$"
     },
-    "idAcceptanceCriteriaRevisionId": {
-      "type": "string",
-      "pattern": "^acr_[0-9A-Za-z]{8,64}$"
-    },
     "exactCaseBinding": {
       "type": "object",
       "additionalProperties": false,
@@ -36,33 +32,6 @@
           "$ref": "common.schema.json#/$defs/digest"
         }
       }
-    },
-    "exactResolutionContractBinding": {
-      "type": "object",
-      "additionalProperties": false,
-      "properties": {
-        "kind": {
-          "const": "RESOLUTION_CONTRACT"
-        },
-        "id": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 128
-        },
-        "revision": {
-          "type": "integer",
-          "minimum": 1
-        },
-        "digest": {
-          "$ref": "common.schema.json#/$defs/digest"
-        }
-      },
-      "required": [
-        "kind",
-        "id",
-        "revision",
-        "digest"
-      ]
     },
     "systemVersionSetBindingOrUnknown": {
       "anyOf": [
@@ -121,9 +90,6 @@
         "snapshot_payload",
         "fetched_at"
       ]
-    },
-    "recordEnvelopeRef": {
-      "$ref": "common.schema.json#/$defs/recordEnvelope"
     },
     "applicationCaseBindingRecord": {
       "type": "object",

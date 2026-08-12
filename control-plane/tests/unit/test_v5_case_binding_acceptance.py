@@ -1523,4 +1523,4 @@ def test_read_views_readiness_never_reports_ready_after_confirm(sqlite_session) 
     from app.services.read_views import case_v5_readiness
 
     readiness = case_v5_readiness(sqlite_session, case_id=proposed_env.exact_case_binding["case_id"])
-    assert readiness != "READY"
+    assert readiness["case_readiness"] == "PENDING_MATERIALIZATION"

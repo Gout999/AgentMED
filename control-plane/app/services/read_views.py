@@ -884,7 +884,8 @@ def case_v5_readiness(session: Session, case_id: str) -> dict[str, Any]:
     """V5-1C read-only case governance projection for the Console.
 
     Application binding, acceptance readiness (NEEDS_ACCEPTANCE_CRITERIA /
-    READY), missing-evidence list and the read-only issue snapshot.  Every
+    PENDING_MATERIALIZATION - never READY before V5-4A), missing-evidence
+    list and the read-only issue snapshot.  Every
     v5 envelope is revalidated on read; corrupt rows project as
     integrity_error/UNKNOWN, never as trusted state.
     """
