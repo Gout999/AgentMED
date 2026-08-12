@@ -33,6 +33,10 @@ Master §6 V5-2A (Durable Work Kernel), sub-packages 2A-0 through 2A-5:
 
 ## Full gate result on this tree
 
+> Note: the s4 line below is the **pre-remediation** snapshot (1021).  The
+> post-remediation count is **1035 passed / 13 PG-gated skips** — see
+> "Independent verifier pass and remediation" below.
+
 - s1 compiler determinism: PASS (zero diff)
 - s2 compiler tests: 18
 - s3 conformance: 559 (557 + 2 new V5-2A guards)

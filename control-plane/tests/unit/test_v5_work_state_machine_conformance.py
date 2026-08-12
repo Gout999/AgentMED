@@ -55,17 +55,21 @@ PROPOSAL_COMMANDS = ["proposals.submit", "proposals.decide"]
 
 def _walk(machine_name: str, event_types: list[str]) -> str:
     """Replay an event sequence through a V4 machine; fail on any hop the
-    machine does not define.  Creation events (the machine's birth) pin the
-    initial state instead of consuming a transition."""
+    machine does not define.  The creation event must appear exactly once
+    and only first; any stream not starting with it is rejected."""
     machine = MACHINES[machine_name]
     state = machine["initial"]
     creation = {
         "worker_task": "work.requested",
         "attempt": "attempt.created",
     }[machine_name]
-    for event_type in event_types:
-        if event_type == creation:
-            continue
+    assert event_types and event_types[0] == creation, (
+        f"{machine_name}: stream must start with {creation}, got {event_types[:1]}"
+    )
+    for event_type in event_types[1:]:
+        assert event_type != creation, (
+            f"{machine_name}: duplicate creation event {creation}"
+        )
         hop = next(
             (
                 t
