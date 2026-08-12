@@ -186,6 +186,18 @@ def _start_and_output(kernel, task: WorkTask, attempt) -> None:
         transaction_id=new_transaction_id(),
         request_id=f"req_sm_s_{attempt.attempt_id[-8:]}",
     )
+    kernel.record_terminal_receipt(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        attempt_id=attempt.attempt_id,
+        fencing_token=attempt.fence_token,
+        issuer=attempt.worker_identity,
+        process_exit_code=0,
+        stream_complete=True,
+        structured_output_valid=True,
+        transaction_id=new_transaction_id(),
+        request_id=f"req_sm_receipt_{attempt.attempt_id[-8:]}",
+    )
     kernel.record_output(
         workspace_id=WORKSPACE,
         task_id=task.task_id,
@@ -208,7 +220,7 @@ def test_happy_path_stream_walks_both_machines(sqlite_session) -> None:
         task_id=task.task_id,
         attempt_id=claim.attempt.attempt_id,
         fencing_token=claim.attempt.fence_token,
-        terminal_receipt_digest="sha256:sm",
+        terminal_receipt_digest=claim.attempt.receipt_payload["receipt_digest"],
         transaction_id=new_transaction_id(),
         request_id="req_sm_done",
     )
@@ -256,6 +268,18 @@ def test_unknown_reconcile_retry_stream_is_legal(sqlite_session) -> None:
         transaction_id=new_transaction_id(),
         request_id="req_sm_us",
     )
+    receipt_digest = kernel.record_terminal_receipt(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        attempt_id=claim.attempt.attempt_id,
+        fencing_token=claim.attempt.fence_token,
+        issuer=claim.attempt.worker_identity,
+        process_exit_code=1,
+        stream_complete=True,
+        structured_output_valid=False,
+        transaction_id=new_transaction_id(),
+        request_id="req_sm_u_receipt",
+    )
     kernel.mark_attempt_unknown(
         workspace_id=WORKSPACE,
         task_id=task.task_id,
@@ -269,7 +293,7 @@ def test_unknown_reconcile_retry_stream_is_legal(sqlite_session) -> None:
         task_id=task.task_id,
         attempt_id=claim.attempt.attempt_id,
         outcome="failed",
-        reconciliation_receipt_digest="sha256:smrecon",
+        reconciliation_receipt_digest=receipt_digest,
         transaction_id=new_transaction_id(),
         request_id="req_sm_r",
     )
@@ -300,6 +324,18 @@ def test_reconcile_exhausted_walks_two_legal_hops(sqlite_session) -> None:
         transaction_id=new_transaction_id(),
         request_id="req_sm_rex_s",
     )
+    receipt_digest = kernel.record_terminal_receipt(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        attempt_id=claim.attempt.attempt_id,
+        fencing_token=claim.attempt.fence_token,
+        issuer=claim.attempt.worker_identity,
+        process_exit_code=1,
+        stream_complete=True,
+        structured_output_valid=False,
+        transaction_id=new_transaction_id(),
+        request_id="req_sm_rex_receipt",
+    )
     kernel.mark_attempt_unknown(
         workspace_id=WORKSPACE,
         task_id=task.task_id,
@@ -313,7 +349,7 @@ def test_reconcile_exhausted_walks_two_legal_hops(sqlite_session) -> None:
         task_id=task.task_id,
         attempt_id=claim.attempt.attempt_id,
         outcome="failed",
-        reconciliation_receipt_digest="sha256:smrex",
+        reconciliation_receipt_digest=receipt_digest,
         transaction_id=new_transaction_id(),
         request_id="req_sm_rex_r",
     )

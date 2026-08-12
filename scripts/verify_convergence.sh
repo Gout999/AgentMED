@@ -20,7 +20,7 @@
 #   5. import-graph checker (C3)
 #   6. cli tests
 #   7. Console tests + production build
-#   8. disposable PostgreSQL migration/lifecycle/catalog/manifest matrix
+#   8. disposable PostgreSQL migration/lifecycle/catalog/manifest/work matrix
 #
 # Path notes (kept faithful to the C5 plan while making each command runnable
 # from the repository root):
@@ -121,7 +121,8 @@ s8_postgres() {
         tests/integration/test_v5_application_catalog_postgres.py \
         tests/integration/test_v5_r2_manifest_activation_postgres.py \
         tests/integration/test_v5_system_versions_r3_postgres.py \
-        tests/integration/test_v5_case_binding_r4_postgres.py
+        tests/integration/test_v5_case_binding_r4_postgres.py \
+        tests/integration/test_v5_work_kernel_postgres.py
 }
 
 run_section "1-compiler-determinism" "compiler emit + zero diff on contracts/v5/generated/" s1_compiler_determinism

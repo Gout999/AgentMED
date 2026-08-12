@@ -161,7 +161,7 @@ def test_crash_after_output_complete_then_task_settles(
         task_id=task_id,
         attempt_id=claim.attempt.attempt_id,
         fencing_token=claim.attempt.fence_token,
-        terminal_receipt_digest="sha256:fxterminal",
+        terminal_receipt_digest=claim.attempt.receipt_payload["receipt_digest"],
         transaction_id="txn_fx_done",
         request_id="req_fx_done",
     )

@@ -149,7 +149,7 @@ def test_advisory_lock_calls_are_whitelisted(report: cig.Report) -> None:
         for entry in report.dta_whitelisted
         if entry.detail.startswith("SELECT pg_advisory_xact_lock")
     ]
-    assert len(advisory) == 8, advisory
+    assert len(advisory) == 9, advisory
     files = {entry.file for entry in advisory}
     assert files == {
         "app/bootstrap/stage1a_local.py",
@@ -159,6 +159,7 @@ def test_advisory_lock_calls_are_whitelisted(report: cig.Report) -> None:
         "app/services/release_service.py",
         "app/services/signal_intake.py",
         "app/services/system_versions.py",
+        "app/services/v5_work_kernel.py",
     }
 
 

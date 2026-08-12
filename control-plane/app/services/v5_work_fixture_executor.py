@@ -66,7 +66,6 @@ class FixtureWorkExecutor:
             input_payload={"probe": probe},
             requester_principal=FIXTURE_WORKER,
             idempotency_key=idempotency_key,
-            request_fingerprint=canonical_digest({"probe": probe}),
             transaction_id=new_transaction_id(),
             request_id=f"fxreq_{idempotency_key}",
         )
@@ -78,6 +77,27 @@ class FixtureWorkExecutor:
             worker_identity=FIXTURE_WORKER,
             transaction_id=new_transaction_id(),
             request_id=f"fxclaim_{task_id[-12:]}",
+        )
+
+    def record_terminal_receipt(
+        self,
+        *,
+        workspace_id: str,
+        task_id: str,
+        claim: ClaimResult,
+        succeeded: bool,
+    ) -> str:
+        return self.kernel.record_terminal_receipt(
+            workspace_id=workspace_id,
+            task_id=task_id,
+            attempt_id=claim.attempt.attempt_id,
+            fencing_token=claim.attempt.fence_token,
+            issuer=FIXTURE_WORKER,
+            process_exit_code=0 if succeeded else 1,
+            stream_complete=True,
+            structured_output_valid=succeeded,
+            transaction_id=new_transaction_id(),
+            request_id=f"fxreceipt_{claim.attempt.attempt_id[-12:]}",
         )
 
     def run_to_completion(
@@ -102,6 +122,12 @@ class FixtureWorkExecutor:
             transaction_id=new_transaction_id(),
             request_id=f"fxstart_{claim.attempt.attempt_id[-12:]}",
         )
+        terminal_receipt_digest = self.record_terminal_receipt(
+            workspace_id=workspace_id,
+            task_id=task.task_id,
+            claim=claim,
+            succeeded=True,
+        )
         output = self.deterministic_output(task.input_payload)
         self.kernel.record_output(
             workspace_id=workspace_id,
@@ -118,7 +144,7 @@ class FixtureWorkExecutor:
             task_id=task.task_id,
             attempt_id=claim.attempt.attempt_id,
             fencing_token=claim.attempt.fence_token,
-            terminal_receipt_digest=canonical_digest(output),
+            terminal_receipt_digest=terminal_receipt_digest,
             transaction_id=new_transaction_id(),
             request_id=f"fxdone_{claim.attempt.attempt_id[-12:]}",
         )
@@ -166,6 +192,12 @@ class FixtureWorkExecutor:
             runtime_session=f"fxsess_{claim.attempt.attempt_id[-12:]}",
             transaction_id=new_transaction_id(),
             request_id=f"fxstart_{claim.attempt.attempt_id[-12:]}",
+        )
+        self.record_terminal_receipt(
+            workspace_id=workspace_id,
+            task_id=task.task_id,
+            claim=claim,
+            succeeded=True,
         )
         self.kernel.record_output(
             workspace_id=workspace_id,

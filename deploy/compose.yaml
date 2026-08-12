@@ -108,6 +108,26 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Fixed V5 Work reaction worker: owns only the v5.work.events channel.
+  # It is deliberately separate from the legacy Phase-1 outbox lanes.
+  v5-work-dispatcher:
+    build:
+      context: ..
+      dockerfile: control-plane/Dockerfile
+    container_name: caseloop-v5-work-dispatcher
+    entrypoint: ["python", "-m", "app.workers.v5_work"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://caseloop:caseloop@postgres:5432/control_plane
+      OUTBOX_RELAY_INTERVAL_SECONDS: "1"
+      OUTBOX_CLAIM_TTL_SECONDS: "30"
+      OUTBOX_MAX_ATTEMPTS: "5"
+      OUTBOX_RETRY_INITIAL_SECONDS: "2"
+      OUTBOX_RETRY_MAX_SECONDS: "300"
+    depends_on:
+      control-plane:
+        condition: service_healthy
+    restart: unless-stopped
+
   # ---- T7：console 运营后台（评委看板）—— 仅 APPEND，不动上方服务 ----
   console:
     build:

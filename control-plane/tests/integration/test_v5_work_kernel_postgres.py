@@ -14,16 +14,19 @@ import sqlalchemy as sa
 from sqlalchemy.orm import sessionmaker
 
 from app.models import Audit, Event, Outbox
+from app.models.tables import OutboxDeliveryReceipt
 from app.models.v4_tables import AuthorityReceipt, ControllerRegistration
 from app.models.v5_work_tables import (
     V5_WORK_EVENT_CHANNEL,
     WorkAttempt,
     WorkAttemptCapability,
     WorkProposal,
+    WorkReactionLedger,
     WorkTask,
 )
 from app.services.v4_audit import V4AuditService
 from app.services.v5_authority import build_v5_controller_registration_record
+from app.services.v5_work_dispatcher import WorkReactionRelay
 from app.services.v5_work_kernel import V5WorkKernelError, WorkKernelService
 from app.utils.ids import new_transaction_id
 from app.utils.v4_integrity import canonical_digest
@@ -230,6 +233,18 @@ def test_full_fact_chain_is_exact_on_postgres(pg_engine) -> None:
             transaction_id="txn_pg_full_start",
             request_id="req_pg_full_start",
         )
+        terminal_receipt_digest = kernel.record_terminal_receipt(
+            workspace_id=WORKSPACE,
+            task_id=task.task_id,
+            attempt_id=claim.attempt.attempt_id,
+            fencing_token=1,
+            issuer="worker-pg",
+            process_exit_code=0,
+            stream_complete=True,
+            structured_output_valid=True,
+            transaction_id="txn_pg_full_receipt",
+            request_id="req_pg_full_receipt",
+        )
         kernel.record_output(
             workspace_id=WORKSPACE,
             task_id=task.task_id,
@@ -245,7 +260,7 @@ def test_full_fact_chain_is_exact_on_postgres(pg_engine) -> None:
             task_id=task.task_id,
             attempt_id=claim.attempt.attempt_id,
             fencing_token=1,
-            terminal_receipt_digest="sha256:pgterminal",
+            terminal_receipt_digest=terminal_receipt_digest,
             transaction_id="txn_pg_full_done",
             request_id="req_pg_full_done",
         )
@@ -257,9 +272,9 @@ def test_full_fact_chain_is_exact_on_postgres(pg_engine) -> None:
             sa.select(Event).where(Event.workspace_id == WORKSPACE)
         ).all()
         # requested, claimed, attempt.created, attempt.starting,
-        # attempt.started, attempt.output_recorded, attempt.succeeded,
+        # attempt.started, attempt.receipt_recorded, attempt.output_recorded, attempt.succeeded,
         # work.completed
-        assert len(events) == 8
+        assert len(events) == 9
         work_events = {
             e.event_type
             for e in events
@@ -274,6 +289,7 @@ def test_full_fact_chain_is_exact_on_postgres(pg_engine) -> None:
         assert {
             "attempt.created",
             "attempt.started",
+            "attempt.receipt_recorded",
             "attempt.output_recorded",
             "attempt.succeeded",
         } <= attempt_events
@@ -354,6 +370,18 @@ def test_ambiguous_retry_blocked_until_reconcile_on_postgres(pg_engine) -> None:
             transaction_id="txn_pg_amb_start",
             request_id="req_pg_amb_start",
         )
+        reconciliation_receipt_digest = kernel.record_terminal_receipt(
+            workspace_id=WORKSPACE,
+            task_id=task_id,
+            attempt_id=claim.attempt.attempt_id,
+            fencing_token=1,
+            issuer="worker-pg",
+            process_exit_code=1,
+            stream_complete=True,
+            structured_output_valid=False,
+            transaction_id="txn_pg_amb_receipt",
+            request_id="req_pg_amb_receipt",
+        )
         kernel.mark_attempt_unknown(
             workspace_id=WORKSPACE,
             task_id=task_id,
@@ -384,7 +412,7 @@ def test_ambiguous_retry_blocked_until_reconcile_on_postgres(pg_engine) -> None:
             task_id=task_id,
             attempt_id=attempt_id,
             outcome="failed",
-            reconciliation_receipt_digest="sha256:pgrecon",
+            reconciliation_receipt_digest=reconciliation_receipt_digest,
             transaction_id="txn_pg_amb_recon",
             request_id="req_pg_amb_recon",
         )
@@ -401,3 +429,110 @@ def test_ambiguous_retry_blocked_until_reconcile_on_postgres(pg_engine) -> None:
             )
         assert recovered.attempt.attempt_number == 2
         assert recovered.attempt.fence_token == 2
+
+
+def test_concurrent_same_key_requests_replay_one_canonical_task(pg_engine) -> None:
+    factory = sessionmaker(bind=pg_engine, autoflush=False, future=True)
+    with factory() as session, session.begin():
+        _seed_controllers(session)
+
+    def request(index: int) -> str:
+        with factory() as session, session.begin():
+            task = WorkKernelService(session, clock=lambda: NOW).request_task(
+                workspace_id=WORKSPACE,
+                task_kind="fixture.concurrent-request",
+                input_payload={"probe": "same"},
+                requester_principal=PRINCIPAL,
+                idempotency_key="pg-concurrent-request",
+                request_fingerprint=f"caller-claimed-{index}",
+                transaction_id=new_transaction_id(),
+                request_id=f"req_pg_concurrent_{index}",
+            )
+            return task.task_id
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        task_ids = list(pool.map(request, (1, 2)))
+    assert len(set(task_ids)) == 1
+    with factory() as session:
+        assert session.scalar(
+            sa.select(sa.func.count())
+            .select_from(WorkTask)
+            .where(WorkTask.idempotency_key == "pg-concurrent-request")
+        ) == 1
+
+
+def test_cross_task_attempt_binding_rejected_on_postgres(pg_engine) -> None:
+    factory = sessionmaker(bind=pg_engine, autoflush=False, future=True)
+    with factory() as session, session.begin():
+        _seed_controllers(session)
+        kernel = WorkKernelService(session, clock=lambda: NOW)
+        task_a = _new_task(session)
+        task_b = _new_task(session)
+        attempt_b = kernel.claim(
+            workspace_id=WORKSPACE,
+            task_id=task_b,
+            worker_identity="worker-pg-b",
+            transaction_id="txn_pg_cross_claim",
+            request_id="req_pg_cross_claim",
+        ).attempt
+        with pytest.raises(V5WorkKernelError) as exc:
+            kernel.mark_attempt_unknown(
+                workspace_id=WORKSPACE,
+                task_id=task_a,
+                attempt_id=attempt_b.attempt_id,
+                ambiguity_reason="cross-task",
+                transaction_id="txn_pg_cross_unknown",
+                request_id="req_pg_cross_unknown",
+            )
+        assert exc.value.code == "v5.work.attempt_task_mismatch"
+
+
+def test_work_reaction_relay_commits_cancel_chain_on_postgres(pg_engine) -> None:
+    factory = sessionmaker(bind=pg_engine, autoflush=False, future=True)
+    with factory() as session, session.begin():
+        _seed_controllers(session)
+        kernel = WorkKernelService(session, clock=lambda: NOW)
+        task_id = _new_task(session)
+        attempt = kernel.claim(
+            workspace_id=WORKSPACE,
+            task_id=task_id,
+            worker_identity="worker-pg-relay",
+            transaction_id="txn_pg_relay_claim",
+            request_id="req_pg_relay_claim",
+        ).attempt
+        attempt_id = attempt.attempt_id
+        kernel.cancel_task(
+            workspace_id=WORKSPACE,
+            task_id=task_id,
+            reason="operator_stop",
+            requested_by_principal=PRINCIPAL,
+            transaction_id="txn_pg_relay_request_cancel",
+            request_id="req_pg_relay_request_cancel",
+        )
+
+    stats = WorkReactionRelay(
+        factory,
+        clock=lambda: NOW,
+        worker_id="worker:v5-work-pg-test",
+    ).dispatch_batch(limit=20)
+    assert stats == {
+        "claimed": 7,
+        "sent": 7,
+        "retried": 0,
+        "dead": 0,
+        "blocked": 0,
+    }
+    with factory() as session:
+        rows = session.scalars(
+            sa.select(Outbox).where(Outbox.channel == V5_WORK_EVENT_CHANNEL)
+        ).all()
+        assert len(rows) == 7
+        assert all(row.status == "SENT" for row in rows)
+        assert session.get(WorkTask, task_id).state == "CANCELLED"
+        assert session.get(WorkAttempt, attempt_id).state == "CANCELLED"
+        assert session.scalar(
+            sa.select(sa.func.count()).select_from(WorkReactionLedger)
+        ) == 1
+        assert session.scalar(
+            sa.select(sa.func.count()).select_from(OutboxDeliveryReceipt)
+        ) == 7

@@ -10,8 +10,8 @@ Fencing: every claim increments ``work_tasks.lease_fencing_token`` by one and
 the attempt stores the token it was created under.  Heartbeats, output,
 completion and failure all require the live token; a stale writer is
 rejected, never silently ignored.  ``UNKNOWN`` is not terminal: only an
-explicit reconcile with a terminal receipt digest may move a task out of
-``BLOCKED_UNKNOWN``.
+explicit reconcile with a persisted, attempt-bound terminal receipt may move
+a task out of ``BLOCKED_UNKNOWN``.
 """
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable, Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, text
 from sqlalchemy.orm import Session
 
 from app.models import Event
@@ -113,6 +113,11 @@ def _attempt_snapshot(attempt: WorkAttempt) -> dict[str, Any]:
         "worker_identity": attempt.worker_identity,
         "fence_token": attempt.fence_token,
         "output_digest": attempt.output_digest,
+        "terminal_receipt_digest": (
+            attempt.receipt_payload.get("receipt_digest")
+            if isinstance(attempt.receipt_payload, dict)
+            else None
+        ),
         "fallback_of_attempt_id": attempt.fallback_of_attempt_id,
         "started_at": _wire_time(attempt.started_at),
         "ended_at": _wire_time(attempt.ended_at),
@@ -147,6 +152,27 @@ def _decision_snapshot(decision: WorkProposalDecision) -> dict[str, Any]:
 
 def _binding(kind: str, subject_id: str, revision: int, digest: str) -> dict[str, Any]:
     return {"kind": kind, "id": subject_id, "revision": revision, "digest": digest}
+
+
+def canonical_work_request_fingerprint(
+    *,
+    workspace_id: str,
+    task_kind: str,
+    input_payload: dict[str, Any],
+    requester_principal: str,
+    max_attempts: int,
+) -> str:
+    """Return the server-owned idempotency/body-binding digest."""
+
+    return canonical_digest(
+        {
+            "workspace_id": workspace_id,
+            "task_kind": task_kind,
+            "input_payload": input_payload,
+            "requester_principal": requester_principal,
+            "max_attempts": max_attempts,
+        }
+    )
 
 
 @dataclass(frozen=True)
@@ -284,7 +310,7 @@ class WorkKernelService:
         input_payload: dict[str, Any],
         requester_principal: str,
         idempotency_key: str,
-        request_fingerprint: str,
+        request_fingerprint: str | None = None,
         max_attempts: int = DEFAULT_MAX_ATTEMPTS,
         transaction_id: str | None = None,
         request_id: str,
@@ -296,11 +322,37 @@ class WorkKernelService:
                 task_kind,
                 requester_principal,
                 idempotency_key,
-                request_fingerprint,
                 request_id,
             )
-        ) or not isinstance(input_payload, dict) or max_attempts < 1:
+        ) or (
+            not isinstance(input_payload, dict)
+            or not isinstance(max_attempts, int)
+            or isinstance(max_attempts, bool)
+            or max_attempts < 1
+        ):
             raise V5WorkKernelError("v5.work.request_invalid")
+        # ``request_fingerprint`` remains in this internal signature for source
+        # compatibility, but it is never trusted.  The controller derives the
+        # exact canonical body binding itself.
+        request_fingerprint = canonical_work_request_fingerprint(
+            workspace_id=workspace_id,
+            task_kind=task_kind,
+            input_payload=input_payload,
+            requester_principal=requester_principal,
+            max_attempts=max_attempts,
+        )
+        if self.session.get_bind().dialect.name == "postgresql":
+            # Serialize the absent-row case so two first requests cannot both
+            # pass the lookup and leave one transaction in an IntegrityError.
+            self.session.execute(
+                text("SELECT pg_advisory_xact_lock(hashtextextended(:key, 0))"),
+                {
+                    "key": (
+                        f"caseloop:v5:work-request:{workspace_id}:"
+                        f"{idempotency_key}"
+                    )
+                },
+            )
         existing = self.session.scalar(
             select(WorkTask).where(
                 WorkTask.workspace_id == workspace_id,
@@ -576,7 +628,9 @@ class WorkKernelService:
         if _as_utc(task.lease_expires_at) <= now:
             raise V5WorkKernelError("v5.work.lease_lost")
 
-    def _locked_attempt(self, workspace_id: str, attempt_id: str) -> WorkAttempt:
+    def _locked_attempt(
+        self, workspace_id: str, task_id: str, attempt_id: str
+    ) -> WorkAttempt:
         attempt = self.session.scalar(
             select(WorkAttempt)
             .where(
@@ -587,7 +641,14 @@ class WorkKernelService:
         )
         if attempt is None:
             raise V5WorkKernelError("v5.work.attempt_not_found")
+        if attempt.task_id != task_id:
+            raise V5WorkKernelError("v5.work.attempt_task_mismatch")
         return attempt
+
+    @staticmethod
+    def _require_current_attempt(task: WorkTask, attempt: WorkAttempt) -> None:
+        if task.current_attempt_id != attempt.attempt_id:
+            raise V5WorkKernelError("v5.work.attempt_not_current")
 
     # ------------------------------------------------------------------
     # work.heartbeat
@@ -606,7 +667,7 @@ class WorkKernelService:
         now = self.clock()
         transaction_id = transaction_id or new_transaction_id()
         task = self._locked_task(workspace_id, task_id)
-        attempt = self._locked_attempt(workspace_id, attempt_id)
+        attempt = self._locked_attempt(workspace_id, task_id, attempt_id)
         self._require_live_lease(task, attempt, fencing_token, now)
         if attempt.state not in ATTEMPT_ACTIVE:
             raise V5WorkKernelError("v5.work.attempt_not_active")
@@ -658,7 +719,7 @@ class WorkKernelService:
         now = self.clock()
         transaction_id = transaction_id or new_transaction_id()
         task = self._locked_task(workspace_id, task_id)
-        attempt = self._locked_attempt(workspace_id, attempt_id)
+        attempt = self._locked_attempt(workspace_id, task_id, attempt_id)
         self._require_live_lease(task, attempt, fencing_token, now)
         if attempt.state != "CREATED":
             raise V5WorkKernelError("v5.work.attempt_state_invalid")
@@ -733,6 +794,133 @@ class WorkKernelService:
         )
         return attempt
 
+    def record_terminal_receipt(
+        self,
+        *,
+        workspace_id: str,
+        task_id: str,
+        attempt_id: str,
+        fencing_token: int,
+        issuer: str,
+        process_exit_code: int,
+        stream_complete: bool,
+        structured_output_valid: bool,
+        transaction_id: str | None = None,
+        request_id: str,
+    ) -> str:
+        """Persist the trustworthy terminal receipt before terminalization.
+
+        The receipt is minted only for the current live fenced attempt and is
+        bound into that attempt's authority head plus ``attempt.receipt_recorded``.
+        Later complete/reconcile commands accept only this exact persisted
+        digest; a caller-supplied string is never sufficient authority.
+        """
+
+        if (
+            not isinstance(issuer, str)
+            or not issuer
+            or not isinstance(process_exit_code, int)
+            or isinstance(process_exit_code, bool)
+            or not isinstance(stream_complete, bool)
+            or not isinstance(structured_output_valid, bool)
+        ):
+            raise V5WorkKernelError("v5.work.terminal_receipt_invalid")
+        now = self.clock()
+        transaction_id = transaction_id or new_transaction_id()
+        task = self._locked_task(workspace_id, task_id)
+        attempt = self._locked_attempt(workspace_id, task_id, attempt_id)
+        self._require_live_lease(task, attempt, fencing_token, now)
+        if attempt.state != "RUNNING":
+            raise V5WorkKernelError("v5.work.attempt_state_invalid")
+        if issuer != attempt.worker_identity:
+            raise V5WorkKernelError("v5.work.terminal_receipt_issuer_mismatch")
+
+        receipt_body = {
+            "schema_version": "1.0",
+            "workspace_id": workspace_id,
+            "task_id": task_id,
+            "attempt_id": attempt_id,
+            "fencing_token": fencing_token,
+            "issuer": issuer,
+            "process_exit_code": process_exit_code,
+            "stream_complete": stream_complete,
+            "structured_output_valid": structured_output_valid,
+        }
+        receipt = {
+            **receipt_body,
+            "receipt_digest": canonical_digest(receipt_body),
+        }
+        if attempt.receipt_payload is not None:
+            if attempt.receipt_payload != receipt:
+                raise V5WorkKernelError("v5.work.terminal_receipt_conflict")
+            return receipt["receipt_digest"]
+
+        attempt.receipt_payload = receipt
+        receipt_id = new_authority_receipt_id()
+        self._refresh_attempt_head(attempt, receipt_id)
+        self.session.flush()
+        self._write_fact(
+            workspace_id=workspace_id,
+            subject_kind="WORK_ATTEMPT",
+            subject_id=attempt.attempt_id,
+            subject_revision=attempt.revision,
+            subject_digest=attempt.record_digest,
+            aggregate_type="attempt",
+            event_type="attempt.receipt_recorded",
+            payload={
+                "exact_attempt_binding": _binding(
+                    "WORK_ATTEMPT",
+                    attempt.attempt_id,
+                    attempt.revision,
+                    attempt.record_digest,
+                ),
+                "receipt_kind": "TERMINAL_PROCESS",
+                "receipt_digest": receipt["receipt_digest"],
+                "issuer": issuer,
+            },
+            command="attempts.record-receipt",
+            transaction_id=transaction_id,
+            request_id=request_id,
+            now=now,
+            authority_receipt_id=receipt_id,
+        )
+        return receipt["receipt_digest"]
+
+    def _require_terminal_receipt(
+        self,
+        task: WorkTask,
+        attempt: WorkAttempt,
+        presented_digest: str,
+        *,
+        outcome: str,
+    ) -> dict[str, Any]:
+        receipt = attempt.receipt_payload
+        if not isinstance(receipt, dict):
+            raise V5WorkKernelError("v5.work.reconcile_receipt_untrusted")
+        digest = receipt.get("receipt_digest")
+        body = {key: value for key, value in receipt.items() if key != "receipt_digest"}
+        if (
+            not isinstance(presented_digest, str)
+            or presented_digest != digest
+            or canonical_digest(body) != digest
+            or receipt.get("workspace_id") != task.workspace_id
+            or receipt.get("task_id") != task.task_id
+            or receipt.get("attempt_id") != attempt.attempt_id
+            or receipt.get("fencing_token") != attempt.fence_token
+            or receipt.get("issuer") != attempt.worker_identity
+            or receipt.get("stream_complete") is not True
+        ):
+            raise V5WorkKernelError("v5.work.reconcile_receipt_untrusted")
+        succeeded = (
+            receipt.get("process_exit_code") == 0
+            and receipt.get("structured_output_valid") is True
+        )
+        if (outcome == "succeeded" and not succeeded) or (
+            outcome == "failed" and succeeded
+        ):
+            raise V5WorkKernelError("v5.work.reconcile_receipt_outcome_mismatch")
+        return receipt
+
     def record_output(
         self,
         *,
@@ -750,7 +938,7 @@ class WorkKernelService:
         now = self.clock()
         transaction_id = transaction_id or new_transaction_id()
         task = self._locked_task(workspace_id, task_id)
-        attempt = self._locked_attempt(workspace_id, attempt_id)
+        attempt = self._locked_attempt(workspace_id, task_id, attempt_id)
         self._require_live_lease(task, attempt, fencing_token, now)
         if attempt.state != "RUNNING":
             raise V5WorkKernelError("v5.work.attempt_state_invalid")
@@ -804,10 +992,13 @@ class WorkKernelService:
         now = self.clock()
         transaction_id = transaction_id or new_transaction_id()
         task = self._locked_task(workspace_id, task_id)
-        attempt = self._locked_attempt(workspace_id, attempt_id)
+        attempt = self._locked_attempt(workspace_id, task_id, attempt_id)
         self._require_live_lease(task, attempt, fencing_token, now)
         if attempt.state != "OUTPUT_RECORDED" or not attempt.output_digest:
             raise V5WorkKernelError("v5.work.attempt_state_invalid")
+        self._require_terminal_receipt(
+            task, attempt, terminal_receipt_digest, outcome="succeeded"
+        )
         if accepted_proposal_id is not None:
             proposal = self.session.get(WorkProposal, accepted_proposal_id)
             if (
@@ -816,6 +1007,11 @@ class WorkKernelService:
                 or proposal.status != "ACCEPTED"
             ):
                 raise V5WorkKernelError("v5.work.proposal_not_accepted")
+            if proposal.task_id != task.task_id or (
+                proposal.attempt_id is not None
+                and proposal.attempt_id != attempt.attempt_id
+            ):
+                raise V5WorkKernelError("v5.work.proposal_task_mismatch")
 
         attempt.state = "SUCCEEDED"
         attempt.ended_at = now
@@ -896,7 +1092,7 @@ class WorkKernelService:
         now = self.clock()
         transaction_id = transaction_id or new_transaction_id()
         task = self._locked_task(workspace_id, task_id)
-        attempt = self._locked_attempt(workspace_id, attempt_id)
+        attempt = self._locked_attempt(workspace_id, task_id, attempt_id)
         self._require_live_lease(task, attempt, fencing_token, now)
         if attempt.state not in ATTEMPT_FAILABLE:
             raise V5WorkKernelError("v5.work.attempt_state_invalid")
@@ -1196,46 +1392,52 @@ class WorkKernelService:
         now = self.clock()
         transaction_id = transaction_id or new_transaction_id()
         task = self._locked_task(workspace_id, task_id)
-        attempt = self._locked_attempt(workspace_id, attempt_id)
-        if attempt.state not in ATTEMPT_CANCELLABLE:
-            raise V5WorkKernelError("v5.work.attempt_state_invalid")
-        self._cancel_attempt_locked(
-            task,
-            attempt,
-            reason=reason,
-            transaction_id=transaction_id,
-            request_id=request_id,
-            now=now,
-        )
-        if task.state == "CANCEL_REQUESTED":
-            task.state = "CANCELLED"
-            task.terminal_reason = "cancelled"
-            task.lease_owner = None
-            task.lease_expires_at = None
-            task_receipt_id = new_authority_receipt_id()
-            self._refresh_task_head(task, task_receipt_id)
-            self.session.flush()
-            self._write_fact(
-                workspace_id=workspace_id,
-                subject_kind="WORK_TASK",
-                subject_id=task.task_id,
-                subject_revision=task.revision,
-                subject_digest=task.record_digest,
-                aggregate_type="worker_task",
-                event_type="work.cancelled",
-                payload={
-                    "exact_work_task_binding": _binding(
-                        "WORK_TASK", task.task_id, task.revision, task.record_digest
-                    ),
-                    "terminal_attempt_id": attempt.attempt_id,
-                    "cancellation_receipt_digest": attempt.record_digest,
-                },
-                command="attempts.cancel",
+        attempt = self._locked_attempt(workspace_id, task_id, attempt_id)
+        self._require_current_attempt(task, attempt)
+        if task.state != "CANCEL_REQUESTED":
+            raise V5WorkKernelError("v5.work.cancel_not_requested")
+        if attempt.state in ATTEMPT_CANCELLABLE:
+            self._cancel_attempt_locked(
+                task,
+                attempt,
+                reason=reason,
                 transaction_id=transaction_id,
                 request_id=request_id,
                 now=now,
-                authority_receipt_id=task_receipt_id,
             )
+        elif attempt.state not in ("FAILED", "TIMED_OUT", "CANCELLED"):
+            raise V5WorkKernelError("v5.work.attempt_state_invalid")
+        # WAITING_RETRY may be cancelled after its last attempt has already
+        # failed or timed out.  In that case no impossible terminal-attempt
+        # transition is invented; attempts.cancel owns only work.cancelled.
+        task.state = "CANCELLED"
+        task.terminal_reason = "cancelled"
+        task.lease_owner = None
+        task.lease_expires_at = None
+        task_receipt_id = new_authority_receipt_id()
+        self._refresh_task_head(task, task_receipt_id)
+        self.session.flush()
+        self._write_fact(
+            workspace_id=workspace_id,
+            subject_kind="WORK_TASK",
+            subject_id=task.task_id,
+            subject_revision=task.revision,
+            subject_digest=task.record_digest,
+            aggregate_type="worker_task",
+            event_type="work.cancelled",
+            payload={
+                "exact_work_task_binding": _binding(
+                    "WORK_TASK", task.task_id, task.revision, task.record_digest
+                ),
+                "terminal_attempt_id": attempt.attempt_id,
+                "cancellation_receipt_digest": attempt.record_digest,
+            },
+            command="attempts.cancel",
+            transaction_id=transaction_id,
+            request_id=request_id,
+            now=now,
+            authority_receipt_id=task_receipt_id,
+        )
         return attempt
 
     # ------------------------------------------------------------------
@@ -1324,7 +1526,10 @@ class WorkKernelService:
         now = self.clock()
         transaction_id = transaction_id or new_transaction_id()
         task = self._locked_task(workspace_id, task_id)
-        attempt = self._locked_attempt(workspace_id, attempt_id)
+        attempt = self._locked_attempt(workspace_id, task_id, attempt_id)
+        self._require_current_attempt(task, attempt)
+        if task.state != "LEASED":
+            raise V5WorkKernelError("v5.work.lease_lost")
         if attempt.state not in ATTEMPT_UNKNOWABLE:
             raise V5WorkKernelError("v5.work.attempt_state_invalid")
         self._mark_attempt_unknown_locked(
@@ -1356,15 +1561,32 @@ class WorkKernelService:
         now = self.clock()
         transaction_id = transaction_id or new_transaction_id()
         task = self._locked_task(workspace_id, task_id)
-        attempt = self._locked_attempt(workspace_id, attempt_id)
+        attempt = self._locked_attempt(workspace_id, task_id, attempt_id)
+        self._require_current_attempt(task, attempt)
         if task.state != "BLOCKED_UNKNOWN" or attempt.state != "UNKNOWN":
             raise V5WorkKernelError("v5.work.reconcile_not_applicable")
+        self._require_terminal_receipt(
+            task, attempt, reconciliation_receipt_digest, outcome=outcome
+        )
 
         attempt_receipt_id = new_authority_receipt_id()
         task_receipt_id = new_authority_receipt_id()
         if outcome == "succeeded":
             if not attempt.output_digest:
                 raise V5WorkKernelError("v5.work.reconcile_output_missing")
+            if accepted_proposal_id is not None:
+                proposal = self.session.get(WorkProposal, accepted_proposal_id)
+                if (
+                    proposal is None
+                    or proposal.workspace_id != workspace_id
+                    or proposal.status != "ACCEPTED"
+                ):
+                    raise V5WorkKernelError("v5.work.proposal_not_accepted")
+                if proposal.task_id != task.task_id or (
+                    proposal.attempt_id is not None
+                    and proposal.attempt_id != attempt.attempt_id
+                ):
+                    raise V5WorkKernelError("v5.work.proposal_task_mismatch")
             attempt.state = "SUCCEEDED"
             attempt.ended_at = now
             self._refresh_attempt_head(attempt, attempt_receipt_id)
@@ -1492,6 +1714,8 @@ class WorkKernelService:
         # be influenced, so proposing one is a contract violation, not a noop.
         if task.state in TASK_TERMINAL:
             raise V5WorkKernelError("v5.work.proposal_post_action")
+        if attempt_id is not None:
+            self._locked_attempt(workspace_id, task_id, attempt_id)
         proposal = WorkProposal(
             proposal_id=new_work_proposal_id(),
             workspace_id=workspace_id,

@@ -49,7 +49,7 @@ calls.  ``text()`` statements whose SQL starts with one of the whitelisted
 prefixes are known infrastructure calls and are not violations:
 
 - ``SELECT pg_advisory_xact_lock`` — advisory locks used by lease/idempotency
-  and bootstrap serialization (7 call sites today);
+  and bootstrap serialization (9 call sites today);
 - ``SELECT version_num FROM alembic_version`` — read-only migration-version
   check in the bootstrap entrypoints (2 call sites); not a domain
   cross-owner access.
@@ -179,6 +179,7 @@ MODULE_LANES: dict[str, str] = {
     "app.utils.v5_integrity": LANE_SHARED_FOUNDATION,
     "app.workers": LANE_TRANSPORT,
     "app.workers.outbox": LANE_TRANSPORT,
+    "app.workers.v5_work": LANE_TRANSPORT,
 }
 
 # Lanes whose modules may never import the quality client.  V3 compat may

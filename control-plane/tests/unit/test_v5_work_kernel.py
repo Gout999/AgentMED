@@ -135,6 +135,28 @@ def _claim(service, task: WorkTask):
     )
 
 
+def _record_terminal_receipt(
+    service,
+    task: WorkTask,
+    attempt: WorkAttempt,
+    *,
+    succeeded: bool,
+    suffix: str,
+) -> str:
+    return service.record_terminal_receipt(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        attempt_id=attempt.attempt_id,
+        fencing_token=attempt.fence_token,
+        issuer=attempt.worker_identity,
+        process_exit_code=0 if succeeded else 1,
+        stream_complete=True,
+        structured_output_valid=succeeded,
+        transaction_id=f"txn_receipt_{suffix}",
+        request_id=f"req_receipt_{suffix}",
+    )
+
+
 def _count(session, model) -> int:
     return session.scalar(sa.select(sa.func.count()).select_from(model)) or 0
 
@@ -189,6 +211,25 @@ def test_request_task_idempotent_replay_and_conflict(service) -> None:
             transaction_id="txn_request_2",
             request_id="req_request_2",
         )
+    assert exc.value.code == "v5.work.idempotency_conflict"
+
+
+def test_request_task_rejects_same_key_same_claimed_fingerprint_different_body(
+    service,
+) -> None:
+    first = _request(service)
+    with pytest.raises(V5WorkKernelError) as exc:
+        service.request_task(
+            workspace_id=WORKSPACE,
+            task_kind="fixture.probe",
+            input_payload={"probe": "different"},
+            requester_principal=PRINCIPAL,
+            idempotency_key="req-0001",
+            request_fingerprint="fp-0001",
+            transaction_id="txn_request_forged",
+            request_id="req_request_forged",
+        )
+    assert first.input_payload == {"probe": "alpha"}
     assert exc.value.code == "v5.work.idempotency_conflict"
 
 
@@ -322,6 +363,9 @@ def test_full_happy_path_to_completed(service, sqlite_session) -> None:
         WorkAttemptCapability, result.capability.capability_id
     )
     assert capability.consumed_at is not None
+    terminal_receipt_digest = _record_terminal_receipt(
+        service, task, result.attempt, succeeded=True, suffix="happy"
+    )
     outed = service.record_output(
         workspace_id=WORKSPACE,
         task_id=task.task_id,
@@ -338,7 +382,7 @@ def test_full_happy_path_to_completed(service, sqlite_session) -> None:
         task_id=task.task_id,
         attempt_id=result.attempt.attempt_id,
         fencing_token=1,
-        terminal_receipt_digest="sha256:terminal",
+        terminal_receipt_digest=terminal_receipt_digest,
         transaction_id="txn_complete",
         request_id="req_complete",
     )
@@ -437,6 +481,123 @@ def test_fail_then_retry_then_exhaust(service, sqlite_session) -> None:
     assert exc.value.code == "v5.work.task_terminal"
 
 
+def test_cancel_waiting_retry_terminalizes_without_rewriting_failed_attempt(
+    service, sqlite_session
+) -> None:
+    task = service.request_task(
+        workspace_id=WORKSPACE,
+        task_kind="fixture.probe",
+        input_payload={"probe": "cancel-waiting"},
+        requester_principal=PRINCIPAL,
+        idempotency_key="req-cancel-waiting",
+        request_fingerprint="ignored-cancel-waiting",
+        max_attempts=2,
+        transaction_id="txn_req_cancel_waiting",
+        request_id="req_req_cancel_waiting",
+    )
+    claimed = _claim(service, task)
+    service.start_attempt(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        attempt_id=claimed.attempt.attempt_id,
+        fencing_token=claimed.attempt.fence_token,
+        runtime_adapter="fixture-executor",
+        runtime_session="session-cancel-waiting",
+        transaction_id="txn_start_cancel_waiting",
+        request_id="req_start_cancel_waiting",
+    )
+    service.fail_attempt(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        attempt_id=claimed.attempt.attempt_id,
+        fencing_token=claimed.attempt.fence_token,
+        failure_code="adapter_crash",
+        transaction_id="txn_fail_cancel_waiting",
+        request_id="req_fail_cancel_waiting",
+    )
+    service.cancel_task(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        reason="operator_stop",
+        requested_by_principal=PRINCIPAL,
+        transaction_id="txn_request_cancel_waiting",
+        request_id="req_request_cancel_waiting",
+    )
+    service.cancel_attempt(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        attempt_id=claimed.attempt.attempt_id,
+        reason="operator_stop",
+        transaction_id="txn_cancel_waiting",
+        request_id="req_cancel_waiting",
+    )
+    sqlite_session.expire_all()
+    stored_task = sqlite_session.get(WorkTask, task.task_id)
+    stored_attempt = sqlite_session.get(WorkAttempt, claimed.attempt.attempt_id)
+    assert stored_task.state == "CANCELLED"
+    assert stored_attempt.state == "FAILED"
+
+
+def test_cancel_rejects_noncurrent_attempt_from_same_task(service) -> None:
+    task = service.request_task(
+        workspace_id=WORKSPACE,
+        task_kind="fixture.probe",
+        input_payload={"probe": "old-attempt"},
+        requester_principal=PRINCIPAL,
+        idempotency_key="req-old-attempt",
+        request_fingerprint="ignored-old-attempt",
+        max_attempts=2,
+        transaction_id="txn_req_old_attempt",
+        request_id="req_req_old_attempt",
+    )
+    first = _claim(service, task)
+    service.start_attempt(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        attempt_id=first.attempt.attempt_id,
+        fencing_token=first.attempt.fence_token,
+        runtime_adapter="fixture-executor",
+        runtime_session="session-old-attempt",
+        transaction_id="txn_start_old_attempt",
+        request_id="req_start_old_attempt",
+    )
+    service.fail_attempt(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        attempt_id=first.attempt.attempt_id,
+        fencing_token=first.attempt.fence_token,
+        failure_code="retryable",
+        transaction_id="txn_fail_old_attempt",
+        request_id="req_fail_old_attempt",
+    )
+    second = service.claim(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        worker_identity="worker-second",
+        transaction_id="txn_claim_second",
+        request_id="req_claim_second",
+    )
+    service.cancel_task(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        reason="operator_stop",
+        requested_by_principal=PRINCIPAL,
+        transaction_id="txn_request_cancel_second",
+        request_id="req_request_cancel_second",
+    )
+    with pytest.raises(V5WorkKernelError) as exc:
+        service.cancel_attempt(
+            workspace_id=WORKSPACE,
+            task_id=task.task_id,
+            attempt_id=first.attempt.attempt_id,
+            reason="stale",
+            transaction_id="txn_cancel_old_attempt",
+            request_id="req_cancel_old_attempt",
+        )
+    assert exc.value.code == "v5.work.attempt_not_current"
+    assert second.attempt.state == "CREATED"
+
+
 def test_unknown_reconcile_failed_then_retry(service, sqlite_session) -> None:
     task = _request(service)
     result = _claim(service, task)
@@ -449,6 +610,9 @@ def test_unknown_reconcile_failed_then_retry(service, sqlite_session) -> None:
         runtime_session="session-u1",
         transaction_id="txn_start_u1",
         request_id="req_start_u1",
+    )
+    reconciliation_receipt_digest = _record_terminal_receipt(
+        service, task, result.attempt, succeeded=False, suffix="unknown_failed"
     )
     service.mark_attempt_unknown(
         workspace_id=WORKSPACE,
@@ -469,7 +633,7 @@ def test_unknown_reconcile_failed_then_retry(service, sqlite_session) -> None:
         task_id=task.task_id,
         attempt_id=result.attempt.attempt_id,
         outcome="failed",
-        reconciliation_receipt_digest="sha256:recon",
+        reconciliation_receipt_digest=reconciliation_receipt_digest,
         transaction_id="txn_recon",
         request_id="req_recon",
     )
@@ -493,6 +657,9 @@ def test_reconcile_succeeded_requires_output(service, sqlite_session) -> None:
         transaction_id="txn_start_u2",
         request_id="req_start_u2",
     )
+    receipt_digest = _record_terminal_receipt(
+        service, task, result.attempt, succeeded=True, suffix="missing_output"
+    )
     service.mark_attempt_unknown(
         workspace_id=WORKSPACE,
         task_id=task.task_id,
@@ -507,7 +674,7 @@ def test_reconcile_succeeded_requires_output(service, sqlite_session) -> None:
             task_id=task.task_id,
             attempt_id=result.attempt.attempt_id,
             outcome="succeeded",
-            reconciliation_receipt_digest="sha256:recon",
+            reconciliation_receipt_digest=receipt_digest,
             transaction_id="txn_recon2",
             request_id="req_recon2",
         )
@@ -586,6 +753,9 @@ def test_post_action_proposal_rejected(service) -> None:
         transaction_id="txn_start3",
         request_id="req_start3",
     )
+    terminal_receipt_digest = _record_terminal_receipt(
+        service, task, result.attempt, succeeded=True, suffix="post_action"
+    )
     service.record_output(
         workspace_id=WORKSPACE,
         task_id=task.task_id,
@@ -601,7 +771,7 @@ def test_post_action_proposal_rejected(service) -> None:
         task_id=task.task_id,
         attempt_id=result.attempt.attempt_id,
         fencing_token=1,
-        terminal_receipt_digest="sha256:terminal",
+        terminal_receipt_digest=terminal_receipt_digest,
         transaction_id="txn_complete3",
         request_id="req_complete3",
     )
@@ -664,3 +834,201 @@ def test_audit_failure_rolls_back_entire_claim(sqlite_session) -> None:
     task = sqlite_session.get(WorkTask, task.task_id)
     assert task.state == "QUEUED"
     assert task.attempt_count == 0
+
+
+@pytest.mark.parametrize(
+    "operation",
+    ["cancel", "mark_unknown", "reconcile"],
+)
+def test_cross_task_attempt_binding_is_rejected(
+    service, sqlite_session, operation: str
+) -> None:
+    task_a = _request(service)
+    task_b = service.request_task(
+        workspace_id=WORKSPACE,
+        task_kind="fixture.probe",
+        input_payload={"probe": "beta"},
+        requester_principal=PRINCIPAL,
+        idempotency_key="req-cross-b",
+        request_fingerprint="fp-cross-b",
+        transaction_id="txn_cross_b",
+        request_id="req_cross_b",
+    )
+    attempt_a = _claim(service, task_a).attempt
+    attempt_b = service.claim(
+        workspace_id=WORKSPACE,
+        task_id=task_b.task_id,
+        worker_identity="worker-beta",
+        transaction_id="txn_claim_b",
+        request_id="req_claim_b",
+    ).attempt
+    for task, attempt, suffix in (
+        (task_a, attempt_a, "a"),
+        (task_b, attempt_b, "b"),
+    ):
+        service.start_attempt(
+            workspace_id=WORKSPACE,
+            task_id=task.task_id,
+            attempt_id=attempt.attempt_id,
+            fencing_token=attempt.fence_token,
+            runtime_adapter="fixture",
+            runtime_session=f"session-{suffix}",
+            transaction_id=f"txn_start_{suffix}",
+            request_id=f"req_start_{suffix}",
+        )
+    if operation == "cancel":
+        service.cancel_task(
+            workspace_id=WORKSPACE,
+            task_id=task_a.task_id,
+            reason="operator",
+            requested_by_principal=PRINCIPAL,
+            transaction_id="txn_cancel_a",
+            request_id="req_cancel_a",
+        )
+        invoke = lambda: service.cancel_attempt(
+            workspace_id=WORKSPACE,
+            task_id=task_a.task_id,
+            attempt_id=attempt_b.attempt_id,
+            reason="cross-task",
+            transaction_id="txn_cross_cancel",
+            request_id="req_cross_cancel",
+        )
+    elif operation == "mark_unknown":
+        invoke = lambda: service.mark_attempt_unknown(
+            workspace_id=WORKSPACE,
+            task_id=task_a.task_id,
+            attempt_id=attempt_b.attempt_id,
+            ambiguity_reason="cross-task",
+            transaction_id="txn_cross_unknown",
+            request_id="req_cross_unknown",
+        )
+    else:
+        for task, attempt, suffix in (
+            (task_a, attempt_a, "a"),
+            (task_b, attempt_b, "b"),
+        ):
+            _record_terminal_receipt(
+                service, task, attempt, succeeded=False, suffix=f"cross_{suffix}"
+            )
+            service.mark_attempt_unknown(
+                workspace_id=WORKSPACE,
+                task_id=task.task_id,
+                attempt_id=attempt.attempt_id,
+                ambiguity_reason="ambiguous",
+                transaction_id=f"txn_unknown_{suffix}",
+                request_id=f"req_unknown_{suffix}",
+            )
+        invoke = lambda: service.reconcile_attempt(
+            workspace_id=WORKSPACE,
+            task_id=task_a.task_id,
+            attempt_id=attempt_b.attempt_id,
+            outcome="failed",
+            reconciliation_receipt_digest=attempt_b.receipt_payload["receipt_digest"],
+            transaction_id="txn_cross_reconcile",
+            request_id="req_cross_reconcile",
+        )
+    with pytest.raises(V5WorkKernelError) as exc:
+        invoke()
+    assert exc.value.code == "v5.work.attempt_task_mismatch"
+
+
+def test_reconcile_rejects_unpersisted_receipt_digest(service) -> None:
+    task = _request(service)
+    attempt = _claim(service, task).attempt
+    service.start_attempt(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        attempt_id=attempt.attempt_id,
+        fencing_token=attempt.fence_token,
+        runtime_adapter="fixture",
+        runtime_session="session-untrusted",
+        transaction_id="txn_start_untrusted",
+        request_id="req_start_untrusted",
+    )
+    service.mark_attempt_unknown(
+        workspace_id=WORKSPACE,
+        task_id=task.task_id,
+        attempt_id=attempt.attempt_id,
+        ambiguity_reason="ambiguous",
+        transaction_id="txn_unknown_untrusted",
+        request_id="req_unknown_untrusted",
+    )
+    with pytest.raises(V5WorkKernelError) as exc:
+        service.reconcile_attempt(
+            workspace_id=WORKSPACE,
+            task_id=task.task_id,
+            attempt_id=attempt.attempt_id,
+            outcome="failed",
+            reconciliation_receipt_digest="not-a-trustworthy-receipt",
+            transaction_id="txn_reconcile_untrusted",
+            request_id="req_reconcile_untrusted",
+        )
+    assert exc.value.code == "v5.work.reconcile_receipt_untrusted"
+
+
+def test_completion_rejects_accepted_proposal_from_another_task(service) -> None:
+    task_a = _request(service)
+    task_b = service.request_task(
+        workspace_id=WORKSPACE,
+        task_kind="fixture.probe",
+        input_payload={"probe": "proposal-b"},
+        requester_principal=PRINCIPAL,
+        idempotency_key="req-proposal-b",
+        request_fingerprint="fp-proposal-b",
+        transaction_id="txn_proposal_b",
+        request_id="req_proposal_b",
+    )
+    proposal = service.submit_proposal(
+        workspace_id=WORKSPACE,
+        task_id=task_b.task_id,
+        proposer_principal=PRINCIPAL,
+        payload={"action": "for-b"},
+        transaction_id="txn_prop_b",
+        request_id="req_prop_b",
+    )
+    service.decide_proposal(
+        workspace_id=WORKSPACE,
+        proposal_id=proposal.proposal_id,
+        decided_by_principal=PRINCIPAL,
+        accept=True,
+        downstream_intent="work.claim",
+        downstream_command="work.claim",
+        transaction_id="txn_decide_b",
+        request_id="req_decide_b",
+    )
+    attempt = _claim(service, task_a).attempt
+    service.start_attempt(
+        workspace_id=WORKSPACE,
+        task_id=task_a.task_id,
+        attempt_id=attempt.attempt_id,
+        fencing_token=attempt.fence_token,
+        runtime_adapter="fixture",
+        runtime_session="session-a",
+        transaction_id="txn_start_a",
+        request_id="req_start_a",
+    )
+    receipt_digest = _record_terminal_receipt(
+        service, task_a, attempt, succeeded=True, suffix="proposal_cross"
+    )
+    service.record_output(
+        workspace_id=WORKSPACE,
+        task_id=task_a.task_id,
+        attempt_id=attempt.attempt_id,
+        fencing_token=attempt.fence_token,
+        output_payload={"answer": 42},
+        stream_complete=True,
+        transaction_id="txn_output_a",
+        request_id="req_output_a",
+    )
+    with pytest.raises(V5WorkKernelError) as exc:
+        service.complete_attempt(
+            workspace_id=WORKSPACE,
+            task_id=task_a.task_id,
+            attempt_id=attempt.attempt_id,
+            fencing_token=attempt.fence_token,
+            terminal_receipt_digest=receipt_digest,
+            accepted_proposal_id=proposal.proposal_id,
+            transaction_id="txn_complete_a",
+            request_id="req_complete_a",
+        )
+    assert exc.value.code == "v5.work.proposal_task_mismatch"
