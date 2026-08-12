@@ -57,7 +57,7 @@ CURSOR_KEY = "drill-c5-cursor"
 SCOPES = ["capabilities:read"]
 REQUEST_ID = "req_01J000000000000A"
 
-ALEMBIC_HEAD = "013"
+ALEMBIC_HEAD = "014"
 
 
 def _claims(workspace_id: str, project_ids: list[str], scopes: list[str]) -> str:

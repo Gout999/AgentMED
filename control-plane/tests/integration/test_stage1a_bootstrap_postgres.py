@@ -141,7 +141,7 @@ def test_stage1a_local_bootstrap_real_postgres_head_and_atomic_reuse(
             with factory() as session:
                 assert session.execute(
                     sa.text("SELECT version_num FROM alembic_version")
-                ).scalar_one() == "013"
+                ).scalar_one() == "014"
                 assert session.execute(
                     sa.text("SELECT current_database()")
                 ).scalar_one().endswith("_test")

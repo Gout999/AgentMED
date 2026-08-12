@@ -31,6 +31,14 @@ from app.models.v5_tables import (
     Environment,
     SystemComponent,
 )
+from app.models.v5_work_tables import (
+    WorkAttempt,
+    WorkAttemptCapability,
+    WorkProposal,
+    WorkProposalDecision,
+    WorkReactionLedger,
+    WorkTask,
+)
 
 __all__ = [
     "Base",
@@ -59,4 +67,10 @@ __all__ = [
     "Environment",
     "SystemComponent",
     "DependencyEdge",
+    "WorkTask",
+    "WorkAttempt",
+    "WorkAttemptCapability",
+    "WorkProposal",
+    "WorkProposalDecision",
+    "WorkReactionLedger",
 ]

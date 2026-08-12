@@ -195,7 +195,7 @@ def _setup(pepper: str, suffix: str) -> tuple[Settings, dict[str, str]]:
     with engine.connect() as connection:
         assert (
             connection.execute(sa.text("SELECT version_num FROM alembic_version")).scalar_one()
-            == "013"
+            == "014"
         )
     with Session(engine) as session:
         seed = _seed_workspace_r3(

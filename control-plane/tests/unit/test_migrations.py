@@ -90,7 +90,7 @@ def test_sqlite_upgrade_head_allows_multi_stage_gate_binding(tmp_path: Path) -> 
     with engine.begin() as connection:
         assert (
             connection.execute(sa.text("select version_num from alembic_version")).scalar_one()
-            == "013"
+            == "014"
         )
         base = {
             "workorder_id": "wo-multi-stage",
@@ -415,7 +415,7 @@ def test_v5_r1_graph_and_legacy_preflight_precedes_every_ddl() -> None:
     root = Path(__file__).resolve().parents[2]
     script = ScriptDirectory.from_config(_config(root, "sqlite://"))
 
-    assert script.get_heads() == ["013"]
+    assert script.get_heads() == ["014"]
     assert [
         item.revision for item in script.iterate_revisions("013", "009")
     ] == ["013", "012", "011", "010"]
@@ -1163,7 +1163,7 @@ def test_v5_r1_fresh_postgresql_upgrade_reaches_exact_head() -> None:
         with engine.begin() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "013"
+            ).scalar_one() == "014"
     finally:
         try:
             _reset_pg_database_for_migrations(engine, TEST_DATABASE_URL)
@@ -1345,6 +1345,198 @@ def test_v5_r1_012_postgresql_downgrade_preserves_schema(
             database_url=TEST_DATABASE_URL,
             fact_kind=fact_kind,
         )
+    finally:
+        try:
+            _reset_pg_database_for_migrations(engine, TEST_DATABASE_URL)
+        finally:
+            engine.dispose()
+
+
+def _work_tables() -> set[str]:
+    return {
+        "work_tasks",
+        "work_attempts",
+        "work_attempt_capabilities",
+        "work_proposals",
+        "work_proposal_decisions",
+        "work_reaction_ledger",
+    }
+
+
+def test_v5_2a_014_fresh_sqlite_upgrade_creates_work_tables(tmp_path: Path) -> None:
+    """Fresh SQLite upgrade to head creates the five Work tables with their
+    check constraints and leaves every pre-existing table untouched."""
+    database_url = f"sqlite:///{tmp_path}/work-kernel-fresh.db"
+    root = Path(__file__).resolve().parents[2]
+    engine = sa.create_engine(database_url)
+    try:
+        command.upgrade(_config(root, database_url), "head")
+        inspector = sa.inspect(engine)
+        assert _work_tables() <= set(inspector.get_table_names())
+        task_checks = {
+            item["name"]
+            for item in inspector.get_check_constraints("work_tasks")
+        }
+        assert {
+            "ck_work_task_state",
+            "ck_work_task_attempt_bounds",
+            "ck_work_task_lease_shape",
+        } <= task_checks
+        attempt_checks = {
+            item["name"]
+            for item in inspector.get_check_constraints("work_attempts")
+        }
+        assert {
+            "ck_work_attempt_state",
+            "ck_work_attempt_terminal_shape",
+        } <= attempt_checks
+        decision_checks = {
+            item["name"]
+            for item in inspector.get_check_constraints("work_proposal_decisions")
+        }
+        assert "ck_work_proposal_decision_downstream" in decision_checks
+        with engine.begin() as connection:
+            assert connection.execute(
+                sa.text("SELECT version_num FROM alembic_version")
+            ).scalar_one() == "014"
+    finally:
+        engine.dispose()
+
+
+def test_v5_2a_014_populated_previous_head_is_untouched(tmp_path: Path) -> None:
+    """Upgrade 013 -> 014 on a populated database preserves prior facts and
+    leaves the new Work tables empty."""
+    database_url = f"sqlite:///{tmp_path}/work-kernel-populated.db"
+    root = Path(__file__).resolve().parents[2]
+    engine = sa.create_engine(database_url)
+    try:
+        command.upgrade(_config(root, database_url), "013")
+        with engine.begin() as connection:
+            connection.execute(
+                sa.text(
+                    "INSERT INTO events (event_id, aggregate_type, aggregate_id,"
+                    " seq, event_type, payload, causation_id, correlation_id,"
+                    " actor, occurred_at, created_at, contract_version,"
+                    " workspace_id, event_version, event_contract_major,"
+                    " routing_key, exact_subject_binding, authority_receipt_id,"
+                    " transaction_id, actor_principal, payload_digest) VALUES"
+                    " ('evt_2a_pre', 'ai_application', 'app_2a_pre', 1,"
+                    " 'application.registered', '{}', 'none', 'corr',"
+                    " 'catalog-controller', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,"
+                    " 'v5', 'ws_2a_pre', '2.0', 2, 'rk', '{}',"
+                    " 'arec_2a_pre', 'txn_2a_pre', 'prn_2a_pre', 'sha256:abc')"
+                )
+            )
+        command.upgrade(_config(root, database_url), "head")
+        with engine.begin() as connection:
+            assert connection.execute(
+                sa.text("SELECT COUNT(*) FROM events WHERE event_id = 'evt_2a_pre'")
+            ).scalar_one() == 1
+            for table in _work_tables():
+                assert connection.execute(
+                    sa.text(f"SELECT COUNT(*) FROM {table}")
+                ).scalar_one() == 0
+            assert connection.execute(
+                sa.text("SELECT version_num FROM alembic_version")
+            ).scalar_one() == "014"
+    finally:
+        engine.dispose()
+
+
+def test_v5_2a_014_downgrade_guard_blocks_persisted_work_fact(
+    tmp_path: Path,
+) -> None:
+    """Downgrade 014 -> 013 is rejected fail-closed once any Work fact
+    exists; the schema fingerprint must be identical after the refusal."""
+    database_url = f"sqlite:///{tmp_path}/work-kernel-guard.db"
+    root = Path(__file__).resolve().parents[2]
+    engine = sa.create_engine(database_url)
+    try:
+        command.upgrade(_config(root, database_url), "head")
+        with engine.begin() as connection:
+            connection.execute(
+                sa.text(
+                    "INSERT INTO work_tasks (task_id, workspace_id, task_kind,"
+                    " input_payload, input_digest, requester_principal, state,"
+                    " attempt_count, max_attempts) VALUES ('task_2a_guard',"
+                    " 'ws_2a', 'fixture.probe', '{}', 'sha256:def', 'prn_2a',"
+                    " 'QUEUED', 0, 3)"
+                )
+            )
+        before = _schema_fingerprint(engine)
+        with pytest.raises(
+            RuntimeError, match="014.v5_work_facts_prevent_downgrade"
+        ):
+            command.downgrade(_config(root, database_url), "013")
+        assert _schema_fingerprint(engine) == before
+        with engine.begin() as connection:
+            assert connection.execute(
+                sa.text("SELECT version_num FROM alembic_version")
+            ).scalar_one() == "014"
+    finally:
+        engine.dispose()
+
+
+def test_v5_2a_014_empty_work_tables_downgrade_to_013(tmp_path: Path) -> None:
+    """With zero Work facts, downgrade 014 -> 013 drops exactly the five new
+    tables and returns the version marker to 013."""
+    database_url = f"sqlite:///{tmp_path}/work-kernel-downgrade.db"
+    root = Path(__file__).resolve().parents[2]
+    engine = sa.create_engine(database_url)
+    try:
+        command.upgrade(_config(root, database_url), "head")
+        command.downgrade(_config(root, database_url), "013")
+        inspector = sa.inspect(engine)
+        assert _work_tables().isdisjoint(set(inspector.get_table_names()))
+        with engine.begin() as connection:
+            assert connection.execute(
+                sa.text("SELECT version_num FROM alembic_version")
+            ).scalar_one() == "013"
+        command.upgrade(_config(root, database_url), "head")
+        inspector = sa.inspect(engine)
+        assert _work_tables() <= set(inspector.get_table_names())
+    finally:
+        engine.dispose()
+
+
+@pytest.mark.integration
+@pytest.mark.skipif(
+    os.environ.get("CASELOOP_ALLOW_INTEGRATION_RESET") != "true",
+    reason="explicit disposable PostgreSQL reset opt-in required",
+)
+def test_v5_2a_014_fresh_postgresql_upgrade_creates_work_tables() -> None:
+    """Fresh PostgreSQL upgrade to head creates the Work tables with their
+    composite foreign keys and unique constraints."""
+    from conftest import (
+        TEST_DATABASE_URL,
+        _new_pg_engine,
+        _reset_pg_database_for_migrations,
+    )
+
+    root = Path(__file__).resolve().parents[2]
+    engine = _new_pg_engine()
+    try:
+        _reset_pg_database_for_migrations(engine, TEST_DATABASE_URL)
+        command.upgrade(_config(root, TEST_DATABASE_URL), "head")
+        inspector = sa.inspect(engine)
+        assert _work_tables() <= set(inspector.get_table_names())
+        attempt_fks = inspector.get_foreign_keys("work_attempts")
+        referred = {
+            (tuple(fk["constrained_columns"]), fk["referred_table"])
+            for fk in attempt_fks
+        }
+        assert (("workspace_id", "task_id"), "work_tasks") in referred
+        decision_uniques = {
+            constraint["name"]
+            for constraint in inspector.get_unique_constraints(
+                "work_proposal_decisions"
+            )
+        }
+        assert "uq_work_proposal_decision_proposal" in decision_uniques
+        with engine.begin() as connection:
+            assert connection.execute(
+                sa.text("SELECT version_num FROM alembic_version")
+            ).scalar_one() == "014"
     finally:
         try:
             _reset_pg_database_for_migrations(engine, TEST_DATABASE_URL)

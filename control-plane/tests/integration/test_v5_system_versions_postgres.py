@@ -313,7 +313,7 @@ def test_v5_1b_pg_import_atomic_rollback_and_replay() -> None:
         with engine.connect() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "013"
+            ).scalar_one() == "014"
 
         now = datetime.now(timezone.utc)
         session = factory()

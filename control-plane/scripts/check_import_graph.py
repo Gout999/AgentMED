@@ -100,6 +100,7 @@ MODULE_LANES: dict[str, str] = {
     "app.models.tables": LANE_V3_COMPAT,
     "app.models.v4_tables": LANE_V4_COMPAT,
     "app.models.v5_tables": LANE_V5_DOMAIN,
+    "app.models.v5_work_tables": LANE_V5_DOMAIN,
     "app.api": LANE_TRANSPORT,
     "app.api.cases": LANE_TRANSPORT,
     "app.api.changesets": LANE_TRANSPORT,
