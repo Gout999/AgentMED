@@ -698,7 +698,7 @@ intents:
     confirmed_revision_does_not_rewrite_quality_case_payload_or_digest: true
     command_target: {resource: acceptance_criteria_revision, command: acceptance-criteria.confirm}
     http: {method: POST, path: "/api/v2/acceptance-criteria/{acceptance_criteria_revision_id}:confirm", operation_id: confirmAcceptanceCriteria}
-    cli: acceptance-criteria confirm
+    cli: case acceptance-criteria confirm
     cli_requires_explicit_api_major: true
 
   - name: acceptance-criteria.get

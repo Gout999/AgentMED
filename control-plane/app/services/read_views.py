@@ -949,8 +949,10 @@ def case_v5_readiness(session: Session, case_id: str) -> dict[str, Any]:
         ).all()
     )
     confirmed = [row for row in revisions if row.confirmation_status == "CONFIRMED"]
+    # Master 17.5: confirmation alone never reaches READY; V5-4A exact
+    # ResolutionContract + executable BadcaseSpec is required.
     if confirmed:
-        readiness: str = "READY"
+        readiness: str = "PENDING_MATERIALIZATION"
     else:
         readiness = "NEEDS_ACCEPTANCE_CRITERIA"
     proposal_count = int(

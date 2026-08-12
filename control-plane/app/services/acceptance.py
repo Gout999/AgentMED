@@ -6,7 +6,7 @@ maintainer/domain reviewer may confirm, producing a NEW immutable CONFIRMED
 revision that references the prior proposal; the proposal itself never
 confirms itself and no record is ever rewritten in place.  CaseReadiness is a
 pure projection: a case with a confirmed revision for its exact binding is
-READY, otherwise NEEDS_ACCEPTANCE_CRITERIA — the S1A case payload/digest is
+PENDING_MATERIALIZATION after confirmation, otherwise NEEDS_ACCEPTANCE_CRITERIA — the S1A case payload/digest is
 never touched.
 """
 from __future__ import annotations
@@ -457,6 +457,25 @@ class AcceptanceService:
             principal=principal,
             request_id=request_id,
         )
+        # Duplicate confirmation fails closed (Master 17.5): a proposal may be
+        # confirmed exactly once; a second confirm under a different
+        # idempotency key is rejected.
+        for prior in self.session.scalars(
+            select(AcceptanceCriteriaRevision).where(
+                AcceptanceCriteriaRevision.workspace_id == proposed.workspace_id,
+                AcceptanceCriteriaRevision.confirmation_status == "CONFIRMED",
+            )
+        ).all():
+            previous_binding = prior.exact_previous_proposed_revision_binding or {}
+            if (
+                previous_binding.get("id")
+                == proposed.acceptance_criteria_revision_id
+            ):
+                raise AcceptanceError(
+                    "VALIDATION_FAILED",
+                    details={"reason": "DUPLICATE_CONFIRMATION"},
+                    workspace_id=proposed.workspace_id,
+                )
         # Reauthentication: the confirming credential must have been issued
         # after the proposal was recorded (fresh authentication, not the same
         # session that created the draft).

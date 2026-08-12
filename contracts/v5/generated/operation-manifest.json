@@ -598,7 +598,7 @@
         "human"
       ],
       "authorization_condition": "human_maintainer_or_domain_reviewer_of_case",
-      "cli": "acceptance-criteria confirm",
+      "cli": "case acceptance-criteria confirm",
       "cli_requires_explicit_api_major": true,
       "command_target": {
         "command": "acceptance-criteria.confirm",

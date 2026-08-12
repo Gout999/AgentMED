@@ -1424,3 +1424,103 @@ def test_vague_issue_readiness_blocks_gate_start(sqlite_session) -> None:
     assert get_response.case_readiness == "NEEDS_ACCEPTANCE_CRITERIA"
     assert get_response.next_action is not None
     assert get_response.revisions == []
+def test_duplicate_confirmation_fails_closed(sqlite_session) -> None:
+    """Master 17.5: a proposal may be confirmed exactly once; a second confirm
+    under a different idempotency key is rejected."""
+    global _last_case_digest
+    case_digest, _seed_principal_ctx = _seed_env(sqlite_session)
+    _last_case_digest = case_digest
+    service = _acceptance_service(sqlite_session)
+    proposed = service.propose(
+        _propose_request(case_digest=case_digest),
+        principal=_principal(
+            principal_id=AGENT_PROPOSER,
+            required_scope="acceptance_criteria:propose",
+        ),
+        idempotency_key="ac-propose-dup-0001",
+        request_id="req_01J000000000001D",
+    )
+    sqlite_session.commit()
+    proposed_envelope = proposed.acceptance_criteria_revision
+    request = AcceptanceCriteriaConfirmRequest.model_validate(
+        {
+            "schema_version": "2.0",
+            "exact_proposed_revision_binding": {
+                "kind": "ACCEPTANCE_CRITERIA_REVISION",
+                "id": proposed_envelope.acceptance_criteria_revision_id,
+                "revision": None,
+                "digest": proposed_envelope.record_envelope.record_digest,
+            },
+        }
+    )
+    service.confirm(
+        request,
+        principal=_principal(
+            principal_id=CONFIRMER,
+            required_scope="acceptance_criteria:confirm",
+            issued_at=NOW + timedelta(minutes=1),
+            evaluated_at=NOW + timedelta(minutes=1),
+        ),
+        idempotency_key="ac-confirm-dup-0001",
+        request_id="req_01J000000000001E",
+    )
+    sqlite_session.commit()
+    with pytest.raises(AcceptanceError) as excinfo:
+        service.confirm(
+            request,
+            principal=_principal(
+                principal_id=CONFIRMER,
+                required_scope="acceptance_criteria:confirm",
+                issued_at=NOW + timedelta(minutes=2),
+                evaluated_at=NOW + timedelta(minutes=2),
+            ),
+            idempotency_key="ac-confirm-dup-0002",
+            request_id="req_01J000000000001F",
+        )
+    assert excinfo.value.code == "VALIDATION_FAILED"
+    assert excinfo.value.details == {"reason": "DUPLICATE_CONFIRMATION"}
+
+
+def test_read_views_readiness_never_reports_ready_after_confirm(sqlite_session) -> None:
+    """Master 17.5: the v1 projection must bound readiness below READY."""
+    global _last_case_digest
+    case_digest, _seed_principal_ctx = _seed_env(sqlite_session)
+    _last_case_digest = case_digest
+    service = _acceptance_service(sqlite_session)
+    proposed = service.propose(
+        _propose_request(case_digest=case_digest),
+        principal=_principal(
+            principal_id=AGENT_PROPOSER,
+            required_scope="acceptance_criteria:propose",
+        ),
+        idempotency_key="ac-propose-readiness-0001",
+        request_id="req_01J000000000001G",
+    )
+    sqlite_session.commit()
+    proposed_env = proposed.acceptance_criteria_revision
+    service.confirm(
+        AcceptanceCriteriaConfirmRequest.model_validate(
+            {
+                "schema_version": "2.0",
+                "exact_proposed_revision_binding": {
+                    "kind": "ACCEPTANCE_CRITERIA_REVISION",
+                    "id": proposed_env.acceptance_criteria_revision_id,
+                    "revision": None,
+                    "digest": proposed_env.record_envelope.record_digest,
+                },
+            }
+        ),
+        principal=_principal(
+            principal_id=CONFIRMER,
+            required_scope="acceptance_criteria:confirm",
+            issued_at=NOW + timedelta(minutes=1),
+            evaluated_at=NOW + timedelta(minutes=1),
+        ),
+        idempotency_key="ac-confirm-readiness-0001",
+        request_id="req_01J000000000001H",
+    )
+    sqlite_session.commit()
+    from app.services.read_views import case_v5_readiness
+
+    readiness = case_v5_readiness(sqlite_session, case_id=proposed_env.exact_case_binding["case_id"])
+    assert readiness != "READY"
