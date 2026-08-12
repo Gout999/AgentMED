@@ -34,17 +34,16 @@ CAS + advisory lock + 单 PG UoW；verifier PASS P0=0/P1=0）。R4 已关闭（s
 series `df86662` + `7c17391` + `365c2c8`；First System Case closure：5 个 1C intent
 激活、readiness 界限 PENDING_MATERIALIZATION、duplicate-confirm fail-closed、CLI case
 命令族；verifier PASS P0=0/P1=0，且 remediation 经第二轮 detached clean-checkout
-复查全绿）。**V5-2A（Durable Work Kernel，Master §17.6）是唯一 `ELIGIBLE`
-package**；V5-2B+ 继续按 Master 锁定。
+复查全绿）。V5-2A 候选 `6b30a83` 经本地 adversarial review 判为 NO-GO，缺口已由
+`3677be3` 修复并通过统一门禁；当前状态是 **review branch DONE / 未 push / 未 merge**。
+V5-2B+ 继续按 Master 锁定，不能把本地 review 结果当成主线已合入。
 
 D-015 接受 V5 为所有新产品/领域开发的默认设计与施工基线，并把 V3/V4 固定为兼容
 lane；这不改变 public API/CLI 默认 major，不激活新 route/capability，也不追溯改写既有
 事实。**C0–C5 architecture convergence 系列已完成并经 `b6fa629` remediation 重验**。
-D2、R3-full、R4 均已按各自证据关闭。下一执行焦点是 V5-2A Durable Work Kernel
-（Master §17.6），且按 product owner 2026-08-12 的分工裁决交由远端施工机完成代码
-部分（远端无 Docker/无 provider key；交接入口为
-`docs/context/V5_REMOTE_CONSTRUCTION_HANDOFF.md`），本地负责 disposable-PostgreSQL
-journey、live facet 与最终收口。V5-2B+ 仍按 Master 的单一依赖链锁定，禁止跨层堆叠。
+D2、R3-full、R4 均已按各自证据关闭。远端完成的 V5-2A 候选已在本地隔离 worktree
+完成 review、修复、disposable-PostgreSQL 与统一门禁收口；合入 `codex/v5-convergence`
+仍待用户裁决。V5-2B+ 仍按 Master 的单一依赖链锁定，禁止跨层堆叠。
 
 - Product and scope baseline: `docs/product-principles.md` + D-013 + D-015.
 - V5 new-development baseline: `docs/plan-v5.md` + `docs/plans/v5-progressive-delivery.md` + `docs/plans/v5-architecture-convergence.md` + 已冻结的 `contracts/v5/`。`docs/plan-v4.md` 只保留为 V4 兼容性基线；v3 保留为已实现兼容基线。
@@ -54,7 +53,7 @@ journey、live facet 与最终收口。V5-2B+ 仍按 Master 的单一依赖链�
   audit 与 recovery 铁律，但把 Langfuse、AgentTeams、Claude Code 和 Coding Team 改为
   可插拔 Adapter；真实外部 Agent 经 CLI 调用即可满足比赛首条 Agent-native 证明。
 - Local branch, document, contract, code, and test construction is authorized. Push, PR, paid provider calls, human approvals, and production or other external writes still require their own authorization.
-- V5 feature progression now follows Master §17. V5-2A is the only open package (remote-constructed per the 2026-08-12 owner division); every later package remains locked until its exact predecessor has a semantic commit, clean verifier and status closure. V4 S1B-S7 remain frozen.
+- V5 feature progression follows Master §17. V5-2A is locally remediated and verified at `3677be3`, but not merged; every later package remains locked until the merge decision and exact predecessor closure. V4 S1B-S7 remain frozen.
 - Security prerequisite for the next live/provider run: rotate the potentially exposed StepFun, Feishu, and internal authority/read/write/role credentials after a resolved Compose configuration expanded values into a private tool log. No secret value may enter Git or evidence. Rotation is not part of Stage 0 and remains unperformed; live execution is blocked until it is complete and a redacted preflight passes.
 
 ## V5 design preparation
@@ -77,7 +76,7 @@ journey、live facet 与最终收口。V5-2B+ 仍按 Master 的单一依赖链�
 | V5-D2 | Complete version-graph contract | DONE (contract-only) | C5 remediation/status DONE | 一次冻结 standalone `system-versions.record/get/diff` 的完整 wire、authority、idempotency、lineage、generated transport 与 non-trivial two-VersionSet diff；不再保留 defer 分支 | Master §17.3 exact contract/fixture/conformance/verifier matrix；detached clean post-commit verifier PASS P0=0/P1=0 | [`d2versiongraph_20260812T020335Z_4852664`](evidence/v5/decision-gates/d2-complete-version-graph-contract/d2versiongraph_20260812T020335Z_4852664/)；contract-only | `5717124` + `4852664` |
 | V5-R3-full | Second VersionSet + standalone record/get/diff runtime | DONE (contract + R3 replay) | D2 DONE | 实现 standalone `system-versions.record/get/diff`：只引用已存在 authority-valid 对象、exact lineage/CAS、单 PG UoW、`system_version_set.recorded` event/outbox/audit/AuthorityReceipt、deterministic 非 self diff、second-version PG E2E 真实差异 | Master §17.4 exact matrix（mutable alias/UNKNOWN、dependency substitution、fan-out、dataset role、dirty repository identity、same label/different digest、concurrent record、tampered GET/diff、cross-application/environment binding） | pending | pending |
 | V5-R4 | First System Case closure | DONE (contract + R4 replay) | R3-full DONE | stage-specific decision/contract gate | resume only from the accepted Master dependency graph；no dormant route/capability or dirty WIP promotion | stage-specific | pending | pending |
-| V5-2A | Durable Work Kernel (Master §6) | DONE (contract + replay; PG closure on disposable instance) | R4 DONE；D-016 裁决 | 2A-0 契约/owner 冻结（major-2 信封 + 专用 `v5.work.events` channel；V4 owner/状态机引用复用；27 事件目录与 V4 ownership 逐条一致）→ 2A-1 六表 + migration 014 → 2A-2 claim/fencing（单 PG UoW：投影+事件+审计+receipt+outbox；lease 过期活跃 attempt fail-closed 进 UNKNOWN/BLOCKED_UNKNOWN；reconcile 先于 retry）→ 2A-3 work channel dispatcher（因果序/幂等/reaction 只提交下一 owner command）→ 2A-4 确定性 fixture executor（crash 注入）→ 2A-5 真 PG 收口 | work kernel unit 28；PG 迁移矩阵 13；PG 集成矩阵 13（含并发 double-claim 唯一租约、ghost success 拒绝、ambiguous retry 阻断）；conformance 559；control unit+wave 1021；import-graph PASS；CLI 130；Console 20+build；compiler determinism CLEAN | [`v5-2a-work-kernel_20260812T120000Z_local`](evidence/v5/stage-2/work-kernel/v5-2a-work-kernel_20260812T120000Z_local/)；`contract=PASS`、`replay=PASS`；其余 7 facet `NOT_RUN`；s8 成员 `test_v5_application_catalog_postgres.py` 因既有缺陷（G20）本次 NOT_RUN | semantic series `9fa5363`→`e46d05a`（base `92bde3c`，分支 `codex/v5-2a-work-kernel`） |
+| V5-2A | Durable Work Kernel (Master §6) | DONE on review branch (not merged) | R4 DONE；D-016 裁决 | 原 2A-0→2A-5 系列 + review remediation：Task/attempt/Proposal exact binding；服务端幂等指纹；持久化 attempt-bound terminal receipt；dispatcher claim TTL/retry/DLQ；immutable delivery receipt + audit；固定 worker；s8 正式纳入 Work PG | Work focused 47；PG migration 13；Work PG 8；s8 integration 17；conformance 559；control+wave 1047 passed / 13 PG-gated skips；import-graph PASS；CLI 130；Console 20+build；统一门禁 8/8 | [`v5-2a-work-kernel_20260812T120000Z_local`](evidence/v5/stage-2/work-kernel/v5-2a-work-kernel_20260812T120000Z_local/) + [`v5-2a-review-remediation_20260812T165557Z_local`](evidence/v5/stage-2/work-kernel/v5-2a-review-remediation_20260812T165557Z_local/)；`contract=PASS`、`replay=PASS`；其余 7 facet `NOT_RUN` | candidate `6b30a83` + remediation `3677be3`（base `92bde3c`；`codex/v5-2a-review-remediation`；未 push/未 merge） |
 
 ## Active v4 delivery
 

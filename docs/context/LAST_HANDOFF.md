@@ -4,7 +4,39 @@
 > [`docs/archive/context/LAST_HANDOFF-history-through-2026-08-11.md`](../archive/context/LAST_HANDOFF-history-through-2026-08-11.md)。
 > 本文件只保留一个 current handoff。
 
-## 2026-08-12 V5-2A Work Kernel closure handoff (current)
+## 2026-08-13 V5-2A review remediation handoff (current)
+
+- `primary_truth`: `/Users/xiejiachen/caseloop-wt-v5-convergence` remains clean
+  at `codex/v5-convergence@92bde3c`. No V5-2A commit has been merged there.
+- `reviewed_candidate`: GitHub branch `origin/codex/v5-2a-work-kernel@6b30a83`
+  (12 commits over `92bde3c`). No open PR/CI object represented the branch during
+  this review, so the exact branch head was the review subject.
+- `original_verdict`: NO-GO. Adversarial tests proved cross-Task attempt mutation,
+  acceptance of caller-asserted reconcile receipts, caller-controlled idempotency
+  binding, cross-Task accepted Proposal use, and an unbounded/non-recovering Work
+  dispatcher. The recorded full gate did not include the Work PostgreSQL file.
+- `remediation_subject`: `3677be3a97daa1b28d2e4835b7665bd388449006`
+  on local branch `codex/v5-2a-review-remediation`. It adds exact Task/current-attempt
+  and Proposal binding, server-owned request fingerprints, persisted outcome-bound
+  terminal receipts, WAITING_RETRY cancellation closure, leased dispatcher claims,
+  retry/backoff/DEAD, immutable delivery receipt + audit, a fixed worker and s8 Work
+  PostgreSQL enforcement.
+- `verified`: focused Work 47; PostgreSQL Work Kernel/relay 8; PostgreSQL migration
+  13; import-graph tests 20 plus checker PASS; Compose config PASS; unified gate
+  8/8 PASS twice after the final receipt hardening. A separate detached clean
+  checkout of exact subject `3677be3` also passed 8/8 and remained clean.
+- `evidence`: `evidence/v5/stage-2/work-kernel/v5-2a-review-remediation_20260812T165557Z_local/`.
+- `facet_truth`: `contract=PASS`, deterministic/local-PostgreSQL `replay=PASS`;
+  `domain-provider-live`, `agentteams-native`, `claude-runtime-live`, `agent-causal`,
+  `repo-sandbox`, `human-authorized-external` and `production-canary` are `NOT_RUN`.
+- `decision`: GO for merge consideration. The branch and commits are local only;
+  nothing was pushed or merged. V5-2B+ remain locked until the user accepts and
+  integrates this exact predecessor.
+- `non_blocking_existing_risk`: clean `npm audit --omit=dev` reports two moderate
+  React Router advisories; the automated fix is a major-version upgrade. Neither
+  Console dependency file changed in `92bde3c..3677be3`.
+
+## 2026-08-12 V5-2A Work Kernel closure handoff (superseded by the local review remediation above)
 
 - `scope`: V5-2A Durable Work Kernel (Master §6), all six sub-packages 2A-0 → 2A-5
   constructed and closed on branch `codex/v5-2a-work-kernel` (base `92bde3c`).

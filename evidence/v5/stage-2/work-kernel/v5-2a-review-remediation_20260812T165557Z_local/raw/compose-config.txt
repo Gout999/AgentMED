@@ -1,0 +1,2 @@
+docker compose config --quiet: PASS
+Required secret inputs were test-only placeholders. No resolved configuration or credential value was retained.

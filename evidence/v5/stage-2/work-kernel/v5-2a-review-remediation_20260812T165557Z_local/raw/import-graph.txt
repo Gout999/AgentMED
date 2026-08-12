@@ -1,0 +1,9 @@
+20 passed in 0.62s
+
+modules: 91
+lane coverage: 100%
+module-level cycles: 0
+function-level cycles: 0
+forbidden direction fails: 0
+direct-table-access violations: 0
+RESULT: PASS

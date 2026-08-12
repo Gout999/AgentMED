@@ -1,0 +1,18 @@
+=== [1-compiler-determinism] compiler emit + zero diff on contracts/v5/generated/ ===
+[1-compiler-determinism] PASS (exit 0)
+=== [2-compiler-tests] compiler test suite ===
+[2-compiler-tests] PASS (exit 0)
+=== [3-conformance] contracts conformance (schemas/wilson/v4/v5) ===
+[3-conformance] PASS (exit 0)
+=== [4-control-plane] control-plane unit tests + C1-C5 wave checkers ===
+[4-control-plane] PASS (exit 0)
+=== [5-import-graph] import-graph checker (C3) ===
+[5-import-graph] PASS (exit 0)
+=== [6-cli] cli test suite ===
+[6-cli] PASS (exit 0)
+=== [7-console] Console tests + production build ===
+[7-console] PASS (exit 0)
+=== [8-postgres] disposable PostgreSQL convergence matrix ===
+[8-postgres] PASS (exit 0)
+
+verify_convergence: ALL SECTIONS PASS

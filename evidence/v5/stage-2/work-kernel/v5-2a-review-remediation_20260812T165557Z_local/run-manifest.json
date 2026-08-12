@@ -1,0 +1,52 @@
+{
+  "schema_version": "1.0",
+  "run_id": "v5-2a-review-remediation_20260812T165557Z_local",
+  "stage": "V5-2A",
+  "slice": "work-kernel-review-remediation",
+  "started_at": "2026-08-12T16:55:57Z",
+  "completed_at": "2026-08-12T17:12:34Z",
+  "status": "PASS",
+  "reviewed_candidate": {
+    "commit": "6b30a83",
+    "branch": "origin/codex/v5-2a-work-kernel",
+    "initial_verdict": "NO_GO"
+  },
+  "subject": {
+    "commit": "3677be3a97daa1b28d2e4835b7665bd388449006",
+    "branch": "codex/v5-2a-review-remediation",
+    "base": "92bde3c",
+    "verdict": "GO_FOR_MERGE_CONSIDERATION",
+    "pushed": false,
+    "merged": false
+  },
+  "verification": {
+    "focused_work": "47 passed",
+    "work_postgres": "8 passed",
+    "postgres_migrations": "13 passed",
+    "import_graph_tests": "20 passed",
+    "compose_config": "PASS",
+    "unified_gate": "8/8 ALL SECTIONS PASS",
+    "detached_clean_unified_gate": "3677be3: 8/8 ALL SECTIONS PASS; clean before and after",
+    "control_plane_and_waves": "1047 passed, 13 PostgreSQL-gated skips",
+    "unified_postgres": "13 migration + 17 integration passed"
+  },
+  "facet_report": {
+    "contract": "PASS",
+    "replay": "PASS (deterministic fixture and local PostgreSQL only)",
+    "domain-provider-live": "NOT_RUN",
+    "agentteams-native": "NOT_RUN",
+    "claude-runtime-live": "NOT_RUN",
+    "agent-causal": "NOT_RUN",
+    "repo-sandbox": "NOT_RUN",
+    "human-authorized-external": "NOT_RUN",
+    "production-canary": "NOT_RUN"
+  },
+  "raw_artifacts": [
+    "raw/focused-work.txt",
+    "raw/work-postgres.txt",
+    "raw/postgres-migrations.txt",
+    "raw/import-graph.txt",
+    "raw/compose-config.txt",
+    "raw/verify-convergence.txt"
+  ]
+}
