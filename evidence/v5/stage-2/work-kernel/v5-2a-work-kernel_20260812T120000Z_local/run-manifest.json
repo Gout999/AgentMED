@@ -1,0 +1,78 @@
+{
+  "schema_version": "1.0",
+  "run_id": "v5-2a-work-kernel_20260812T120000Z_local",
+  "stage": "V5-2A",
+  "slice": "durable-work-kernel",
+  "started_at": "2026-08-12T11:20:00Z",
+  "completed_at": "2026-08-12T12:35:00Z",
+  "status": "PASS",
+  "subject": {
+    "commit": "e46d05a4f7ca0b1b522571e8f9778cfe7b91fc69",
+    "branch": "codex/v5-2a-work-kernel",
+    "dirty_before": false,
+    "dirty_after": false,
+    "semantic_series": [
+      "9fa5363",
+      "0c1528c",
+      "fa39646",
+      "a626bd7",
+      "8c5f328",
+      "e46d05a"
+    ],
+    "semantic_series_base": "92bde3c"
+  },
+  "decision": {
+    "ref": "docs/decisions/D-016-v5-work-event-schema-major-routing.md",
+    "summary": "Work events use the major-2 envelope on the dedicated v5.work.events channel; V4 semantic owners and state machines are reused by reference; V4 payloads are never reinterpreted."
+  },
+  "environment": {
+    "python": "3.13.13",
+    "node": "20.20.2",
+    "postgresql": "18.4 (embedded, disposable, 127.0.0.1:55432, fsync=off)",
+    "docker": "not present; disposable PostgreSQL was provided by npm embedded-postgres instead",
+    "provider_keys": "none present; no live facet was attempted"
+  },
+  "verification": {
+    "compiler_determinism": "PASS (emit zero-diff on contracts/v5/generated/)",
+    "compiler_tests": "18 passed",
+    "conformance": "559 passed (557 baseline + 2 new V5-2A section guards)",
+    "control_plane_unit_and_wave_checkers": "1021 passed, 13 PG-gated skips",
+    "work_kernel_unit": "28 passed (test_v5_work_kernel 14, dispatcher 7, fixture executor 7)",
+    "import_graph": "PASS (0 cycles, 0 unclassified, 0 direct-table violations)",
+    "cli": "130 passed",
+    "console": "20 passed + production build PASS",
+    "postgres_migration_matrix": "13 passed (fresh upgrade to 014, populated-head preservation, downgrade guard, empty downgrade round-trip)",
+    "postgres_integration_matrix": "13 passed (lifecycle 3, r2/r3/r4 5, work-kernel closure 5)",
+    "postgres_closure_focus": {
+      "concurrent_double_claim_one_task": "exactly one lease/attempt/capability; loser gets v5.work.lease_held",
+      "concurrent_claims_distinct_tasks": "4/4 succeed",
+      "full_fact_chain": "7 major-2 events each with outbox(v5.work.events)+audit+receipt in one transaction",
+      "ghost_success": "accept without downstream command rejected; proposal stays SUBMITTED",
+      "ambiguous_retry": "re-claim blocked reconcile_required until reconcile; retry mints attempt 2 fence 2"
+    }
+  },
+  "facet_report": {
+    "contract": "PASS",
+    "replay": "PASS (deterministic fixture executor; no model/provider involved)",
+    "domain-provider-live": "NOT_RUN",
+    "agentteams-native": "NOT_RUN",
+    "claude-runtime-live": "NOT_RUN",
+    "agent-causal": "NOT_RUN",
+    "repo-sandbox": "NOT_RUN",
+    "human-authorized-external": "NOT_RUN",
+    "production-canary": "NOT_RUN"
+  },
+  "known_exclusions": [
+    {
+      "item": "tests/integration/test_v5_application_catalog_postgres.py (s8 member)",
+      "status": "NOT_RUN",
+      "reason": "pre-existing test defect, not introduced by V5-2A: the installed-CLI loopback e2e leaks a connection holding an alembic_version read in an idle-in-transaction session, which deadlocks against the fixture's DROP SCHEMA public CASCADE.  Reproduced and root-caused independently of this stage; registered as wiki/build-guide.md G20.",
+      "impact": "none on the 2A closure claims: the file exercises the R2 catalog CLI loopback, not the Work Kernel"
+    }
+  ],
+  "raw_artifacts": [
+    "raw/work-kernel-unit.txt",
+    "raw/work-kernel-postgres.txt",
+    "raw/verify-convergence-s1-s7.txt"
+  ]
+}

@@ -132,3 +132,15 @@ route、worker、Adapter 或 Console 已完成。
 | G15 | console evidence guard 钉死 unavailable | validators.ts:255,260 要求 artifact_store==="unavailable" 才算合法，后端将来真接 artifact store 会把健康响应判 invalid_response | 接真 store 时同步放开 guard；已记 OPEN-ISSUES 候选 |
 | G16 | 决策编号撞车 | docs/decisions/ 存在两个 D-002（executor-routing 旧 / gate-workorder-binding 新） | 新文件改号或旧文件归档 |
 | G17 | 代码注释语言分裂 | PR#1 新模块（gate_service/trust_service/outbox_relay）全英文 docstring，旧代码中文 | 后续统一，不专项处理 |
+
+### 离线门禁与 PG 集成缺陷登记（2026-08-12，V5-2A 施工期实测）
+
+> 来源：干净机器（Python 3.13 + Node 20 + npm embedded-postgres 18.4，无 Docker、无
+> provider key）按 `scripts/verify_convergence.sh` 实跑 s1–s8 的发现。G18 已修；
+> G19/G20 为开放项。
+
+| # | 缺口 | 实战证据 | 建议 |
+|---|------|---------|------|
+| G18 | conformance 缺 `rfc3339-validator` 会静默少验 date-time（假绿） | 缺包时 `FormatChecker().checkers` 无 `date-time`，坏值产生 0 个校验错误而套件照常全绿；该包钉在 `contracts/conformance/requirements.txt` 但没有任何流程保证被装 | ✅ **已修（2026-08-12，分支 `chore/conformance-dep-guard`，提交 `a391cd9`）**：`conformance/conftest.py` collection 期 fail-closed 检查；README 矛盾指引与硬编码路径同步修正 |
+| G19 | conformance 有 1 个测试跨界依赖 control-plane 实现层，且依赖未声明 | `conformance/test_v5_r2_application_catalog_contract.py:19` 用 `sys.path.insert` 导入 `app.public_api.v5_models`，隐式需要 `pydantic` 但未声明；能跑只因 eval-harness venv 里 pydantic 是 openai 的传递依赖（2.13.4，不受 pin 约束）。另 `jsonschema` 在 conformance（4.26.0）与 eval-harness（4.23.0）双 pin，谁后装谁生效（实测两版本 557 全绿，暂无功能差异） | **待裁决**：补 pydantic 等于承认契约层依赖实现层（架构边界决策，走 D-xxx）；或改用 C1 生成产物。jsonschema 建议统一 pin |
+| G20 | `test_v5_application_catalog_postgres.py` 死锁 | 2026-08-12 实测复现并定位：installed-CLI loopback e2e 在 `command.upgrade` 后断言版本时 `engine.connect()` 链式调用未关闭连接（:164-169），残留会话持 `alembic_version` 读锁 idle-in-transaction；后续 `DROP SCHEMA public CASCADE` 需排他锁，两侧互等。非 V5-2A 引入；s8 其余成员（迁移 13 + 集成 13）不受影响 | 测试自身修复：断言改用 `with engine.connect() as conn:` 显式关闭；独立 follow-up，不阻塞 V5-2A |

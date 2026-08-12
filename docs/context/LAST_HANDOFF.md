@@ -4,7 +4,44 @@
 > [`docs/archive/context/LAST_HANDOFF-history-through-2026-08-11.md`](../archive/context/LAST_HANDOFF-history-through-2026-08-11.md)。
 > 本文件只保留一个 current handoff。
 
-## 2026-08-12 V5 post-convergence execution handoff (current)
+## 2026-08-12 V5-2A Work Kernel closure handoff (current)
+
+- `scope`: V5-2A Durable Work Kernel (Master §6), all six sub-packages 2A-0 → 2A-5
+  constructed and closed on branch `codex/v5-2a-work-kernel` (base `92bde3c`).
+- `decision`: D-016 (`docs/decisions/D-016-v5-work-event-schema-major-routing.md`)
+  adjudicates the 2A-0 open question: Work events use the major-2 envelope on the
+  dedicated `v5.work.events` outbox channel; V4 semantic owners and state machines
+  are reused by reference, never copied; V4 payloads are never reinterpreted.
+  Recorded as an engineering decision under the 2026-08-12 product-owner
+  delegation, not as a product-owner decision.
+- `semantic_series`: `9fa5363` (2A-0 contract freeze) → `0c1528c` (2A-1 six tables
+  + migration 014) → `fa39646` (2A-2 claim/fencing engine) → `a626bd7` (2A-3
+  channel dispatcher + reaction ledger) → `8c5f328` (2A-4 deterministic fixture
+  executor) → `e46d05a` (2A-5 PostgreSQL closure proofs).
+- `verified`: compiler determinism CLEAN; compiler 18; conformance 559;
+  control-plane unit + wave checkers 1021 passed / 13 PG-gated skips; CLI 130;
+  Console 20 + build; import-graph PASS (0 cycles / 0 unclassified); disposable
+  PostgreSQL 18.4 migration matrix 13 passed and integration matrix 13 passed,
+  including the 2A-5 exit proofs: concurrent double-claim mints exactly one
+  lease (no double lease), proposal accept without downstream command rejected
+  (no ghost success), and re-claim after ambiguous outcome blocked until
+  reconcile (no ambiguous retry).
+- `facet_truth`: `contract=PASS`, `replay=PASS` (deterministic fixture executor,
+  no model/provider).  All other seven facets `NOT_RUN` — no provider keys on
+  this machine, and Master §546 keeps Agent/provider liveness out of 2A scope.
+- `environment`: this machine has **no Docker**; the disposable PostgreSQL used
+  for every PG journey is npm `embedded-postgres` 18.4 on 127.0.0.1:55432
+  (scratch database `control_plane_test`, fsync off).  The s8 gate's existing
+  member `tests/integration/test_v5_application_catalog_postgres.py` is NOT_RUN
+  here: it deadlocks via a pre-existing leaked connection vs `DROP SCHEMA`
+  (root-caused; registered as `wiki/build-guide.md` G20, independent follow-up).
+- `not_done`: no public route/CLI/capability is activated for the Work Kernel
+  (all transports remain FORBIDDEN per D-016); V5-2B (async public intents) is
+  the next package in the Master chain and remains locked until 2A is merged.
+- `merge_state`: branch is pushed for review; merging to `main` and any PR
+  ceremony remain with the product owner.
+
+## 2026-08-12 V5 post-convergence execution handoff (superseded by the V5-2A closure above; retained for its R1/R2 and C0–C5 facts)
 
 - `decision`: product owner accepted D-015. V5 is now the default design and construction baseline
   for every new product/domain change. V3 is the implemented compatibility lane; V4 is the V4

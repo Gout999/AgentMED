@@ -1,0 +1,7 @@
+[1-compiler-determinism] PASS (exit 0)
+[2-compiler-tests] PASS (exit 0)
+[3-conformance] PASS (exit 0)
+[4-control-plane] PASS (exit 0)
+[5-import-graph] PASS (exit 0)
+[6-cli] PASS (exit 0)
+[7-console] PASS (exit 0)

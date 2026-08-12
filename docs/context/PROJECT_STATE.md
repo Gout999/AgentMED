@@ -1,5 +1,8 @@
 # Project State
 
+- `v5_2a_work_kernel_subject`: `e46d05a4f7ca0b1b522571e8f9778cfe7b91fc69` (semantic series `9fa5363` + `0c1528c` + `fa39646` + `a626bd7` + `8c5f328` + `e46d05a`, base `92bde3c`, branch `codex/v5-2a-work-kernel`; D-016 adjudicated by construction agent under the 2026-08-12 product-owner delegation)
+- `v5_2a_work_kernel_evidence`: `evidence/v5/stage-2/work-kernel/v5-2a-work-kernel_20260812T120000Z_local/` (`contract=PASS`, `replay=PASS`; all other 7 facets `NOT_RUN`; s8 member `test_v5_application_catalog_postgres.py` NOT_RUN due to pre-existing defect G20)
+- `v5_2a_gate_on_subject`: compiler determinism CLEAN; compiler 18; conformance 559; control-plane unit + C1–C5 wave checkers 1021 passed / 13 PG-gated skips; CLI 130; Console 20 + build; import-graph PASS; disposable PostgreSQL 18.4 (npm embedded-postgres, no Docker): migration matrix 13 passed (fresh 014 upgrade / populated-head preservation / downgrade guard / empty downgrade round-trip), integration matrix 13 passed (lifecycle 3, R2/R3/R4 5, work-kernel closure 5 — concurrent double-claim mints exactly one lease, ghost success rejected, ambiguous retry blocked until reconcile)
 - `r0_documentation_subject`: `4d15c1c81180386fa4852a53f8b8847e74cda050` (independent detached-checkout PASS; P0=0/P1=0)
 - `r0_evidence`: `evidence/v5/stage-0/documentation-authority/r0docs_20260811T104032Z_4d15c1c/`
 - `d1_lifecycle_subject`: `798531af539cd37e797723f2985d55c70fa1046e` (semantic series starts at `66052a1`; independent detached-checkout PASS; P0=0/P1=0)
