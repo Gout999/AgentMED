@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/schemas/v5/system-versions.diff.schema.json",
+  "title": "system-versions.diff",
+  "description": "D2 frozen deterministic diff between two exact SystemVersionSets of the same workspace and same application. Self-diff and cross-application/cross-workspace comparisons are forbidden. Contract-only: NOT activated.",
+  "$defs": {
+    "request": {
+      "description": "GET with no request body; both version sets are query parameters.",
+      "type": "null"
+    },
+    "query": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source_version_set_id", "target_version_set_id"],
+      "properties": {
+        "source_version_set_id": { "$ref": "common.schema.json#/$defs/idSystemVersionSetId" },
+        "target_version_set_id": { "$ref": "common.schema.json#/$defs/idSystemVersionSetId" }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "request_id",
+        "audit_ref",
+        "source_binding",
+        "target_binding",
+        "diff"
+      ],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion2" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "request_id": { "$ref": "common.schema.json#/$defs/idRequestId" },
+        "audit_ref": { "$ref": "common.schema.json#/$defs/auditRef" },
+        "source_binding": { "$ref": "system-manifests.import.schema.json#/$defs/exactSystemVersionSetBinding" },
+        "target_binding": { "$ref": "system-manifests.import.schema.json#/$defs/exactSystemVersionSetBinding" },
+        "diff": { "$ref": "#/$defs/versionDiff" }
+      }
+    },
+    "versionDiff": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["added", "removed", "changed", "topology_changes", "assurance_delta", "deterministic"],
+      "properties": {
+        "added": {
+          "type": "array",
+          "items": { "$ref": "system-manifests.import.schema.json#/$defs/exactComponentRevisionBinding" }
+        },
+        "removed": {
+          "type": "array",
+          "items": { "$ref": "system-manifests.import.schema.json#/$defs/exactComponentRevisionBinding" }
+        },
+        "changed": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/changedComponent" }
+        },
+        "topology_changes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/topologyChange" }
+        },
+        "assurance_delta": { "$ref": "#/$defs/assuranceDelta" },
+        "deterministic": { "const": true }
+      }
+    },
+    "changedComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component_id", "from_binding", "to_binding"],
+      "properties": {
+        "component_id": { "$ref": "common.schema.json#/$defs/idComponentId" },
+        "from_binding": { "$ref": "system-manifests.import.schema.json#/$defs/exactComponentRevisionBinding" },
+        "to_binding": { "$ref": "system-manifests.import.schema.json#/$defs/exactComponentRevisionBinding" }
+      }
+    },
+    "topologyChange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "from_edge_binding_or_null", "to_edge_binding_or_null"],
+      "properties": {
+        "kind": { "enum": ["EDGE_ADDED", "EDGE_REMOVED", "EDGE_REVISION_CHANGED"] },
+        "from_edge_binding_or_null": {
+          "anyOf": [
+            { "$ref": "system-manifests.import.schema.json#/$defs/exactDependencyEdgeBinding" },
+            { "type": "null" }
+          ]
+        },
+        "to_edge_binding_or_null": {
+          "anyOf": [
+            { "$ref": "system-manifests.import.schema.json#/$defs/exactDependencyEdgeBinding" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "assuranceDelta": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["identity_assurance_changes"],
+      "properties": {
+        "identity_assurance_changes": {
+          "type": "array",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "error": { "$ref": "common.schema.json#/$defs/errorEnvelope" }
+  }
+}

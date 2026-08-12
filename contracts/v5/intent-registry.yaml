@@ -26,6 +26,11 @@ wire_contract_rules:
   draft_must_not_enter_capability_discovery: true
   activation_requires_explicit_contract_freeze_and_runtime_evidence: true
   all_transports_share_application_service: true
+  frozen_for_implementation_status: FROZEN_FOR_IMPLEMENTATION
+  frozen_for_implementation_is_not_activated: true
+  frozen_for_implementation_must_not_generate_any_transport: true
+  frozen_for_implementation_must_not_enter_capability_discovery: true
+  frozen_for_implementation_requires_schema_profile_ref: true
 
 application_component_activation_lifecycle:
   decision_ref: docs/decisions/D-014-v5-application-component-activation-lifecycle.md
@@ -181,6 +186,67 @@ r2_application_catalog_contract:
       owner_stage: R3_FULL
       r2_cli_visibility: HIDDEN
       capability_discovery: FORBIDDEN
+
+d2_complete_version_graph_contract:
+  stage: D2
+  plan_ref: docs/plans/v5-master-execution-plan.md#17.3
+  contract_status: FROZEN_FOR_IMPLEMENTATION
+  implementation_status: NOT_IMPLEMENTED
+  frozen_intents:
+    - system-versions.record
+    - system-versions.get
+    - system-versions.diff
+  activation_status: NOT_ACTIVATED
+  transports:
+    http: FORBIDDEN
+    cli: FORBIDDEN
+    sdk: FORBIDDEN
+    mcp: FORBIDDEN
+    a2a: FORBIDDEN
+    capability_discovery: FORBIDDEN
+  r3_full_capability_discovery_remains_hidden: true
+  record_contract:
+    references_existing_authority_valid_objects_only: true
+    never_creates_prerequisite_objects: true
+    application_required_state: ACTIVE
+    environment_required_state: ACTIVE
+    component_revision_binding_rule:
+      exact_immutable_binding_required: true
+      bare_component_id_is_authority: false
+      mutable_current_head_is_authority: false
+      binding_must_exist_and_be_authority_valid: true
+    server_derived_fields: [identity_assurance_summary, version_set_digest]
+    creates_immutable_next_system_version_set: true
+    lineage_and_cas:
+      exact_previous_system_version_set_binding_required_from_second_version: true
+      expected_previous: CURRENT_AUTHORITATIVE_HEAD
+      stale_or_wrong_previous: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION
+    idempotency:
+      key_and_canonical_body_binding: REQUIRED
+      same_key_different_body: CONFLICT_WITH_ZERO_NEW_FACTS
+    authorization:
+      required_trust_roles_any_of: [integrator, trusted_builder]
+      authorization_before_idempotency_acquire: true
+      wrong_or_missing_trust_role: DENY_AND_AUDIT
+    transaction: ALL_OR_NOTHING_LOCAL_POSTGRES
+    event_outbox_audit_receipt_and_idempotency_share_uow: true
+    event: system_version_set.recorded
+  get_contract:
+    reauthorizes_every_call: true
+    recursive_verification_layers: [record, envelope, digest, event, outbox, audit, authority_receipt]
+    missing_or_tampered_any_layer: FAIL_CLOSED
+  diff_contract:
+    same_workspace_and_application_required: true
+    cross_workspace_or_application: REJECT_AND_AUDIT
+    self_diff: FORBIDDEN
+    output_deterministic: true
+    compares_exact_immutable_version_sets_only: true
+    reverse_or_reordered_diff_equivocation: FORBIDDEN
+  does_not_prove:
+    - runtime_path_implemented
+    - transport_route_or_capability_activation
+    - second_version_set_persisted
+    - semantic_diff_runtime
 
 api_major_selection:
   canonical_intent_identity: [api_major, intent_name]
@@ -473,9 +539,9 @@ intents:
   - name: system-versions.record
     contract_major: 2
     delivery_slice: V5-1B
-    wire_status: DRAFT
+    wire_status: FROZEN_FOR_IMPLEMENTATION
     implementation_status: NOT_IMPLEMENTED
-    field_contract_ref: null
+    field_contract_ref: contracts/v5/schema-profiles.yaml#d2_wire_profiles/system_versions_record
     kind: mutation
     execution_mode: synchronous
     scope: system_versions:record
@@ -491,9 +557,9 @@ intents:
   - name: system-versions.get
     contract_major: 2
     delivery_slice: V5-1B
-    wire_status: DRAFT
+    wire_status: FROZEN_FOR_IMPLEMENTATION
     implementation_status: NOT_IMPLEMENTED
-    field_contract_ref: null
+    field_contract_ref: contracts/v5/schema-profiles.yaml#d2_wire_profiles/system_versions_get
     kind: query
     execution_mode: synchronous
     scope: system_versions:read
@@ -507,9 +573,9 @@ intents:
   - name: system-versions.diff
     contract_major: 2
     delivery_slice: V5-1B
-    wire_status: DRAFT
+    wire_status: FROZEN_FOR_IMPLEMENTATION
     implementation_status: NOT_IMPLEMENTED
-    field_contract_ref: null
+    field_contract_ref: contracts/v5/schema-profiles.yaml#d2_wire_profiles/system_versions_diff
     kind: query
     execution_mode: synchronous
     scope: system_versions:read

@@ -71,7 +71,7 @@ def _generated_validator(registry: Registry, name: str, definition: str):
 
 def test_all_v5_schemas_are_meta_valid(schema_registry: Registry) -> None:
     files = sorted(SCHEMAS_DIR.glob("*.schema.json"))
-    assert len(files) == 13
+    assert len(files) == 16
     for path in files:
         document = _load_json(path)
         assert document.get("$schema") == "https://json-schema.org/draft/2020-12/schema"

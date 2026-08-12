@@ -359,6 +359,49 @@ r2_application_catalog_contract:
     - first_system_case
     - resolution_or_release
 
+d2_complete_version_graph_contract:
+  stage: D2
+  plan_ref: docs/plans/v5-master-execution-plan.md#17.3
+  contract_status: FROZEN_FOR_IMPLEMENTATION
+  implementation_status: NOT_IMPLEMENTED
+  frozen_intents: [system-versions.record, system-versions.get, system-versions.diff]
+  activation_status: NOT_ACTIVATED
+  standalone_record_contract:
+    references_existing_authority_valid_objects_only: true
+    never_creates_prerequisite_objects: true
+    application_required_state: ACTIVE
+    environment_required_state: ACTIVE
+    component_revision_binding_rule:
+      exact_immutable_binding_required: true
+      bare_component_id_is_authority: false
+      mutable_current_head_is_authority: false
+      binding_must_exist_and_be_authority_valid: true
+    server_derived_fields: [identity_assurance_summary, version_set_digest]
+    creates_immutable_next_system_version_set: true
+    lineage_and_cas:
+      exact_previous_system_version_set_binding_required_from_second_version: true
+      expected_previous: CURRENT_AUTHORITATIVE_HEAD
+      stale_or_wrong_previous: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION
+    same_postgresql_unit_of_work_required: true
+    event_outbox_audit_receipt_and_idempotency_share_uow: true
+    event: system_version_set.recorded
+  standalone_get_contract:
+    reauthorizes_every_call: true
+    recursive_verification_layers: [record, envelope, digest, event, outbox, audit, authority_receipt]
+    missing_or_tampered_any_layer: FAIL_CLOSED
+  standalone_diff_contract:
+    same_workspace_and_application_required: true
+    cross_workspace_or_application: REJECT_AND_AUDIT
+    self_diff: FORBIDDEN
+    output_deterministic: true
+    compares_exact_immutable_version_sets_only: true
+    reverse_or_reordered_diff_equivocation: FORBIDDEN
+  does_not_prove:
+    - runtime_path_implemented
+    - second_version_set_persisted
+    - semantic_diff_runtime
+    - transport_route_or_capability_activation
+
 application_component_activation_lifecycle:
   decision_ref: docs/decisions/D-014-v5-application-component-activation-lifecycle.md
   decision: PRESERVE_REGISTERED_TO_ACTIVE

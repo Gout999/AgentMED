@@ -1,0 +1,148 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/schemas/v5/system-versions.record.schema.json",
+  "title": "system-versions.record",
+  "description": "D2 frozen standalone record of an immutable next SystemVersionSet. References only existing authority-valid ACTIVE application/environment/exact component revision set/exact topology revision; server derives identity_assurance_summary and version_set_digest; exact_previous_system_version_set_binding_or_null provides CAS lineage (null only for the first version set). Contract-only: NOT activated, generates no transport.",
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "application_id",
+        "environment_id",
+        "exact_component_revision_bindings",
+        "exact_topology_revision_binding",
+        "exact_previous_system_version_set_binding_or_null"
+      ],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion2" },
+        "application_id": { "$ref": "common.schema.json#/$defs/idApplicationId" },
+        "environment_id": { "$ref": "common.schema.json#/$defs/idEnvironmentId" },
+        "exact_component_revision_bindings": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 256,
+          "items": { "$ref": "system-manifests.import.schema.json#/$defs/exactComponentRevisionBinding" }
+        },
+        "exact_topology_revision_binding": {
+          "$ref": "system-manifests.import.schema.json#/$defs/exactTopologyRevisionBinding"
+        },
+        "exact_previous_system_version_set_binding_or_null": {
+          "anyOf": [
+            { "$ref": "system-manifests.import.schema.json#/$defs/exactSystemVersionSetBinding" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "request_id",
+        "audit_ref",
+        "system_version_set",
+        "idempotency"
+      ],
+      "properties": {
+        "schema_version": { "$ref": "common.schema.json#/$defs/schemaVersion2" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "request_id": { "$ref": "common.schema.json#/$defs/idRequestId" },
+        "audit_ref": { "$ref": "common.schema.json#/$defs/auditRef" },
+        "system_version_set": { "$ref": "#/$defs/recordedSystemVersionSet" },
+        "idempotency": { "$ref": "common.schema.json#/$defs/idempotencyDelivery" }
+      }
+    },
+    "recordedSystemVersionSet": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "record_envelope",
+        "system_version_set_id",
+        "workspace_id",
+        "application_id",
+        "declared_environment_id",
+        "exact_component_revision_bindings",
+        "exact_topology_revision_binding",
+        "identity_assurance_summary",
+        "provenance_receipt_ids",
+        "version_set_digest",
+        "exact_previous_system_version_set_binding_or_null"
+      ],
+      "properties": {
+        "record_envelope": { "$ref": "common.schema.json#/$defs/recordEnvelope" },
+        "system_version_set_id": { "$ref": "common.schema.json#/$defs/idSystemVersionSetId" },
+        "workspace_id": { "$ref": "common.schema.json#/$defs/idWorkspaceId" },
+        "application_id": { "$ref": "common.schema.json#/$defs/idApplicationId" },
+        "declared_environment_id": { "$ref": "common.schema.json#/$defs/idEnvironmentId" },
+        "exact_component_revision_bindings": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/exactComponentRevisionBinding" }
+        },
+        "exact_topology_revision_binding": { "$ref": "#/$defs/exactTopologyRevisionBinding" },
+        "identity_assurance_summary": { "$ref": "#/$defs/identityAssuranceSummary" },
+        "provenance_receipt_ids": {
+          "type": "array",
+          "items": { "$ref": "common.schema.json#/$defs/idAuthorityReceiptId" }
+        },
+        "version_set_digest": { "$ref": "common.schema.json#/$defs/digest" },
+        "manifest_digest": { "anyOf": [{ "$ref": "common.schema.json#/$defs/digest" }, { "type": "null" }] },
+        "manifest": { "anyOf": [{ "type": "object", "additionalProperties": true }, { "type": "null" }] },
+        "exact_previous_system_version_set_binding_or_null": {
+          "anyOf": [
+            { "$ref": "system-manifests.import.schema.json#/$defs/exactSystemVersionSetBinding" },
+            { "type": "null" }
+          ]
+        }
+      }
+    },
+    "exactComponentRevisionBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": { "const": "COMPONENT_REVISION" },
+        "id": { "$ref": "common.schema.json#/$defs/idComponentRevisionId" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "digest": { "$ref": "common.schema.json#/$defs/digest" }
+      }
+    },
+    "exactTopologyRevisionBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "id", "revision", "digest"],
+      "properties": {
+        "kind": { "const": "TOPOLOGY_REVISION" },
+        "id": { "$ref": "common.schema.json#/$defs/idTopologyRevisionId" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "digest": { "$ref": "common.schema.json#/$defs/digest" }
+      }
+    },
+    "identityAssuranceSummary": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component_assurances"],
+      "properties": {
+        "component_assurances": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/identityAssuranceEntry" }
+        }
+      }
+    },
+    "identityAssuranceEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["component_revision_id", "component_id", "identity_assurance"],
+      "properties": {
+        "component_revision_id": { "$ref": "common.schema.json#/$defs/idComponentRevisionId" },
+        "component_id": { "$ref": "common.schema.json#/$defs/idComponentId" },
+        "identity_assurance": { "$ref": "common.schema.json#/$defs/identityAssurance" }
+      }
+    },
+    "error": { "$ref": "common.schema.json#/$defs/errorEnvelope" }
+  }
+}

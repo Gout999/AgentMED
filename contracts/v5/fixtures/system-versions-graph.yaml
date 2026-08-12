@@ -1,0 +1,131 @@
+version: "0.1-contract-freeze"
+status: accepted_contract_fixture
+runtime_status: NOT_RUN
+fixture_id: v5-d2-complete-version-graph-contract
+plan_ref: docs/plans/v5-master-execution-plan.md#17.3
+contract_status: FROZEN_FOR_IMPLEMENTATION
+implementation_status: NOT_IMPLEMENTED
+does_not_prove:
+  - runtime_path_implemented
+  - transport_route_or_capability_activation
+  - second_version_set_persisted
+  - semantic_diff_runtime
+  - replay
+  - provider_live
+  - production_release
+
+catalog_graph:
+  workspace_id: ws_fixture_d2
+  application_id: app_fixture_d2
+  application_lifecycle_state: ACTIVE
+  environment_id: env_fixture_d2
+  components:
+    - {component_id: cmp_fixture_d2_web, logical_name: web, lifecycle_state: ACTIVE, current_authoritative_revision: 2}
+    - {component_id: cmp_fixture_d2_model, logical_name: model, lifecycle_state: ACTIVE, current_authoritative_revision: 2}
+    - {component_id: cmp_fixture_d2_data, logical_name: data, lifecycle_state: ACTIVE, current_authoritative_revision: 2}
+    - {component_id: cmp_fixture_d2_tool, logical_name: tool, lifecycle_state: ACTIVE, current_authoritative_revision: 2}
+  component_revisions:
+    - {component_revision_id: crev_fixture_d2_web_1, component_id: cmp_fixture_d2_web, revision: 1, digest: "sha256:1111111111111111111111111111111111111111111111111111111111111111"}
+    - {component_revision_id: crev_fixture_d2_web_2, component_id: cmp_fixture_d2_web, revision: 2, digest: "sha256:2222222222222222222222222222222222222222222222222222222222222222"}
+    - {component_revision_id: crev_fixture_d2_model_1, component_id: cmp_fixture_d2_model, revision: 1, digest: "sha256:3333333333333333333333333333333333333333333333333333333333333333"}
+    - {component_revision_id: crev_fixture_d2_model_2, component_id: cmp_fixture_d2_model, revision: 2, digest: "sha256:4444444444444444444444444444444444444444444444444444444444444444"}
+    - {component_revision_id: crev_fixture_d2_data_1, component_id: cmp_fixture_d2_data, revision: 1, digest: "sha256:5555555555555555555555555555555555555555555555555555555555555555"}
+    - {component_revision_id: crev_fixture_d2_tool_1, component_id: cmp_fixture_d2_tool, revision: 1, digest: "sha256:6666666666666666666666666666666666666666666666666666666666666666"}
+  topology_revisions:
+    - {topology_revision_id: topo_fixture_d2_1, revision: 1, digest: "sha256:7777777777777777777777777777777777777777777777777777777777777777", edge_bindings: [{kind: DEPENDENCY_EDGE, id: de_fixture_d2_web_model, revision: 1, digest: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}, {kind: DEPENDENCY_EDGE, id: de_fixture_d2_web_data, revision: 1, digest: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}]}
+    - {topology_revision_id: topo_fixture_d2_2, revision: 1, digest: "sha256:8888888888888888888888888888888888888888888888888888888888888888", edge_bindings: [{kind: DEPENDENCY_EDGE, id: de_fixture_d2_web_model, revision: 1, digest: "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}, {kind: DEPENDENCY_EDGE, id: de_fixture_d2_web_tool, revision: 1, digest: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}]}
+
+version_sets:
+  - revision: 1
+    origin: bootstrap_import
+    exact_binding: {kind: SYSTEM_VERSION_SET, id: vset_fixture_d2_1, revision: 1, digest: "sha256:9999999999999999999999999999999999999999999999999999999999999999"}
+    exact_previous_system_version_set_binding_or_null: null
+    exact_component_revision_bindings:  # 输入顺序非字典序：[model, web, data]
+      - {kind: COMPONENT_REVISION, id: crev_fixture_d2_model_1, revision: 1, digest: "sha256:3333333333333333333333333333333333333333333333333333333333333333"}
+      - {kind: COMPONENT_REVISION, id: crev_fixture_d2_web_1, revision: 1, digest: "sha256:1111111111111111111111111111111111111111111111111111111111111111"}
+      - {kind: COMPONENT_REVISION, id: crev_fixture_d2_data_1, revision: 1, digest: "sha256:5555555555555555555555555555555555555555555555555555555555555555"}
+    exact_topology_revision_binding: {kind: TOPOLOGY_REVISION, id: topo_fixture_d2_1, revision: 1, digest: "sha256:7777777777777777777777777777777777777777777777777777777777777777"}
+  - revision: 2
+    origin: standalone_record
+    exact_binding: {kind: SYSTEM_VERSION_SET, id: vset_fixture_d2_2, revision: 2, digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}
+    exact_previous_system_version_set_binding_or_null: {kind: SYSTEM_VERSION_SET, id: vset_fixture_d2_1, revision: 1, digest: "sha256:9999999999999999999999999999999999999999999999999999999999999999"}
+    exact_component_revision_bindings:  # [model@new, web@same, tool]（非字典序，且相对 vset_1：model changed、data removed、tool added、web unchanged）
+      - {kind: COMPONENT_REVISION, id: crev_fixture_d2_model_2, revision: 2, digest: "sha256:4444444444444444444444444444444444444444444444444444444444444444"}
+      - {kind: COMPONENT_REVISION, id: crev_fixture_d2_web_1, revision: 1, digest: "sha256:1111111111111111111111111111111111111111111111111111111111111111"}
+      - {kind: COMPONENT_REVISION, id: crev_fixture_d2_tool_1, revision: 1, digest: "sha256:6666666666666666666666666666666666666666666666666666666666666666"}
+    exact_topology_revision_binding: {kind: TOPOLOGY_REVISION, id: topo_fixture_d2_2, revision: 1, digest: "sha256:8888888888888888888888888888888888888888888888888888888888888888"}
+
+expected_diff:
+  added: [{kind: COMPONENT_REVISION, id: crev_fixture_d2_tool_1, revision: 1, digest: "sha256:6666666666666666666666666666666666666666666666666666666666666666"}]
+  removed: [{kind: COMPONENT_REVISION, id: crev_fixture_d2_data_1, revision: 1, digest: "sha256:5555555555555555555555555555555555555555555555555555555555555555"}]
+  changed:
+    - {component_id: cmp_fixture_d2_model, from_binding: {kind: COMPONENT_REVISION, id: crev_fixture_d2_model_1, revision: 1, digest: "sha256:3333333333333333333333333333333333333333333333333333333333333333"}, to_binding: {kind: COMPONENT_REVISION, id: crev_fixture_d2_model_2, revision: 2, digest: "sha256:4444444444444444444444444444444444444444444444444444444444444444"}}
+  topology_changes:
+    - {kind: EDGE_REMOVED, from_edge_binding_or_null: {kind: DEPENDENCY_EDGE, id: de_fixture_d2_web_data, revision: 1, digest: "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"}, to_edge_binding_or_null: null}
+    - {kind: EDGE_ADDED, from_edge_binding_or_null: null, to_edge_binding_or_null: {kind: DEPENDENCY_EDGE, id: de_fixture_d2_web_tool, revision: 1, digest: "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}}
+  assurance_delta: {identity_assurance_changes: ["model revision 1 to revision 2"]}
+  deterministic: true
+  not_self_diff: true
+  direction_irreversible: true  # diff(A,B) != diff(B,A)，禁止反向 equivocation
+
+standalone_record_contract:
+  references_existing_authority_valid_objects_only: true
+  never_creates_prerequisite_objects: true
+  application_required_state: ACTIVE
+  component_revision_binding_rule:
+    exact_immutable_binding_required: true
+    bare_component_id_is_authority: false
+    mutable_current_head_is_authority: false
+    binding_must_exist_and_be_authority_valid: true
+  server_derived_fields: [identity_assurance_summary, version_set_digest]
+  creates_immutable_next_system_version_set: true
+  lineage_and_cas:
+    exact_previous_system_version_set_binding_required_from_second_version: true
+    expected_previous: CURRENT_AUTHORITATIVE_HEAD
+    stale_or_wrong_previous: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION
+  idempotency:
+    key_and_canonical_body_binding: REQUIRED
+    same_key_same_body_replay: IDENTICAL_TERMINAL_ATOMIC_RESPONSE_ZERO_NEW_FACTS
+    same_key_different_body: CONFLICT_WITH_ZERO_NEW_FACTS
+  authorization:
+    required_trust_roles_any_of: [integrator, trusted_builder]
+    authorization_before_idempotency_acquire: true
+    wrong_or_missing_trust_role: DENY_AND_AUDIT
+  transaction: ALL_OR_NOTHING_LOCAL_POSTGRES
+  event_outbox_audit_receipt_and_idempotency_share_uow: true
+  event: system_version_set.recorded
+
+get_contract:
+  reauthorizes_every_call: true
+  recursive_verification_layers: [record, envelope, digest, event, outbox, audit, authority_receipt]
+  missing_or_tampered_any_layer: FAIL_CLOSED
+  application_authorized_reader_required: true
+
+diff_contract:
+  same_workspace_and_application_required: true
+  cross_workspace_or_application: REJECT_AND_AUDIT
+  self_diff: FORBIDDEN
+  output_deterministic: true
+  compares_exact_immutable_version_sets_only: true
+  reverse_or_reordered_diff_equivocation: FORBIDDEN
+
+adversarial:
+  - {name: stale_component_revision_binding, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+  - {name: stale_topology_revision_binding, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+  - {name: cross_workspace_application_reference, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+  - {name: non_active_component_revision_binding, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+  - {name: bare_id_without_exact_binding, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+  - {name: wrong_exact_previous_system_version_set_binding, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+  - {name: same_idempotency_key_different_body, expected: CONFLICT_WITH_ZERO_NEW_FACTS}
+  - {name: missing_required_trust_role, expected: DENY_AND_AUDIT}
+  - {name: tampered_authority_receipt, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+  - {name: self_diff, expected: REJECT_AND_AUDIT}
+  - {name: cross_application_diff, expected: REJECT_AND_AUDIT}
+  - {name: reverse_diff_equivocation, expected: REJECT_AND_AUDIT}
+  - {name: record_creates_prerequisite_object, expected: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION}
+
+recovery:
+  populated_without_v5_catalog_history: UPGRADE_ALLOWED
+  in_place_digest_rewrite_or_relabel: FORBIDDEN
+  disposable_database: REBUILD
+  durable_database: EXPORT_VERIFY_REPLAY_RECONCILE_CUTOVER

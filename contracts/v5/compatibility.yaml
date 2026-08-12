@@ -56,6 +56,30 @@ d015_development_and_compatibility_lanes:
     route_or_capability_activation: false
     database_migration_or_authority_cutover: false
     completion_commit_or_runtime_evidence: false
+  d2_frozen_contract_surfaces:
+    system-versions.record:
+      contract_status: FROZEN_FOR_IMPLEMENTATION
+      implementation_status: NOT_IMPLEMENTED
+      public_http: HIDDEN_NOT_ACTIVATED
+      public_cli: HIDDEN_NOT_ACTIVATED
+      capability_discovery: HIDDEN_NOT_ACTIVATED
+    system-versions.get:
+      contract_status: FROZEN_FOR_IMPLEMENTATION
+      implementation_status: NOT_IMPLEMENTED
+      public_http: HIDDEN_NOT_ACTIVATED
+      public_cli: HIDDEN_NOT_ACTIVATED
+      capability_discovery: HIDDEN_NOT_ACTIVATED
+    system-versions.diff:
+      contract_status: FROZEN_FOR_IMPLEMENTATION
+      implementation_status: NOT_IMPLEMENTED
+      public_http: HIDDEN_NOT_ACTIVATED
+      public_cli: HIDDEN_NOT_ACTIVATED
+      capability_discovery: HIDDEN_NOT_ACTIVATED
+  d2_freeze_non_proof:
+    runtime_implementation: false
+    route_or_capability_activation: false
+    second_version_set_persisted: false
+    semantic_diff_runtime: false
 
 current_implemented_public_slice:
   contract: v4_s1a

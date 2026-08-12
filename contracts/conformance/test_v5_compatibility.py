@@ -241,7 +241,7 @@ def test_first_wire_slice_matches_registry_and_compatibility() -> None:
                 "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
             )
         else:
-            assert intent["wire_status"] == "DRAFT"
+            assert intent["wire_status"] in ("DRAFT", "FROZEN_FOR_IMPLEMENTATION")
             assert intent["implementation_status"] == "NOT_IMPLEMENTED"
         assert intent["cli_requires_explicit_api_major"] is True
         assert intent["http"]["path"].startswith("/api/v2/")

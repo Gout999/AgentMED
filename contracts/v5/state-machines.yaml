@@ -90,6 +90,28 @@ imports:
     - external_operation
     - closure_delivery
 
+d2_complete_version_graph_contract:
+  stage: D2
+  plan_ref: docs/plans/v5-master-execution-plan.md#17.3
+  contract_status: FROZEN_FOR_IMPLEMENTATION
+  implementation_status: NOT_IMPLEMENTED
+  frozen_intents: [system-versions.record, system-versions.get, system-versions.diff]
+  activation_status: NOT_ACTIVATED
+  standalone_record_transition_contract:
+    resource: system_version_set
+    business_state_machine: NONE_IMMUTABLE_RECORD
+    creation_event: system_version_set.recorded
+    exact_previous_system_version_set_binding_required_from_second_version: true
+    cas_on_current_authoritative_head: true
+    stale_or_wrong_previous: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION
+    same_postgresql_unit_of_work_required: true
+    direct_or_replayed_activation_of_other_resources: FORBIDDEN
+  standalone_get_and_diff_transition_contract:
+    no_business_state_machine: true
+    reauthorizes_every_call: true
+    output_deterministic: true
+  r3_full_r4_machines_runtime_status: NOT_IMPLEMENTED
+
 machines:
   ai_application:
     created_by_event: application.registered

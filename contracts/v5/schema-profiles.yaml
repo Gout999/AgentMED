@@ -248,6 +248,58 @@ r2_wire_profiles:
     initial_system_version_set_binding_constraint: exact_record_binding_v5:SYSTEM_VERSION_SET@revision_1
     additional_properties: false
 
+d2_wire_profiles:
+  system_versions_record:
+    request_required_fields:
+      - schema_version
+      - application_id
+      - environment_id
+      - exact_component_revision_bindings
+      - exact_topology_revision_binding
+      - exact_previous_system_version_set_binding_or_null
+    response_required_fields: [schema_version, workspace_id, request_id, audit_ref, system_version_set, idempotency]
+    response_field_refs:
+      system_version_set: contracts/v5/schemas/system-versions.record.schema.json#/$defs/recordedSystemVersionSet
+      idempotency: control-plane/app/public_api/v5_models.py#V5IdempotencyDelivery
+    references_existing_authority_valid_objects_only: true
+    never_creates_prerequisite_objects: true
+    application_required_state: ACTIVE
+    server_derived_fields: [identity_assurance_summary, version_set_digest]
+    lineage_and_cas:
+      exact_previous_system_version_set_binding_required_from_second_version: true
+      expected_previous: CURRENT_AUTHORITATIVE_HEAD
+      stale_or_wrong_previous: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION
+    idempotency:
+      key_and_canonical_body_binding: REQUIRED
+      same_key_same_body_replay: IDENTICAL_TERMINAL_ATOMIC_RESPONSE_ZERO_NEW_FACTS
+      same_key_different_body: CONFLICT_WITH_ZERO_NEW_FACTS
+    authorization:
+      required_trust_roles_any_of: [integrator, trusted_builder]
+      authorization_before_idempotency_acquire: true
+    additional_properties: false
+  system_versions_get:
+    response_required_fields: [schema_version, workspace_id, request_id, audit_ref, system_version_set]
+    response_field_refs:
+      system_version_set: contracts/v5/schemas/system-versions.get.schema.json#/$defs/recordedSystemVersionSet
+    reauthorizes_every_call: true
+    recursive_verification_layers: [record, envelope, digest, event, outbox, audit, authority_receipt]
+    missing_or_tampered_any_layer: FAIL_CLOSED
+    additional_properties: false
+  system_versions_diff:
+    request_required_fields: [source_version_set_id, target_version_set_id]
+    request_source: QUERY_PARAMETERS
+    response_required_fields: [schema_version, workspace_id, request_id, audit_ref, source_binding, target_binding, diff]
+    response_field_refs:
+      source_binding: contracts/v5/schemas/system-manifests.import.schema.json#/$defs/exactSystemVersionSetBinding
+      target_binding: contracts/v5/schemas/system-manifests.import.schema.json#/$defs/exactSystemVersionSetBinding
+      diff: contracts/v5/schemas/system-versions.diff.schema.json#/$defs/versionDiff
+    same_workspace_and_application_required: true
+    cross_workspace_or_application: REJECT_AND_AUDIT
+    self_diff: FORBIDDEN
+    output_deterministic: true
+    compares_exact_immutable_version_sets_only: true
+    additional_properties: false
+
 r2_wire_record_shapes:
   ApplicationRecord:
     authority_profile_ref: contracts/v5/schema-profiles.yaml#profiles/ai_application

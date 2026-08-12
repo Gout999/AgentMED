@@ -476,9 +476,14 @@ def test_draft_intents_disable_every_transport_and_target_owned_commands() -> No
                 "contracts/v5/schema-profiles.yaml#r2_wire_profiles/"
             )
         else:
-            assert intent["wire_status"] == "DRAFT"
+            assert intent["wire_status"] in ("DRAFT", "FROZEN_FOR_IMPLEMENTATION")
             assert intent["implementation_status"] == "NOT_IMPLEMENTED"
-            assert intent["field_contract_ref"] is None
+            if intent["wire_status"] == "DRAFT":
+                assert intent["field_contract_ref"] is None
+            else:
+                assert intent["field_contract_ref"].startswith(
+                    "contracts/v5/schema-profiles.yaml#d2_wire_profiles/"
+                )
         assert intent["http"]["path"].startswith("/api/v2/")
         assert intent["cli_requires_explicit_api_major"] is True
         if intent["kind"] == "mutation":

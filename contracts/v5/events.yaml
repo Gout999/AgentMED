@@ -122,6 +122,27 @@ r2_application_catalog_contract:
     component_revision_exact_current_active_component_revision_2_binding: REQUIRED
   r3_full_and_r4_event_writers_remain: NOT_IMPLEMENTED
 
+d2_complete_version_graph_contract:
+  stage: D2
+  plan_ref: docs/plans/v5-master-execution-plan.md#17.3
+  contract_status: FROZEN_FOR_IMPLEMENTATION
+  implementation_status: NOT_IMPLEMENTED
+  frozen_intents: [system-versions.record, system-versions.get, system-versions.diff]
+  activation_status: NOT_ACTIVATED
+  production_public_intent_events:
+    system-versions.record: [system_version_set.recorded]
+    system-versions.get: []
+    system-versions.diff: []
+  standalone_record_event_contract:
+    event: system_version_set.recorded
+    event_version: "2.0"
+    exact_subject_envelope: true
+    exact_previous_system_version_set_binding_included_from_second_version: true
+    event_outbox_subject_receipt_and_controller_audit_share_transaction: true
+    initiating_principal_audit_shares_root_transaction: true
+    record_event_and_outbox_share_atomic_transaction: true
+  standalone_record_event_never_claims_diff_or_observed_state: true
+
 event_envelope_v5:
   applies_to: every_event_in_this_major_2_catalog
   required_fields: [event_id, event_type, event_version, event_contract_major, workspace_id, transaction_id, occurred_at, actor_principal, correlation_id, causation_id, routing_key, exact_subject_binding, authority_receipt_id, payload, payload_digest]
