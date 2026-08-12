@@ -143,6 +143,122 @@ d2_complete_version_graph_contract:
     record_event_and_outbox_share_atomic_transaction: true
   standalone_record_event_never_claims_diff_or_observed_state: true
 
+v5_2a_work_kernel_contract:
+  stage: V5-2A-0
+  plan_ref: docs/plans/v5-master-execution-plan.md#6
+  decision_ref: docs/decisions/D-016-v5-work-event-schema-major-routing.md
+  contract_status: FROZEN_FOR_IMPLEMENTATION
+  implementation_status: NOT_IMPLEMENTED
+  activation_status: NOT_ACTIVATED
+  # D-016: Work events use the major-2 envelope while reusing the V4 semantic
+  # owner and state machines.  This is the `semantic_reuse_with_schema_major_routing`
+  # mode that contracts/v5/aggregate-ownership.yaml already declares for
+  # worker_task / attempt / proposal / proposal_decision / capability_lease /
+  # external_operation.  V4 payload bytes and V4 history are never reinterpreted.
+  schema_major_routing:
+    mode: semantic_reuse_with_schema_major_routing
+    ownership_source: contracts/v4/aggregate-ownership.yaml
+    state_machine_source: contracts/v4/events/state-machines.yaml
+    no_state_machine_copy: true
+    closed_json_schemas_are_not_inherited: true
+    v5_work_events_use_envelope: event_envelope_v5
+    v4_work_events_remain_addressable_under_contract_version_v4: true
+    same_aggregate_may_not_mix_majors_within_one_transaction: true
+  reused_v4_semantic_owners:
+    worker_task: work-controller
+    attempt: work-controller
+    proposal: proposal-controller
+    proposal_decision: proposal-controller
+    capability_lease: capability-controller
+    external_operation: scoped-executor-controller
+  # Writers that may never own domain success for the Work aggregates.  A
+  # receipt, projection, export or adapter acknowledgement is not success.
+  forbidden_writers:
+    coordinator:
+      may: [compose_owner_commands_in_one_transaction]
+      may_not: [append_domain_event, write_worker_task_or_attempt_row, issue_authority_receipt]
+    executor:
+      may: [report_attempt_receipt_and_output]
+      may_not: [append_domain_event, decide_terminal_state, write_worker_task_row]
+    adapter:
+      may: [deliver_outbox_message, return_delivery_receipt]
+      may_not: [append_domain_event, imply_domain_success, mutate_aggregate_state]
+    exporter:
+      may: [read_committed_facts]
+      may_not: [append_domain_event, write_any_aggregate_row, create_authority_receipt]
+  frozen_event_catalog:
+    worker_task:
+      - work.requested
+      - work.claimed
+      - work.heartbeat_recorded
+      - work.retry_scheduled
+      - work.cancel_requested
+      - work.cancelled
+      - work.completed
+      - work.exhausted
+      - work.blocked_unknown
+      - work.unknown_reconciled_retry
+      - work.unknown_reconciled_completed
+    attempt:
+      - attempt.created
+      - attempt.starting
+      - attempt.started
+      - attempt.receipt_recorded
+      - attempt.output_recorded
+      - attempt.succeeded
+      - attempt.failed
+      - attempt.timed_out
+      - attempt.cancel_requested
+      - attempt.cancelled
+      - attempt.unknown
+      - attempt.reconciled_succeeded
+      - attempt.reconciled_failed
+    proposal: [proposal.submitted]
+    proposal_decision: [proposal.accepted, proposal.rejected]
+  claim_transaction_contract:
+    # Master §6 2A-2: one PostgreSQL unit of work or nothing at all.
+    same_transaction_required:
+      - fixed_task_snapshot
+      - attempt_row_created
+      - attempt_scoped_runtime_capability_issued
+      - authority_receipt_recorded
+      - domain_event_appended
+      - controller_audit_recorded
+      - outbox_row_enqueued
+    any_step_failure_rolls_back_whole_claim: true
+    dual_lease_authority_forbidden: true
+    v3_case_lease_to_work_lease_requires_explicit_cutover: true
+  fencing_contract:
+    lease_carries_monotonic_fence_token: true
+    stale_fence_write_is_rejected_not_ignored: true
+    heartbeat_may_not_extend_a_lost_lease: true
+    late_receipt_after_lease_loss_is_rejected: true
+    ambiguous_attempt_outcome_is_unknown: true
+    unknown_requires_reconcile_before_retry: true
+  reaction_ledger_contract:
+    reaction_may_only_submit_next_owner_command: true
+    reaction_may_not_write_domain_success: true
+    per_aggregate_causal_order_preserved: true
+    consumer_idempotency_required: true
+    retry_and_dlq_are_explicit: true
+  ghost_success_rules:
+    decision_without_first_downstream_intent_is_rejected: true
+    proposal_accept_writes_decision_downstream_audit_and_outbox_in_one_transaction: true
+    wrapper_success_without_valid_output_is_failure: true
+    post_action_proposal_is_rejected: true
+  transports:
+    http: FORBIDDEN
+    cli: FORBIDDEN
+    sdk: FORBIDDEN
+    mcp: FORBIDDEN
+    a2a: FORBIDDEN
+    capability_discovery: FORBIDDEN
+  does_not_prove:
+    - agent_causal_or_provider_live_execution
+    - public_route_or_transport_activation
+    - v5_2b_async_public_intents
+    - production_canary_or_external_write
+
 event_envelope_v5:
   applies_to: every_event_in_this_major_2_catalog
   required_fields: [event_id, event_type, event_version, event_contract_major, workspace_id, transaction_id, occurred_at, actor_principal, correlation_id, causation_id, routing_key, exact_subject_binding, authority_receipt_id, payload, payload_digest]

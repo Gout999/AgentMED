@@ -112,6 +112,41 @@ d2_complete_version_graph_contract:
     output_deterministic: true
   r3_full_r4_machines_runtime_status: NOT_IMPLEMENTED
 
+v5_2a_work_kernel_contract:
+  stage: V5-2A-0
+  plan_ref: docs/plans/v5-master-execution-plan.md#6
+  decision_ref: docs/decisions/D-016-v5-work-event-schema-major-routing.md
+  contract_status: FROZEN_FOR_IMPLEMENTATION
+  implementation_status: NOT_IMPLEMENTED
+  activation_status: NOT_ACTIVATED
+  # D-016 reuses the V4 machines verbatim.  worker_task, attempt,
+  # capability_lease and external_operation are already listed under
+  # `imports.imported_without_redefinition` above; 2A adds no state, no
+  # transition and no failure semantics of its own.
+  reused_machines_without_redefinition:
+    - worker_task
+    - attempt
+    - capability_lease
+    - external_operation
+  runtime_binding:
+    worker_task:
+      initial: QUEUED
+      terminal: [COMPLETED, CANCELLED, EXHAUSTED]
+      authority: contracts/v4/events/state-machines.yaml#machines/worker_task
+    attempt:
+      initial: CREATED
+      terminal: [SUCCEEDED, FAILED, TIMED_OUT, CANCELLED]
+      authority: contracts/v4/events/state-machines.yaml#machines/attempt
+      unknown_is_not_terminal: true
+      reconcile_guard: trustworthy_terminal_receipt
+  enforcement_rules:
+    illegal_transition: REJECT_AND_ROLLBACK_ENTIRE_TRANSACTION
+    same_postgresql_unit_of_work_required: true
+    lease_lost_may_not_be_completed_by_stale_fence: true
+    unknown_requires_reconcile_before_retry: true
+    cancellation_is_best_effort_and_never_forges_terminal: true
+    projection_is_not_transition_authority: true
+
 machines:
   ai_application:
     created_by_event: application.registered

@@ -1006,6 +1006,57 @@ components:
     may: [authenticate_principal, map_canonical_intent, render_structured_artifact]
     must_not: [write_database_directly, own_domain_success, human_approve, execute_internal_operation]
 
+  # V5-2A-0 (D-016).  Work Kernel writer matrix.  The Work aggregates keep their
+  # V4 owners (worker_task/attempt -> work-controller, proposal/proposal_decision
+  # -> proposal-controller); these four roles surround them and may never own
+  # domain success.  Frozen for implementation, not activated.
+  work_kernel_coordinator:
+    stage: V5-2A-0
+    contract_status: FROZEN_FOR_IMPLEMENTATION
+    implementation_status: NOT_IMPLEMENTED
+    owns_domain_records: false
+    mode: single_local_postgresql_unit_of_work
+    may: [compose_owner_commands_in_one_transaction, preallocate_identifiers]
+    must_not:
+      - append_domain_event
+      - write_worker_task_or_attempt_row
+      - issue_authority_receipt
+      - decide_terminal_state
+  work_kernel_executor:
+    stage: V5-2A-0
+    contract_status: FROZEN_FOR_IMPLEMENTATION
+    implementation_status: NOT_IMPLEMENTED
+    owns_domain_records: false
+    may: [report_attempt_receipt, report_attempt_output, send_heartbeat]
+    must_not:
+      - append_domain_event
+      - decide_terminal_state
+      - write_worker_task_row
+      - extend_its_own_lease
+      - write_with_a_stale_fence_token
+  work_kernel_outbox_adapter:
+    stage: V5-2A-0
+    contract_status: FROZEN_FOR_IMPLEMENTATION
+    implementation_status: NOT_IMPLEMENTED
+    owns_domain_records: false
+    may: [deliver_outbox_message, return_delivery_receipt, request_retry_or_dlq]
+    must_not:
+      - append_domain_event
+      - imply_domain_success
+      - mutate_aggregate_state
+      - reorder_per_aggregate_causal_delivery
+  work_kernel_exporter:
+    stage: V5-2A-0
+    contract_status: FROZEN_FOR_IMPLEMENTATION
+    implementation_status: NOT_IMPLEMENTED
+    owns_domain_records: false
+    may: [read_committed_facts, render_read_projection]
+    must_not:
+      - append_domain_event
+      - write_any_aggregate_row
+      - create_authority_receipt
+      - present_projection_as_transition_authority
+
 forbidden_new_lifecycles:
   - system_change_lifecycle
   - change_record_lifecycle
