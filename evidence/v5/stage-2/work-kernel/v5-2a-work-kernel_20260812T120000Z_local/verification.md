@@ -50,6 +50,31 @@ All live/provider/Agent/human/production facets: **NOT_RUN** — no provider
 keys exist on this machine, and Master §546 keeps Agent/provider liveness out
 of V5-2A scope.
 
+## Independent verifier pass and remediation
+
+The post-commit independent verifier returned **FAIL (P0=1, P1=1)** on the
+first series:
+
+- **P0 (state machine)**: eight reachable kernel transitions escaped the
+  verbatim-reused V4 machines (e.g. `start_attempt` skipped STARTING;
+  fail/cancel/unknown accepted source states the V4 machine forbids;
+  reconcile-exhaust jumped BLOCKED_UNKNOWN→EXHAUSTED directly).
+- **P1 (evidence count)**: the unit count recorded mid-construction (1021)
+  did not match the verifier's measured count.
+
+Remediation commit `7ca8f80`: every transition now uses the V4-legal source
+sets; `start_attempt` walks CREATED→STARTING→RUNNING with both events;
+reconcile-exhaust walks WAITING_RETRY→EXHAUSTED as a second hop with its own
+event; lease-expiry recovery splits never-started attempts (cancel hops — no
+execution, no ambiguity) from started ones (UNKNOWN fail-closed); the
+LEASED→LEASED re-claim hop is eliminated.  Root-cause guard added:
+`test_v5_work_state_machine_conformance.py` replays every scenario's
+persisted event stream through the frozen V4 machines and requires the walked
+terminal state to equal the projection state — any future illegal hop fails
+mechanically.  Post-remediation counts: control-plane unit + wave checkers
+**1035 passed / 13 PG-gated skips**; work-kernel focused unit 35 passed; PG
+closure 5/5; integration matrix 13/13; conformance 559; import-graph PASS.
+
 ## Known exclusion (pre-existing, not from this stage)
 
 `tests/integration/test_v5_application_catalog_postgres.py` (s8 member):

@@ -19,7 +19,12 @@
       "8c5f328",
       "e46d05a"
     ],
-    "semantic_series_base": "92bde3c"
+    "semantic_series_base": "92bde3c",
+    "remediation": {
+      "commit": "7ca8f80",
+      "trigger": "independent verifier P0 (8 reachable transitions escaped the verbatim V4 machines) + P1 (stale unit count)",
+      "resolution": "all transitions restricted to the V4 source sets; start_attempt walks both STARTING hops; reconcile-exhaust walks two legal hops; lease-expiry recovery splits never-started (cancel hops) from started (UNKNOWN path); new mechanical guard test_v5_work_state_machine_conformance.py replays every scenario's event stream through the frozen V4 machines"
+    }
   },
   "decision": {
     "ref": "docs/decisions/D-016-v5-work-event-schema-major-routing.md",
@@ -36,8 +41,8 @@
     "compiler_determinism": "PASS (emit zero-diff on contracts/v5/generated/)",
     "compiler_tests": "18 passed",
     "conformance": "559 passed (557 baseline + 2 new V5-2A section guards)",
-    "control_plane_unit_and_wave_checkers": "1021 passed, 13 PG-gated skips",
-    "work_kernel_unit": "28 passed (test_v5_work_kernel 14, dispatcher 7, fixture executor 7)",
+    "control_plane_unit_and_wave_checkers": "1035 passed, 13 PG-gated skips (post-remediation count; the pre-remediation manifest line said 1021 which was a stale mid-construction count — corrected after independent verifier P1)",
+    "work_kernel_unit": "35 passed (test_v5_work_kernel 15, dispatcher 7, fixture executor 7, state-machine conformance 6)",
     "import_graph": "PASS (0 cycles, 0 unclassified, 0 direct-table violations)",
     "cli": "130 passed",
     "console": "20 passed + production build PASS",

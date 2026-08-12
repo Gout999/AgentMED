@@ -1,8 +1,8 @@
 f5e2698f2b836d6f841fd6b22bb9076d207ce38b7eedd1510d039f6994596746  ./artifacts/NOT_APPLICABLE.md
 6ce97ab4d5e989ba9ea531bc96dff6036e159da5f0984d739553a3e84e037de6  ./commands/README.md
 849bee7cc02cce47062462e123ff538296ce5ebdaebce8514d8bc1e13f0a152f  ./raw/verify-convergence-s1-s7.txt
-e11b813e29ce153da40a2fa324a414695e8ac411cafc0e321b3a81a6e6e5e811  ./raw/work-kernel-postgres.txt
-8275a1beb4f139a192d02d037cefd3951a0d6fc2546b0c7bdce34ef9cd369e05  ./raw/work-kernel-unit.txt
+68b4557ee34e7a9f936682f7a1c9e5820a8a3325be906876343b339f8b44658d  ./raw/work-kernel-postgres.txt
+a641facfaec646f8c5f4a7c15ccabab20ec7f7a98f9bf0ca02f61687dccd0df1  ./raw/work-kernel-unit.txt
 0f65636bd1526617032c174009f5995ea457d7d8c4b495203a90bc1cc9773c40  ./receipts/NOT_APPLICABLE.md
-40ac7bd19e68376bbea9ce13fd3e2268a269092ad4f8947e969aca3e549098a6  ./run-manifest.json
-0ada049c7cf6049a034e23f9ac2f5aac63901ae2ab26c3f2f9bc2005dda76e63  ./verification.md
+51d9f0e3cbf67650ee69286a2487d707d61f82793700361029681202e4b1fe9f  ./run-manifest.json
+0654dd36332342494537d7270ccaf6281d5d2dec2df56ec637dc7531b2a4e4fb  ./verification.md
