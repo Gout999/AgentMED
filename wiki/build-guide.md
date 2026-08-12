@@ -23,10 +23,13 @@
 
 Stage 1 只有在 S1A 与 S1B 各自满足测试、证据和验收边界后才能整体关闭；本地 PostgreSQL/loopback 通过不等于 `domain-provider-live`。
 
-V4 S1B–S7 继续冻结。D-013 和 V5 construction baseline 已接受；当前只允许按 Master Plan
-关闭 V5-1 repair。V5-2+ 必须等待 R0–R4 completion commits/evidence/verifier，并另行冻结
-对应 contract/runtime activation；不得从“baseline accepted”推导 route、worker、Adapter
-或 Console 已完成。
+V4 S1B–S7 继续冻结。D-013/D-015 和 V5 construction baseline 已接受；C0–C5 收敛已
+完成并经 `b6fa629` 复核，D2（contract-only）、R3-full 与 R4 已关闭，当前唯一执行入口是
+V5-2A（Master §17.6），代码施工按 2026-08-12 owner 裁决在远端机进行，本地负责
+disposable-PostgreSQL journey、live facet 与最终收口（见
+[V5 远端施工交接](../docs/context/V5_REMOTE_CONSTRUCTION_HANDOFF.md)）。V5-2B+ 按前驱链
+锁定，并另行冻结对应 contract/runtime activation；不得从“baseline accepted”推导
+route、worker、Adapter 或 Console 已完成。
 
 ## 工具无关的角色分工
 

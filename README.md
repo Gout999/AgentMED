@@ -6,7 +6,7 @@
 
 CaseLoop 希望把这件事变成一个可审计的治理流程：接收质量信号，把模糊反馈变成有来源、经维护者确认的 AcceptanceCriteria 和可判定 bad-case input，绑定完整 AI 应用版本与运行证据，再由 V5-4 exact ResolutionContract 物化 executable BadcaseSpec，验证归因和候选修复。代码库或离线任务可以在 Verified Candidate 结束；需要部署的 AI 应用才经过 release-authorizing Gate、人工审批、观察、回滚或补偿。AI 负责分析与起草，确定性控制面掌握状态、权限、审批、执行对账与恢复。
 
-当前仓库用「小智客服」跑第一条纵向参考链路。投诉、飞书回复、prompt/知识库/模型三层归因和固定六角色都是这个场景的实现，**不是 CaseLoop 的最终产品边界，也不是通用 AI 应用治理已经完成的证明**。V4 S1A 的五个认证 HTTP/CLI intent 和 no-trace `Signal → QualityCase → UNKNOWN evidence` 本地链路已实现；R1 authority/event foundation 与 R2 exact 11-intent Application Catalog + bootstrap-only first graph 已提交并通过 clean verifier，但 checksum-bearing final evidence 按 owner 指示延后，故保持 `VERIFYING`。C0–C5 架构收敛已完成并由 `b6fa629` remediation 重验；D2 是唯一 `ELIGIBLE / NOT STARTED` package，R3-full、R4 与 V5-2+ 仍保持锁定。
+当前仓库用「小智客服」跑第一条纵向参考链路。投诉、飞书回复、prompt/知识库/模型三层归因和固定六角色都是这个场景的实现，**不是 CaseLoop 的最终产品边界，也不是通用 AI 应用治理已经完成的证明**。V4 S1A 的五个认证 HTTP/CLI intent 和 no-trace `Signal → QualityCase → UNKNOWN evidence` 本地链路已实现；R1 authority/event foundation 与 R2 exact 11-intent Application Catalog + bootstrap-only first graph 已提交并通过 clean verifier，但 checksum-bearing final evidence 按 owner 指示延后，故保持 `VERIFYING`。C0–C5 架构收敛已完成并由 `b6fa629` remediation 重验；D2、R3-full、R4 已按各自证据关闭，V5-2A（Durable Work Kernel，Master §17.6）是唯一 `ELIGIBLE` package，V5-2B+ 仍按依赖锁定。
 
 CaseLoop 不以击败某个闭源产品为目标。Langfuse、OpenTelemetry、Phoenix、eval 框架、Agent runtime 和 sandbox 都可以是参考或适配对象；是否集成、复用或自行实现，以目标用户需求、可靠性、私有部署、许可证和维护成本决定。完整原则见 [`docs/product-principles.md`](docs/product-principles.md)。
 
@@ -18,8 +18,10 @@ work package、stop gate 和提交边界见 [Master Execution Plan](docs/plans/v
 跨层协议收敛的施工入口见
 [V5 Architecture Convergence](docs/plans/v5-architecture-convergence.md)。施工基线不证明
 runtime 或 cutover 已完成。C0–C5 收敛已由 remediation subject `b6fa629` 通过 detached
-clean unified gate；下一唯一施工入口是 Master §17 的 D2 完整
-`system-versions.record/get/diff` contract gate。R3-full、R4 与 V5-2+ 仍按依赖锁定。
+clean unified gate；D2、R3-full、R4 已按各自证据关闭。当前唯一施工入口是 Master §17.6
+的 V5-2A Durable Work Kernel，按 2026-08-12 owner 分工交由远端施工机完成代码部分
+（交接见 [V5 Remote Construction Handoff](docs/context/V5_REMOTE_CONSTRUCTION_HANDOFF.md)），
+本地负责 disposable-PostgreSQL journey、live facet 与最终收口；V5-2B+ 仍按依赖锁定。
 
 ### 现在 AgentTeams 里是什么
 

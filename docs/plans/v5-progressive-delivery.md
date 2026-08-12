@@ -11,18 +11,19 @@
 > 历史 freeze 和 stage exit，不作为 current worktree 状态页。
 >
 > D-015 已接受 V5 为新产品/领域开发默认设计与施工基线，V3/V4 为 compatibility lanes；
-> 这不是 runtime/public cutover proof。当前执行必须先完成
-> [`v5-architecture-convergence.md`](v5-architecture-convergence.md) 的 C0–C5，D2、R3、
-> R4 与 V5-2+ 在此之前保持锁定。**C0–C5 架构收敛系列已全部关闭并由 `b6fa629`
-> remediation 重验**（原 C5 `19f26bf`；detached clean unified gate 8/8 PASS）。D2
-> `ELIGIBLE / NOT STARTED`，且当前执行裁决要求完整 `record/get/diff` bundle；R3-full、R4、
-> V5-2+ 继续锁定；SHA/evidence digest 保持 `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`。
+> 这不是 runtime/public cutover proof。**C0–C5 架构收敛系列已全部关闭并由 `b6fa629`
+> remediation 重验**（原 C5 `19f26bf`；detached clean unified gate 8/8 PASS）。D2 已关闭
+> （contract-only `5717124`+`4852664`，完整 `record/get/diff` bundle）；R3-full 已关闭
+> （`33ea7e6`+`caed0eb`+`18482f8`，standalone record/get/diff runtime）；R4 已关闭
+> （`df86662`+`7c17391`+`365c2c8`，First System Case closure）。当前唯一 `ELIGIBLE` 执行入口
+> 是 V5-2A（Master §17.6），代码施工按 2026-08-12 owner 裁决交由远端施工机；V5-2B+ 继续
+> 按 Master §17 前驱链锁定；SHA/evidence digest 保持 `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`。
 
 本蓝图面向能够冷启动接手任务的后续 Agent/贡献者。每个步骤都必须先读本文件、
 `AGENTS.md`、`docs/product-principles.md`、`docs/plan-v5.md`、
 `docs/context/PROJECT_STATE.md` 和 `docs/context/LAST_HANDOFF.md`。V5-0 契约
-基线已于 2026-08-11 冻结并接受；D-015 进一步确定默认开发 lane。当前先按 C0–C5
-收敛模块化单体与 compatibility façades，收敛完成后 V5 stages 再按下面更新后的依赖图施工，
+基线已于 2026-08-11 冻结并接受；D-015 进一步确定默认开发 lane。C0–C5 收敛已关闭，
+V5 stages 按下面更新后的依赖图施工（当前入口 V5-2A，Master §17.6），
 每个 stage 完成 focused tests、verifier、evidence 与 semantic commit 后才能进入
 下一 stage。V4 S1B–S7 仍冻结。接受契约不等于实现 runtime：每个 stage 的 runtime
 facet 只有在真实 evidence 出现后才可标记。
@@ -86,24 +87,24 @@ required 时才阻塞 Gate；比赛可诚实 abstain 后直接进入独立 Candi
 
 - C0 接受并复核 D-015/convergence plan，建立 clean branch、WIP inventory 与 characterization；
   文档或计数存在不等于 C0 DONE；（C0 已于 2026-08-11 关闭：semantic series `a14784a` +
-  `903e954`，post-commit verifier PASS，P0=0/P1=0；C1–C3 已于同日关闭（`3dc7339`、`d2c3f18`、`3adaac0`），D2 现为 `ELIGIBLE / NOT STARTED`）。
+  `903e954`，post-commit verifier PASS，P0=0/P1=0；C1–C3 已于同日关闭（`3dc7339`、`d2c3f18`、`3adaac0`），D2 现已关闭（contract-only `5717124`+`4852664`））。
 - C1 以 JSON Schema 2020-12 + intent registry 建立 single-source wire 和
   activated-operation compiler，generated/legacy validators 先做 shadow dual validation；
   （C1 已于 2026-08-11 关闭：semantic subject `3dc7339`，post-commit verifier PASS，
-  P0=0/P1=0；D2 现为 `ELIGIBLE / NOT STARTED`）。
+  P0=0/P1=0；D2 现已关闭（contract-only `5717124`+`4852664`））。
 - C2 在 C1 之后抽取 records、event specifications 与 exact-binding graph verifier foundation，
   不承载业务 command 或 transport activation；（C2 已于 2026-08-11 关闭：semantic subject
-  `d2c3f18`，post-commit verifier PASS，P0=0/P1=0；D2 现为 `ELIGIBLE / NOT STARTED`）。
+  `d2c3f18`，post-commit verifier PASS，P0=0/P1=0；D2 现已关闭（contract-only `5717124`+`4852664`））。
 - C3 消除 capability/import cycles，并按 canonical owner 拆 coordinator/service/repository，
   保持一个 PostgreSQL UoW，不增加 D2/R3/R4 行为；（C3 已于 2026-08-11 关闭：semantic
-  subject `3adaac0`，post-commit verifier PASS，P0=0/P1=0；D2 现为 `ELIGIBLE / NOT STARTED`）。
+  subject `3adaac0`，post-commit verifier PASS，P0=0/P1=0；D2 现已关闭（contract-only `5717124`+`4852664`））。
 - C4 将 OpenAPI/Python/TypeScript/CLI/router/capability façades切到 generated artifacts；
   remediation 后 generated structural 与 semantic validator 必须同时接受，默认 major 不变；（C4 已于 2026-08-11 关闭：semantic
-  subject `1d7b59c`，post-commit verifier PASS，P0=0/P1=0；D2 现为 `ELIGIBLE / NOT STARTED`）。
+  subject `1d7b59c`，post-commit verifier PASS，P0=0/P1=0；D2 现已关闭（contract-only `5717124`+`4852664`））。
 - C5 只在 C4 parity 后清理已证明 obsolete 的 compatibility duplication，启用 effective
   boundary enforcement，完成 recovery 与 independent P0/P1 review，只解锁 D2。
   （原 C5 semantic subject `19f26bf`，执行基线 remediation `b6fa629` detached clean gate
-  8/8 PASS；**C0–C5 收敛系列完成并修正**，D2 现为 `ELIGIBLE / NOT STARTED`）。
+  8/8 PASS；**C0–C5 收敛系列完成并修正**，D2 现已关闭（contract-only `5717124`+`4852664`））。
 
 不能把 C1 改成纯 module inventory，也不能在 C1 wire 单一来源之前启动 shared foundation
 或业务 decomposition。C0 characterization 的 LOC/model/handler 数只定义结构风险和范围，
@@ -121,9 +122,9 @@ R2 当前只可报告 `contract=PASS` 与 `replay=PASS`。最终 subject SHA 和
 ## 2. V5-0 — 设计、owner 与兼容冻结
 
 > 状态：V5-0B/0C 已于 2026-08-11 关闭（`8dd25ca`、`b3727d7` 独立验收 PASS）。
-> V5-0A 的产品决策已接受，但 D-013/product-principles 的 clean-checkout 文档包装在当前
-> repair 中重新打开；这不改写 0B/0C 历史 freeze。本节保留历史 context 与 exit，当前
-> repair 见 Master Plan R0。
+> V5-0A 的产品决策已接受，但 D-013/product-principles 的 clean-checkout 文档包装曾在
+> R0 repair 中重新打开（已关闭：semantic subject `4d15c1c`）；这不改写 0B/0C 历史
+> freeze。本节保留历史 context 与 exit。
 
 ### V5-0A · Product boundary and supersession
 
@@ -282,7 +283,7 @@ acceptance-criteria.confirm
 
 ### V5-1A · Application catalog
 
-> 状态：**R2 CONTRACT/REPLAY PASS ONLY / C0-C5 CONVERGENCE COMPLETE / D2 ELIGIBLE / NOT STARTED**。该边界不证明
+> 状态：**R2 CONTRACT/REPLAY PASS ONLY / C0-C5 CONVERGENCE COMPLETE / D2-R3-R4 CLOSED / V5-2A ELIGIBLE**。该边界不证明
 > 完整 runtime；最终 subject SHA/evidence digest 依 owner 指示延后最终项目收口。C0–C5
 > 只允许行为不变的结构收敛，不得借 V5-1A 名义继续领域扩张。
 
@@ -316,8 +317,10 @@ acceptance-criteria.confirm
 
 ### V5-1B · System manifest and VersionSet
 
-> 状态：**LOCKED**。C5 PASS 后仍须先通过 D2 完整 version-graph contract gate；现有
-> workspace-initial bootstrap 不证明第二 VersionSet 或真实 diff。
+> 状态：**CLOSED VIA R3-FULL**。D2 完整 version-graph contract gate 已通过（contract-only
+> `5717124`+`4852664`），第二 VersionSet 与真实 diff 由 R3-full 实现并关闭
+> （`33ea7e6`+`caed0eb`+`18482f8`）；workspace-initial bootstrap 不是第二 VersionSet 或
+> 真实 diff。
 
 #### Deliverables
 
@@ -360,8 +363,9 @@ acceptance-criteria.confirm
 
 ### V5-1C · First System Case
 
-> 状态：**LOCKED**。只在 C5、D2 与 R3-full 依次 PASS 后恢复；已有 repair/fixture/Console
-> 不构成本 stage completion。
+> 状态：**CLOSED VIA R4**。C5、D2 与 R3-full 已依次 PASS；R4 关闭 First System Case
+> （`df86662`+`7c17391`+`365c2c8`：5 个 1C intent 激活、readiness 界限
+> PENDING_MATERIALIZATION、duplicate-confirm fail-closed、CLI case 命令族）。
 
 #### Deliverables
 
@@ -400,8 +404,10 @@ acceptance-criteria.confirm
 
 ### V5-2A · Work Kernel
 
-> 状态：**LOCKED / NOT IMPLEMENTED**。C0–C5、D2、R3-full 与 R4 未关闭前不得施工、
-> advertise 或借 structural convergence 预埋 runtime。
+> 状态：**ELIGIBLE（Master §17.6）**。C0–C5、D2、R3-full 与 R4 均已关闭；代码施工按
+> 2026-08-12 owner 裁决交由远端施工机
+> （[`V5_REMOTE_CONSTRUCTION_HANDOFF.md`](../context/V5_REMOTE_CONSTRUCTION_HANDOFF.md)），
+> 本地负责 disposable-PostgreSQL journey 与最终收口。runtime 尚未实现，不得 advertise。
 
 #### Deliverables
 

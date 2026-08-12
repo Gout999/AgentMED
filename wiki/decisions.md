@@ -22,7 +22,7 @@
 | P12 | live 使用两条独立验收轴：`domain-provider-live` 与 `agent-causal` | `platform evidence export` 只是只读取证类别，不能单独满足 `agent-causal`；Worker 休眠/移除时后者必须失败 |
 | P13 | 首个第二 workload 是 coding Agent：维护报告/issue → 本地 patch candidate → sandbox/eval → draft PR 候选 | GitHub 留言、认领、fork、push、PR 均为独立外部写动作，执行前逐次授权 |
 | P14 | Skill/MCP 采用候选、隔离、评测、Gate、首次人批、固定版本、canary、rollback/revoke 路线，并接入阿里云要求 | Stage 5 前不生产安装/外部发布；阿里云 Adapter 不取代内部 PostgreSQL Registry 权威 |
-| P15 | S1A 封板后暂停后续 v4 施工，先盘点从 Agent 治理扩展到 AI-system 治理的 V5 需求 | S1B–S7 在 v4/v5 兼容或替代关系正式裁决前不启动 |
+| P15 | S1A 封板后暂停后续 v4 施工，先盘点从 Agent 治理扩展到 AI-system 治理的 V5 需求 | D-015 已裁决 V4 为兼容 lane；S1B–S7 仍冻结不启动 |
 | P16 | V5 顶层治理对象是完整 `AIApplication`，Agent 是一类 `SystemComponent` | 代码、模型、Prompt、RAG、Skill/MCP/tool、Policy、Memory 与 Runtime 进入同一个系统版本和证据边界；见 D-013 |
 | P17 | V5 是 Agent-native 治理运营控制面，同时保留 Human Console | HTTP/CLI/MCP/A2A/SDK/Console 复用 canonical intents；真实外部 Agent 调 CLI 足以关闭比赛首条调用证明，A2A/MCP runtime 后置增量 |
 | P18 | Desired、Observed、Effect 分开；V5 以 schema-major-2 system profile 复用 V4 Durable Work 与 Candidate/Gate/WorkOrder/ExternalOperation 的 logical owner/兼容 lifecycle，并补齐 V4 仅命名但未实现的人类 Approval lifecycle | 不原位继承 closed V4 schema，也不另造第三套 Case/Gate/Release；移动 Assignment、Executor receipt 或 A2A completed 都不能冒充实际生效/发布成功 |

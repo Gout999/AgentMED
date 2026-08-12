@@ -4,11 +4,14 @@
 >
 > Decision: [D-015](../decisions/D-015-v5-default-development-baseline-and-v3-v4-compatibility-lanes.md)
 >
-> Current wave: **D2 ELIGIBLE / NOT STARTED**（**C0–C5 convergence COMPLETE / REMEDIATED**:
-> original series through `19f26bf`; execution baseline repair `b6fa629`; detached clean unified
-> gate 8/8 PASS）
+> Current wave: **D2, R3-full and R4 CLOSED**（D2 contract-only `5717124`+`4852664`; R3-full
+> `33ea7e6`+`caed0eb`+`18482f8`; R4 `df86662`+`7c17391`+`365c2c8`）.**C0–C5 convergence
+> COMPLETE / REMEDIATED**: original series through `19f26bf`; execution baseline repair
+> `b6fa629`; detached clean unified gate 8/8 PASS）
 >
-> Locked while convergence waves remain open: **R3, R4, V5-2+**（D2 unlocked to `ELIGIBLE / NOT STARTED` after C5）
+> Execution entry: **V5-2A (Durable Work Kernel, Master §17.6)** is the only `ELIGIBLE` package;
+> V5-2B+ remain LOCKED by the Master §17 predecessor chain（D2 was unlocked to `ELIGIBLE / NOT
+> STARTED` after C5, then closed contract-only）
 
 ## 1. Purpose and outcome
 
@@ -77,8 +80,11 @@ calling a domain command.
 ## 3. Current truth and deferred evidence
 
 R2 is accepted only as `contract=PASS` and `replay=PASS` for the exact R2 scope. This plan does not
-upgrade it to full runtime closure. Standalone version record/get/diff, R3-full, R4 and V5-2+ remain
-locked and unimplemented unless their own later evidence says otherwise.
+upgrade it to full runtime closure. Standalone version record/get/diff and R3-full were delivered
+and closed as their own stages (`33ea7e6`+`caed0eb`+`18482f8`); R4 first-system-case closed at
+`df86662`+`7c17391`+`365c2c8`; D2 closed contract-only at `5717124`+`4852664`. V5-2A is the only
+`ELIGIBLE` execution entry (Master §17.6); V5-2B+ remain locked and unimplemented unless their own
+predecessor-chain evidence closes.
 
 The product owner has deferred final subject SHA recording and evidence-bundle digest finalization
 to final project closure. Every C-wave report must preserve the label
@@ -341,8 +347,9 @@ later-stage implementation mixed into the convergence series.
 **Rollback:** keep D2 and later stages locked, disable affected V5 mutation/dispatcher paths,
 continue safe V3/V4 compatibility service, and reopen the earliest failed wave.
 
-**Unlock:** D2 decision work only. D2 is `ELIGIBLE / NOT STARTED` after remediation `b6fa629`
-passed the detached clean unified gate.
+**Unlock:** D2 decision work only. D2 was unlocked to `ELIGIBLE / NOT STARTED` after remediation
+`b6fa629` passed the detached clean unified gate, and has since closed contract-only
+(`5717124`+`4852664`).
 
 ## 6. Cross-wave hard gates
 
@@ -412,7 +419,7 @@ Allowed only after the named wave has its own semantic and status closure:
 - `D-015 ACCEPTED / NOT RUNTIME CUTOVER PROOF`;
 - `C0 DONE` (`a14784a`+`903e954`) / `C1 DONE` (`3dc7339`) / `C2 DONE` (`d2c3f18`) / `C3 DONE` (`3adaac0`) / `C4 DONE` (`1d7b59c`) / `C5 DONE` (`19f26bf` + remediation `b6fa629`), or the exact verified wave status;
 - `R2 contract/replay PASS only`;
-- `D2/R3/R4/V5-2+ LOCKED`;
+- `D2 CLOSED (contract-only)` / `R3-full CLOSED` / `R4 CLOSED`; `V5-2A ELIGIBLE`; `V5-2B+ LOCKED`;
 - `SHA/evidence digest DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE`.
 
 Forbidden before their own runtime closure:

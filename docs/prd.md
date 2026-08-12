@@ -1,5 +1,7 @@
 # CaseLoop 产品需求文档（PRD）
 
+> **生命周期标记（2026-08-12）：HISTORICAL** —— 本文是 v1 草稿期产品需求快照（原状态"草案待评审"，从未被接受为权威基线）。V5 是当前默认设计与施工基线，产品需求入口为 `docs/prd-v5.md`（D-015）；v1「小智客服纵切」场景的已实现部分由 V3 兼容 lane 的 `docs/plan-v3.md`、`docs/spec.md`、`contracts/` 与可执行测试约束。不能从本文推导当前产品范围、任何 runtime/live 能力或 V5 已实现。
+
 > 版本：v1.0 ｜ 日期：2026-08-07 ｜ 状态：草案待评审
 > 适用范围：当前“小智客服纵切”参考工作负载的 v1 PRD，不是通用 Agent 产品 PRD。产品战略与范围取舍以 `docs/product-principles.md` 为准；当前实现约束以 `docs/plan-v3.md`、`contracts/` 和可执行测试为准。
 > 本文档不引入 plan-v3 之外的架构决策。通用 Agent、Langfuse/TraceSource、Signal/Closure 适配器和第二工作负载已经由 `docs/prd-v2.md` / `docs/plan-v4.md` 批准并进入 Stage 0 target contracts，但尚无相应 migration/runtime/live 证明；不能从本 v1 文档或 target contract 推断为已实现。

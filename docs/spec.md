@@ -1,5 +1,7 @@
 # CaseLoop 技术规格说明书（SPEC）
 
+> **当前权威提示（D-015，2026-08-11）**：本文是已实现 V3 兼容 lane 的 v1 技术规格，不再指导新的产品或领域开发。新开发默认以 `docs/plan-v5.md` 及 V5 blueprint/contracts 为设计与施工基线；V4 兼容基线见 `docs/plan-v4.md`。该指向不改变 public API/CLI 默认 major，不自动启用 V5 route/capability，也不把任何未有 runtime 证据的 V5 能力写成已实现。下方历史正文保持原意。
+
 > 版本：v1.0 ｜ 日期：2026-08-07 ｜ 状态：草案待评审
 > 适用范围：当前“小智客服纵切 + AgentTeams 执行层”的 v1 技术规格。产品战略以 `docs/product-principles.md` 为准；当前实现以 `docs/plan-v3.md`、`contracts/` 和可执行测试为准。
 > 本文档不引入 plan-v3 之外的架构决策；通用 Agent 数据模型、Langfuse/TraceSource 和新的适配器契约应在需求冻结后另出新版规格，不能继续往本版状态机中默认追加。

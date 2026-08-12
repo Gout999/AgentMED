@@ -1,6 +1,10 @@
 # R0 Documentation Authority Provenance
 
-> Status: **SEMANTIC SUBJECT INVENTORY / PENDING POST-COMMIT VERIFICATION**
+> Status: **SEMANTIC SUBJECT INVENTORY / VERIFIED (2026-08-12 更正)** —— semantic subject
+> `4d15c1c81180386fa4852a53f8b8847e74cda050` 已通过 detached clean-checkout 独立复核
+> （P0=0/P1=0），R0 记为 `DONE`；证据见
+> `evidence/v5/stage-0/documentation-authority/r0docs_20260811T104032Z_4d15c1c/`。
+> checksum-bearing final evidence 仍按 owner 指示延后至全项目最终收口。
 >
 > Pre-R0 baseline: `4a0a421cc669bf98d9b882d149d5d3df4c8dc36e`
 >

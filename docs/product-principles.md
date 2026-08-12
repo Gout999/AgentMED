@@ -1,5 +1,7 @@
 # CaseLoop 产品原则
 
+> 生命周期标记：**AUTHORITATIVE** ｜ 本文属于当前权威层（产品定位、范围取舍与对外口径的上位原则），不能归档；研究报告、比赛材料与历史快照不得覆盖本文。
+
 > 状态：**V5 是全部新产品/领域开发的默认设计与施工基线；runtime 仅按证据分阶段成立** ｜ 生效日期：2026-08-10 ｜ D-015 当前裁决：2026-08-11
 >
 > 本文是产品定位、范围取舍与对外口径的上位原则。V5 产品转向由 `docs/decisions/D-013-v5-ai-system-governance-and-agent-native-control-plane.md` 记录；D-015 进一步裁决 `docs/prd-v5.md`、`docs/plan-v5.md`、`docs/plans/v5-progressive-delivery.md` 与冻结的 `contracts/v5/` 为全部新产品和领域开发的默认设计与施工基线。V4 只保留为兼容基线，V3 是已实现兼容 lane。该裁决不改变 public API/CLI 的默认 major，不自动启用 route/capability，也不证明完整 V5 runtime、provider、Agent、external 或 production 已实现。当前执行与阻塞以 `docs/plans/v5-master-execution-plan.md`、`PLANS.md` 和 `docs/context/` 为准；运行事实只由代码、PostgreSQL 权威记录和可复验证据证明。研究报告和比赛材料不能覆盖这些层级。

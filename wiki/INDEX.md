@@ -4,7 +4,7 @@
 > 用途：提供「完成当前任务所需的最小上下文」；本 Wiki 是导航与蒸馏，不是独立权威源。
 > 维护：发现已验证的新事实、平台限制或契约变化后，更新对应页面并注明适用版本或日期。
 
-开始任何工作前，先读 [文档权威索引](../docs/README.md)、[产品原则](../docs/product-principles.md)、[仓库工程规则](../AGENTS.md) 和任务涉及的正式 plan。当前 Wiki 同时保留 v3 客服参考纵切、V4 S1A 已实现边界，并导航已接受的 V5 施工基线与当前 repair；不能把 contract、目标架构、参考场景、研究结论或历史比赛叙事写成已实现能力。
+开始任何工作前，先读 [文档权威索引](../docs/README.md)、[产品原则](../docs/product-principles.md)、[仓库工程规则](../AGENTS.md) 和任务涉及的正式 plan。当前 Wiki 同时保留 v3 客服参考纵切、V4 S1A 已实现边界，并导航已接受的 V5 施工基线与当前 V5-2A 执行入口；不能把 contract、目标架构、参考场景、研究结论或历史比赛叙事写成已实现能力。
 
 ## 页面地图
 
@@ -33,8 +33,8 @@
 
 ## 当前活动工作
 
-- D-013 已确认 V5 产品边界：治理完整 AIApplication，并让其他 Agent 通过同一治理内核调用。V5-0B/0C contract freeze 已接受；V5-1A/B/C 当前仍是未提交的 repair/closure worktree，不能标 stage `DONE`。
-- V4 Stage 0、Stage 1 Entry 与 S1A 已封板。S1A 只证明本地 authenticated no-trace intake，不证明 provider/Agent/live；V4 S1B–S7 冻结，V5-2+ 尚未实现。
+- D-013 已确认 V5 产品边界：治理完整 AIApplication，并让其他 Agent 通过同一治理内核调用；D-015 已使 V5 成为新开发默认设计与施工基线（V3/V4 为兼容 lane，非 runtime cutover）。V5-0B/0C contract freeze 已接受；C0–C5 收敛已完成并经 `b6fa629` 复核，V5-1B（R3-full）与 V5-1C（R4）已关闭，V5-1A（R2）保持 `VERIFYING`（checksum evidence 由 owner 延后至全项目收口）。
+- V4 Stage 0、Stage 1 Entry 与 S1A 已封板。S1A 只证明本地 authenticated no-trace intake，不证明 provider/Agent/live；V4 S1B–S7 冻结。当前唯一 ELIGIBLE 执行入口是 V5-2A（Durable Work Kernel，Master §17.6），代码施工按 2026-08-12 owner 裁决在远端机进行（见 [V5 远端施工交接](../docs/context/V5_REMOTE_CONSTRUCTION_HANDOFF.md)），本地负责 disposable-PostgreSQL journey、live facet 与最终收口；V5-2B+ 按前驱链锁定。下一次 live/provider 运行前须先完成凭证轮换，此前 live 保持 blocked。
 - 最近核验的 `caseloop-team` 是六个 CoPaw / StepFun `step-3.7-flash` 质量治理 Worker，全部为 `Sleeping`，`leaderReady=false`、`readyWorkers=0`；运行前须重新查询。AgentTeams 中没有 Claude Code Agent 或 GLM Agent。
 - 新 `caseloop-coding-team` 已进入施工目标，但当前为 `NOT CREATED / NOT RUN`；不能把现有客服质量 Worker 改名成专业 Coding Team。
 - 两条 live 验收轴必须分开：`domain-provider-live` 与 `agent-causal`。`platform evidence export` 是只读取证类别，不能冒充真实 Agent 因果执行。

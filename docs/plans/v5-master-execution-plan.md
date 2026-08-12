@@ -14,7 +14,10 @@
 > 当前事实：D-015 已接受 V5 新开发默认基线，但这不是 runtime/public cutover proof。
 > R2 只可报告 `contract=PASS`、`replay=PASS`。C0–C5 原关闭结论经复核后在
 > `b6fa629` 修正 owner、generated-wire、rollback 与最终 PostgreSQL gate；统一门禁 8/8
-> PASS。D2 是唯一下一施工入口；R3-full、R4 与 V5-2+ 继续锁定。最终 subject SHA-256
+> PASS。D2、R3-full 与 R4 已按各自证据关闭；V5-2A（§17.6 Durable Work Kernel）是唯一
+> `ELIGIBLE` 下一施工入口，并按 2026-08-12 产品 owner 裁决交由远端施工机完成代码部分
+> （见 `docs/context/V5_REMOTE_CONSTRUCTION_HANDOFF.md`），本地负责 disposable-PostgreSQL
+> journey、live facet 与最终收口；V5-2B+ 继续锁定。最终 subject SHA-256
 > 与 evidence digest 按产品 owner 指示延后至最终项目收口。
 
 > **执行优先级**：在不覆盖 AGENTS、产品原则、ADR 与 frozen contract 的前提下，本文是

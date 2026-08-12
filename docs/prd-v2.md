@@ -1,5 +1,7 @@
 # CaseLoop 产品需求文档 v2
 
+> **生命周期标记（2026-08-12）：SUPERSEDED** —— v4 产品方向已被 V5 承接：新产品/领域开发以 `docs/prd-v5.md` 与 V5 blueprint/contracts 为默认设计与施工基线（D-015），本文不再作为新开发的产品需求入口。V4 仅保留为兼容 lane，其兼容表面继续由 `docs/plan-v4.md`、`contracts/v4/` 与 V4 evidence 约束；本文仍是 v4 目标产品的历史定义。不能从本文推导 V5 runtime/live 已实现。
+
 > 状态：**APPROVED TARGET / IMPLEMENTATION IN PROGRESS**
 >
 > 日期：2026-08-10

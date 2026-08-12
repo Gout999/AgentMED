@@ -2,9 +2,9 @@
 
 [返回 Wiki 索引](INDEX.md)
 
-> 状态：**V4 S1A DONE (LOCAL RUNTIME) / V5-1 CLOSURE REPAIR / V5-2+ GATED**
+> 状态：**V4 S1A DONE (LOCAL RUNTIME) / V5-1A VERIFYING · V5-1B/C CLOSED / V5-2A ELIGIBLE（远端施工）**
 >
-> 更新：2026-08-11
+> 更新：2026-08-12
 >
 > 完整架构见 [CaseLoop v4 全盘计划](../docs/plan-v4.md)，文件级 entry/test/live/evidence/rollback 见 [v4 渐进式施工台账](../docs/plans/v4-progressive-delivery.md)。本页只做导航和状态蒸馏；“路线已批准”不等于功能已经实现。`docs/plan-v3.md`、现有 `contracts/`、migrations 与可执行测试继续约束已实现的 v3 客服 Scenario Pack，直到被明确的 v4 contract、migration 和测试替换。
 
@@ -164,9 +164,11 @@ Stage 5 前不得生产安装、外部发布或 Policy promote Skill/MCP。阿�
 
 每个 Stage 都有自己的 entry/exit、focused tests、verifier、`evidence/v4/stage-<n>/`、rollback 和 semantic commit。只重跑被新代码或新 evidence contract 影响的边界，不因时间经过重跑所有历史 live。
 
-V4 施工停在 S1A，S1B–S7 冻结。D-013 与 V5 construction baseline 已接受；当前
-V5-1A/B/C 处于 closure repair，V5-2+ 未开始。V5 的 current work package 和 stop gate
-见 [Master Execution Plan](../docs/plans/v5-master-execution-plan.md)。
+V4 施工停在 S1A，S1B–S7 冻结。D-013/D-015 与 V5 construction baseline 已接受；
+C0–C5 收敛完成并经 `b6fa629` 复核，V5-1B（R3-full）与 V5-1C（R4）已关闭，V5-1A（R2）
+保持 `VERIFYING`。当前唯一执行入口是 V5-2A（Master §17.6），代码施工在远端机，见
+[V5 远端施工交接](../docs/context/V5_REMOTE_CONSTRUCTION_HANDOFF.md)；V5-2B+ 未开始。
+V5 的 current work package 和 stop gate 见 [Master Execution Plan](../docs/plans/v5-master-execution-plan.md)。
 
 ## 首个真实 Coding 案例的外部动作边界
 

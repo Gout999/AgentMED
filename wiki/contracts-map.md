@@ -2,7 +2,7 @@
 
 [返回 Wiki 索引](INDEX.md)
 
-> 状态：Phase 0B 的 v3 契约是客服参考纵切的实施基线。`contracts/v4/` 已通过 Stage 0 与 Stage 1 Entry contract-only verifier。S1A 的 migration、HTTP/CLI 和 no-trace runtime 已在 `22c23f8` 完成并通过独立 verifier/evidence；这只是本地 runtime，不是 provider/Agent/live 证明。S1B 尚未实现，provider-live 还受凭证轮换、单独授权和 V5 scope review 阻塞。
+> 状态：Phase 0B 的 v3 契约是客服参考纵切的实施基线。`contracts/v4/` 已通过 Stage 0 与 Stage 1 Entry contract-only verifier。S1A 的 migration、HTTP/CLI 和 no-trace runtime 已在 `22c23f8` 完成并通过独立 verifier/evidence；这只是本地 runtime，不是 provider/Agent/live 证明。S1B 尚未实现；provider-live 在凭证轮换与单独授权完成前保持 BLOCKED。
 
 施工顺序：先确定变更涉及哪份契约，再精读文件和对应 conformance test。本页只做导航，不能覆盖原契约。
 

@@ -11,17 +11,21 @@ CaseLoop 是面向 AI 应用团队的**开源 Agent-native 治理运营控制面
 CaseLoop 优先满足国内团队的中文、自托管、私有化、国内模型、云服务与协作渠道需求；核心契约保持 provider-neutral。StepFun、飞书、AgentTeams 和 Langfuse 都是当前或计划中的实现与适配器，不是产品身份。
 
 V5 产品边界已由 D-013 接受：顶层对象是 `AIApplication`，Agent 是组件；Console 与其他
-Agent 调用同一治理内核。V5 [PRD](../docs/prd-v5.md)、[plan](../docs/plan-v5.md)、blueprint
-和 frozen `contracts/v5/` 已是 V5 stage 施工基线，当前编排见
-[Master Execution Plan](../docs/plans/v5-master-execution-plan.md)。V5-1A/B/C repair 尚未形成
-completion commit；V5-2+ 未实现。plan v4 保留为 V4 兼容性基线。
+Agent 调用同一治理内核。D-015 已使 V5 成为新开发默认设计与施工基线（V3/V4 为兼容
+lane，非 runtime cutover）。V5 [PRD](../docs/prd-v5.md)、[plan](../docs/plan-v5.md)、
+blueprint 和 frozen `contracts/v5/` 已是 V5 stage 施工基线，当前编排见
+[Master Execution Plan](../docs/plans/v5-master-execution-plan.md)。C0–C5 收敛已完成并经
+`b6fa629` 复核；V5-1B（R3-full）与 V5-1C（R4）已关闭，V5-1A（R2）保持 `VERIFYING`。
+当前唯一执行入口是 V5-2A，代码施工在远端机，见
+[V5 远端施工交接](../docs/context/V5_REMOTE_CONSTRUCTION_HANDOFF.md)；V5-2+ 尚未实现。
+plan v4 保留为 V4 兼容性基线。
 
 ## 适用边界
 
 - 当前仓库的第一条参考 workload 是「小智客服」；v3 另选 AgentTeams v1.2.1 作为 CaseLoop 内部协作适配器。两者都用于证明和暴露纵向闭环的工程问题，不等于通用 Agent 接入已经完成。
 - 通用化目标面向能够提供版本、运行证据、评测和发布/回滚接点的完整 AI 应用；V4 S1A
-  no-trace intake 已完成，V5-1 catalog/version/Case 主体处于 repair/closure，V5-2 durable
-  operation、V5-3 evidence、V5-4 Gate 与 V5-5 release/recovery 未实现。
+  no-trace intake 已完成，V5-1A catalog 已提交并保持 `VERIFYING`，V5-1B version 与 V5-1C Case
+  已关闭，V5-2 durable operation、V5-3 evidence、V5-4 Gate 与 V5-5 release/recovery 未实现。
 - CaseLoop 不取代 Agent runtime，也不把 Langfuse 等 trace 系统当生命周期权威数据库。
 - LLM 与 Agent 只给建议、假设和候选工件；PostgreSQL 控制面持有权限、状态、审批、发布和审计事实。
 
@@ -129,9 +133,9 @@ Claude Code、父 Worker、模型 provider、Controller 与 Repo Executor 是不
 | 真实 GitHub coding case | `NOT RUN`；留言、认领、fork、push、PR 均未授权，执行前逐次询问用户 |
 | 真实 Agent 因果执行 | 在新的 agent-causal 验收口径下，当前快照尚无独立验证的合格证据；更早 live 是否包含真实 Agent 因果参与，只按当时调用链和证据判断，不因本次口径更新被抹除 |
 
-当前活动项是 V5-1A/B/C closure repair 和文档权威恢复；V4 S1B–S7 冻结，V5-2+ 尚未
-开始。每项能力只有在真实调用路径、权威记录、测试、evidence、semantic commit 和
-post-commit verifier 齐全后才可标为已实现。
+当前活动项是 V5-2A（Durable Work Kernel）远端施工与本地 disposable-PostgreSQL
+journey/live facet 收口；V4 S1B–S7 冻结，V5-2B+ 未开始。每项能力只有在真实调用路径、
+权威记录、测试、evidence、semantic commit 和 post-commit verifier 齐全后才可标为已实现。
 
 ## 统计纪律示例
 

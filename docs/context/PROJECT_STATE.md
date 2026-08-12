@@ -53,9 +53,11 @@
   overlays merely to change a status label; C1 must make status/activation metadata mechanically
   single-sourced without changing the exact 11-intent surface.
 - The current execution baseline is D-015 plus Master version `2026-08-12.10`, especially §17.
-  Architecture convergence is `COMPLETE / REMEDIATED` at `b6fa629`; D2 is the only
-  `ELIGIBLE / NOT STARTED` package and must activate the complete record/get/diff contract bundle.
-  R3-full, R4 and V5-2+ remain locked behind the exact predecessor chain.
+  Architecture convergence is `COMPLETE / REMEDIATED` at `b6fa629`; D2 (contract-only),
+  R3-full and R4 are each closed with their own evidence. V5-2A (Durable Work Kernel,
+  Master §17.6) is the only `ELIGIBLE` package and is remote-constructed per the 2026-08-12
+  owner division (`V5_REMOTE_CONSTRUCTION_HANDOFF.md`); V5-2B+ remain locked behind the exact
+  predecessor chain.
 - The original dirty worktree is not a candidate baseline. It remains preserved on
   `codex/v4-foundation`; C0 uses `codex/v5-convergence` and exact allowlists. No path from the
   preserved WIP inventory may be promoted without clean-base hunk reconstruction and provenance
