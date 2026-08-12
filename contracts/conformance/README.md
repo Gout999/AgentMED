@@ -9,9 +9,16 @@ Quality API live conformance 的出口判据仍是：**本套件可对空实现�
 ```bash
 python3 -m venv /tmp/caseloop-contracts-venv
 /tmp/caseloop-contracts-venv/bin/pip install -r contracts/conformance/requirements.txt
-cd /Users/xiejiachen/caseloop
+cd "$(git rev-parse --show-toplevel)"
 /tmp/caseloop-contracts-venv/bin/pytest contracts/conformance -x -q
 ```
+
+**解释器必须装本目录的 `requirements.txt`。** 其中 `rfc8785` 与
+`rfc3339-validator` 都是硬依赖：缺 `rfc8785` 由 `v4_integrity.py` 直接报错；缺
+`rfc3339-validator` 则会让 jsonschema 的 `FormatChecker()` 静默不注册
+`date-time`，套件照样全绿但少验一整类约束，因此 `conformance/conftest.py`
+在 collection 期就 fail-closed 拒绝启动。复用其他组件的 venv（如
+`eval-harness/.venv`）时同样必须先装本文件，否则不是有效的 conformance 运行。
 
 环境变量：
 
@@ -46,13 +53,14 @@ cd /Users/xiejiachen/caseloop
 - `test_v4_integrity.py` / `test_v4_authority.py` — 全记录 JCS self-hash、同 ID revision/previous snapshot、签发时历史资源绑定、ControllerRegistration、单向 post-record AuthorityReceipt，以及 coordinated rehash/revision/authority 攻击反例。离线 authority bundle 只证明 `contract` facet。
 - 其他 `test_v4_*.py` — v4 event/state recovery、transaction 和后续 Stage 0 slice；以文件名与 `contracts/v4/README.md` 为准。
 
-仓库固定的纯离线验证命令：
+仓库固定的纯离线验证命令（前提：该解释器已装本目录 `requirements.txt`；
+`scripts/verify_convergence.sh` 的 `CONTRACT_PYTHON` 同此要求）：
 
 ```bash
-cd /Users/xiejiachen/caseloop/contracts
+cd "$(git rev-parse --show-toplevel)/contracts"
 ../eval-harness/.venv/bin/python -m pytest \
   conformance/test_schemas.py conformance/test_wilson.py \
-  conformance/test_v4_*.py -q
+  conformance/test_v4_*.py conformance/test_v5_*.py -q
 ```
 
 ## 空实现下的预期结果

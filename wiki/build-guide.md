@@ -132,3 +132,17 @@ route、worker、Adapter 或 Console 已完成。
 | G15 | console evidence guard 钉死 unavailable | validators.ts:255,260 要求 artifact_store==="unavailable" 才算合法，后端将来真接 artifact store 会把健康响应判 invalid_response | 接真 store 时同步放开 guard；已记 OPEN-ISSUES 候选 |
 | G16 | 决策编号撞车 | docs/decisions/ 存在两个 D-002（executor-routing 旧 / gate-workorder-binding 新） | 新文件改号或旧文件归档 |
 | G17 | 代码注释语言分裂 | PR#1 新模块（gate_service/trust_service/outbox_relay）全英文 docstring，旧代码中文 | 后续统一，不专项处理 |
+
+### 离线门禁可复现性审计（2026-08-12，v5-convergence 合入 main 后实跑登记）
+
+> 在一台干净机器（Python 3.13 + Node 20，**无 Docker、无 provider key**）上按
+> `scripts/verify_convergence.sh` 复跑 s1–s7 得到的发现。s8（disposable
+> PostgreSQL）本机不可执行，按 AGENTS.md 记 `NOT_RUN`，不计为 PASS。
+> 实跑结果与文档声称逐项吻合：compiler determinism CLEAN、compiler 18、
+> conformance 557、control-plane unit 996 + 12 PG-gated skip、import-graph
+> PASS（0 环 / 0 direct-table 违规）、CLI 130、Console 20 + build。
+
+| # | 缺口 | 实战证据 | 建议 |
+|---|------|---------|------|
+| G18 | conformance 缺 `rfc3339-validator` 会静默少验 date-time（假绿） | `contracts/conformance/requirements.txt` 钉了它，但没有任何流程保证被装；`verify_convergence.sh` 的 `CONTRACT_PYTHON` 默认 `python3`，README 又同时给出「用 `eval-harness/.venv` 跑」的指引，而该 venv 的 requirements 不含此包。实测：缺包时 `FormatChecker().checkers` 无 `date-time`，坏值 `"not-a-timestamp"` 产生 0 个校验错误，`test_v4_schemas.py` 仍 121 passed | ✅ **已修（2026-08-12）**：`conformance/conftest.py` 在 collection 期检查 `date-time` 是否注册，缺失即 `RuntimeError` 退出码 4（与 `v4_integrity.py` 对 `rfc8785` 的 hard-failure 范式一致）；README 同步纠正矛盾指引并去掉硬编码的 `/Users/xiejiachen` 路径 |
+| G19 | conformance 有 1 个测试跨界依赖 control-plane 实现层，且依赖未声明 | `conformance/test_v5_r2_application_catalog_contract.py:19` 用 `sys.path.insert` 导入 `app.public_api.v5_models`，因而隐式需要 `pydantic`；但 `conformance/requirements.txt` 未声明 pydantic。它在 `eval-harness/.venv` 里能跑只是巧合——该 venv 的 pydantic 是 `openai` 的传递依赖（`Required-by: openai`，2.13.4，不受任何 pin 约束）。另 `jsonschema` 在 conformance（4.26.0）与 eval-harness（4.23.0）钉了不同版本，同一 venv 里谁后装谁生效（实测两版本下 557 全绿，暂无功能差异） | **未处置，待裁决**：往 conformance requirements 加 pydantic 等于正式承认「契约层依赖实现层」，属架构边界决策，应走 D-xxx 流程；另一条路是让该测试改用生成产物（C1 单一来源）而不 import 应用代码。两版本 jsonschema 建议统一到一个 pin |
