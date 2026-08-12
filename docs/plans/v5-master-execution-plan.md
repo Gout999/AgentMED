@@ -2,23 +2,24 @@
 
 > 状态：**ACTIVE LOCAL EXECUTION PLAN / NOT IMPLEMENTATION PROOF**
 >
-> 计划版本：`2026-08-12.10`
+> 计划版本：`2026-08-13.1`
 >
 > 当前计划验收：`PASS`（2026-08-12；full V3/V4/V5 conformance 547、9 个 active 文档
 > 53 个 local links/0 broken、diff-check PASS；只证明执行编排完整，不关闭后续 runtime stage）
 >
 > 当前分支：`codex/v5-convergence`
 >
-> 当前施工基线：`b6fa629`（C5 remediation semantic subject；状态收口提交在其后）
+> 当前施工基线：`8c71d24`（V5-2B async public operations semantic subject；local only）
 >
 > 当前事实：D-015 已接受 V5 新开发默认基线，但这不是 runtime/public cutover proof。
 > R2 只可报告 `contract=PASS`、`replay=PASS`。C0–C5 原关闭结论经复核后在
 > `b6fa629` 修正 owner、generated-wire、rollback 与最终 PostgreSQL gate；统一门禁 8/8
-> PASS。D2、R3-full 与 R4 已按各自证据关闭；V5-2A（§17.6 Durable Work Kernel）是唯一
-> `ELIGIBLE` 下一施工入口，并按 2026-08-12 产品 owner 裁决交由远端施工机完成代码部分
-> （见 `docs/context/V5_REMOTE_CONSTRUCTION_HANDOFF.md`），本地负责 disposable-PostgreSQL
-> journey、live facet 与最终收口；V5-2B+ 继续锁定。最终 subject SHA-256
-> 与 evidence digest 按产品 owner 指示延后至最终项目收口。
+> PASS。D2、R3-full、R4 与 V5-2A 已按各自证据关闭。V5-2B 本地 runtime subject
+> `8c71d24` 的提交前与 exact detached post-commit verifier 均 4/4 PASS；当前只可报告
+> `contract=PASS` 与 local/disposable-PostgreSQL `replay=PASS`。真实 shell-capable
+> external Agent CLI Exit journey 为下一实际测试门，`agent-causal=NOT_RUN`；因此
+> V5-2B 保持 `VERIFYING`、V5-2C 继续锁定。最终 subject SHA-256 与 evidence digest
+> 仍按产品 owner 指示延后至最终项目收口。
 
 > **执行优先级**：在不覆盖 AGENTS、产品原则、ADR 与 frozen contract 的前提下，本文是
 > 唯一最高工程执行编排。其他 blueprint、brief、handoff 或历史 stage 文档与本文冲突时，
@@ -83,16 +84,17 @@ migration、tests、evidence、rollback、commit 和 verifier。
 
 | 项目 | 当前事实 | 执行影响 |
 |---|---|---|
-| Git | C5 remediation subject=`b6fa629` 已 detached clean unified-gate PASS；当前在 `codex/v5-convergence` 写入 Master/status；原 `codex/v4-foundation` 的 144-entry mixed WIP 已登记并隔离 | D2 从本次 plan/status clean subject 开工；继续禁止 `git add -A`；每个 package 使用精确 allowlist |
+| Git | V5-2B semantic subject=`8c71d24` 已 exact detached `verify_v5_2b.sh` 4/4 PASS；当前在 `codex/v5-convergence` 写 evidence/status；原 `codex/v4-foundation` mixed WIP 已登记并隔离 | 分支未 push；继续禁止 `git add -A`；每个 package 使用精确 allowlist |
 | V5-0A | 产品决策、D-013/产品原则 clean-checkout authority 已由 R0 关闭 | 不回写 V5-0B/0C 历史 freeze；不从文档 PASS 推导 runtime |
 | V5-0B/0C | contract-only freeze 已独立 PASS | 保留历史 freeze；current runtime overlay 另行标注 |
 | D-015 | `ACCEPTED / NOT RUNTIME CUTOVER PROOF`；V5 是新产品/领域开发默认设计与施工基线，V3/V4 是 compatibility lanes | 不改变 public API/CLI 默认 major、active route 或历史 authority |
 | R2 | 只确认 exact scope 的 `contract=PASS`、`replay=PASS` | 不推导完整 runtime；最终 subject SHA/evidence digest 标记 `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE` |
-| C0–C5 | **`COMPLETE / REMEDIATED`** at `b6fa629`；D2 `DONE (contract-only)`；R3-full 已解锁施工，R4 及后续 `LOCKED` | detached clean unified gate 8/8 PASS；后续严格按 §17 |
-| V5-1B/R3-full | standalone `system-versions.record/get/diff` 契约已冻结（D2），第二 VersionSet 与真实 diff runtime 未实现 | D2 `contract=PASS` 后 R3-full 施工已解锁；runtime 需 R3-full 独立实现并取证 |
-| V5-1C/R4 | 仍锁定 | 不得用已有 local repair 或 one-shot bootstrap 提前关闭 |
-| V5-2+ | target/contract 或 skeleton | 不得 advertise 为 runtime；不得混入 C0–C5 structural waves |
-| live/external | 本轮均未执行 | 下一次 live 前仍需凭证轮换、redacted preflight 和逐动作授权 |
+| C0–C5 | **`COMPLETE / REMEDIATED`** at `b6fa629`；后续 D2、R3-full、R4 与 V5-2A 已分别关闭；V5-2B 当前 `VERIFYING` | V5-2B exact detached gate 4/4 PASS；真实 Agent CLI Exit `NOT_RUN`；继续严格按 §17 |
+| V5-1B/R3-full | standalone `system-versions.record/get/diff` runtime 已按 R3-full evidence 关闭 | 保留 exact lineage/CAS 与单 PG UoW；不得膨胀为 live/provider proof |
+| V5-1C/R4 | First System Case runtime 已按 R4 evidence 关闭 | acceptance readiness 仍是 `PENDING_MATERIALIZATION`，由 V5-4 负责 |
+| V5-2A | Durable Work Kernel locally closed and merged | Work owner remains authoritative；public projection cannot copy its state machine |
+| V5-2B | local subject `8c71d24` verifier PASS；real external-Agent CLI Exit `NOT_RUN` | stage=`VERIFYING`；V5-2C/3A-core 不解锁，直到 exact Agent Exit evidence |
+| live/external | V5-2B live Agent/provider facets均未执行 | 下一实际测试先做 isolated local Agent CLI journey；provider/production remains separately authorized |
 
 ### 2.1 当前阶段状态
 
@@ -110,9 +112,11 @@ migration、tests、evidence、rollback、commit 和 verifier。
 | C3 convergence | `DONE` | semantic subject `3adaac0`；import-graph checker PASS |
 | C4 convergence | `DONE` | 前一 wave 独立 Exit；详见 convergence plan；semantic subject `1d7b59c`；generated transport cutover |
 | C5 convergence | `DONE / REMEDIATED` | original `19f26bf` + remediation `b6fa629`；detached clean unified gate 8/8 PASS |
-| D2 / V5-1B R3-full | D2 `DONE (contract-only)`；R3-full `LOCKED` until D2 status commit | R3-full Entry：clean D2 subject + status/plan commit；D2 只证明 contract，不证明 runtime |
-| V5-1C R4 | `LOCKED` | R3-full + 原有 R4 Entry |
-| V5-2A–V5-5 | `TODO` | 前置 stage completion commit + evidence + verifier |
+| D2 / V5-1B R3-full | D2 `DONE (contract-only)`；R3-full `DONE (contract + replay)` | semantic series/evidence already closed；no provider/live inference |
+| V5-1C R4 | `DONE (contract + replay)` | semantic series/evidence already closed；V5-4 materialization remains separate |
+| V5-2A | `DONE locally` | evidence + merge-result verifier PASS；not pushed |
+| V5-2B | `VERIFYING` | local subject/evidence/verifier PASS；requires real external shell-capable Agent CLI disconnect/reconnect Exit |
+| V5-2C–V5-5 | `TODO / LOCKED` | V5-2C first requires V5-2B real Agent Exit PASS；later stages follow exact dependency graph |
 | V5-6 slices | `TODO / independently admitted after V5-5` | V5-5 completion evidence + 对应 slice Entry |
 
 ## 3. 施工依赖图
@@ -234,8 +238,9 @@ inventory、dirty-state 记录或 P0/P1 清零。除该 owner deferral 外，固
    dependent exact bindings。AuthorityReceipt 使用 closed shape，`source_event_id == event_id`，
    Controller bridge `contract_major=1`；read/replay 必须递归重验 scalar row、record envelope、
    controller registration、event、receipt 与 child bindings，不能只重算顶层 JSON digest；
-6. API/CLI/capability discovery 必须来自同一显式 allowlist。尚未冻结或授权的 standalone
-   `system-versions.record`、V5-2+、MCP/A2A/SDK 不得被 route、help 或 discovery 提前广告。
+6. API/CLI/capability discovery 必须来自同一显式 allowlist。尚未冻结或授权的 V5-3+
+   intents、MCP/A2A/SDK 不得被 route、help 或 discovery 提前广告；已经激活的 R3/R4/V5-2B
+   surface 必须保持 manifest、HTTP、CLI 与 capability exact parity。
 
 任一项缺失均为 P0 `NO-GO`；不能通过隐藏 route、放宽 response model 或只写 audit prose
 降级为已知债务。

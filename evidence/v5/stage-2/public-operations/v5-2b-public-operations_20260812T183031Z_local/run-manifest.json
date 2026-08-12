@@ -1,0 +1,51 @@
+{
+  "schema_version": "1.0",
+  "run_id": "v5-2b-public-operations_20260812T183031Z_local",
+  "stage": "V5-2B",
+  "slice": "async-public-operations",
+  "started_at": "2026-08-12T17:58:00Z",
+  "completed_at": "2026-08-12T18:30:31Z",
+  "status": "VERIFYING_REAL_AGENT_CLI_EXIT_NOT_RUN",
+  "subject": {
+    "commit": "8c71d245137acf69a667104a0f3c833de9416bf9",
+    "branch": "codex/v5-convergence",
+    "base": "cd0ab64",
+    "pushed": false
+  },
+  "verification": {
+    "verifier": "scripts/verify_v5_2b.sh",
+    "local_pre_commit_gate": "4/4 sections PASS",
+    "detached_post_commit_gate": "4/4 sections PASS; clean before and after",
+    "contracts_and_compiler": "578 passed; activated intent parity 23/23",
+    "control_plane_and_waves": "1058 passed; 14 PostgreSQL-gated skips exercised separately",
+    "import_graph": "PASS; 0 cycles, 100% lane coverage, 0 direct-table violations",
+    "cli": "133 passed",
+    "console": "20 passed; production build PASS",
+    "postgres_migrations": "14 passed; 33 deselected",
+    "postgres_runtime": "19 passed, including public-operation concurrency, restart and cancel race"
+  },
+  "decision": {
+    "local_contract_replay": "PASS",
+    "real_shell_capable_agent_cli_exit": "NOT_RUN",
+    "v5_2c_entry": "LOCKED",
+    "next_gate": "Run one real external shell-capable Agent through the built CLI against a live local HTTP control-plane, including disconnect and reconnect observation"
+  },
+  "facet_report": {
+    "contract": "PASS",
+    "replay": "PASS (local deterministic API/CLI and disposable PostgreSQL only)",
+    "domain-provider-live": "NOT_RUN",
+    "agentteams-native": "NOT_RUN",
+    "claude-runtime-live": "NOT_RUN",
+    "agent-causal": "NOT_RUN",
+    "repo-sandbox": "NOT_RUN",
+    "human-authorized-external": "NOT_RUN",
+    "production-canary": "NOT_RUN"
+  },
+  "raw_artifacts": [
+    "raw/verify-v5-2b.txt"
+  ],
+  "known_risks": [
+    "npm audit --omit=dev reports 2 moderate production dependency advisories; no Console dependency file changed in this stage",
+    "the legacy Quality API live conformance suite requires a separately running demo-app and is outside the V5-2B verifier"
+  ]
+}

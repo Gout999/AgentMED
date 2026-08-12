@@ -1,0 +1,25 @@
+subject=8c71d245137acf69a667104a0f3c833de9416bf9
+detached_worktree=/tmp/caseloop-v5-2b-detached.iOOfZK
+git_clean_before=true
+git_clean_after=true
+
+[1-contracts] PASS exit=0
+activated_intent_count=23
+capability_manifest_count=23
+pytest=578 passed
+
+[2-control-plane] PASS exit=0
+pytest=1058 passed, 14 skipped
+import_graph=PASS modules=92 module_cycles=0 function_cycles=0 lane_coverage=100% direct_table_violations=0
+
+[3-clients] PASS exit=0
+cli=133 passed
+console=20 passed
+console_build=PASS
+
+[4-postgres] PASS exit=0
+migrations=14 passed, 33 deselected
+runtime=19 passed
+
+verify_v5_2b=ALL_SECTIONS_PASS
+npm_audit_omit_dev=2 moderate, 0 high, 0 critical

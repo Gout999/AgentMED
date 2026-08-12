@@ -4,7 +4,35 @@
 > [`docs/archive/context/LAST_HANDOFF-history-through-2026-08-11.md`](../archive/context/LAST_HANDOFF-history-through-2026-08-11.md)。
 > 本文件只保留一个 current handoff。
 
-## 2026-08-13 V5-2A review remediation handoff (current)
+## 2026-08-13 V5-2B local verifier handoff (current)
+
+- `semantic_subject`: `8c71d245137acf69a667104a0f3c833de9416bf9` on
+  local `codex/v5-convergence`; local commits remain ahead of origin and have not been pushed.
+- `implemented`: explicit V2 `investigations.start` plus
+  `operations.get/list/cancel-request`; a durable AutomationRequest projection with exact
+  case/application/environment/principal/WorkTask foreign keys; current-head digest and
+  authority-receipt revalidation; signed snapshot pagination; CLI investigate/get/list/
+  cancel/wait/follow; detach and timeout never emit cancellation.
+- `state_boundary`: Operation state is read-only from the V5-2A WorkTask/Attempt. Cancel is
+  only a stop request. `COMPLETED` requires a trusted structured artifact and never means
+  Gate or Release PASS.
+- `verified`: both pre-commit and exact detached post-commit `scripts/verify_v5_2b.sh`
+  passed 4/4. The detached run recorded contracts 578, control-plane + wave tests 1058
+  with 14 explicit PG-gated skips, import graph PASS, CLI 133, Console 20 + build,
+  disposable PostgreSQL migrations 14 and runtime 19. Worktree was clean before and after.
+- `evidence`: `evidence/v5/stage-2/public-operations/v5-2b-public-operations_20260812T183031Z_local/`.
+- `facet_truth`: `contract=PASS`; deterministic/local-PostgreSQL `replay=PASS`;
+  `domain-provider-live`, `agentteams-native`, `claude-runtime-live`, `agent-causal`,
+  `repo-sandbox`, `human-authorized-external` and `production-canary` are `NOT_RUN`.
+- `stop_gate`: the real shell-capable external-Agent CLI Exit journey is the next actual
+  test. It must start against live local HTTP + disposable PostgreSQL, disconnect without
+  cancel, reconnect by operation id, observe the same durable operation/artifact, preserve
+  receipts and revoke the isolated credential. Until it passes, V5-2B remains `VERIFYING`
+  and V5-2C stays locked.
+- `known_non_blocking_risk`: detached `npm audit --omit=dev` reports 2 moderate
+  production dependency advisories; this stage changes neither Console dependency file.
+
+## 2026-08-13 V5-2A review remediation handoff (superseded by V5-2B above)
 
 - `primary_truth`: `/Users/xiejiachen/caseloop-wt-v5-convergence` was
   fast-forwarded from `92bde3c` through `cb89cad`; the exact merged result passed
@@ -33,7 +61,7 @@
   `domain-provider-live`, `agentteams-native`, `claude-runtime-live`, `agent-causal`,
   `repo-sandbox`, `human-authorized-external` and `production-canary` are `NOT_RUN`.
 - `decision`: locally merged by user authorization via `--ff-only`; merge-result
-  gate PASS. Nothing was pushed. V5-2B+ remain locked pending their own entry decision.
+  gate PASS. Nothing was pushed. V5-2B subsequently entered local construction.
 - `non_blocking_existing_risk`: clean `npm audit --omit=dev` reports two moderate
   React Router advisories; the automated fix is a major-version upgrade. Neither
   Console dependency file changed in `92bde3c..3677be3`.

@@ -36,15 +36,19 @@ series `df86662` + `7c17391` + `365c2c8`；First System Case closure：5 个 1C 
 命令族；verifier PASS P0=0/P1=0，且 remediation 经第二轮 detached clean-checkout
 复查全绿）。V5-2A 候选 `6b30a83` 经本地 adversarial review 判为 NO-GO，缺口已由
 `3677be3` 修复并通过统一门禁；已 fast-forward 合入本地 `codex/v5-convergence`
-至 `cb89cad`，merge-result 门禁 8/8 PASS，**尚未 push**。V5-2B+ 继续按 Master 锁定。
+至 `cb89cad`，merge-result 门禁 8/8 PASS。V5-2B async public operations 已在语义
+subject `8c71d24` 实现，提交前与 detached 精确提交后 `verify_v5_2b.sh` 均 4/4 PASS；
+本地 `contract/replay=PASS`，但真实 shell-capable external Agent CLI Exit 尚未运行，
+所以阶段保持 `VERIFYING`、V5-2C 仍锁定。以上提交均**尚未 push**。
 
 D-015 接受 V5 为所有新产品/领域开发的默认设计与施工基线，并把 V3/V4 固定为兼容
 lane；这不改变 public API/CLI 默认 major，不激活新 route/capability，也不追溯改写既有
 事实。**C0–C5 architecture convergence 系列已完成并经 `b6fa629` remediation 重验**。
 D2、R3-full、R4 均已按各自证据关闭。远端完成的 V5-2A 候选已在本地隔离 worktree
 完成 review、修复、disposable-PostgreSQL 与统一门禁收口，并已本地 fast-forward
-合入 `codex/v5-convergence`。远端同步仍待单独授权；V5-2B+ 仍按 Master 的单一依赖链
-锁定，禁止跨层堆叠。
+合入 `codex/v5-convergence`。V5-2B 的本地 runtime、HTTP/CLI、migration 与 PostgreSQL
+证明已完成，但 Stage Exit 的真实 external Agent CLI journey 是下一实际测试门。
+远端同步仍待单独授权；V5-2C 及以后仍按 Master 的单一依赖链锁定，禁止跨层堆叠。
 
 - Product and scope baseline: `docs/product-principles.md` + D-013 + D-015.
 - V5 new-development baseline: `docs/plan-v5.md` + `docs/plans/v5-progressive-delivery.md` + `docs/plans/v5-architecture-convergence.md` + 已冻结的 `contracts/v5/`。`docs/plan-v4.md` 只保留为 V4 兼容性基线；v3 保留为已实现兼容基线。
@@ -54,7 +58,7 @@ D2、R3-full、R4 均已按各自证据关闭。远端完成的 V5-2A 候选已�
   audit 与 recovery 铁律，但把 Langfuse、AgentTeams、Claude Code 和 Coding Team 改为
   可插拔 Adapter；真实外部 Agent 经 CLI 调用即可满足比赛首条 Agent-native 证明。
 - Local branch, document, contract, code, and test construction is authorized. Push, PR, paid provider calls, human approvals, and production or other external writes still require their own authorization.
-- V5 feature progression follows Master §17. V5-2A is locally integrated through `cb89cad` and post-merge verified 8/8, but not pushed; later packages remain locked until their exact entry decision. V4 S1B-S7 remain frozen.
+- V5 feature progression follows Master §17. V5-2A is locally integrated through `cb89cad`. V5-2B semantic subject `8c71d24` passed the exact detached local verifier but remains `VERIFYING` until the real external-Agent CLI Exit journey. V5-2C stays locked; nothing has been pushed. V4 S1B-S7 remain frozen.
 - Security prerequisite for the next live/provider run: rotate the potentially exposed StepFun, Feishu, and internal authority/read/write/role credentials after a resolved Compose configuration expanded values into a private tool log. No secret value may enter Git or evidence. Rotation is not part of Stage 0 and remains unperformed; live execution is blocked until it is complete and a redacted preflight passes.
 
 ## V5 design preparation
@@ -78,6 +82,7 @@ D2、R3-full、R4 均已按各自证据关闭。远端完成的 V5-2A 候选已�
 | V5-R3-full | Second VersionSet + standalone record/get/diff runtime | DONE (contract + R3 replay) | D2 DONE | 实现 standalone `system-versions.record/get/diff`：只引用已存在 authority-valid 对象、exact lineage/CAS、单 PG UoW、`system_version_set.recorded` event/outbox/audit/AuthorityReceipt、deterministic 非 self diff、second-version PG E2E 真实差异 | Master §17.4 exact matrix（mutable alias/UNKNOWN、dependency substitution、fan-out、dataset role、dirty repository identity、same label/different digest、concurrent record、tampered GET/diff、cross-application/environment binding） | pending | pending |
 | V5-R4 | First System Case closure | DONE (contract + R4 replay) | R3-full DONE | stage-specific decision/contract gate | resume only from the accepted Master dependency graph；no dormant route/capability or dirty WIP promotion | stage-specific | pending | pending |
 | V5-2A | Durable Work Kernel (Master §6) | DONE locally (merged; not pushed) | R4 DONE；D-016 裁决 | 原 2A-0→2A-5 系列 + review remediation：Task/attempt/Proposal exact binding；服务端幂等指纹；持久化 attempt-bound terminal receipt；dispatcher claim TTL/retry/DLQ；immutable delivery receipt + audit；固定 worker；s8 正式纳入 Work PG | Work focused 47；PG migration 13；Work PG 8；s8 integration 17；conformance 559；control+wave 1047 passed / 13 PG-gated skips；import-graph PASS；CLI 130；Console 20+build；merge-result 统一门禁 8/8 | [`v5-2a-review-remediation_20260812T165557Z_local`](evidence/v5/stage-2/work-kernel/v5-2a-review-remediation_20260812T165557Z_local/) + [`v5-2a-post-merge_20260812T172809Z_local`](evidence/v5/stage-2/work-kernel/v5-2a-post-merge_20260812T172809Z_local/)；`contract=PASS`、`replay=PASS`；其余 7 facet `NOT_RUN` | candidate `6b30a83` + code remediation `3677be3` + evidence closure `cb89cad`；fast-forward into `codex/v5-convergence`；未 push |
+| V5-2B | Async public operations | VERIFYING (local contract/replay PASS; real Agent CLI Exit NOT_RUN) | V5-2A DONE | 23-intent exact generated surface；`investigations.start`、`operations.get/list/cancel-request`；durable AutomationRequest→WorkTask binding；signed snapshot cursor；HTTP/CLI reconnect；detach 不 cancel；cancel 只记录 stop request；COMPLETED 只表示可信 artifact | contracts 578；control+wave 1058 passed / 14 PG-gated skips；CLI 133；Console 20+build；PG migration 14；PG runtime 19；import-graph PASS；pre/post-commit verifier 4/4 | [`v5-2b-public-operations_20260812T183031Z_local`](evidence/v5/stage-2/public-operations/v5-2b-public-operations_20260812T183031Z_local/)；`contract=PASS`、local `replay=PASS`；`agent-causal` 与其余 live facets `NOT_RUN` | semantic subject `8c71d245137acf69a667104a0f3c833de9416bf9`；未 push；V5-2C locked |
 
 ## Active v4 delivery
 
