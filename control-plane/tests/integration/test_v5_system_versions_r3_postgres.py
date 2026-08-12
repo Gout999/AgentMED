@@ -262,8 +262,19 @@ def test_r3_second_version_set_journey_postgres() -> None:
             assert diff.status_code == 200, diff.text
             diff_body = diff.json()["diff"]
             assert diff_body["deterministic"] is True
-            assert len(diff_body["removed"]) >= 1
+            removed_ids = {b["id"] for b in diff_body["removed"]}
+            assert removed_ids == {
+                import_body["system_version_set"]["exact_component_revision_bindings"][
+                    1
+                ]["id"]
+            }
             assert len(diff_body["added"]) == 0
+            assert diff_body["changed"] == []
+            assert diff_body["topology_changes"] == []
+            # the removed component's identity assurance disappears with it
+            changes = diff_body["assurance_delta"]["identity_assurance_changes"]
+            assert len(changes) == len(diff_body["removed"])
+            assert all(change.endswith("-> None") for change in changes)
 
             # same-key replay: identical terminal response, zero new facts
             replayed = client.post(

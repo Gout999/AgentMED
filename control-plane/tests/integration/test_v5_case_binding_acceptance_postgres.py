@@ -158,6 +158,7 @@ def _seed_auth_and_controllers(
             project_ids=[PROJECT_ID],
             environment_ids=[],
             scopes=binder_scopes,
+            trust_roles=["integrator"],
             claims_digest=_claims(binder_scopes),
             revoked_at=None,
         )
@@ -559,7 +560,7 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
         with engine.connect() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "010"
+            ).scalar_one() == "013"
 
         now = datetime.now(timezone.utc)
         session = factory()
@@ -958,6 +959,10 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
         engine.dispose()
 
 
+@pytest.mark.skip(
+    reason="V5-1C `case from-issue` activates in R4; until then the CLI "
+    "fail-closes with CLI_USAGE_INVALID for the unactivated 1C intents"
+)
 def test_v5_1c_cli_from_issue_e2e_no_duplicate_on_retry(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:

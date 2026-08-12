@@ -69,7 +69,7 @@ CREDENTIAL_ID = "cred_01J00000000000G1"
 AUTH_SUBJECT = "v5-1b-e2e-admin"
 AUDIENCES = ["caseloop-public-api"]
 ISSUER = "https://auth.caseloop.dev"
-IMPORT_SCOPES = ["system_manifests:import", "system_versions:read"]
+IMPORT_SCOPES = ["system_manifests:import", "system_versions:read", "system_versions:record"]
 
 
 def _claims(scopes: list[str]) -> str:
@@ -132,6 +132,7 @@ def _seed_auth_and_controllers(
             project_ids=[PROJECT_ID],
             environment_ids=[],
             scopes=IMPORT_SCOPES,
+            trust_roles=["integrator"],
             claims_digest=_claims(IMPORT_SCOPES),
             revoked_at=None,
         )
@@ -312,7 +313,7 @@ def test_v5_1b_pg_import_atomic_rollback_and_replay() -> None:
         with engine.connect() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "010"
+            ).scalar_one() == "013"
 
         now = datetime.now(timezone.utc)
         session = factory()
@@ -411,16 +412,18 @@ def test_v5_1b_pg_import_atomic_rollback_and_replay() -> None:
             assert imported.idempotency.replayed is False
             version_set_id = imported.system_version_set.system_version_set_id
 
-            # same-manifest digest under a different key replays the same set
-            replay = service.import_manifest(
-                manifest,
-                principal=principal,
-                idempotency_key="manifest-import-9999",
-                request_id="req_01J00000000000G2",
-            )
-            session.commit()
-            assert replay.idempotency.replayed is True
-            assert replay.system_version_set.system_version_set_id == version_set_id
+            # same manifest digest under a different key conflicts: the frozen
+            # contract binds replay to (key, body) and rejects
+            # different_key_even_same_manifest_digest with CONFLICT.
+            with pytest.raises(SystemVersionsError) as raised_replay:
+                service.import_manifest(
+                    manifest,
+                    principal=principal,
+                    idempotency_key="manifest-import-9999",
+                    request_id="req_01J00000000000G2",
+                )
+            assert raised_replay.value.code == "CATALOG_CONFLICT"
+            session.rollback()
             expected_counts = {
                 AIApplication: 1,
                 Environment: 1,
@@ -495,6 +498,7 @@ def test_v5_1b_cli_init_and_manifest_import_e2e(    monkeypatch: pytest.MonkeyPa
         session = factory()
         try:
             _seed_auth_and_controllers(session, raw_bearer=raw_bearer, now=now, pepper=public_pepper)
+            session.commit()
         finally:
             session.close()
 
@@ -518,7 +522,7 @@ def test_v5_1b_cli_init_and_manifest_import_e2e(    monkeypatch: pytest.MonkeyPa
             cwd=control_plane_root,
             env=server_env,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=None,
             text=True,
         )
         _await_server(base_url, server)
@@ -621,30 +625,67 @@ def test_v5_1b_cli_init_and_manifest_import_e2e(    monkeypatch: pytest.MonkeyPa
 
         got = _run_cli(
             cli,
-            ["--api-version", "2", "system-manifest", "get", version_set_id],
-            env=cli_env,
-            repo_root=repo_root,
-            guarded_secrets=guarded_secrets,
-        )
-        assert got["system_version_set"]["system_version_set_id"] == version_set_id
-
-        diffed = _run_cli(
-            cli,
             [
                 "--api-version",
                 "2",
-                "system-manifest",
-                "diff",
-                "--base-system-version-set-id",
-                version_set_id,
-                "--target-system-version-set-id",
+                "system-version",
+                "get",
+                "--system-version-set-id",
                 version_set_id,
             ],
             env=cli_env,
             repo_root=repo_root,
             guarded_secrets=guarded_secrets,
         )
-        assert diffed["changed"] == []
+        assert got["system_version_set"]["system_version_set_id"] == version_set_id
+
+        # R3-full record command wire path: this workload has a single
+        # component so a distinct second-version-set digest cannot be formed;
+        # the success journey (record second -> GET both -> non-trivial diff)
+        # is covered by the R3 HTTP postgres tests. Here the installed CLI
+        # exercises the full record request path and the server rejects a
+        # stale exact-previous binding fail-closed.
+        revision_bindings = json.dumps(
+            imported["system_version_set"]["exact_component_revision_bindings"][:1],
+            ensure_ascii=False,
+        )
+        topology_binding = json.dumps(
+            imported["system_version_set"]["exact_topology_revision_binding"],
+            ensure_ascii=False,
+        )
+        stale_previous = {
+            "kind": "SYSTEM_VERSION_SET",
+            "id": version_set_id,
+            "revision": 1,
+            "digest": "sha256:" + "0" * 64,
+        }
+        rejected = _run_cli(
+            cli,
+            [
+                "--api-version",
+                "2",
+                "system-version",
+                "record",
+                "--application-id",
+                imported["application"]["application_id"],
+                "--environment-id",
+                imported["environment"]["environment_id"],
+                "--component-revisions",
+                revision_bindings,
+                "--topology-revision",
+                topology_binding,
+                "--exact-previous-version-set",
+                json.dumps(stale_previous, ensure_ascii=False),
+                "--idempotency-key",
+                "r3-cli-record-0001",
+            ],
+            env=cli_env,
+            repo_root=repo_root,
+            guarded_secrets=guarded_secrets,
+            expected_exit=12,
+        )
+        assert rejected["error"]["code"] == "CATALOG_CONFLICT"
+
     finally:
         if server is not None:
             server.terminate()

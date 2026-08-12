@@ -2469,10 +2469,10 @@ class SystemVersionsService:
             principal, request.application_id, request.environment_id
         )
         self._validate_component_revision_bindings(
-            workspace_id, request.exact_component_revision_bindings
+            workspace_id, request.application_id, request.exact_component_revision_bindings
         )
         self._validate_topology_binding(
-            workspace_id, request.exact_topology_revision_binding
+            workspace_id, request.application_id, request.exact_topology_revision_binding
         )
         self._lock_version_lineage(
             workspace_id, request.application_id, request.environment_id
@@ -2782,6 +2782,7 @@ class SystemVersionsService:
             environment is None
             or environment.workspace_id != principal.workspace_id
             or environment.application_id != application_id
+            or environment.lifecycle_state != "ACTIVE"
         ):
             raise SystemVersionsError(
                 "VALIDATION_FAILED",
@@ -2792,6 +2793,7 @@ class SystemVersionsService:
     def _validate_component_revision_bindings(
         self,
         workspace_id: str,
+        request_application_id: str,
         bindings: list[ExactComponentRevisionBinding],
     ) -> list[ComponentRevision]:
         rows: list[ComponentRevision] = []
@@ -2805,7 +2807,11 @@ class SystemVersionsService:
                 )
             seen.add(binding.id)
             row = self.session.get(ComponentRevision, binding.id)
-            if row is None or row.workspace_id != workspace_id:
+            if (
+                row is None
+                or row.workspace_id != workspace_id
+                or row.application_id != request_application_id
+            ):
                 raise SystemVersionsError(
                     "REQUEST_INVALID",
                     details={"reason": "UNKNOWN_COMPONENT_REVISION_BINDING"},
@@ -2836,10 +2842,17 @@ class SystemVersionsService:
         return rows
 
     def _validate_topology_binding(
-        self, workspace_id: str, binding: ExactTopologyRevisionBinding
+        self,
+        workspace_id: str,
+        request_application_id: str,
+        binding: ExactTopologyRevisionBinding,
     ) -> TopologyRevision:
         row = self.session.get(TopologyRevision, binding.id)
-        if row is None or row.workspace_id != workspace_id:
+        if (
+            row is None
+            or row.workspace_id != workspace_id
+            or row.application_id != request_application_id
+        ):
             raise SystemVersionsError(
                 "REQUEST_INVALID",
                 details={"reason": "UNKNOWN_TOPOLOGY_REVISION_BINDING"},

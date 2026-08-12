@@ -7,6 +7,8 @@ import re
 import sys
 import time
 import uuid
+
+from caseloop_cli.discovery import DiscoveryError, discover, render_draft
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Callable, Sequence, TextIO
@@ -244,6 +246,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     commands = parser.add_subparsers(dest="command", required=True, parser_class=SafeArgumentParser)
 
+    init = commands.add_parser("init")
+    init.add_argument("directory")
+
     capabilities = commands.add_parser("capabilities")
     capabilities.add_subparsers(dest="action", required=True, parser_class=SafeArgumentParser).add_parser("get")
 
@@ -402,6 +407,13 @@ def run(
                 raise CliError("API_MAJOR_MISMATCH", ExitFamily.INPUT)
 
         # Local-only commands never need API credentials or a running server.
+        if args.command == "init":
+            try:
+                result = discover(args.directory)
+            except DiscoveryError as exc:
+                raise CliError("CLI_USAGE_INVALID", ExitFamily.INPUT) from exc
+            _write_json(output_stream, json.loads(render_draft(result)))
+            return int(ExitFamily.OK)
         if args.command == "system-manifest" and args.action == "validate":
             return _cmd_manifest_validate(args, output_stream=output_stream)
 

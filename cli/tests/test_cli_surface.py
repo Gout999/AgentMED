@@ -57,7 +57,7 @@ def test_help_exposes_only_frozen_stage1a_cli_commands() -> None:
     assert all(name in help_text for name in ("capabilities", "signal", "report", "case", "evidence"))
     assert all(
         name not in help_text
-        for name in ("project", "source", "investigation", "release", "skill", "init")
+        for name in ("project", "source", "investigation", "release", "skill")
     )
 
 
@@ -856,20 +856,23 @@ def test_r2_manifest_validate_is_local_only_and_needs_no_http_or_credential(
     }
 
 
-def test_r2_init_is_hidden_but_local_validate_remains_available() -> None:
+def test_r3_init_is_local_and_validate_remains_available() -> None:
+    """``init`` is a local-only command: no API URL/credential required and no
+    HTTP request is made; ``system-manifest validate`` stays local too."""
     requests: list[httpx.Request] = []
-    stderr = io.StringIO()
+    stdout = io.StringIO()
     exit_code = run(
         ["--api-version", "2", "init", "."],
         env={},
-        stdout=io.StringIO(),
-        stderr=stderr,
+        stdout=stdout,
+        stderr=io.StringIO(),
         transport=httpx.MockTransport(lambda request: requests.append(request)),
     )
 
-    assert exit_code == ExitFamily.INPUT
+    assert exit_code == ExitFamily.OK
     assert requests == []
-    assert json.loads(stderr.getvalue())["error"]["code"] == "CLI_USAGE_INVALID"
+    payload = json.loads(stdout.getvalue())
+    assert "_discovery" in payload
 
 
 @pytest.mark.parametrize(

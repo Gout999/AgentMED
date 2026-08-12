@@ -9,6 +9,7 @@ from __future__ import annotations
 import pytest
 
 from app.public_api.v5_models import SystemVersionRecordRequest
+from sqlalchemy import text
 from app.services.system_versions import SystemVersionsError
 
 from test_v5_system_versions import (
@@ -248,3 +249,101 @@ def test_record_same_key_different_body_conflicts(sqlite_session) -> None:
             request_id="req_01J000000000000R",
         )
     assert excinfo.value.code == "IDEMPOTENCY_CONFLICT"
+
+def test_record_rejects_cross_application_component_revision(sqlite_session) -> None:
+    """A binding owned by another application must be rejected (P1 fix)."""
+    body = _bootstrap(sqlite_session)
+    service = _service(sqlite_session)
+    from app.public_api.v5_models import ExactComponentRevisionBinding
+
+    request_body = _second_record_request(body)
+    bindings = [
+        ExactComponentRevisionBinding.model_validate(b)
+        for b in request_body["exact_component_revision_bindings"]
+    ]
+    with pytest.raises(SystemVersionsError) as excinfo:
+        service._validate_component_revision_bindings(
+            "ws_01J0000000000001",
+            "app_01J0000000000ZZZZ",
+            bindings,
+        )
+    assert excinfo.value.code == "REQUEST_INVALID"
+    assert excinfo.value.details == {"reason": "UNKNOWN_COMPONENT_REVISION_BINDING"}
+
+
+def test_record_rejects_non_active_environment(sqlite_session) -> None:
+    """The frozen contract requires environment_required_state ACTIVE (P1 fix)."""
+    body = _bootstrap(sqlite_session)
+    service = _service(sqlite_session)
+    from app.models.v5_tables import Environment
+    from app.utils.v4_integrity import V4IntegrityError
+
+    environment = sqlite_session.get(Environment, body["environment"]["environment_id"])
+    # flip the persisted lifecycle state via raw SQL (the ORM immutable guard
+    # correctly refuses in-place updates; a tampered database would look like
+    # this)
+    sqlite_session.execute(
+        text(
+            "UPDATE environments SET lifecycle_state = 'RETIRED' "
+            "WHERE environment_id = :id"
+        ),
+        {"id": environment.environment_id},
+    )
+    sqlite_session.commit()
+
+    request = SystemVersionRecordRequest.model_validate(_second_record_request(body))
+    with pytest.raises(SystemVersionsError) as excinfo:
+        service.record_system_version(
+            request,
+            principal=_record_principal(),
+            idempotency_key="record-key-0007",
+            request_id="req_01J000000000000R",
+        )
+    assert excinfo.value.code == "VALIDATION_FAILED"
+    assert excinfo.value.details == {"reason": "ENVIRONMENT_UNKNOWN_OR_CROSS_APPLICATION"}
+def test_record_unknown_commit_outcome_never_forges_duplicate(sqlite_session) -> None:
+    """A non-terminal idempotency row fails closed instead of duplicating."""
+    body = _bootstrap(sqlite_session)
+    service = _service(sqlite_session)
+    from app.models.v4_tables import PublicCommandIdempotency
+
+    request = SystemVersionRecordRequest.model_validate(_second_record_request(body))
+    fingerprint = service.idempotency.fingerprint(request.model_dump(mode="json"))
+    sqlite_session.add(
+        PublicCommandIdempotency(
+            idempotency_record_id="idemr_01J0000000000001",
+            workspace_id="ws_01J0000000000001",
+            principal_id=_record_principal().principal_id,
+            intent="system-versions.record",
+            idempotency_key="record-key-unknown-outcome",
+            request_fingerprint=fingerprint,
+            state="PENDING",
+            resource_kind="system_version_set",
+            resource_id=None,
+            operation_id=None,
+            request_id="req_01J000000000000R",
+            audit_ref=None,
+            response_payload=None,
+            response_digest=None,
+            idempotency_receipt_id=None,
+            receipt_payload=None,
+            receipt_digest=None,
+            created_at=NOW,
+            completed_at=None,
+            expires_at=NOW,
+        )
+    )
+    sqlite_session.commit()
+    with pytest.raises(SystemVersionsError) as excinfo:
+        service.record_system_version(
+            request,
+            principal=_record_principal(),
+            idempotency_key="record-key-unknown-outcome",
+            request_id="req_01J000000000000R",
+        )
+    assert excinfo.value.code == "DEPENDENCY_UNAVAILABLE"
+    # zero new version sets were forged
+    from test_v5_system_versions import _count
+    from app.models.v5_tables import SystemVersionSet
+
+    assert _count(sqlite_session, SystemVersionSet) == 1
