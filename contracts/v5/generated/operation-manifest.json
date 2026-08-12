@@ -1,10 +1,11 @@
 {
-  "activated_intent_count": 14,
+  "activated_intent_count": 19,
   "activation_rule": {
     "activated_wire_statuses": [
       "FROZEN_R2",
       "FROZEN_R2_R3_BOOTSTRAP",
-      "FROZEN_R3"
+      "FROZEN_R3",
+      "FROZEN_R4"
     ],
     "draft_or_deferred_intents_excluded": true,
     "not_a_route_or_capability_activation": true
@@ -483,6 +484,186 @@
       },
       "scope": "system_versions:read",
       "wire_status": "FROZEN_R3"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "service"
+      ],
+      "authorization_condition": "case_application_and_environment_authorized_binder",
+      "cli": "case bind-application",
+      "cli_requires_explicit_api_major": true,
+      "command_target": {
+        "command": "cases.bind-application",
+        "resource": "application_case_binding"
+      },
+      "contract_major": 2,
+      "delivery_slice": "V5-1C",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "POST",
+        "operation_id": "bindCaseApplication",
+        "path": "/api/v2/cases/{case_id}:bind-application"
+      },
+      "idempotency": "required",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "cases.bind-application",
+      "kind": "mutation",
+      "required_trust_roles_any_of": [
+        "integrator",
+        "maintainer"
+      ],
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/cases.bind-application.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/cases.bind-application.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/cases.bind-application.schema.json#/$defs/response"
+      },
+      "scope": "cases:bind",
+      "trust_roles_source": "authenticated_server_registration",
+      "wire_status": "FROZEN_R4"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "external_agent",
+        "service",
+        "connector"
+      ],
+      "authorization_condition": "case_and_application_authorized_reader",
+      "cli": "case application-binding get",
+      "cli_requires_explicit_api_major": true,
+      "contract_major": 2,
+      "delivery_slice": "V5-1C",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "GET",
+        "operation_id": "getCaseApplicationBinding",
+        "path": "/api/v2/cases/{case_id}/application-binding",
+        "query_parameters": {
+          "optional": [],
+          "required": [
+            "case_revision",
+            "case_digest"
+          ]
+        }
+      },
+      "idempotency": "none",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "case-application-bindings.get",
+      "kind": "query",
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/case-application-bindings.get.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/case-application-bindings.get.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/case-application-bindings.get.schema.json#/$defs/response"
+      },
+      "scope": "cases:read",
+      "wire_status": "FROZEN_R4"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "external_agent",
+        "service",
+        "connector"
+      ],
+      "authorization_condition": "case_authorized_actor",
+      "cli": "case acceptance-criteria propose",
+      "cli_requires_explicit_api_major": true,
+      "command_target": {
+        "command": "acceptance-criteria.propose",
+        "resource": "acceptance_criteria_revision"
+      },
+      "contract_major": 2,
+      "delivery_slice": "V5-0C",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "POST",
+        "operation_id": "proposeAcceptanceCriteria",
+        "path": "/api/v2/cases/{case_id}:propose-acceptance-criteria"
+      },
+      "idempotency": "required",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "acceptance-criteria.propose",
+      "kind": "mutation",
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/acceptance-criteria.propose.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/acceptance-criteria.propose.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/acceptance-criteria.propose.schema.json#/$defs/response"
+      },
+      "scope": "acceptance_criteria:propose",
+      "wire_status": "FROZEN_R4"
+    },
+    {
+      "allowed_principal_types": [
+        "human"
+      ],
+      "authorization_condition": "human_maintainer_or_domain_reviewer_of_case",
+      "cli": "acceptance-criteria confirm",
+      "cli_requires_explicit_api_major": true,
+      "command_target": {
+        "command": "acceptance-criteria.confirm",
+        "resource": "acceptance_criteria_revision"
+      },
+      "contract_major": 2,
+      "delivery_slice": "V5-0C",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "POST",
+        "operation_id": "confirmAcceptanceCriteria",
+        "path": "/api/v2/acceptance-criteria/{acceptance_criteria_revision_id}:confirm"
+      },
+      "idempotency": "required",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "acceptance-criteria.confirm",
+      "kind": "mutation",
+      "required_trust_roles_any_of": [
+        "maintainer",
+        "domain_reviewer"
+      ],
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/acceptance-criteria.confirm.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/acceptance-criteria.confirm.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/acceptance-criteria.confirm.schema.json#/$defs/response"
+      },
+      "scope": "acceptance_criteria:confirm",
+      "trust_roles_source": "authenticated_server_registration",
+      "wire_status": "FROZEN_R4"
+    },
+    {
+      "allowed_principal_types": [
+        "human",
+        "external_agent",
+        "service",
+        "connector"
+      ],
+      "authorization_condition": "case_authorized_reader",
+      "cli": "case acceptance-criteria get",
+      "cli_requires_explicit_api_major": true,
+      "contract_major": 2,
+      "delivery_slice": "V5-0C",
+      "execution_mode": "synchronous",
+      "http": {
+        "method": "GET",
+        "operation_id": "getAcceptanceCriteria",
+        "path": "/api/v2/cases/{case_id}/acceptance-criteria",
+        "query_parameters": {
+          "optional": [],
+          "required": [
+            "case_revision"
+          ]
+        }
+      },
+      "idempotency": "none",
+      "implementation_status": "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER",
+      "intent": "acceptance-criteria.get",
+      "kind": "query",
+      "schema": {
+        "error": "https://caseloop.dev/schemas/v5/acceptance-criteria.get.schema.json#/$defs/error",
+        "request": "https://caseloop.dev/schemas/v5/acceptance-criteria.get.schema.json#/$defs/request",
+        "response": "https://caseloop.dev/schemas/v5/acceptance-criteria.get.schema.json#/$defs/response"
+      },
+      "scope": "acceptance_criteria:read",
+      "wire_status": "FROZEN_R4"
     }
   ],
   "schema_version": "1.0",

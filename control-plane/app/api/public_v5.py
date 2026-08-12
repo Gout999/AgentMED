@@ -1482,9 +1482,23 @@ def diff_system_versions(request: Request) -> JSONResponse:
 # ---------------------------------------------------------------------------
 
 
-async def _unregistered_bind_case_application(
-    case_id: str, request: Request
-) -> JSONResponse:
+@router.post(
+    "/cases/{case_id}:bind-application",
+    response_model=CaseBindApplicationResponse,
+    status_code=201,
+    operation_id="bindCaseApplication",
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": CaseBindApplicationRequest.model_json_schema()
+                }
+            },
+        }
+    },
+)
+async def bind_case_application(case_id: str, request: Request) -> JSONResponse:
     request_id = _request_id(request)
     session: Any | None = None
     principal: AcceptedPrincipalContext | None = None
@@ -1551,7 +1565,12 @@ async def _unregistered_bind_case_application(
             _close(session)
 
 
-def _unregistered_get_case_application_binding(
+@router.get(
+    "/cases/{case_id}/application-binding",
+    response_model=ApplicationBindingGetResponse,
+    operation_id="getCaseApplicationBinding",
+)
+def get_case_application_binding(
     case_id: str,
     case_revision: int,
     case_digest: str,
@@ -1609,7 +1628,23 @@ def _unregistered_get_case_application_binding(
             _close(session)
 
 
-async def _unregistered_propose_acceptance_criteria(
+@router.post(
+    "/cases/{case_id}:propose-acceptance-criteria",
+    response_model=AcceptanceCriteriaProposeResponse,
+    status_code=201,
+    operation_id="proposeAcceptanceCriteria",
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": AcceptanceCriteriaProposeRequest.model_json_schema()
+                }
+            },
+        }
+    },
+)
+async def propose_acceptance_criteria(
     case_id: str, request: Request
 ) -> JSONResponse:
     request_id = _request_id(request)
@@ -1678,7 +1713,12 @@ async def _unregistered_propose_acceptance_criteria(
             _close(session)
 
 
-def _unregistered_get_acceptance_criteria(
+@router.get(
+    "/cases/{case_id}/acceptance-criteria",
+    response_model=AcceptanceCriteriaGetResponse,
+    operation_id="getAcceptanceCriteria",
+)
+def get_acceptance_criteria(
     case_id: str,
     case_revision: int,
     request: Request,
@@ -1734,7 +1774,23 @@ def _unregistered_get_acceptance_criteria(
             _close(session)
 
 
-async def _unregistered_confirm_acceptance_criteria(
+@router.post(
+    "/acceptance-criteria/{acceptance_criteria_revision_id}:confirm",
+    response_model=AcceptanceCriteriaConfirmResponse,
+    status_code=201,
+    operation_id="confirmAcceptanceCriteria",
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": AcceptanceCriteriaConfirmRequest.model_json_schema()
+                }
+            },
+        }
+    },
+)
+async def confirm_acceptance_criteria(
     acceptance_criteria_revision_id: str, request: Request
 ) -> JSONResponse:
     request_id = _request_id(request)

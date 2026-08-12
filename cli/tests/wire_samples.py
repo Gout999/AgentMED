@@ -47,6 +47,11 @@ def capabilities(request: httpx.Request) -> dict[str, Any]:
             ("system-versions.record", "system_versions:record"),
             ("system-versions.get", "system_versions:read"),
             ("system-versions.diff", "system_versions:read"),
+            ("cases.bind-application", "cases:bind"),
+            ("case-application-bindings.get", "cases:read"),
+            ("acceptance-criteria.propose", "acceptance_criteria:propose"),
+            ("acceptance-criteria.get", "acceptance_criteria:read"),
+            ("acceptance-criteria.confirm", "acceptance_criteria:confirm"),
         ]
         return {
             "schema_version": "2.0",

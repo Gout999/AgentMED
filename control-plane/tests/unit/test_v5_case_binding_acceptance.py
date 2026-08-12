@@ -1323,7 +1323,7 @@ def test_confirm_creates_new_immutable_confirmed_revision(sqlite_session) -> Non
         request_id="req_01J000000000001D",
     )
     sqlite_session.commit()
-    assert get_response.case_readiness == "READY"
+    assert get_response.case_readiness == "PENDING_MATERIALIZATION"
     assert get_response.next_action is None
     assert len(get_response.revisions) == 2
 

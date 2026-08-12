@@ -41,6 +41,11 @@ V5PublicIntentName = Literal[
     "system-versions.record",
     "system-versions.get",
     "system-versions.diff",
+    "cases.bind-application",
+    "case-application-bindings.get",
+    "acceptance-criteria.propose",
+    "acceptance-criteria.get",
+    "acceptance-criteria.confirm",
 ]
 
 

@@ -24,7 +24,11 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-_CLI_TOKENS = re.compile(r"^([A-Za-z0-9-]+) ([A-Za-z0-9-]+)$")
+# Two- or three-token CLI surface: ``<command> <action>`` (most intents) or
+# ``<command> <action> <subaction>`` (nested groups such as
+# ``case application-binding get``).  The third token is carried as the
+# operation's ``subaction``.
+_CLI_TOKENS = re.compile(r"^([A-Za-z0-9-]+) ([A-Za-z0-9-]+)(?: ([A-Za-z0-9-]+))?$")
 _HTTP_METHODS = frozenset({"GET", "POST", "PUT", "PATCH", "DELETE"})
 _IDEMPOTENCY_KINDS = frozenset({"none", "required", "optional"})
 _KINDS = frozenset({"query", "mutation"})
@@ -56,6 +60,7 @@ class CliOperation:
     scope: str
     status_code: int  # derived: 201 for writes, 200 for reads
     contract_major: int
+    subaction: str | None = None  # third token (nested group), else None
     command_target_resource: str | None = None
 
 
@@ -66,7 +71,7 @@ class _ManifestLoadResult:
     operations: tuple[CliOperation, ...]
 
 
-# Frozen R2 fallback (C4).  The C1 generated manifest is the authoritative
+# Frozen R4 fallback (C4).  The C1 generated manifest is the authoritative
 # derivation source; these literals replicate the current activated set so a
 # CLI installed outside the repository keeps byte-identical command names,
 # paths, operation ids, idempotency kinds, scopes and status codes.  They are
@@ -288,6 +293,90 @@ _FROZEN_OPERATIONS: tuple[dict[str, object], ...] = (
         "idempotency": "none",
         "scope": "system_versions:read",
     },
+    # Frozen R4 fallback (V5-1C).  Byte-identical to the regenerated C1
+    # manifest entries for the first system case intents.
+    {
+        "intent": "cases.bind-application",
+        "cli": "case bind-application",
+        "contract_major": 2,
+        "execution_mode": "synchronous",
+        "kind": "mutation",
+        "command_target": {
+            "command": "cases.bind-application",
+            "resource": "application_case_binding",
+        },
+        "http": {
+            "method": "POST",
+            "operation_id": "bindCaseApplication",
+            "path": "/api/v2/cases/{case_id}:bind-application",
+        },
+        "idempotency": "required",
+        "scope": "cases:bind",
+    },
+    {
+        "intent": "case-application-bindings.get",
+        "cli": "case application-binding get",
+        "contract_major": 2,
+        "execution_mode": "synchronous",
+        "kind": "query",
+        "http": {
+            "method": "GET",
+            "operation_id": "getCaseApplicationBinding",
+            "path": "/api/v2/cases/{case_id}/application-binding",
+        },
+        "idempotency": "none",
+        "scope": "cases:read",
+    },
+    {
+        "intent": "acceptance-criteria.propose",
+        "cli": "case acceptance-criteria propose",
+        "contract_major": 2,
+        "execution_mode": "synchronous",
+        "kind": "mutation",
+        "command_target": {
+            "command": "acceptance-criteria.propose",
+            "resource": "acceptance_criteria_revision",
+        },
+        "http": {
+            "method": "POST",
+            "operation_id": "proposeAcceptanceCriteria",
+            "path": "/api/v2/cases/{case_id}:propose-acceptance-criteria",
+        },
+        "idempotency": "required",
+        "scope": "acceptance_criteria:propose",
+    },
+    {
+        "intent": "acceptance-criteria.get",
+        "cli": "case acceptance-criteria get",
+        "contract_major": 2,
+        "execution_mode": "synchronous",
+        "kind": "query",
+        "http": {
+            "method": "GET",
+            "operation_id": "getAcceptanceCriteria",
+            "path": "/api/v2/cases/{case_id}/acceptance-criteria",
+        },
+        "idempotency": "none",
+        "scope": "acceptance_criteria:read",
+    },
+    {
+        "intent": "acceptance-criteria.confirm",
+        "cli": "acceptance-criteria confirm",
+        "contract_major": 2,
+        "execution_mode": "synchronous",
+        "kind": "mutation",
+        "command_target": {
+            "command": "acceptance-criteria.confirm",
+            "resource": "acceptance_criteria_revision",
+        },
+        "http": {
+            "method": "POST",
+            "operation_id": "confirmAcceptanceCriteria",
+            "path": "/api/v2/acceptance-criteria/{acceptance_criteria_revision_id}:confirm",
+        },
+        "idempotency": "required",
+        "scope": "acceptance_criteria:confirm",
+    },
 )
 
 
@@ -338,7 +427,7 @@ def _validated_operation(operation: object) -> dict[str, Any]:
         raise _manifest_invalid("intent is required")
     if not isinstance(cli, str) or _CLI_TOKENS.fullmatch(cli) is None:
         raise _manifest_invalid(
-            f"{intent}: cli must be exactly '<command> <action>'"
+            f"{intent}: cli must be '<command> <action>' or '<command> <action> <subaction>'"
         )
     if not isinstance(scope, str) or not scope:
         raise _manifest_invalid(f"{intent}: scope is required")
@@ -401,11 +490,22 @@ def _derive_operation(operation: dict[str, Any]) -> CliOperation:
     http = operation["http"]
     method = http["method"]
     status_code = 201 if method in {"POST", "PUT", "PATCH"} else 200
-    command, action = _CLI_TOKENS.fullmatch(operation["cli"]).groups()
+    cli_match = _CLI_TOKENS.fullmatch(operation["cli"])
+    command, action = cli_match.group(1), cli_match.group(2)
+    subaction = cli_match.group(3)
+    # V5-1C CLI-surface normalization: the regenerated manifest carries the
+    # confirm intent as a standalone ``acceptance-criteria confirm`` while the
+    # frozen CLI surface nests it under the case group (``case
+    # acceptance-criteria confirm``), matching the sibling propose/get intents
+    # and the R4 e2e journey.  Both the manifest and the frozen fallback
+    # derive to the same (command, action, subaction) surface.
+    if command == "acceptance-criteria" and action == "confirm" and subaction is None:
+        command, action, subaction = "case", "acceptance-criteria", "confirm"
     return CliOperation(
         intent=operation["intent"],
         command=command,
         action=action,
+        subaction=subaction,
         method=method,
         path=http["path"],
         operation_id=http["operation_id"],
@@ -436,8 +536,11 @@ def _load_and_validate(raw: str) -> tuple[CliOperation, ...]:
     intents = [operation.intent for operation in derived]
     if len(intents) != len(set(intents)):
         raise _manifest_invalid("duplicate activated intent names")
-    cli_pairs = [(operation.command, operation.action) for operation in derived]
-    if len(cli_pairs) != len(set(cli_pairs)):
+    cli_triples = [
+        (operation.command, operation.action, operation.subaction)
+        for operation in derived
+    ]
+    if len(cli_triples) != len(set(cli_triples)):
         raise _manifest_invalid("duplicate cli command/action pairs")
     return tuple(derived)
 

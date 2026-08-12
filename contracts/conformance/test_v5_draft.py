@@ -480,14 +480,21 @@ def test_draft_intents_disable_every_transport_and_target_owned_commands() -> No
                 "DRAFT",
                 "FROZEN_FOR_IMPLEMENTATION",
                 "FROZEN_R3",
+                "FROZEN_R4",
             )
-            if intent["wire_status"] == "FROZEN_R3":
+            if intent["wire_status"] in ("FROZEN_R3", "FROZEN_R4"):
                 assert intent["implementation_status"] == (
                     "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
                 )
             else:
                 assert intent["implementation_status"] == "NOT_IMPLEMENTED"
             if intent["wire_status"] == "DRAFT":
+                assert intent["field_contract_ref"] is None
+            elif intent["wire_status"] == "FROZEN_R4":
+                # R4 first-system-case intents freeze the wire contract on the
+                # generated schema namespace without a schema-profiles field
+                # contract ref (V5-0C/V5-1C slices predate the r2/d2 profile
+                # convention).
                 assert intent["field_contract_ref"] is None
             else:
                 assert intent["field_contract_ref"].startswith(

@@ -27,6 +27,14 @@ SCHEMAS_DIR = V5 / "schemas"
 GENERATED_DIR = V5 / "generated"
 
 D2_INTENTS = ["system-versions.record", "system-versions.get", "system-versions.diff"]
+# 顺序与 intent-registry.yaml#r4_full_contract.activated_contract_intents 一致。
+R4_INTENTS = [
+    "cases.bind-application",
+    "case-application-bindings.get",
+    "acceptance-criteria.propose",
+    "acceptance-criteria.get",
+    "acceptance-criteria.confirm",
+]
 ACTIVATED_NAMES = [
     "capabilities.get",
     "applications.register",
@@ -42,6 +50,11 @@ ACTIVATED_NAMES = [
     "system-versions.record",
     "system-versions.get",
     "system-versions.diff",
+    "cases.bind-application",
+    "case-application-bindings.get",
+    "acceptance-criteria.propose",
+    "acceptance-criteria.confirm",
+    "acceptance-criteria.get",
 ]
 
 
@@ -94,7 +107,7 @@ def test_fixture_freeze_metadata_is_contract_only() -> None:
     } <= set(fixture["does_not_prove"])
 
 
-def test_three_intents_activated_as_r3_full() -> None:
+def test_activated_surface_includes_r3_full_and_r4_full() -> None:
     registry = _load_yaml(V5 / "intent-registry.yaml")
     compatibility = _load_yaml(V5 / "compatibility.yaml")
 
@@ -110,13 +123,25 @@ def test_three_intents_activated_as_r3_full() -> None:
         assert intent["http"]["path"].startswith("/api/v2/")
         assert intent["cli_requires_explicit_api_major"] is True
 
-    # R3-full 激活：三个 intent 进入 generated operation/capability manifest；
-    # R2 历史 allowlist（r2_application_catalog_contract）仍保持 11 个且不相交。
+    # R4-full 激活：五个 first-system-case intent 进入同一 activated 集合。
+    for name in R4_INTENTS:
+        intent = _registry_intent(registry, name)
+        assert intent["wire_status"] == "FROZEN_R4"
+        assert intent["implementation_status"] == (
+            "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
+        )
+        assert intent["http"]["path"].startswith("/api/v2/")
+        assert intent["cli_requires_explicit_api_major"] is True
+
+    # R3-full/R4-full 激活：八个 intent 进入 generated operation/capability
+    # manifest；R2 历史 allowlist（r2_application_catalog_contract）仍保持
+    # 11 个且与 R3/R4 激活集不相交。
     r2_activated = registry["r2_application_catalog_contract"][
         "activated_contract_intents"
     ]
     assert len(r2_activated) == 11
     assert set(D2_INTENTS).isdisjoint(r2_activated)
+    assert set(R4_INTENTS).isdisjoint(r2_activated)
     operation_names = [
         op["intent"] for op in _load_json("operation-manifest.json")["operations"]
     ]
@@ -127,6 +152,7 @@ def test_three_intents_activated_as_r3_full() -> None:
     ]
     assert capability_names == ACTIVATED_NAMES
     assert set(D2_INTENTS) <= set(capability_names)
+    assert set(R4_INTENTS) <= set(capability_names)
 
     # R3-full 契约块：capability 发现开启；d2 块标记为已激活（语义部分不变）。
     r3 = registry["r3_full_contract"]
@@ -137,6 +163,15 @@ def test_three_intents_activated_as_r3_full() -> None:
     assert r3["activated_contract_intents"] == D2_INTENTS
     assert r3["capability_discovery"] == "ENABLED"
     assert r3["r2_activated_allowlist_unchanged"] is True
+
+    # R4-full 契约块：capability 发现开启；first-system-case 五个 intent 冻结。
+    r4 = registry["r4_full_contract"]
+    assert r4["stage"] == "R4"
+    assert r4["plan_ref"] == "docs/plans/v5-master-execution-plan.md#17.5"
+    assert r4["contract_status"] == "FROZEN"
+    assert r4["runtime_status"] == "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
+    assert r4["activated_contract_intents"] == R4_INTENTS
+    assert r4["capability_discovery"] == "ENABLED"
 
     d2 = registry["d2_complete_version_graph_contract"]
     assert d2["activation_status"] == "ACTIVATED_AS_R3_FULL"

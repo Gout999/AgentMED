@@ -463,6 +463,18 @@ class V5IdempotencyReceipt(WireModel):
                 False,
                 "COMPLETED",
             ),
+            "acceptance-criteria.propose": (
+                "acceptance_criteria_revision",
+                "acr_",
+                False,
+                "COMPLETED",
+            ),
+            "acceptance-criteria.confirm": (
+                "acceptance_criteria_revision",
+                "acr_",
+                False,
+                "COMPLETED",
+            ),
         }
         kind, prefix, operation_required, status = expected[self.intent]
         if self.resource.kind != kind or not self.resource.id.startswith(prefix):
@@ -1028,9 +1040,11 @@ AcceptanceCriteriaRevisionId = Annotated[
 IssueSnapshotId = Annotated[str, Field(pattern=r"^iss_[0-9A-Za-z]{8,64}$")]
 ExactCaseBinding = dict[str, Any]
 ExactResolutionContractBinding = dict[str, Any]
-SystemVersionSetBindingOrUnknown = dict[str, Any] | None
+SystemVersionSetBindingOrUnknown = (
+    dict[str, Any] | Literal["UNKNOWN"] | None
+)
 ConfirmationStatus = Literal["PROPOSED", "CONFIRMED"]
-CaseReadiness = Literal["NEEDS_ACCEPTANCE_CRITERIA", "READY"]
+CaseReadiness = Literal["NEEDS_ACCEPTANCE_CRITERIA", "PENDING_MATERIALIZATION", "READY"]
 
 
 class IssueSnapshotRequest(WireModel):

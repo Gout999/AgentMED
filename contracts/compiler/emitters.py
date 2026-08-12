@@ -49,7 +49,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SCHEMAS_DIR = REPO_ROOT / "contracts/v5/schemas"
 
 # Path-template placeholders -> common.schema.json id definitions. Only the
-# five activated by-id GET operations exist today; the frozen schema
+# activated by-id GET/action operations exist today; the frozen schema
 # namespace is the authority and this map is the stable projection.
 PATH_PARAMETER_ID_DEFS = {
     "application_id": "idApplicationId",
@@ -57,6 +57,8 @@ PATH_PARAMETER_ID_DEFS = {
     "component_id": "idComponentId",
     "dependency_edge_id": "idEdgeId",
     "system_version_set_id": "idSystemVersionSetId",
+    "case_id": "idCaseId",
+    "acceptance_criteria_revision_id": "idAcceptanceCriteriaRevisionId",
 }
 
 # ---------------------------------------------------------------------------
@@ -297,8 +299,9 @@ def emit_v5_openapi(
             "description": (
                 "Generated OpenAPI 3.1 document for the activated V5 wire "
                 "surface. Contains only activated operations (FROZEN_R2 / "
-                "FROZEN_R2_R3_BOOTSTRAP / FROZEN_R3 intents from the intent "
-                "registry); draft and deferred intents never generate paths. "
+                "FROZEN_R2_R3_BOOTSTRAP / FROZEN_R3 / FROZEN_R4 intents from "
+                "the intent registry); draft and deferred intents never "
+                "generate paths. "
                 "request/response/error contracts are external $refs into "
                 "the frozen ../schemas/*.schema.json files. "
                 "components.securitySchemes is intentionally not emitted "

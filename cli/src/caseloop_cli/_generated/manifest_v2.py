@@ -539,3 +539,155 @@ class SystemVersionDiffResponse(WireModel):
     source_binding: ExactSystemVersionSetBinding
     target_binding: ExactSystemVersionSetBinding
     diff: SystemVersionDiff
+
+
+# ---------------------------------------------------------------------------
+# V5-1C case binding / acceptance criteria (R4).  Request adapters mirror the
+# runtime's canonical dump so the request-fingerprint binding on the mutation
+# receipts matches; response adapters add CLI-side semantic checks.
+# ---------------------------------------------------------------------------
+
+CaseId = Annotated[str, Field(pattern=r"^case_[0-9A-Za-z]{8,64}$")]
+ApplicationCaseBindingId = Annotated[
+    str, Field(pattern=r"^acb_[0-9A-Za-z]{8,64}$")
+]
+AcceptanceCriteriaRevisionId = Annotated[
+    str, Field(pattern=r"^acr_[0-9A-Za-z]{8,64}$")
+]
+
+
+class IssueSnapshotRequest(WireModel):
+    source_kind: Literal["github_issue", "manual"]
+    source_url: Annotated[str, Field(min_length=1, max_length=1024)]
+    external_repo: Annotated[str, Field(min_length=1, max_length=256)]
+    external_issue_number: Annotated[StrictInt, Field(ge=1)]
+    snapshot_payload: dict[str, Any]
+    edited_flag: StrictBool = False
+    deleted_flag: StrictBool = False
+    fetched_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def source_url_is_http(self) -> "IssueSnapshotRequest":
+        if not self.source_url.startswith(("https://", "http://")):
+            raise ValueError("issue source url must be http(s)")
+        return self
+
+
+class CaseBindApplicationRequest(WireModel):
+    """R4 frozen bind request (cases.bind-application)."""
+
+    schema_version: SchemaVersion2
+    case_id: CaseId
+    case_revision: Annotated[StrictInt, Field(ge=1)]
+    case_digest: Digest
+    application_id: ApplicationId
+    environment_id: CatalogEnvironmentId
+    declared_system_version_set_binding_or_unknown: (
+        dict[str, Any] | Literal["UNKNOWN"]
+    ) = "UNKNOWN"
+    issue_snapshot: IssueSnapshotRequest | None = None
+
+
+class ApplicationCaseBindingRecord(WireModel):
+    record_envelope: RecordEnvelope
+    application_case_binding_id: ApplicationCaseBindingId
+    workspace_id: WorkspaceId
+    exact_case_binding: dict[str, Any]
+    application_id: ApplicationId
+    environment_id: CatalogEnvironmentId
+    declared_system_version_set_binding_or_unknown: (
+        dict[str, Any] | Literal["UNKNOWN"] | None
+    ) = None
+    binding_digest: Digest
+
+
+class CaseBindApplicationResponse(WireModel):
+    schema_version: SchemaVersion2
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    application_case_binding: ApplicationCaseBindingRecord
+    idempotency: V5IdempotencyDelivery
+
+
+class ApplicationBindingGetResponse(WireModel):
+    schema_version: SchemaVersion2
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    application_case_binding: ApplicationCaseBindingRecord
+
+
+class AcceptanceCriteriaRevisionRecord(WireModel):
+    record_envelope: RecordEnvelope
+    acceptance_criteria_revision_id: AcceptanceCriteriaRevisionId
+    workspace_id: WorkspaceId
+    exact_case_binding: dict[str, Any]
+    exact_resolution_contract_binding: dict[str, Any]
+    confirmation_status: Literal["PROPOSED", "CONFIRMED"]
+    proposer_principal: PrincipalId
+    proposed_at: AwareDatetime
+    confirmer_principal: PrincipalId | None = None
+    confirmed_at: AwareDatetime | None = None
+    exact_previous_proposed_revision_binding: dict[str, Any] | None = None
+    acceptance_source: dict[str, Any]
+    reproducer_input: dict[str, Any] | None = None
+    reproducer_environment: dict[str, Any] | None = None
+    expected_behavior: dict[str, Any]
+    oracle_or_evaluator: dict[str, Any] | None = None
+    applicable_workload_profile: dict[str, Any]
+    applicable_deployment_profile: dict[str, Any]
+    acceptance_digest: Digest
+
+
+class AcceptanceCriteriaProposeRequest(WireModel):
+    """R4 frozen propose request (acceptance-criteria.propose)."""
+
+    schema_version: SchemaVersion2
+    case_id: CaseId
+    case_revision: Annotated[StrictInt, Field(ge=1)]
+    case_digest: Digest
+    acceptance_source: dict[str, Any]
+    reproducer_input: dict[str, Any] | None = None
+    reproducer_environment: dict[str, Any] | None = None
+    expected_behavior: dict[str, Any]
+    oracle_or_evaluator: dict[str, Any] | None = None
+    applicable_workload_profile: dict[str, Any]
+    applicable_deployment_profile: dict[str, Any]
+
+
+class AcceptanceCriteriaProposeResponse(WireModel):
+    schema_version: SchemaVersion2
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    acceptance_criteria_revision: AcceptanceCriteriaRevisionRecord
+    idempotency: V5IdempotencyDelivery
+
+
+class AcceptanceCriteriaGetResponse(WireModel):
+    schema_version: SchemaVersion2
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    exact_case_binding: dict[str, Any]
+    case_readiness: Literal["NEEDS_ACCEPTANCE_CRITERIA", "PENDING_MATERIALIZATION", "READY"]
+    revisions: list[AcceptanceCriteriaRevisionRecord] = []
+    next_action: dict[str, Any] | None = None
+
+
+class AcceptanceCriteriaConfirmRequest(WireModel):
+    """R4 frozen confirm request (acceptance-criteria.confirm)."""
+
+    schema_version: SchemaVersion2
+    exact_proposed_revision_binding: dict[str, Any]
+    confirmation_note: Annotated[str, Field(max_length=2000)] | None = None
+
+
+class AcceptanceCriteriaConfirmResponse(WireModel):
+    schema_version: SchemaVersion2
+    workspace_id: WorkspaceId
+    request_id: RequestId
+    audit_ref: AuditRef
+    acceptance_criteria_revision: AcceptanceCriteriaRevisionRecord
+    idempotency: V5IdempotencyDelivery

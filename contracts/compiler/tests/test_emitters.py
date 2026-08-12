@@ -4,7 +4,7 @@ Run from the repository root with the contracts path on sys.path:
 
     PYTHONPATH=contracts python3 -m pytest contracts/compiler/tests -q
 
-Coverage: deterministic regeneration (bytes), the exact 14-operation
+Coverage: deterministic regeneration (bytes), the exact 19-operation
 activated surface with no inactive intent, path/query parameter emission,
 external-schema refs, the omitted securitySchemes (C4 decision), the TS
 module's interface/guard/pattern extraction from the frozen schemas, and the
@@ -40,12 +40,17 @@ EXPECTED_ACTIVATED_NAMES = [
     "system-versions.record",
     "system-versions.get",
     "system-versions.diff",
+    "cases.bind-application",
+    "case-application-bindings.get",
+    "acceptance-criteria.propose",
+    "acceptance-criteria.confirm",
+    "acceptance-criteria.get",
 ]
 
 INACTIVE_INTENTS = (
-    "cases.bind-application",
-    "acceptance-criteria.propose",
-    "acceptance-criteria.confirm",
+    "system-episodes.get",
+    "investigations.start",
+    "operations.get",
 )
 
 TS_EXPECTED_INTERFACES = (
@@ -105,13 +110,13 @@ def test_openapi_is_deterministic(tmp_path: Path) -> None:
     assert first["ts"].read_bytes() == second["ts"].read_bytes()
 
 
-def test_openapi_covers_all_14_activated_operations(
+def test_openapi_covers_all_19_activated_operations(
     operation_manifest: dict, openapi_document: dict
 ) -> None:
     operations = _all_operations(openapi_document)
-    assert len(operations) == 14
+    assert len(operations) == 19
     intents = [operation["x-caseloop-intent"] for _, _, operation in operations]
-    assert len(set(intents)) == 14
+    assert len(set(intents)) == 19
     # Path grouping reorders operations with the same path template; the
     # surface must match the activated set, not the manifest ordering.
     assert sorted(intents) == sorted(EXPECTED_ACTIVATED_NAMES)
@@ -197,6 +202,54 @@ def test_openapi_path_and_query_parameters(openapi_document: dict) -> None:
             diff_by_name[name]["schema"]["$ref"]
             == "../schemas/common.schema.json#/$defs/idSystemVersionSetId"
         )
+
+    # R4 first-system-case surface: case_id path parameter on the three case
+    # routes, acceptance_criteria_revision_id on confirm, and the exact-case
+    # query parameters on the two read intents.
+    for intent in (
+        "cases.bind-application",
+        "case-application-bindings.get",
+        "acceptance-criteria.propose",
+        "acceptance-criteria.get",
+    ):
+        parameters = by_intent[intent]["parameters"]
+        case_param = next(p for p in parameters if p["name"] == "case_id")
+        assert case_param["in"] == "path"
+        assert case_param["required"] is True
+        assert case_param["schema"]["pattern"] == "^case_[0-9A-Za-z]{8,64}$"
+
+    confirm_parameters = by_intent["acceptance-criteria.confirm"]["parameters"]
+    revision_param = confirm_parameters[0]
+    assert revision_param["name"] == "acceptance_criteria_revision_id"
+    assert revision_param["in"] == "path"
+    assert revision_param["required"] is True
+    assert revision_param["schema"]["pattern"] == "^acr_[0-9A-Za-z]{8,64}$"
+
+    binding_parameters = by_intent["case-application-bindings.get"]["parameters"]
+    binding_by_name = {parameter["name"]: parameter for parameter in binding_parameters}
+    assert set(binding_by_name) == {"case_id", "case_revision", "case_digest"}
+    assert binding_by_name["case_revision"]["in"] == "query"
+    assert binding_by_name["case_revision"]["required"] is True
+    assert binding_by_name["case_revision"]["schema"] == {
+        "type": "integer",
+        "minimum": 1,
+    }
+    assert binding_by_name["case_digest"]["in"] == "query"
+    assert binding_by_name["case_digest"]["required"] is True
+    assert (
+        binding_by_name["case_digest"]["schema"]["$ref"]
+        == "../schemas/common.schema.json#/$defs/digest"
+    )
+
+    acceptance_parameters = by_intent["acceptance-criteria.get"]["parameters"]
+    acceptance_by_name = {parameter["name"]: parameter for parameter in acceptance_parameters}
+    assert set(acceptance_by_name) == {"case_id", "case_revision"}
+    assert acceptance_by_name["case_revision"]["in"] == "query"
+    assert acceptance_by_name["case_revision"]["required"] is True
+    assert acceptance_by_name["case_revision"]["schema"] == {
+        "type": "integer",
+        "minimum": 1,
+    }
 
 
 def test_openapi_schema_refs_and_request_body(openapi_document: dict) -> None:

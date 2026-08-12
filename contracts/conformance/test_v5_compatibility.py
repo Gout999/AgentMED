@@ -245,10 +245,11 @@ def test_first_wire_slice_matches_registry_and_compatibility() -> None:
                 "DRAFT",
                 "FROZEN_FOR_IMPLEMENTATION",
                 "FROZEN_R3",
+                "FROZEN_R4",
             )
             assert intent["implementation_status"] == (
                 "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
-                if intent["wire_status"] == "FROZEN_R3"
+                if intent["wire_status"] in ("FROZEN_R3", "FROZEN_R4")
                 else "NOT_IMPLEMENTED"
             )
         assert intent["cli_requires_explicit_api_major"] is True

@@ -155,6 +155,11 @@ def test_capabilities_supports_explicit_v2_without_changing_v1_default() -> None
         "system-versions.record",
         "system-versions.get",
         "system-versions.diff",
+        "cases.bind-application",
+        "case-application-bindings.get",
+        "acceptance-criteria.propose",
+        "acceptance-criteria.get",
+        "acceptance-criteria.confirm",
     }
     modes = {
         item["name"]: item["execution_mode"]
@@ -878,14 +883,34 @@ def test_r3_init_is_local_and_validate_remains_available() -> None:
 @pytest.mark.parametrize(
     ("method", "path"),
     [
-        ("POST", "/api/v2/cases/case_01J0000000000001:bind-application"),
         ("GET", "/api/v2/cases/case_01J0000000000001/application-binding"),
+        ("GET", "/api/v2/cases/case_01J0000000000001/acceptance-criteria"),
     ],
 )
-def test_r2_client_rejects_unactivated_operations_before_http(
-    method: str,
-    path: str,
-) -> None:
+def test_r4_client_accepts_activated_1c_reads(method: str, path: str) -> None:
+    """The R4 1C intents are activated: the client compiles a wire spec for
+    each (method, path) and completes a full response round-trip instead of
+    failing closed before HTTP."""
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            headers={
+                "content-type": "application/json",
+                "x-caseloop-contract-version": "2.0",
+            },
+            json=success_for(request),
+        )
+
+    client = PublicApiClient(
+        RuntimeConfig(base_url=BASE, workspace_id=WORKSPACE, token=TOKEN),
+        transport=httpx.MockTransport(handler),
+    )
+    payload = client.request(method, path, api_major=2)
+    assert isinstance(payload, dict)
+
+
+def test_r4_client_rejects_unactivated_future_operation_before_http() -> None:
     requests: list[httpx.Request] = []
     client = PublicApiClient(
         RuntimeConfig(base_url=BASE, workspace_id=WORKSPACE, token=TOKEN),
@@ -893,7 +918,9 @@ def test_r2_client_rejects_unactivated_operations_before_http(
     )
 
     with pytest.raises(CliError) as exc_info:
-        client.request(method, path, api_major=2)
+        client.request(
+            "GET", "/api/v2/system-episodes/ep_01J0000000000001", api_major=2
+        )
 
     assert exc_info.value.code == "CLIENT_OPERATION_UNSUPPORTED"
     assert requests == []
@@ -936,10 +963,11 @@ def test_unknown_or_unfrozen_command_is_stable_input_error() -> None:
         ["case", "bind-application"],
         ["case", "application-binding"],
         ["case", "acceptance-criteria"],
-        ["case", "from-issue"],
     ],
 )
-def test_r2_cli_hides_r4_case_and_acceptance_actions(argv: list[str]) -> None:
+def test_r4_case_actions_require_their_option_surface(argv: list[str]) -> None:
+    """The R4 case actions are exposed; incomplete invocations fail closed
+    with CLI_USAGE_INVALID before any HTTP."""
     requests: list[httpx.Request] = []
     stderr = io.StringIO()
     exit_code = run(
@@ -955,7 +983,7 @@ def test_r2_cli_hides_r4_case_and_acceptance_actions(argv: list[str]) -> None:
     assert json.loads(stderr.getvalue())["error"]["code"] == "CLI_USAGE_INVALID"
 
 
-def test_r2_case_help_exposes_only_v1_read_actions(capsys) -> None:
+def test_r4_case_help_exposes_v1_reads_and_v2_actions(capsys) -> None:
     with pytest.raises(SystemExit) as exc_info:
         build_parser().parse_args(["case", "--help"])
 
@@ -964,7 +992,7 @@ def test_r2_case_help_exposes_only_v1_read_actions(capsys) -> None:
     assert "get" in help_text
     assert "timeline" in help_text
     assert all(
-        action not in help_text
+        action in help_text
         for action in (
             "bind-application",
             "application-binding",
@@ -972,6 +1000,24 @@ def test_r2_case_help_exposes_only_v1_read_actions(capsys) -> None:
             "from-issue",
         )
     )
+
+
+def test_r4_acceptance_criteria_help_has_propose_get_confirm(capsys) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        build_parser().parse_args(["case", "acceptance-criteria", "--help"])
+
+    assert exc_info.value.code == 0
+    help_text = capsys.readouterr().out
+    assert all(action in help_text for action in ("propose", "get", "confirm"))
+
+
+def test_r4_application_binding_help_has_get(capsys) -> None:
+    with pytest.raises(SystemExit) as exc_info:
+        build_parser().parse_args(["case", "application-binding", "--help"])
+
+    assert exc_info.value.code == 0
+    help_text = capsys.readouterr().out
+    assert "get" in help_text
 
 
 def test_case_v1_actions_reject_api_version_2() -> None:
@@ -1072,3 +1118,589 @@ def test_signal_cli_does_not_accept_confidential_or_trace_options() -> None:
         exit_code = run(argv, env=_env(), stdout=io.StringIO(), stderr=stderr)
         assert exit_code == ExitFamily.INPUT
         assert json.loads(stderr.getvalue())["error"]["code"] == "CLI_USAGE_INVALID"
+
+
+# ---------------------------------------------------------------------------
+# R4 V5-1C CLI surface (case binding / acceptance criteria / from-issue).
+
+
+def _v2_response(request: httpx.Request) -> httpx.Response:
+    return httpx.Response(
+        201 if request.method == "POST" else 200,
+        headers={
+            "content-type": "application/json",
+            "x-caseloop-contract-version": "2.0",
+        },
+        json=success_for(request),
+    )
+
+
+def test_case_bind_application_sends_canonical_body_and_idempotency() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return _v2_response(request)
+
+    expected_body = {
+        "schema_version": "2.0",
+        "case_id": "case_01J0000000000001",
+        "case_revision": 1,
+        "case_digest": "sha256:" + "c" * 64,
+        "application_id": "app_01J0000000000001",
+        "environment_id": "env_01J0000000000001",
+        "declared_system_version_set_binding_or_unknown": "UNKNOWN",
+        "issue_snapshot": None,
+    }
+    stdout = io.StringIO()
+    exit_code = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "case",
+            "bind-application",
+            "case_01J0000000000001",
+            "--application-id",
+            "app_01J0000000000001",
+            "--environment-id",
+            "env_01J0000000000001",
+            "--case-revision",
+            "1",
+            "--case-digest",
+            "sha256:" + "c" * 64,
+            "--idempotency-key",
+            "case-bind-application-key",
+        ],
+        env=_env(),
+        stdout=stdout,
+        stderr=io.StringIO(),
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert exit_code == ExitFamily.OK
+    assert len(requests) == 1
+    request = requests[0]
+    assert request.method == "POST"
+    assert request.url.path == "/api/v2/cases/case_01J0000000000001:bind-application"
+    assert request.headers["x-caseloop-contract-version"] == "2.0"
+    assert request.headers["x-caseloop-idempotency-key"] == "case-bind-application-key"
+    assert request.content == json.dumps(
+        expected_body, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    payload = json.loads(stdout.getvalue())
+    assert payload["application_case_binding"]["application_case_binding_id"].startswith(
+        "acb_"
+    )
+
+
+def test_case_application_binding_get_query_parameters() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return _v2_response(request)
+
+    stdout = io.StringIO()
+    exit_code = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "case",
+            "application-binding",
+            "get",
+            "--case-id",
+            "case_01J0000000000001",
+            "--case-revision",
+            "3",
+            "--case-digest",
+            "sha256:" + "d" * 64,
+        ],
+        env=_env(),
+        stdout=stdout,
+        stderr=io.StringIO(),
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert exit_code == ExitFamily.OK
+    assert len(requests) == 1
+    request = requests[0]
+    assert request.method == "GET"
+    assert request.url.path == "/api/v2/cases/case_01J0000000000001/application-binding"
+    assert dict(request.url.params) == {
+        "case_revision": "3",
+        "case_digest": "sha256:" + "d" * 64,
+    }
+    payload = json.loads(stdout.getvalue())
+    assert payload["application_case_binding"]["binding_digest"].startswith("sha256:")
+
+
+def test_case_acceptance_criteria_propose_sends_canonical_body() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return _v2_response(request)
+
+    draft = {
+        "acceptance_source": {"kind": "manual", "url": "https://example.com/x"},
+        "expected_behavior": {"summary": "schema_dsl must not crash"},
+        "applicable_workload_profile": {"name": "cli-once"},
+        "applicable_deployment_profile": {"name": "local-shadow"},
+    }
+    expected_body = {
+        "schema_version": "2.0",
+        "case_id": "case_01J0000000000001",
+        "case_revision": 1,
+        "case_digest": "sha256:" + "c" * 64,
+        "acceptance_source": draft["acceptance_source"],
+        "reproducer_input": None,
+        "reproducer_environment": None,
+        "expected_behavior": draft["expected_behavior"],
+        "oracle_or_evaluator": None,
+        "applicable_workload_profile": draft["applicable_workload_profile"],
+        "applicable_deployment_profile": draft["applicable_deployment_profile"],
+    }
+    stdout = io.StringIO()
+    exit_code = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "case",
+            "acceptance-criteria",
+            "propose",
+            "case_01J0000000000001",
+            "--case-revision",
+            "1",
+            "--case-digest",
+            "sha256:" + "c" * 64,
+            "--acceptance-json",
+            json.dumps(draft),
+            "--idempotency-key",
+            "acceptance-propose-key",
+        ],
+        env=_env(),
+        stdout=stdout,
+        stderr=io.StringIO(),
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert exit_code == ExitFamily.OK
+    assert len(requests) == 1
+    request = requests[0]
+    assert request.method == "POST"
+    assert (
+        request.url.path
+        == "/api/v2/cases/case_01J0000000000001:propose-acceptance-criteria"
+    )
+    assert request.headers["x-caseloop-idempotency-key"] == "acceptance-propose-key"
+    assert request.content == json.dumps(
+        expected_body, ensure_ascii=False, sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    payload = json.loads(stdout.getvalue())
+    assert payload["acceptance_criteria_revision"][
+        "acceptance_criteria_revision_id"
+    ].startswith("acr_")
+
+
+def test_case_acceptance_criteria_get_query_parameter() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return _v2_response(request)
+
+    stdout = io.StringIO()
+    exit_code = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "case",
+            "acceptance-criteria",
+            "get",
+            "case_01J0000000000001",
+        ],
+        env=_env(),
+        stdout=stdout,
+        stderr=io.StringIO(),
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert exit_code == ExitFamily.OK
+    assert len(requests) == 1
+    request = requests[0]
+    assert request.method == "GET"
+    assert request.url.path == "/api/v2/cases/case_01J0000000000001/acceptance-criteria"
+    assert dict(request.url.params) == {"case_revision": "1"}
+    payload = json.loads(stdout.getvalue())
+    assert payload["case_readiness"] == "NEEDS_ACCEPTANCE_CRITERIA"
+    assert payload["next_action"]["code"] == "CONFIRM_ACCEPTANCE_CRITERIA"
+
+
+def test_case_acceptance_criteria_confirm_e2e_form() -> None:
+    """The R4 e2e journey form: positional revision id + proposed digest only
+    (no case id), so the CLI binds the digest directly without a pre-read."""
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return _v2_response(request)
+
+    stdout = io.StringIO()
+    exit_code = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "case",
+            "acceptance-criteria",
+            "confirm",
+            "acr_01J0000000000001",
+            "--proposed-revision-digest",
+            "sha256:" + "f" * 64,
+            "--idempotency-key",
+            "acceptance-confirm-key",
+        ],
+        env=_env(),
+        stdout=stdout,
+        stderr=io.StringIO(),
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert exit_code == ExitFamily.OK
+    assert len(requests) == 1
+    request = requests[0]
+    assert request.method == "POST"
+    assert (
+        request.url.path
+        == "/api/v2/acceptance-criteria/acr_01J0000000000001:confirm"
+    )
+    body = json.loads(request.content)
+    assert body == {
+        "schema_version": "2.0",
+        "exact_proposed_revision_binding": {
+            "kind": "ACCEPTANCE_CRITERIA_REVISION",
+            "id": "acr_01J0000000000001",
+            "revision": None,
+            "digest": "sha256:" + "f" * 64,
+        },
+        "confirmation_note": None,
+    }
+    payload = json.loads(stdout.getvalue())
+    assert payload["acceptance_criteria_revision"]["confirmation_status"] == "PROPOSED"
+
+
+def test_case_acceptance_criteria_confirm_authoritative_pre_read() -> None:
+    """With an explicit case id the CLI re-reads the proposal from the Case
+    read model and verifies the operator-provided digest before confirming."""
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return _v2_response(request)
+
+    stdout = io.StringIO()
+    exit_code = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "case",
+            "acceptance-criteria",
+            "confirm",
+            "acr_01J0000000000001",
+            "--case-id",
+            "case_01J0000000000001",
+            "--case-revision",
+            "1",
+            "--proposed-revision-digest",
+            "sha256:" + "e" * 64,
+        ],
+        env=_env(),
+        stdout=stdout,
+        stderr=io.StringIO(),
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert exit_code == ExitFamily.OK
+    assert [request.url.path for request in requests] == [
+        "/api/v2/cases/case_01J0000000000001/acceptance-criteria",
+        "/api/v2/acceptance-criteria/acr_01J0000000000001:confirm",
+    ]
+    get_request = requests[0]
+    assert dict(get_request.url.params) == {"case_revision": "1"}
+    confirm_body = json.loads(requests[1].content)
+    assert confirm_body["exact_proposed_revision_binding"]["revision"] == 1
+    assert confirm_body["exact_proposed_revision_binding"]["digest"] == (
+        "sha256:" + "e" * 64
+    )
+
+
+def test_case_v2_actions_reject_api_version_1() -> None:
+    stderr = io.StringIO()
+    exit_code = run(
+        [
+            "--api-version",
+            "1",
+            *_globals(),
+            "case",
+            "bind-application",
+            "case_01J0000000000001",
+            "--application-id",
+            "app_01J0000000000001",
+            "--environment-id",
+            "env_01J0000000000001",
+            "--case-digest",
+            "sha256:" + "c" * 64,
+        ],
+        env=_env(),
+        stdout=io.StringIO(),
+        stderr=stderr,
+        transport=httpx.MockTransport(_response),
+    )
+
+    assert exit_code == ExitFamily.INPUT
+    assert json.loads(stderr.getvalue())["error"]["code"] == "API_VERSION_REQUIRED"
+
+
+def test_case_from_issue_composes_canonical_intents(tmp_path) -> None:
+    """``case from-issue`` orchestrates signals.submit → acceptance read →
+    cases.bind-application → acceptance-criteria.propose from a local read-only
+    snapshot, never auto-confirms, and is deterministic on retry."""
+    snapshot = {
+        "number": 1466,
+        "title": "BUG: schema_dsl() raises IndexError",
+        "body": "Calling schema_dsl() with a field missing its name crashes.",
+        "state": "closed",
+        "html_url": "https://github.com/simonw/llm/issues/1466",
+        "updated_at": "2026-07-30T22:33:06Z",
+        "created_at": "2026-06-01T20:50:26Z",
+        "user": {"login": "devteamaegis"},
+    }
+    snapshot_file = tmp_path / "issue-1466.json"
+    snapshot_file.write_text(json.dumps(snapshot), encoding="utf-8")
+
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        path = request.url.path
+        if path == "/api/v2/applications/app_01J0000000000001":
+            core = {
+                "schema_version": "2.0",
+                "workspace_id": WORKSPACE,
+                "request_id": request.headers["x-request-id"],
+                "audit_ref": "audit://aud_01J0000000000001",
+            }
+            payload = {
+                **core,
+                "application": {
+                    "record_envelope": {
+                        "schema_version": "2.0",
+                        "workspace_id": WORKSPACE,
+                        "revision": 2,
+                        "recorded_by_principal": "prn_01J0000000000001",
+                        "recorded_at": "2026-08-11T10:00:00Z",
+                        "immutable": True,
+                        "hash_rule": (
+                            "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)"
+                        ),
+                        "record_digest": "sha256:" + "a" * 64,
+                        "authority_receipt_id": "arec_01J0000000000001",
+                    },
+                    "application_id": "app_01J0000000000001",
+                    "workspace_id": WORKSPACE,
+                    "project_id": "proj_01J0000000000001",
+                    "slug": "llm-cli",
+                    "display_name": "LLM CLI",
+                    "owner_principal_ids": ["prn_01J0000000000001"],
+                    "criticality": "P0",
+                    "data_classification": "INTERNAL",
+                    "governance_mode": "MANAGED",
+                    "lifecycle_state": "ACTIVE",
+                    "exact_previous_application_binding": {
+                        "kind": "AI_APPLICATION",
+                        "id": "app_01J0000000000001",
+                        "revision": 1,
+                        "digest": "sha256:" + "b" * 64,
+                    },
+                },
+            }
+            return httpx.Response(
+                200,
+                headers={
+                    "content-type": "application/json",
+                    "x-caseloop-contract-version": "2.0",
+                },
+                json=payload,
+            )
+        if path == "/api/v2/environments/env_01J0000000000001":
+            payload = {
+                "schema_version": "2.0",
+                "workspace_id": WORKSPACE,
+                "request_id": request.headers["x-request-id"],
+                "audit_ref": "audit://aud_01J0000000000001",
+                "environment": {
+                    "record_envelope": {
+                        "schema_version": "2.0",
+                        "workspace_id": WORKSPACE,
+                        "revision": 1,
+                        "recorded_by_principal": "prn_01J0000000000001",
+                        "recorded_at": "2026-08-11T10:00:00Z",
+                        "immutable": True,
+                        "hash_rule": (
+                            "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)"
+                        ),
+                        "record_digest": "sha256:" + "b" * 64,
+                        "authority_receipt_id": "arec_01J0000000000001",
+                    },
+                    "environment_id": "env_01J0000000000001",
+                    "workspace_id": WORKSPACE,
+                    "application_id": "app_01J0000000000001",
+                    "logical_name": "local-shadow",
+                    "risk_classification": "LOW",
+                    "lifecycle_state": "ACTIVE",
+                },
+            }
+            return httpx.Response(
+                200,
+                headers={
+                    "content-type": "application/json",
+                    "x-caseloop-contract-version": "2.0",
+                },
+                json=payload,
+            )
+        if path == "/api/v1/signals":
+            return httpx.Response(
+                201,
+                headers={
+                    "content-type": "application/json",
+                    "x-caseloop-contract-version": "1.0",
+                },
+                json=success_for(request),
+            )
+        if path.endswith("/acceptance-criteria"):
+            case_id = path.split("/")[-2]
+            payload = {
+                "schema_version": "2.0",
+                "workspace_id": WORKSPACE,
+                "request_id": request.headers["x-request-id"],
+                "audit_ref": "audit://aud_01J0000000000001",
+                "exact_case_binding": {
+                    "case_id": case_id,
+                    "case_revision": 1,
+                    "case_digest": "sha256:" + "c" * 64,
+                },
+                "case_readiness": "NEEDS_ACCEPTANCE_CRITERIA",
+                "revisions": [],
+                "next_action": None,
+            }
+            return httpx.Response(
+                200,
+                headers={
+                    "content-type": "application/json",
+                    "x-caseloop-contract-version": "2.0",
+                },
+                json=payload,
+            )
+        return _v2_response(request)
+
+    stdout = io.StringIO()
+    exit_code = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "case",
+            "from-issue",
+            "https://github.com/simonw/llm/issues/1466",
+            "--application-id",
+            "app_01J0000000000001",
+            "--environment-id",
+            "env_01J0000000000001",
+            "--snapshot-file",
+            str(snapshot_file),
+            "--source-id",
+            SOURCE,
+            "--reporter-ref",
+            "maintainer-01J0000000000001",
+        ],
+        env=_env(),
+        stdout=stdout,
+        stderr=io.StringIO(),
+        transport=httpx.MockTransport(handler),
+    )
+
+    assert exit_code == ExitFamily.OK
+    assert [request.url.path for request in requests] == [
+        "/api/v2/applications/app_01J0000000000001",
+        "/api/v2/environments/env_01J0000000000001",
+        "/api/v1/signals",
+        "/api/v2/cases/case_stage0001/acceptance-criteria",
+        "/api/v2/cases/case_stage0001:bind-application",
+        "/api/v2/cases/case_stage0001:propose-acceptance-criteria",
+    ]
+    signal_body = json.loads(requests[2].content)
+    assert signal_body["source_event_id"].startswith(
+        "github-issue:simonw:llm:1466:"
+    )
+    assert signal_body["content"]["summary"] == snapshot["title"]
+    assert signal_body["content"]["attachments"][0]["uri"] == snapshot["html_url"]
+    assert requests[2].headers["idempotency-key"].startswith(
+        "case-from-issue-simonw-llm-1466-"
+    )
+    bind_body = json.loads(requests[4].content)
+    assert bind_body["case_id"] == "case_stage0001"
+    assert bind_body["declared_system_version_set_binding_or_unknown"] == "UNKNOWN"
+    assert bind_body["issue_snapshot"]["external_repo"] == "simonw/llm"
+    propose_body = json.loads(requests[5].content)
+    assert propose_body["acceptance_source"]["repo"] == "simonw/llm"
+    assert propose_body["case_id"] == "case_stage0001"
+
+    payload = json.loads(stdout.getvalue())
+    assert payload["case_id"] == "case_stage0001"
+    assert payload["case_readiness"] == "NEEDS_ACCEPTANCE_CRITERIA"
+    assert payload["next_action"]["code"] == "CONFIRM_ACCEPTANCE_CRITERIA"
+    assert payload["acceptance_criteria_revision_id"].startswith("acr_")
+    assert payload["acceptance_criteria_revision_digest"].startswith("sha256:")
+
+    # A retry with the same snapshot derives the same source event and
+    # idempotency keys: no duplicate case, no second owner.
+    first_signal_idem = requests[2].headers["idempotency-key"]
+    first_source_event = signal_body["source_event_id"]
+    requests.clear()
+    stdout2 = io.StringIO()
+    exit_code = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "case",
+            "from-issue",
+            "https://github.com/simonw/llm/issues/1466",
+            "--application-id",
+            "app_01J0000000000001",
+            "--environment-id",
+            "env_01J0000000000001",
+            "--snapshot-file",
+            str(snapshot_file),
+            "--source-id",
+            SOURCE,
+            "--reporter-ref",
+            "maintainer-01J0000000000001",
+        ],
+        env=_env(),
+        stdout=stdout2,
+        stderr=io.StringIO(),
+        transport=httpx.MockTransport(handler),
+    )
+    assert exit_code == ExitFamily.OK
+    retry_signal_body = json.loads(requests[2].content)
+    assert requests[2].headers["idempotency-key"] == first_signal_idem
+    assert retry_signal_body["source_event_id"] == first_source_event
+    retry = json.loads(stdout2.getvalue())
+    assert retry["source_event_version"] == payload["source_event_version"]
+    assert retry["acceptance_criteria_revision_id"] == payload["acceptance_criteria_revision_id"]

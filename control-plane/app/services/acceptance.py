@@ -625,17 +625,21 @@ class AcceptanceService:
         confirmed = [
             revision for revision in revisions if revision.confirmation_status == "CONFIRMED"
         ]
-        readiness = "READY" if confirmed else "NEEDS_ACCEPTANCE_CRITERIA"
-        next_action = (
-            None
-            if readiness == "READY"
-            else {
+        # R4: confirmation alone never reaches READY; V5-4A exact
+        # ResolutionContract + executable BadcaseSpec is required (Master 17.5).
+        readiness = (
+            "PENDING_MATERIALIZATION" if confirmed else "NEEDS_ACCEPTANCE_CRITERIA"
+        )
+        if readiness == "NEEDS_ACCEPTANCE_CRITERIA":
+            next_action = {
                 "code": "CONFIRM_ACCEPTANCE_CRITERIA",
                 "command": "case acceptance-criteria confirm",
                 "note": "a reauthenticated human maintainer/domain reviewer must "
                 "confirm a PROPOSED revision before a gate may start",
             }
-        )
+        else:
+            # confirmed criteria wait for V5-4A materialization; no action yet
+            next_action = None
         records: list[dict[str, Any]] = []
         for revision in revisions:
             try:

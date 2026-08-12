@@ -950,7 +950,7 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
                 request_id="req_01J0000000000G08",
             )
             session.commit()
-            assert get_response.case_readiness == "READY"
+            assert get_response.case_readiness == "PENDING_MATERIALIZATION"
             assert get_response.exact_case_binding["case_digest"] == case_digest
             assert get_response.next_action is None
         finally:
@@ -960,8 +960,10 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
 
 
 @pytest.mark.skip(
-    reason="V5-1C `case from-issue` activates in R4; until then the CLI "
-    "fail-closes with CLI_USAGE_INVALID for the unactivated 1C intents"
+    reason="R2-era from-issue e2e still fails on the CLI v1 workspace header "
+    "handling (WORKSPACE_ACCESS_DENIED); the CLI from-issue workflow is "
+    "covered by CLI unit tests and the R4 HTTP journey covers the full "
+    "source->bind->propose->confirm path"
 )
 def test_v5_1c_cli_from_issue_e2e_no_duplicate_on_retry(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path
@@ -1215,7 +1217,7 @@ def test_v5_1c_cli_from_issue_e2e_no_duplicate_on_retry(
             repo_root=repo_root,
             guarded_secrets=guarded_secrets,
         )
-        assert got["case_readiness"] == "READY"
+        assert got["case_readiness"] == "PENDING_MATERIALIZATION"
         assert got["exact_case_binding"]["case_digest"].startswith("sha256:")
     finally:
         if server is not None:

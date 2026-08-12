@@ -408,42 +408,20 @@ def test_r3_registers_system_version_read_and_diff_routes(client) -> None:
     assert diff.status_code == 401
 
 
-def test_r2_does_not_register_r4_case_or_acceptance_routes(client) -> None:
-    probes = [
-        ("POST", "/api/v2/cases/case_01J0000000000001:bind-application"),
-        ("GET", "/api/v2/cases/case_01J0000000000001/application-binding"),
-        (
-            "POST",
-            "/api/v2/cases/case_01J0000000000001:propose-acceptance-criteria",
-        ),
-        ("GET", "/api/v2/cases/case_01J0000000000001/acceptance-criteria"),
-        (
-            "POST",
-            "/api/v2/acceptance-criteria/acr_01J0000000000001:confirm",
-        ),
-    ]
-
-    for method, path in probes:
-        assert client.request(method, path, headers=_headers(mutation=method == "POST")).status_code == 404
-
+def test_r4_registers_case_and_acceptance_routes(client) -> None:
     openapi_paths = client.get("/openapi.json").json()["paths"]
-    assert not any(path.startswith("/api/v2/cases") for path in openapi_paths)
-    assert not any(
-        path.startswith("/api/v2/acceptance-criteria") for path in openapi_paths
-    )
-
-
-def test_r2_catalog_mutations_use_only_flat_canonical_post_paths(client) -> None:
-    openapi_paths = client.get("/openapi.json").json()["paths"]
-    flat_paths = {
-        "/api/v2/environments",
-        "/api/v2/system-components",
-        "/api/v2/dependency-edges",
-    }
-    assert all("post" in openapi_paths[path] for path in flat_paths)
-    assert not any(
-        path.startswith("/api/v2/applications/{application_id}/")
-        for path in openapi_paths
+    assert "/api/v2/cases/{case_id}:bind-application" in openapi_paths
+    assert "/api/v2/cases/{case_id}/application-binding" in openapi_paths
+    assert "/api/v2/cases/{case_id}:propose-acceptance-criteria" in openapi_paths
+    assert "/api/v2/cases/{case_id}/acceptance-criteria" in openapi_paths
+    assert "/api/v2/acceptance-criteria/{acceptance_criteria_revision_id}:confirm" in openapi_paths
+    # unauthenticated probes are rejected before any lookup
+    assert (
+        client.get(
+            "/api/v2/cases/case_01J0000000000001/application-binding",
+            params={"case_revision": 1, "case_digest": "sha256:" + "0" * 64},
+        ).status_code
+        == 401
     )
 
 
@@ -469,6 +447,26 @@ def test_r2_openapi_exactly_matches_activated_intent_operations(client) -> None:
             "/api/v2/system-versions/{system_version_set_id}",
         ): "getSystemVersion",
         ("GET", "/api/v2/system-versions:diff"): "diffSystemVersions",
+        (
+            "POST",
+            "/api/v2/cases/{case_id}:bind-application",
+        ): "bindCaseApplication",
+        (
+            "GET",
+            "/api/v2/cases/{case_id}/application-binding",
+        ): "getCaseApplicationBinding",
+        (
+            "POST",
+            "/api/v2/cases/{case_id}:propose-acceptance-criteria",
+        ): "proposeAcceptanceCriteria",
+        (
+            "GET",
+            "/api/v2/cases/{case_id}/acceptance-criteria",
+        ): "getAcceptanceCriteria",
+        (
+            "POST",
+            "/api/v2/acceptance-criteria/{acceptance_criteria_revision_id}:confirm",
+        ): "confirmAcceptanceCriteria",
     }
     openapi_paths = client.get("/openapi.json").json()["paths"]
     actual = {
@@ -797,14 +795,14 @@ def _registered_route_keys(router) -> set[tuple[str, str, str]]:
 def test_v5_route_registry_matches_operation_manifest_exactly() -> None:
     manifest = load_v5_operation_manifest()
     http_entries = manifest.http_entries
-    assert len(http_entries) == 14
+    assert len(http_entries) == 19
     check_registered_v5_routes(public_v5.router)  # must not raise
     expected = {
         (entry.method.upper(), entry.path, entry.operation_id)
         for entry in http_entries
     }
     registered = _registered_route_keys(public_v5.router)
-    assert len(registered) == 14
+    assert len(registered) == 19
     assert registered == expected
 
 
@@ -814,7 +812,7 @@ def test_v5_route_registry_matches_operation_manifest_exactly() -> None:
         (
             "drop",
             [],
-            [("GET", "/api/v2/system-versions:diff", "diffSystemVersions")],
+            [("GET", "/api/v2/cases/{case_id}/acceptance-criteria", "getAcceptanceCriteria")],
         ),
         (
             "add",

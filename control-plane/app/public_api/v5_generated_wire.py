@@ -27,6 +27,9 @@ _REQUEST_INTENTS = {
     "DependencyEdgeRecordRequest": "dependency-edges.record",
     "SystemManifestImportRequest": "system-manifests.import",
     "SystemVersionRecordRequest": "system-versions.record",
+    "CaseBindApplicationRequest": "cases.bind-application",
+    "AcceptanceCriteriaProposeRequest": "acceptance-criteria.propose",
+    "AcceptanceCriteriaConfirmRequest": "acceptance-criteria.confirm",
 }
 
 _RESPONSE_INTENTS = {
@@ -44,6 +47,11 @@ _RESPONSE_INTENTS = {
     "SystemVersionRecordResponse": "system-versions.record",
     "SystemVersionGetResponse": "system-versions.get",
     "SystemVersionDiffResponse": "system-versions.diff",
+    "CaseBindApplicationResponse": "cases.bind-application",
+    "ApplicationBindingGetResponse": "case-application-bindings.get",
+    "AcceptanceCriteriaProposeResponse": "acceptance-criteria.propose",
+    "AcceptanceCriteriaGetResponse": "acceptance-criteria.get",
+    "AcceptanceCriteriaConfirmResponse": "acceptance-criteria.confirm",
 }
 
 

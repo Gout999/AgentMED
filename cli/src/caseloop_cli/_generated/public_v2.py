@@ -294,6 +294,11 @@ V5PublicIntentName = Literal[
     "system-versions.record",
     "system-versions.get",
     "system-versions.diff",
+    "cases.bind-application",
+    "case-application-bindings.get",
+    "acceptance-criteria.propose",
+    "acceptance-criteria.get",
+    "acceptance-criteria.confirm",
 ]
 
 
@@ -383,6 +388,9 @@ V5IdempotencyIntent = Literal[
     "dependency-edges.record",
     "system-manifests.import",
     "system-versions.record",
+    "cases.bind-application",
+    "acceptance-criteria.propose",
+    "acceptance-criteria.confirm",
 ]
 
 
@@ -393,6 +401,8 @@ class V5IdempotencyResource(WireModel):
         "system_component",
         "dependency_edge",
         "system_version_set",
+        "application_case_binding",
+        "acceptance_criteria_revision",
     ]
     id: Annotated[str, Field(pattern=r"^[a-z][a-z0-9]*_[0-9A-Za-z]{8,64}$")]
 
@@ -427,6 +437,9 @@ class V5IdempotencyReceipt(WireModel):
             "dependency-edges.record": ("dependency_edge", "de_", False, "COMPLETED"),
             "system-manifests.import": ("system_version_set", "vset_", False, "COMPLETED"),
             "system-versions.record": ("system_version_set", "vset_", False, "COMPLETED"),
+            "cases.bind-application": ("application_case_binding", "acb_", False, "COMPLETED"),
+            "acceptance-criteria.propose": ("acceptance_criteria_revision", "acr_", False, "COMPLETED"),
+            "acceptance-criteria.confirm": ("acceptance_criteria_revision", "acr_", False, "COMPLETED"),
         }
         kind, prefix, operation_required, status = expected[self.intent]
         if self.resource.kind != kind or not self.resource.id.startswith(prefix):

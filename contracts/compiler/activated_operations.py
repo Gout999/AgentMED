@@ -2,8 +2,9 @@
 
 C1 single-source rule (v5-architecture-convergence.md#C1): an intent is
 activated iff its ``wire_status`` is ``FROZEN_R2``,
-``FROZEN_R2_R3_BOOTSTRAP`` or ``FROZEN_R3``. Draft, disabled, deferred
-and unregistered operations can never enter compiler output.
+``FROZEN_R2_R3_BOOTSTRAP``, ``FROZEN_R3`` or ``FROZEN_R4``. Draft,
+disabled, deferred and unregistered operations can never enter compiler
+output.
 """
 
 from __future__ import annotations
@@ -14,7 +15,7 @@ from typing import Any
 import yaml
 
 ACTIVATED_WIRE_STATUSES = frozenset(
-    {"FROZEN_R2", "FROZEN_R2_R3_BOOTSTRAP", "FROZEN_R3"}
+    {"FROZEN_R2", "FROZEN_R2_R3_BOOTSTRAP", "FROZEN_R3", "FROZEN_R4"}
 )
 
 # Fields copied verbatim from the registry as activated-operation metadata.

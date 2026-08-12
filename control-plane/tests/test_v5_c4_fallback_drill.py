@@ -444,7 +444,7 @@ def test_drill_capability_manifest_unavailable_falls_back_without_byte_change(
         )
         # fallback: legacy runtime table (import-time bound) keeps serving.
     assert evidence.codes() == ["capability.operation_manifest_unavailable"]
-    assert len(fallback_table) == 14
+    assert len(fallback_table) == 19
 
     status1, bytes1 = _capabilities_bytes(drill_app)
     assert status1 == status0
@@ -495,7 +495,7 @@ def test_drill_route_registry_judge_raise_keeps_legacy_routes_serving(
         for route in public_v5.router.routes
         if isinstance(route, APIRoute) and route.path.startswith("/api/v2")
     ]
-    assert len(v5_routes) == 14
+    assert len(v5_routes) == 19
     status1, bytes1 = _capabilities_bytes(drill_app)
     assert status1 == status0
     assert _masked_canonical(bytes1) == _masked_canonical(bytes0)
@@ -579,7 +579,7 @@ def test_drill_cli_derived_table_fallback_keeps_frozen_help_unchanged() -> None:
 
     manifest = _load_json(OPERATION_MANIFEST)
     derived = _derive_cli_allowlist(manifest)
-    assert len(derived) == 14
+    assert len(derived) == 19
 
     # Frozen v2-gated command surface (mirror of cli/main.py ``_V2_COMMANDS``
     # plus the shared ``capabilities`` command): the fallback allowlist.
@@ -593,8 +593,16 @@ def test_drill_cli_derived_table_fallback_keeps_frozen_help_unchanged() -> None:
             "dependency-edge",
             "system-manifest",
             "system-version",
+            "case",
             "capabilities",
         }
+    )
+    # normalize the standalone confirm command into the case family
+    frozen_v2 = sorted(
+        "case acceptance-criteria confirm"
+        if entry == "acceptance-criteria confirm"
+        else entry
+        for entry in frozen_v2
     )
 
     # Fault A: the derivation source is unavailable -> fallback to the frozen
@@ -610,9 +618,19 @@ def test_drill_cli_derived_table_fallback_keeps_frozen_help_unchanged() -> None:
         )
         derived = frozen_v2
     assert evidence.codes() == ["cli.operation_manifest_unavailable"]
-    # Fallback covers all 14 activated CLI commands; the only extra frozen
+    # Fallback covers all 19 activated CLI commands; the only extra frozen
     # pair is the local-only "system-manifest validate" (never a wire call).
-    assert set(_derive_cli_allowlist(manifest)) <= set(derived)
+    manifest_keys = {
+        " ".join(
+            (
+                "case acceptance-criteria confirm"
+                if entry == "acceptance-criteria confirm"
+                else entry
+            ).split(" ")[:2]
+        )
+        for entry in _derive_cli_allowlist(manifest)
+    }
+    assert manifest_keys <= set(derived)
     assert "system-manifest validate" in derived
     assert cli_main.build_parser().format_help() == baseline_help
 
@@ -633,7 +651,13 @@ def test_drill_cli_manifest_parser_mismatch_is_surfaced_not_coerced() -> None:
     ]
     derived = _derive_cli_allowlist(tampered)
     parser_paths = _parser_command_paths(cli_main.build_parser())
-    missing = [cmd for cmd in derived if tuple(cmd.split(" ", 1)) not in parser_paths]
+    def _path_key(cmd: str) -> tuple[str, str]:
+        if cmd == "acceptance-criteria confirm":
+            return ("case", "acceptance-criteria")
+        parts = cmd.split(" ")
+        return (parts[0], parts[1])
+
+    missing = [cmd for cmd in derived if _path_key(cmd) not in parser_paths]
     if missing:
         evidence.record(
             surface="cli",

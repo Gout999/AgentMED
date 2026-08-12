@@ -3,11 +3,11 @@ info:
   title: CaseLoop V5 Public API
   version: '2.0'
   description: Generated OpenAPI 3.1 document for the activated V5 wire surface. Contains
-    only activated operations (FROZEN_R2 / FROZEN_R2_R3_BOOTSTRAP / FROZEN_R3 intents
-    from the intent registry); draft and deferred intents never generate paths. request/response/error
-    contracts are external $refs into the frozen ../schemas/*.schema.json files. components.securitySchemes
-    is intentionally not emitted (C4 decision; the V5 auth surface is not cut over,
-    and a later wave may add it with the cutover).
+    only activated operations (FROZEN_R2 / FROZEN_R2_R3_BOOTSTRAP / FROZEN_R3 / FROZEN_R4
+    intents from the intent registry); draft and deferred intents never generate paths.
+    request/response/error contracts are external $refs into the frozen ../schemas/*.schema.json
+    files. components.securitySchemes is intentionally not emitted (C4 decision; the
+    V5 auth surface is not cut over, and a later wave may add it with the cutover).
 x-caseloop-intent-registry: ../intent-registry.yaml
 x-caseloop-operation-manifest: operation-manifest.json
 x-caseloop-generated-by: caseloop-v5-compiler
@@ -421,3 +421,191 @@ paths:
             application/json:
               schema:
                 $ref: ../schemas/system-versions.diff.schema.json#/$defs/error
+  /api/v2/cases/{case_id}:bind-application:
+    post:
+      operationId: bindCaseApplication
+      x-caseloop-intent: cases.bind-application
+      x-caseloop-scope: cases:bind
+      x-caseloop-wire-status: FROZEN_R4
+      x-caseloop-delivery-slice: V5-1C
+      parameters:
+      - name: case_id
+        in: path
+        required: true
+        description: case_id path parameter of cases.bind-application.
+        schema:
+          type: string
+          pattern: ^case_[0-9A-Za-z]{8,64}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/cases.bind-application.schema.json#/$defs/request
+      responses:
+        '201':
+          description: Successful cases.bind-application response (contract major
+            2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/cases.bind-application.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for cases.bind-application;
+            audit failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/cases.bind-application.schema.json#/$defs/error
+  /api/v2/cases/{case_id}/application-binding:
+    get:
+      operationId: getCaseApplicationBinding
+      x-caseloop-intent: case-application-bindings.get
+      x-caseloop-scope: cases:read
+      x-caseloop-wire-status: FROZEN_R4
+      x-caseloop-delivery-slice: V5-1C
+      parameters:
+      - name: case_id
+        in: path
+        required: true
+        description: case_id path parameter of case-application-bindings.get.
+        schema:
+          type: string
+          pattern: ^case_[0-9A-Za-z]{8,64}$
+      - name: case_revision
+        in: query
+        required: true
+        description: case_revision query parameter of case-application-bindings.get.
+        schema:
+          type: integer
+          minimum: 1
+      - name: case_digest
+        in: query
+        required: true
+        description: case_digest query parameter of case-application-bindings.get.
+        schema:
+          $ref: ../schemas/common.schema.json#/$defs/digest
+      responses:
+        '200':
+          description: Successful case-application-bindings.get response (contract
+            major 2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/case-application-bindings.get.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for case-application-bindings.get;
+            audit failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/case-application-bindings.get.schema.json#/$defs/error
+  /api/v2/cases/{case_id}:propose-acceptance-criteria:
+    post:
+      operationId: proposeAcceptanceCriteria
+      x-caseloop-intent: acceptance-criteria.propose
+      x-caseloop-scope: acceptance_criteria:propose
+      x-caseloop-wire-status: FROZEN_R4
+      x-caseloop-delivery-slice: V5-0C
+      parameters:
+      - name: case_id
+        in: path
+        required: true
+        description: case_id path parameter of acceptance-criteria.propose.
+        schema:
+          type: string
+          pattern: ^case_[0-9A-Za-z]{8,64}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/acceptance-criteria.propose.schema.json#/$defs/request
+      responses:
+        '201':
+          description: Successful acceptance-criteria.propose response (contract major
+            2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/acceptance-criteria.propose.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for acceptance-criteria.propose;
+            audit failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/acceptance-criteria.propose.schema.json#/$defs/error
+  /api/v2/acceptance-criteria/{acceptance_criteria_revision_id}:confirm:
+    post:
+      operationId: confirmAcceptanceCriteria
+      x-caseloop-intent: acceptance-criteria.confirm
+      x-caseloop-scope: acceptance_criteria:confirm
+      x-caseloop-wire-status: FROZEN_R4
+      x-caseloop-delivery-slice: V5-0C
+      parameters:
+      - name: acceptance_criteria_revision_id
+        in: path
+        required: true
+        description: acceptance_criteria_revision_id path parameter of acceptance-criteria.confirm.
+        schema:
+          type: string
+          pattern: ^acr_[0-9A-Za-z]{8,64}$
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: ../schemas/acceptance-criteria.confirm.schema.json#/$defs/request
+      responses:
+        '201':
+          description: Successful acceptance-criteria.confirm response (contract major
+            2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/acceptance-criteria.confirm.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for acceptance-criteria.confirm;
+            audit failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/acceptance-criteria.confirm.schema.json#/$defs/error
+  /api/v2/cases/{case_id}/acceptance-criteria:
+    get:
+      operationId: getAcceptanceCriteria
+      x-caseloop-intent: acceptance-criteria.get
+      x-caseloop-scope: acceptance_criteria:read
+      x-caseloop-wire-status: FROZEN_R4
+      x-caseloop-delivery-slice: V5-0C
+      parameters:
+      - name: case_id
+        in: path
+        required: true
+        description: case_id path parameter of acceptance-criteria.get.
+        schema:
+          type: string
+          pattern: ^case_[0-9A-Za-z]{8,64}$
+      - name: case_revision
+        in: query
+        required: true
+        description: case_revision query parameter of acceptance-criteria.get.
+        schema:
+          type: integer
+          minimum: 1
+      responses:
+        '200':
+          description: Successful acceptance-criteria.get response (contract major
+            2).
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/acceptance-criteria.get.schema.json#/$defs/response
+        default:
+          description: Machine-readable error envelope for acceptance-criteria.get;
+            audit failure uses null audit_ref.
+          content:
+            application/json:
+              schema:
+                $ref: ../schemas/acceptance-criteria.get.schema.json#/$defs/error

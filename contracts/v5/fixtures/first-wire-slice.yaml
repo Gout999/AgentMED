@@ -47,7 +47,11 @@ slice:
       idempotency: required
     - name: case-application-bindings.get
       kind: query
-      http: {method: GET, path: "/api/v2/cases/{case_id}/application-binding{?case_revision,case_digest}", operation_id: getCaseApplicationBinding}
+      http:
+        method: GET
+        path: /api/v2/cases/{case_id}/application-binding
+        operation_id: getCaseApplicationBinding
+        query_parameters: {required: [case_revision, case_digest], optional: []}
       scope: cases:read
       idempotency: none
     - name: acceptance-criteria.propose
@@ -57,7 +61,11 @@ slice:
       idempotency: required
     - name: acceptance-criteria.get
       kind: query
-      http: {method: GET, path: "/api/v2/cases/{case_id}/acceptance-criteria{?case_revision}", operation_id: getAcceptanceCriteria}
+      http:
+        method: GET
+        path: /api/v2/cases/{case_id}/acceptance-criteria
+        operation_id: getAcceptanceCriteria
+        query_parameters: {required: [case_revision], optional: []}
       scope: acceptance_criteria:read
       idempotency: none
     - name: acceptance-criteria.confirm

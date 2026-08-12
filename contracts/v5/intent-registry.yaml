@@ -32,6 +32,7 @@ wire_contract_rules:
   frozen_for_implementation_must_not_enter_capability_discovery: true
   frozen_for_implementation_requires_schema_profile_ref: true
   r3_activation_status: FROZEN_R3
+  r4_activation_status: FROZEN_R4
 
 application_component_activation_lifecycle:
   decision_ref: docs/decisions/D-014-v5-application-component-activation-lifecycle.md
@@ -260,6 +261,19 @@ r3_full_contract:
     - system-versions.diff
   capability_discovery: ENABLED
   r2_activated_allowlist_unchanged: true
+
+r4_full_contract:
+  stage: R4
+  plan_ref: docs/plans/v5-master-execution-plan.md#17.5
+  contract_status: FROZEN
+  runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
+  activated_contract_intents:
+    - cases.bind-application
+    - case-application-bindings.get
+    - acceptance-criteria.propose
+    - acceptance-criteria.get
+    - acceptance-criteria.confirm
+  capability_discovery: ENABLED
 
 api_major_selection:
   canonical_intent_identity: [api_major, intent_name]
@@ -606,8 +620,8 @@ intents:
   - name: cases.bind-application
     contract_major: 2
     delivery_slice: V5-1C
-    wire_status: DRAFT
-    implementation_status: NOT_IMPLEMENTED
+    wire_status: FROZEN_R4
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
     field_contract_ref: null
     kind: mutation
     execution_mode: synchronous
@@ -627,8 +641,8 @@ intents:
   - name: case-application-bindings.get
     contract_major: 2
     delivery_slice: V5-1C
-    wire_status: DRAFT
-    implementation_status: NOT_IMPLEMENTED
+    wire_status: FROZEN_R4
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
     field_contract_ref: null
     kind: query
     execution_mode: synchronous
@@ -639,15 +653,19 @@ intents:
     unique_result_key: [workspace_id, case_id, case_revision, case_digest]
     different_target_for_same_exact_case: CONFLICT
     idempotency: none
-    http: {method: GET, path: "/api/v2/cases/{case_id}/application-binding{?case_revision,case_digest}", operation_id: getCaseApplicationBinding}
+    http:
+      method: GET
+      path: /api/v2/cases/{case_id}/application-binding
+      operation_id: getCaseApplicationBinding
+      query_parameters: {required: [case_revision, case_digest], optional: []}
     cli: case application-binding get
     cli_requires_explicit_api_major: true
 
   - name: acceptance-criteria.propose
     contract_major: 2
     delivery_slice: V5-0C
-    wire_status: DRAFT
-    implementation_status: NOT_IMPLEMENTED
+    wire_status: FROZEN_R4
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
     field_contract_ref: null
     kind: mutation
     execution_mode: synchronous
@@ -664,8 +682,8 @@ intents:
   - name: acceptance-criteria.confirm
     contract_major: 2
     delivery_slice: V5-0C
-    wire_status: DRAFT
-    implementation_status: NOT_IMPLEMENTED
+    wire_status: FROZEN_R4
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
     field_contract_ref: null
     kind: mutation
     execution_mode: synchronous
@@ -686,8 +704,8 @@ intents:
   - name: acceptance-criteria.get
     contract_major: 2
     delivery_slice: V5-0C
-    wire_status: DRAFT
-    implementation_status: NOT_IMPLEMENTED
+    wire_status: FROZEN_R4
+    implementation_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
     field_contract_ref: null
     kind: query
     execution_mode: synchronous
@@ -696,7 +714,11 @@ intents:
     authorization_condition: case_authorized_reader
     required_query_fields: [case_revision]
     idempotency: none
-    http: {method: GET, path: "/api/v2/cases/{case_id}/acceptance-criteria{?case_revision}", operation_id: getAcceptanceCriteria}
+    http:
+      method: GET
+      path: /api/v2/cases/{case_id}/acceptance-criteria
+      operation_id: getAcceptanceCriteria
+      query_parameters: {required: [case_revision], optional: []}
     cli: case acceptance-criteria get
     cli_requires_explicit_api_major: true
 

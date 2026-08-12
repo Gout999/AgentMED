@@ -1,0 +1,383 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://caseloop.dev/schemas/v5/cases.bind-application.schema.json",
+  "title": "cases.bind-application",
+  "description": "R4 activated binding of a Case to an application with an exact case revision and optional declared system version set / issue snapshot.",
+  "$defs": {
+    "idCaseId": {
+      "type": "string",
+      "pattern": "^case_[0-9A-Za-z]{8,64}$"
+    },
+    "idCaseBindingId": {
+      "type": "string",
+      "pattern": "^acb_[0-9A-Za-z]{8,64}$"
+    },
+    "idAcceptanceCriteriaRevisionId": {
+      "type": "string",
+      "pattern": "^acr_[0-9A-Za-z]{8,64}$"
+    },
+    "exactCaseBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "case_id",
+        "case_revision",
+        "case_digest"
+      ],
+      "properties": {
+        "case_id": {
+          "$ref": "common.schema.json#/$defs/idCaseId"
+        },
+        "case_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "case_digest": {
+          "$ref": "common.schema.json#/$defs/digest"
+        }
+      }
+    },
+    "exactResolutionContractBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "const": "RESOLUTION_CONTRACT"
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "digest": {
+          "$ref": "common.schema.json#/$defs/digest"
+        }
+      },
+      "required": [
+        "kind",
+        "id",
+        "revision",
+        "digest"
+      ]
+    },
+    "systemVersionSetBindingOrUnknown": {
+      "anyOf": [
+        {
+          "$ref": "system-manifests.import.schema.json#/$defs/exactSystemVersionSetBinding"
+        },
+        {
+          "const": "UNKNOWN"
+        }
+      ]
+    },
+    "issueSnapshot": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source_kind": {
+          "enum": [
+            "github_issue",
+            "manual"
+          ]
+        },
+        "source_url": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "external_repo": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "external_issue_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "snapshot_payload": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "edited_flag": {
+          "type": "boolean"
+        },
+        "deleted_flag": {
+          "type": "boolean"
+        },
+        "fetched_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "source_kind",
+        "source_url",
+        "external_repo",
+        "external_issue_number",
+        "snapshot_payload",
+        "fetched_at"
+      ]
+    },
+    "recordEnvelopeRef": {
+      "$ref": "common.schema.json#/$defs/recordEnvelope"
+    },
+    "applicationCaseBindingRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "record_envelope": {
+          "$ref": "common.schema.json#/$defs/recordEnvelope"
+        },
+        "application_case_binding_id": {
+          "$ref": "common.schema.json#/$defs/idCaseBindingId"
+        },
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/idWorkspaceId"
+        },
+        "exact_case_binding": {
+          "$ref": "#/$defs/exactCaseBinding"
+        },
+        "application_id": {
+          "$ref": "common.schema.json#/$defs/idApplicationId"
+        },
+        "environment_id": {
+          "$ref": "common.schema.json#/$defs/idEnvironmentId"
+        },
+        "declared_system_version_set_binding_or_unknown": {
+          "$ref": "common.schema.json#/$defs/systemVersionSetBindingOrUnknown"
+        },
+        "binding_digest": {
+          "$ref": "common.schema.json#/$defs/digest"
+        }
+      },
+      "required": [
+        "record_envelope",
+        "application_case_binding_id",
+        "workspace_id",
+        "exact_case_binding",
+        "application_id",
+        "environment_id",
+        "declared_system_version_set_binding_or_unknown",
+        "binding_digest"
+      ]
+    },
+    "acceptanceCriteriaRevisionRecord": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "record_envelope": {
+          "$ref": "common.schema.json#/$defs/recordEnvelope"
+        },
+        "acceptance_criteria_revision_id": {
+          "$ref": "common.schema.json#/$defs/idAcceptanceCriteriaRevisionId"
+        },
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/idWorkspaceId"
+        },
+        "exact_case_binding": {
+          "$ref": "#/$defs/exactCaseBinding"
+        },
+        "exact_resolution_contract_binding": {
+          "$ref": "#/$defs/exactResolutionContractBinding"
+        },
+        "confirmation_status": {
+          "enum": [
+            "PROPOSED",
+            "CONFIRMED"
+          ]
+        },
+        "proposer_principal": {
+          "$ref": "common.schema.json#/$defs/idPrincipalId"
+        },
+        "proposed_at": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "confirmer_principal": {
+          "anyOf": [
+            {
+              "$ref": "common.schema.json#/$defs/idPrincipalId"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "confirmed_at": {
+          "anyOf": [
+            {
+              "type": "string",
+              "format": "date-time"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "exact_previous_proposed_revision_binding": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "acceptance_source": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "reproducer_input": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "reproducer_environment": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "expected_behavior": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "oracle_or_evaluator": {
+          "anyOf": [
+            {
+              "type": "object",
+              "additionalProperties": true
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "applicable_workload_profile": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "applicable_deployment_profile": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "acceptance_digest": {
+          "$ref": "common.schema.json#/$defs/digest"
+        }
+      },
+      "required": [
+        "record_envelope",
+        "acceptance_criteria_revision_id",
+        "workspace_id",
+        "exact_case_binding",
+        "exact_resolution_contract_binding",
+        "confirmation_status",
+        "proposer_principal",
+        "proposed_at",
+        "acceptance_source",
+        "expected_behavior",
+        "applicable_workload_profile",
+        "applicable_deployment_profile",
+        "acceptance_digest"
+      ]
+    },
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schemaVersion2"
+        },
+        "case_id": {
+          "$ref": "common.schema.json#/$defs/idCaseId"
+        },
+        "case_revision": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "case_digest": {
+          "$ref": "common.schema.json#/$defs/digest"
+        },
+        "application_id": {
+          "$ref": "common.schema.json#/$defs/idApplicationId"
+        },
+        "environment_id": {
+          "$ref": "common.schema.json#/$defs/idEnvironmentId"
+        },
+        "declared_system_version_set_binding_or_unknown": {
+          "$ref": "common.schema.json#/$defs/systemVersionSetBindingOrUnknown"
+        },
+        "issue_snapshot": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/issueSnapshot"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      },
+      "required": [
+        "schema_version",
+        "case_id",
+        "case_revision",
+        "case_digest",
+        "application_id",
+        "environment_id"
+      ]
+    },
+    "response": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "schema_version": {
+          "$ref": "common.schema.json#/$defs/schemaVersion2"
+        },
+        "workspace_id": {
+          "$ref": "common.schema.json#/$defs/idWorkspaceId"
+        },
+        "request_id": {
+          "$ref": "common.schema.json#/$defs/idRequestId"
+        },
+        "audit_ref": {
+          "$ref": "common.schema.json#/$defs/auditRef"
+        },
+        "application_case_binding": {
+          "$ref": "#/$defs/applicationCaseBindingRecord"
+        },
+        "idempotency": {
+          "$ref": "common.schema.json#/$defs/idempotencyDelivery"
+        }
+      },
+      "required": [
+        "schema_version",
+        "workspace_id",
+        "request_id",
+        "audit_ref",
+        "application_case_binding",
+        "idempotency"
+      ]
+    },
+    "error": {
+      "$ref": "common.schema.json#/$defs/errorEnvelope"
+    }
+  }
+}

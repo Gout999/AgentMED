@@ -1,6 +1,6 @@
 {
   "disabled_intents": [],
-  "enabled_intent_count": 14,
+  "enabled_intent_count": 19,
   "enabled_intents": [
     {
       "cli": true,
@@ -99,6 +99,41 @@
       "http": true,
       "name": "system-versions.diff",
       "scope": "system_versions:read"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "cases.bind-application",
+      "scope": "cases:bind"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "case-application-bindings.get",
+      "scope": "cases:read"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "acceptance-criteria.propose",
+      "scope": "acceptance_criteria:propose"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "acceptance-criteria.confirm",
+      "scope": "acceptance_criteria:confirm"
+    },
+    {
+      "cli": true,
+      "execution_mode": "synchronous",
+      "http": true,
+      "name": "acceptance-criteria.get",
+      "scope": "acceptance_criteria:read"
     }
   ],
   "generated_by": "caseloop-v5-compiler",

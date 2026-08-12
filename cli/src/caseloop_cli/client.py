@@ -35,6 +35,11 @@ from ._generated.public_v2 import (
     V5ServerCapabilitiesResponse,
 )
 from ._generated.manifest_v2 import (
+    AcceptanceCriteriaConfirmResponse,
+    AcceptanceCriteriaGetResponse,
+    AcceptanceCriteriaProposeResponse,
+    ApplicationBindingGetResponse,
+    CaseBindApplicationResponse,
     SystemManifestImportResponse,
     SystemVersionDiffResponse,
     SystemVersionGetResponse,
@@ -79,6 +84,11 @@ _V2_RESPONSE_MODELS: dict[str, SuccessModel] = {
     "system-versions.record": SystemVersionRecordResponse,
     "system-versions.get": SystemVersionGetResponse,
     "system-versions.diff": SystemVersionDiffResponse,
+    "cases.bind-application": CaseBindApplicationResponse,
+    "case-application-bindings.get": ApplicationBindingGetResponse,
+    "acceptance-criteria.propose": AcceptanceCriteriaProposeResponse,
+    "acceptance-criteria.get": AcceptanceCriteriaGetResponse,
+    "acceptance-criteria.confirm": AcceptanceCriteriaConfirmResponse,
 }
 
 # Strict id pattern per manifest path parameter.  Preserving the exact
@@ -90,6 +100,8 @@ _V2_PATH_PARAM_ID_PATTERN: dict[str, str] = {
     "component_id": "cmp_[0-9A-Za-z]{8,64}",
     "dependency_edge_id": "de_[0-9A-Za-z]{8,64}",
     "system_version_set_id": "vset_[0-9A-Za-z]{8,64}",
+    "case_id": "case_[0-9A-Za-z]{8,64}",
+    "acceptance_criteria_revision_id": "acr_[0-9A-Za-z]{8,64}",
 }
 
 SuccessModel: TypeAlias = type[BaseModel]
@@ -485,6 +497,9 @@ class PublicApiClient:
                     DependencyEdgeRecordResponse,
                     SystemManifestImportResponse,
                     SystemVersionRecordResponse,
+                    CaseBindApplicationResponse,
+                    AcceptanceCriteriaProposeResponse,
+                    AcceptanceCriteriaConfirmResponse,
                 ),
             )
             and success.idempotency.replayed is True
@@ -560,6 +575,46 @@ class PublicApiClient:
             self._validate_v5_mutation_binding(
                 spec, success, body, idempotency_key, raw_payload,
                 resource_id=success.edge.edge_id,
+                stable_request_id=stable_request_id,
+            )
+            return
+        if isinstance(success, CaseBindApplicationResponse):
+            self._validate_v5_mutation_binding(
+                spec, success, body, idempotency_key, raw_payload,
+                resource_id=success.application_case_binding.application_case_binding_id,
+                stable_request_id=stable_request_id,
+            )
+            return
+        if isinstance(success, ApplicationBindingGetResponse):
+            binding = success.application_case_binding
+            case_id = binding.exact_case_binding.get("case_id")
+            if case_id is None:
+                case_id = binding.exact_case_binding.get("id")
+            if case_id != spec.resource_id:
+                raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+            return
+        if isinstance(success, AcceptanceCriteriaProposeResponse):
+            self._validate_v5_mutation_binding(
+                spec, success, body, idempotency_key, raw_payload,
+                resource_id=(
+                    success.acceptance_criteria_revision.acceptance_criteria_revision_id
+                ),
+                stable_request_id=stable_request_id,
+            )
+            return
+        if isinstance(success, AcceptanceCriteriaGetResponse):
+            case_id = success.exact_case_binding.get("case_id")
+            if case_id is None:
+                case_id = success.exact_case_binding.get("id")
+            if case_id != spec.resource_id:
+                raise CliError("REMOTE_BINDING_INVALID", ExitFamily.PROTOCOL)
+            return
+        if isinstance(success, AcceptanceCriteriaConfirmResponse):
+            self._validate_v5_mutation_binding(
+                spec, success, body, idempotency_key, raw_payload,
+                resource_id=(
+                    success.acceptance_criteria_revision.acceptance_criteria_revision_id
+                ),
                 stable_request_id=stable_request_id,
             )
             return
