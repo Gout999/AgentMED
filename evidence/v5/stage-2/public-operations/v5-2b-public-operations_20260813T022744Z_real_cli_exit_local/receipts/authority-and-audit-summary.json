@@ -1,0 +1,14 @@
+{
+  "workspace_id": "ws_01J0000000000P01",
+  "operation_id": "op_01KZWF4TJFVZZ6QRE2M33G2F1Z",
+  "task_id": "task_01KZWF4TJG2JCZ9FJZ4NN13TAA",
+  "attempt_id": "att_01KZWF6S4ZYPFXE4XKPXV4N2NZ",
+  "event_count": 9,
+  "event_contract_majors": [2],
+  "authority_receipt_count": 9,
+  "audit_count": 9,
+  "public_idempotency_rows": 1,
+  "credential_id": "cred_01J0000000000R02",
+  "credential_final_state": "REVOKED",
+  "secrets": "not exported"
+}

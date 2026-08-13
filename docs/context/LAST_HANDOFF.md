@@ -20,15 +20,20 @@
   passed 4/4. The detached run recorded contracts 578, control-plane + wave tests 1058
   with 14 explicit PG-gated skips, import graph PASS, CLI 133, Console 20 + build,
   disposable PostgreSQL migrations 14 and runtime 19. Worktree was clean before and after.
-- `evidence`: `evidence/v5/stage-2/public-operations/v5-2b-public-operations_20260812T183031Z_local/`.
-- `facet_truth`: `contract=PASS`; deterministic/local-PostgreSQL `replay=PASS`;
-  `domain-provider-live`, `agentteams-native`, `claude-runtime-live`, `agent-causal`,
+- `evidence`: `evidence/v5/stage-2/public-operations/v5-2b-public-operations_20260812T183031Z_local/`
+  plus `evidence/v5/stage-2/public-operations/v5-2b-public-operations_20260813T022744Z_real_cli_exit_local/`.
+- `facet_truth`: `contract=PASS`; deterministic/local-PostgreSQL `replay=PASS`; real
+  shell-capable external CLI Exit `agent-causal=PASS` (completion used a deterministic
+  local fixture); `domain-provider-live`, `agentteams-native`, `claude-runtime-live`,
   `repo-sandbox`, `human-authorized-external` and `production-canary` are `NOT_RUN`.
-- `stop_gate`: the real shell-capable external-Agent CLI Exit journey is the next actual
-  test. It must start against live local HTTP + disposable PostgreSQL, disconnect without
-  cancel, reconnect by operation id, observe the same durable operation/artifact, preserve
-  receipts and revoke the isolated credential. Until it passes, V5-2B remains `VERIFYING`
-  and V5-2C stays locked.
+- `exit`: live loopback HTTP + disposable PostgreSQL accepted the investigation, a second
+  CLI process detached on Ctrl-C without cancellation, a fresh CLI process reconnected by
+  operation id and observed the same completed artifact, nine major-2 events/authority
+  receipts/audits were preserved, and the isolated credential was revoked and rejected
+  with `TOKEN_REVOKED` / exit family 10. V5-2B is `DONE_LOCAL`.
+- `stop_gate`: V5-2C remains locked until its current MCP/A2A protocol/version review and
+  separately scoped Agent-native transport work. No provider, production write, push or PR
+  was performed.
 - `known_non_blocking_risk`: detached `npm audit --omit=dev` reports 2 moderate
   production dependency advisories; this stage changes neither Console dependency file.
 

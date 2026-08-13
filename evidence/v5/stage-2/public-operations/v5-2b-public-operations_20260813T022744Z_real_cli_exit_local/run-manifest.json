@@ -1,0 +1,68 @@
+{
+  "schema_version": "1.0",
+  "run_id": "v5-2b-public-operations_20260813T022744Z_real_cli_exit_local",
+  "stage": "V5-2B",
+  "slice": "real-shell-agent-cli-exit",
+  "started_at": "2026-08-13T02:27:44Z",
+  "completed_at": "2026-08-13T02:30:00Z",
+  "status": "PASS_LOCAL_REAL_AGENT_CLI_EXIT",
+  "subject": {
+    "semantic_commit": "8c71d245137acf69a667104a0f3c833de9416bf9",
+    "branch": "codex/v5-convergence",
+    "pushed": false
+  },
+  "environment": {
+    "control_plane": "live local uvicorn HTTP process",
+    "database": "disposable local PostgreSQL 18.1 database control_plane_real_cli_test",
+    "provider_calls": false,
+    "production_writes": false
+  },
+  "decision": {
+    "local_contract_replay": "PASS",
+    "real_shell_capable_agent_cli_exit": "PASS",
+    "v5_2b": "DONE_LOCAL",
+    "v5_2c_entry": "LOCKED_PENDING_PROTOCOL_VERSION_REVIEW"
+  },
+  "facet_report": {
+    "contract": "PASS",
+    "replay": "PASS",
+    "agent-causal": "PASS (external shell-capable CLI process; deterministic local fixture completion)",
+    "domain-provider-live": "NOT_RUN",
+    "agentteams-native": "NOT_RUN",
+    "claude-runtime-live": "NOT_RUN",
+    "repo-sandbox": "NOT_RUN",
+    "human-authorized-external": "NOT_RUN",
+    "production-canary": "NOT_RUN"
+  },
+  "operation": {
+    "operation_id": "op_01KZWF4TJFVZZ6QRE2M33G2F1Z",
+    "automation_request_id": "arq_01KZWF4TJFK408P8KK7EAV66GZ",
+    "task_id": "task_01KZWF4TJG2JCZ9FJZ4NN13TAA",
+    "attempt_id": "att_01KZWF6S4ZYPFXE4XKPXV4N2NZ",
+    "final_state": "COMPLETED",
+    "artifact_kind": "INVESTIGATION_REPORT",
+    "artifact_digest": "sha256:8945f5250ebe6c1fa57c77de6ef548f86a892789605f29633f0df5c4a2fc3507",
+    "work_output_digest": "sha256:02dcedf453a15af12cffad23468926389e6410b40efc6d2b97e6f01cdbea2c4b"
+  },
+  "credential": {
+    "credential_id": "cred_01J0000000000R02",
+    "principal_id": "prn_01J0000000000P01",
+    "scopes": ["investigations:start", "operations:read", "operations:cancel"],
+    "raw_token": "REDACTED_EPHEMERAL_TOKEN",
+    "final_state": "REVOKED"
+  },
+  "durable_evidence": {
+    "event_count_for_task_and_attempt": 9,
+    "event_contract_majors": [2],
+    "authority_receipt_count_for_task_and_attempt": 9,
+    "audit_count_for_task_and_attempt": 9,
+    "idempotency_rows": 1,
+    "task_revision": 3,
+    "attempt_revision": 6
+  },
+  "known_boundaries": [
+    "Completion artifact was produced by a deterministic local Work executor; no provider or model call was made.",
+    "V5-2C remains locked until the current MCP/A2A protocol/version entry review is separately performed.",
+    "The existing npm moderate advisories and legacy Quality API live prerequisite remain unchanged."
+  ]
+}

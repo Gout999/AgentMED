@@ -15,11 +15,11 @@
 > R2 只可报告 `contract=PASS`、`replay=PASS`。C0–C5 原关闭结论经复核后在
 > `b6fa629` 修正 owner、generated-wire、rollback 与最终 PostgreSQL gate；统一门禁 8/8
 > PASS。D2、R3-full、R4 与 V5-2A 已按各自证据关闭。V5-2B 本地 runtime subject
-> `8c71d24` 的提交前与 exact detached post-commit verifier 均 4/4 PASS；当前只可报告
-> `contract=PASS` 与 local/disposable-PostgreSQL `replay=PASS`。真实 shell-capable
-> external Agent CLI Exit journey 为下一实际测试门，`agent-causal=NOT_RUN`；因此
-> V5-2B 保持 `VERIFYING`、V5-2C 继续锁定。最终 subject SHA-256 与 evidence digest
-> 仍按产品 owner 指示延后至最终项目收口。
+> `8c71d24` 的提交前与 exact detached post-commit verifier 均 4/4 PASS；真实
+> shell-capable external Agent CLI Exit 已在 disposable PostgreSQL + loopback HTTP 上
+> PASS，证据为 `v5-2b-public-operations_20260813T022744Z_real_cli_exit_local`。
+> V5-2B 可标记 `DONE_LOCAL`；V5-2C 仍需 protocol/version 当期复核后再解锁。最终
+> subject SHA-256 与 evidence digest 仍按产品 owner 指示延后至最终项目收口。
 
 > **执行优先级**：在不覆盖 AGENTS、产品原则、ADR 与 frozen contract 的前提下，本文是
 > 唯一最高工程执行编排。其他 blueprint、brief、handoff 或历史 stage 文档与本文冲突时，
@@ -89,12 +89,12 @@ migration、tests、evidence、rollback、commit 和 verifier。
 | V5-0B/0C | contract-only freeze 已独立 PASS | 保留历史 freeze；current runtime overlay 另行标注 |
 | D-015 | `ACCEPTED / NOT RUNTIME CUTOVER PROOF`；V5 是新产品/领域开发默认设计与施工基线，V3/V4 是 compatibility lanes | 不改变 public API/CLI 默认 major、active route 或历史 authority |
 | R2 | 只确认 exact scope 的 `contract=PASS`、`replay=PASS` | 不推导完整 runtime；最终 subject SHA/evidence digest 标记 `DEFERRED_BY_OWNER_TO_FINAL_PROJECT_CLOSURE` |
-| C0–C5 | **`COMPLETE / REMEDIATED`** at `b6fa629`；后续 D2、R3-full、R4 与 V5-2A 已分别关闭；V5-2B 当前 `VERIFYING` | V5-2B exact detached gate 4/4 PASS；真实 Agent CLI Exit `NOT_RUN`；继续严格按 §17 |
+| C0–C5 | **`COMPLETE / REMEDIATED`** at `b6fa629`；后续 D2、R3-full、R4 与 V5-2A 已分别关闭；V5-2B 已 `DONE_LOCAL` | V5-2B exact detached gate 4/4 PASS；真实 Agent CLI Exit PASS；V5-2C 仍按 protocol/version 入口锁定 |
 | V5-1B/R3-full | standalone `system-versions.record/get/diff` runtime 已按 R3-full evidence 关闭 | 保留 exact lineage/CAS 与单 PG UoW；不得膨胀为 live/provider proof |
 | V5-1C/R4 | First System Case runtime 已按 R4 evidence 关闭 | acceptance readiness 仍是 `PENDING_MATERIALIZATION`，由 V5-4 负责 |
 | V5-2A | Durable Work Kernel locally closed and merged | Work owner remains authoritative；public projection cannot copy its state machine |
-| V5-2B | local subject `8c71d24` verifier PASS；real external-Agent CLI Exit `NOT_RUN` | stage=`VERIFYING`；V5-2C/3A-core 不解锁，直到 exact Agent Exit evidence |
-| live/external | V5-2B live Agent/provider facets均未执行 | 下一实际测试先做 isolated local Agent CLI journey；provider/production remains separately authorized |
+| V5-2B | local subject `8c71d24` verifier PASS；real external-Agent CLI Exit `PASS` | stage=`DONE_LOCAL`；V5-2C 仍需 protocol/version 当期复核 |
+| live/external | V5-2B provider/production facets均未执行；本地 shell-capable CLI Exit 已完成 | provider/production remains separately authorized；下一入口是 V5-2C protocol/version review |
 
 ### 2.1 当前阶段状态
 
@@ -115,7 +115,7 @@ migration、tests、evidence、rollback、commit 和 verifier。
 | D2 / V5-1B R3-full | D2 `DONE (contract-only)`；R3-full `DONE (contract + replay)` | semantic series/evidence already closed；no provider/live inference |
 | V5-1C R4 | `DONE (contract + replay)` | semantic series/evidence already closed；V5-4 materialization remains separate |
 | V5-2A | `DONE locally` | evidence + merge-result verifier PASS；not pushed |
-| V5-2B | `VERIFYING` | local subject/evidence/verifier PASS；requires real external shell-capable Agent CLI disconnect/reconnect Exit |
+| V5-2B | `DONE_LOCAL` | local subject/evidence/verifier PASS；real external shell-capable Agent CLI disconnect/reconnect Exit PASS |
 | V5-2C–V5-5 | `TODO / LOCKED` | V5-2C first requires V5-2B real Agent Exit PASS；later stages follow exact dependency graph |
 | V5-6 slices | `TODO / independently admitted after V5-5` | V5-5 completion evidence + 对应 slice Entry |
 
@@ -562,6 +562,8 @@ Attempt。
 `COMPLETED` 只表示可信领域 artifact 已产生，不等价于 Gate/Release PASS。
 
 **Exit**：shell-capable Agent 能经 CLI 发起、断线、重连并观察一个 durable investigation。
+该 Exit 已在 `evidence/v5/stage-2/public-operations/v5-2b-public-operations_20260813T022744Z_real_cli_exit_local/`
+通过；completion 使用 deterministic local Work fixture，不构成 provider/live/production 证明。
 
 ### V5-2C · First Agent-native transport
 
@@ -701,7 +703,7 @@ contracts 为准。
 
 | Stage | Entry / authority / non-goals | Migration 与验证 | Evidence / stop / rollback / commit / unlock |
 |---|---|---|---|
-| V5-2B Async intents | Entry：2A 双提交闭环 PASS。Work Controller 拥有 durable task；Public Gateway 只接 canonical command/read projection。Non-goal：operation completed 不等于 Gate/Release success | Additive operation projection/cursor；HTTP/CLI auth、idempotency、timeout、Ctrl-C、detach、cancel-request、stale cursor、cross-workspace、replay 与 PG restart | Evidence `stage-2/public-operations/<run-id>`；transport→domain 状态膨胀即 NO-GO；rollback 禁用 routes/新 dispatch，保留 tasks；commit `feat(v5): expose durable governance operations`；解锁 2C、3A-core |
+| V5-2B Async intents | Entry：2A 双提交闭环 PASS。Work Controller 拥有 durable task；Public Gateway 只接 canonical command/read projection。Non-goal：operation completed 不等于 Gate/Release success | Additive operation projection/cursor；HTTP/CLI auth、idempotency、timeout、Ctrl-C、detach、cancel-request、stale cursor、cross-workspace、replay 与 PG restart；real CLI Exit 已验证 | Evidence `stage-2/public-operations/<run-id>`；transport→domain 状态膨胀即 NO-GO；rollback 禁用 routes/新 dispatch，保留 tasks；commit `feat(v5): expose durable governance operations`；V5-2B local closure PASS，V5-2C 仍需 protocol/version review |
 | V5-2C Agent transport | Entry：2B PASS、protocol/version 当期复核。Adapter 无领域 owner；Non-goal：human approval、internal execute、复制状态机 | 无领域表时不造表；如需 task mapping/cursor 只 additive。验证 OAuth/audience/scope、capability filtering、downgrade、disconnect、duplicate task、artifact/status equivocation、HTTP/CLI parity | Evidence 使用 canonical facets，client-live 仅 metadata；scope/authority 扩张即 NO-GO；rollback 关 adapter/revoke credential，保留 operations；commit `feat(v5): add first agent-native gateway`；解锁 transport parity，不阻塞 3A/4 的 CLI 路径 |
 | V5-3A-core Evidence | Entry：2B PASS、1C Case 可引用。Evidence Controller 拥有 receipt/snapshot；projection/source adapter 无 success authority。Non-goal：真实 source、归因 verdict、Gate | Additive receipt graph、view/snapshot、observed/effect tables；验证 missing/sampling/masking/retention、desired!=observed、view watermark/generation、immutable snapshot、exporter fabrication、cross-workspace、PG concurrency | Evidence `stage-3/system-evidence/<run-id>`；mutable view 被 Gate 绑定或 sandbox 冒充 live 即 NO-GO；rollback 停 ingestion/projection rebuild，保留 receipts/snapshots；commit `feat(v5): add system episode evidence`；解锁 3A-adapter、3B、4 |
 | V5-3A-adapter | Entry：3A-core PASS、合法隔离 credential、现场可回读。Adapter 只产 source receipt。Non-goal：改变 core/competition closure | Additive source config/cursor/DLQ；验证 broad credential、timeout、cursor replay、sampling gap、masking、retention、ambiguous outcome 和 readback | Evidence `stage-3/source-adapter/<run-id>`；无回读则 `NOT_RUN/BLOCKED`；rollback 关 source/revoke credential，保留已固化 receipt；commit `feat(v5): add <source> evidence adapter`；不阻塞 4 |

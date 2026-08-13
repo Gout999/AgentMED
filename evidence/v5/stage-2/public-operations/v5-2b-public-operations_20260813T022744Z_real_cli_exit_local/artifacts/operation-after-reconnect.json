@@ -1,0 +1,35 @@
+{
+  "schema_version": "2.0",
+  "operation_id": "op_01KZWF4TJFVZZ6QRE2M33G2F1Z",
+  "state": "COMPLETED",
+  "automation_request_id": "arq_01KZWF4TJFK408P8KK7EAV66GZ",
+  "exact_work_task_binding": {
+    "kind": "WORK_TASK",
+    "id": "task_01KZWF4TJG2JCZ9FJZ4NN13TAA",
+    "revision": 3,
+    "digest": "sha256:ca8546ae57df3c0f0541917066dfe2c387c7359f7dbbacf30ef73274d88ad5d2"
+  },
+  "exact_current_attempt_binding_or_null": {
+    "kind": "WORK_ATTEMPT",
+    "id": "att_01KZWF6S4ZYPFXE4XKPXV4N2NZ",
+    "revision": 6,
+    "digest": "sha256:5e02e5e6d97c4cf73682e7018b050547a6a173e7e25eced5ef8cfdf0a38d9201"
+  },
+  "artifact_or_null": {
+    "artifact_kind": "INVESTIGATION_REPORT",
+    "schema_major": 2,
+    "domain_verdict": "UNKNOWN",
+    "evidence_completeness": "COMPLETE",
+    "exact_artifact_binding": {
+      "kind": "INVESTIGATION_REPORT",
+      "id": "report_01KZWF4TJG2JCZ9FJZ4NN13TAA",
+      "revision": 1,
+      "digest": "sha256:8945f5250ebe6c1fa57c77de6ef548f86a892789605f29633f0df5c4a2fc3507"
+    },
+    "payload": {
+      "observed_after_reconnect": true,
+      "provider_live": false,
+      "summary": "Real CLI Exit local shell-agent fixture artifact"
+    }
+  }
+}
