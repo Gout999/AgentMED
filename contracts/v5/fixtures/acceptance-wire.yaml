@@ -7,17 +7,23 @@ fixture_id: v5-0c-acceptance-criteria-wire
 # propose an untrusted PROPOSED revision, must never confirm it, confirmation
 # is reserved for a reauthenticated human maintainer or domain reviewer, the
 # confirmed revision is a new immutable and additive record that references the
-# prior proposed revision, and the additive Case readiness read path exposes
-# NEEDS_ACCEPTANCE_CRITERIA without rewriting the S1A case payload or digest.
+# prior proposed revision. V5-1C has no materialized ResolutionContract yet, so
+# both proposed and confirmed revisions carry an honest pending status and the
+# additive Case readiness read path remains NEEDS_ACCEPTANCE_CRITERIA.
 
 preconditions:
   s1a_case:
     case_id: case_fixture0001
     case_revision: 1
     case_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
-  resolution_contract:
-    id: rc_fixture0001
-    revision: 1
+  resolution_contract_binding_status:
+    status: PENDING_MATERIALIZATION
+    owner: resolution-contract-controller
+    materialization_stage: V5-4
+    exact_case_binding:
+      case_id: case_fixture0001
+      case_revision: 1
+      case_digest: sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
   workspace_id: ws_fixture0001
 
 propose:
@@ -30,6 +36,8 @@ propose:
     confirmation_status: PROPOSED
     is_untrusted: true
     is_authoritative: false
+    resolution_contract_binding_status: PENDING_MATERIALIZATION
+    exact_resolution_contract_binding_present: false
     forbids: [confirmer_principal, confirmed_at]
 
 get:
@@ -42,6 +50,7 @@ get:
     - needs_acceptance_criteria_is_projection_not_case_lifecycle
     - needs_acceptance_criteria_blocks_gate_pass_but_allows_case_investigation
     - needs_acceptance_criteria_does_not_rewrite_quality_case_payload_or_digest
+    - pending_resolution_contract_materialization_cannot_project_ready
 
 confirm:
   intent: acceptance-criteria.confirm
@@ -53,11 +62,18 @@ confirm:
   idempotency_key: ac-confirm-0001
   expected:
     confirmation_status: CONFIRMED
-    is_authoritative: true
+    is_authoritative_acceptance_input: true
+    is_executable_contract: false
     new_immutable_record_not_in_place_rewrite: true
     references_prior_proposed_revision: true
     does_not_rewrite_quality_case_payload_or_digest: true
-    readiness_after_confirm: READY
+    resolution_contract_binding_status: PENDING_MATERIALIZATION
+    exact_resolution_contract_binding_present: false
+    readiness_after_confirm: NEEDS_ACCEPTANCE_CRITERIA
+    next_action:
+      code: MATERIALIZE_RESOLUTION_CONTRACT
+      owner: resolution-contract-controller
+      stage: V5-4
 
 adversarial:
   - name: proposer_cannot_self_confirm
@@ -80,7 +96,10 @@ contract_grounding:
   domain_model:
     acceptance_provenance:
       case_readiness_is_projection_not_case_lifecycle: true
-      case_readiness_values: [NEEDS_ACCEPTANCE_CRITERIA, READY]
+      target_case_readiness_values: [NEEDS_ACCEPTANCE_CRITERIA, READY]
+      current_runtime_case_readiness_values: [NEEDS_ACCEPTANCE_CRITERIA]
+      ready_requires_materialized_exact_resolution_contract: true
+      ready_reachable_before_v5_4: false
       needs_acceptance_criteria_blocks_gate_pass: true
       needs_acceptance_criteria_allows_case_investigation: true
       needs_acceptance_criteria_does_not_rewrite_quality_case_payload_or_digest: true
@@ -89,24 +108,28 @@ contract_grounding:
         agent_can_confirm: false
         confirmer_must_be_human_maintainer_or_domain_reviewer: true
         proposed_revision_is_untrusted: true
-        confirmed_revision_is_authoritative: true
+        confirmed_revision_is_authoritative_acceptance_input: true
+        confirmed_revision_is_executable_contract: false
         confirmed_revision_references_prior_proposed_revision: true
         confirmed_revision_is_immutable_and_additive: true
     resources:
       acceptance_criteria_revision:
         kind: immutable_record
         owner: case-controller
-        subordinate_to: resolution_contract
+        planned_subordinate_to: resolution_contract
+        current_subordination_status: PENDING_MATERIALIZATION
         confirmation_status_union:
           variants:
             PROPOSED: {is_untrusted: true, is_authoritative: false}
             CONFIRMED:
               requires_confirmer_is_human_maintainer_or_domain_reviewer: true
-              is_authoritative: true
+              is_authoritative_acceptance_input: true
+              is_executable_contract: false
       case_readiness:
         kind: projection
         commands: []
-        readiness_values: [NEEDS_ACCEPTANCE_CRITERIA, READY]
+        target_readiness_values: [NEEDS_ACCEPTANCE_CRITERIA, READY]
+        current_runtime_readiness_values: [NEEDS_ACCEPTANCE_CRITERIA]
   aggregate_ownership:
     record_authority:
       ACCEPTANCE_CRITERIA_REVISION:
@@ -133,11 +156,13 @@ contract_grounding:
       events:
         acceptance_criteria.proposed:
           constants: {confirmation_status: PROPOSED}
+          payload_required: [resolution_contract_binding_status]
           guards:
             - proposer_is_agent_service_or_connector_not_human_maintainer_or_domain_reviewer
             - proposed_revision_is_untrusted_and_not_authoritative
         acceptance_criteria.confirmed:
           constants: {confirmation_status: CONFIRMED}
+          payload_required: [resolution_contract_binding_status]
           guards:
             - confirmer_is_human_maintainer_or_domain_reviewer
             - confirmer_is_not_the_proposer
@@ -153,8 +178,18 @@ contract_grounding:
       confirmed_revision_is_immutable_and_additive: true
       confirmed_revision_references_prior_proposed_revision: true
       confirmed_revision_never_rewrites_quality_case_payload_or_digest: true
+      resolution_contract_binding_status:
+        status: PENDING_MATERIALIZATION
+        owner: resolution-contract-controller
+        materialization_stage: V5-4
+        exact_case_binding_required: true
+        exact_resolution_contract_binding_forbidden: true
+      confirmed_revision_is_authoritative_acceptance_input: true
+      confirmed_revision_is_executable_contract: false
       readiness_read_path: NEEDS_ACCEPTANCE_CRITERIA
       readiness_blocks_gate_pass_but_allows_case_investigation: true
+      confirmed_pending_materialization_stays_needs_acceptance_criteria: true
+      ready_requires_v5_4_materialized_resolution_contract: true
 
 does_not_prove:
   - acceptance_route_implemented

@@ -1,6 +1,10 @@
 # CaseLoop conformance suite（契约级，确定性）
 
-本目录同时承载两层互不冒充的契约：v3 Phase 0B 是客服 Quality API 当前实施基线；`test_v4_*.py` 是 v4 Stage 0 target contract 的确定性自洽检查。v4 测试转绿只证明契约冻结，不证明 migration、runtime、provider live 或 Agent 因果执行。
+本目录同时承载三层互不冒充的契约：v3 Phase 0B 是客服 Quality API 当前实施基线；
+`test_v4_*.py` 检查 V4 target/compatibility contracts；`test_v5_*.py` 同时保留 V5-0
+historical freeze，并验证当前 V5-1 runtime overlay、transport allowlist 与 deferred intent
+边界。V4/V5 测试转绿只证明契约和声明一致，不证明 migration、runtime、provider live 或
+Agent 因果执行。
 
 Quality API live conformance 的出口判据仍是：**本套件可对空实现跑红**。任何组件声称「实现了 Quality API 契约」前，必须先让对应 live conformance 转绿。
 
@@ -9,7 +13,7 @@ Quality API live conformance 的出口判据仍是：**本套件可对空实现�
 ```bash
 python3 -m venv /tmp/caseloop-contracts-venv
 /tmp/caseloop-contracts-venv/bin/pip install -r contracts/conformance/requirements.txt
-cd /Users/xiejiachen/caseloop
+cd /path/to/caseloop
 /tmp/caseloop-contracts-venv/bin/pytest contracts/conformance -x -q
 ```
 
@@ -45,20 +49,27 @@ cd /Users/xiejiachen/caseloop
 - `test_v4_cutover.py` — v3/v4 并存、单一 lease authority、drain/reconcile/cutover/rollback 语义。
 - `test_v4_integrity.py` / `test_v4_authority.py` — 全记录 JCS self-hash、同 ID revision/previous snapshot、签发时历史资源绑定、ControllerRegistration、单向 post-record AuthorityReceipt，以及 coordinated rehash/revision/authority 攻击反例。离线 authority bundle 只证明 `contract` facet。
 - 其他 `test_v4_*.py` — v4 event/state recovery、transaction 和后续 Stage 0 slice；以文件名与 `contracts/v4/README.md` 为准。
+- `test_v5_draft.py` / `test_v5_compatibility.py` / `test_v5_first_slice.py` /
+  `test_v5_adversarial.py` — V5-0 historical freeze、owner/exact binding、compatibility 和
+  adversarial invariants；
+- `test_v5_runtime_overlay.py` — 当前 V5-1 allowlist、HTTP/CLI/capability discovery 与仍被
+  deferred 的 standalone record/V5-2+ 边界；全部只产生 `contract` 证据。
 
 仓库固定的纯离线验证命令：
 
 ```bash
-cd /Users/xiejiachen/caseloop/contracts
+cd /path/to/caseloop/contracts
 ../eval-harness/.venv/bin/python -m pytest \
   conformance/test_schemas.py conformance/test_wilson.py \
-  conformance/test_v4_*.py -q
+  conformance/test_v4_*.py conformance/test_v5_*.py -q
 ```
 
 ## 空实现下的预期结果
 
 - `test_quality_api.py`：**全红**（`requests.exceptions.ConnectionError`）。
   这就是「对空实现跑红」的出口判据——转绿只能靠真实现，不能靠改测试。
-- `test_schemas.py` / `test_wilson.py` / `test_v4_*.py`：**全绿**（纯契约资产自洽验证；v4 绿不升级为 runtime/live 证明）。
+- `test_schemas.py` / `test_wilson.py` / `test_v4_*.py` / `test_v5_*.py`：预期全绿
+  （纯契约资产自洽验证；V4/V5 绿不升级为 runtime/live 证明）。
 
-最近一次实跑结果见 `LAST-RUN.md`。
+`LAST-RUN.md` 是 2026-08-08 Phase 0B 历史快照，不是当前 latest。当前结果以
+`docs/context/PROJECT_STATE.md` 和对应 evidence bundle 为准。

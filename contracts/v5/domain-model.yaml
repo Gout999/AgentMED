@@ -1,6 +1,6 @@
 version: "0.2-draft"
 status: draft_target_contract
-runtime_status: NOT_IMPLEMENTED
+runtime_status: PARTIALLY_IMPLEMENTED
 public_api_major: 2
 
 rules:
@@ -14,6 +14,34 @@ rules:
   projections_accept_commands: false
   closed_v4_schemas_are_not_extended_in_place: true
   v5_system_records_use_schema_major_2: true
+
+runtime_overlay:
+  status: PARTIALLY_IMPLEMENTED
+  through_delivery_slice: V5-1C
+  migration_head: "012"
+  implemented_record_or_aggregate_slices:
+    ai_application: [application.registered]
+    environment: [environment.registered]
+    system_component: [system_component.registered]
+    dependency_edge: [dependency_edge.recorded]
+    component_revision: [component_revision.recorded]
+    topology_revision: [topology_revision.recorded]
+    system_version_set: [system_version_set.recorded]
+    bootstrap_attestation: [bootstrap_attestation.recorded]
+    system_assignment: [system_assignment.recorded_bootstrap_only]
+    application_case_binding: [case.application_bound]
+    acceptance_criteria_revision:
+      - acceptance_criteria.proposed
+      - acceptance_criteria.confirmed_non_executable_until_v5_4
+  implemented_projection_slices:
+    case_readiness:
+      current_reachable_values: [NEEDS_ACCEPTANCE_CRITERIA]
+      integrity_failure_value_for_internal_console: UNKNOWN
+      ready_reachable_before_v5_4: false
+  not_implemented:
+    - resolution_contract_materialization
+    - executable_badcase_spec
+    - v5_2_and_later_resources_and_profiles
 
 record_envelope:
   applies_to: every_authoritative_non_projection_v5_record_or_aggregate_revision
@@ -165,7 +193,11 @@ evaluation_semantics:
 
 acceptance_provenance:
   case_readiness_is_projection_not_case_lifecycle: true
-  case_readiness_values: [NEEDS_ACCEPTANCE_CRITERIA, READY]
+  target_case_readiness_values: [NEEDS_ACCEPTANCE_CRITERIA, READY]
+  current_runtime_case_readiness_values: [NEEDS_ACCEPTANCE_CRITERIA]
+  integrity_failure_projection_value: UNKNOWN
+  ready_requires_materialized_exact_resolution_contract: true
+  ready_reachable_before_v5_4: false
   needs_acceptance_criteria_blocks_gate_pass: true
   needs_acceptance_criteria_allows_case_investigation: true
   needs_acceptance_criteria_does_not_rewrite_quality_case_payload_or_digest: true
@@ -173,10 +205,13 @@ acceptance_provenance:
   acceptance_criteria_revision:
     kind: immutable_record
     owner: case-controller
-    subordinate_to: resolution_contract
+    planned_subordinate_to: resolution_contract
+    current_subordination_status: PENDING_MATERIALIZATION
+    resolution_contract_materialization_stage: V5-4
     confirmation_status_values: [PROPOSED, CONFIRMED]
     proposed_revision_is_untrusted: true
-    confirmed_revision_is_authoritative: true
+    confirmed_revision_is_authoritative_acceptance_input: true
+    confirmed_revision_is_executable_contract: false
     agent_can_propose: true
     agent_can_confirm: false
     service_can_confirm: false
@@ -190,13 +225,15 @@ acceptance_provenance:
       - only_human_maintainer_or_domain_reviewer_can_confirm
       - agent_or_service_or_connector_principal_cannot_confirm
       - confirmed_revision_is_new_immutable_record_not_in_place_rewrite
-      - confirmed_revision_is_subordinate_to_resolution_contract
+      - confirmed_revision_carries_pending_resolution_contract_status_not_fake_exact_binding
+      - confirmed_revision_is_not_executable_until_v5_4_materialization
       - confirmed_revision_does_not_create_new_case_lifecycle
       - confirmed_revision_does_not_rewrite_quality_case_payload_or_digest
   badcase_spec:
     kind: immutable_record
     owner: case-controller
     subordinate_to: resolution_contract
+    runtime_status: NOT_IMPLEMENTED_V5_4
     requires_confirmed_acceptance_criteria: true
     executable_reproducer: true
     invariants:
@@ -300,88 +337,6 @@ fact_class_non_inference:
     - adapter_receipt_alone_does_not_constitute_release_success
     - direct_assignment_restore_or_resume_is_not_a_second_rollback_authority
 
-r2_application_catalog_contract:
-  stage: R2
-  contract_status: FROZEN_FOR_IMPLEMENTATION
-  runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-  authoritative_resources:
-    - ai_application
-    - environment
-    - system_component
-    - dependency_edge
-  r3_bootstrap_coupled_resources:
-    - component_revision
-    - topology_revision
-    - system_version_set
-    - bootstrap_attestation
-    - system_assignment
-  bootstrap_system_manifest:
-    application_revision_sequence:
-      - {revision: 1, lifecycle_state: REGISTERED}
-      - {revision: 2, lifecycle_state: ACTIVE}
-    component_revision_sequence:
-      - {revision: 1, lifecycle_state: REGISTERED}
-      - {revision: 2, lifecycle_state: ACTIVE}
-    exact_previous_binding_is_server_derived_from_locked_history: true
-    all_revisions_are_immutable_and_independently_digested: true
-    current_head_is_projection_not_history_authority: true
-    same_postgresql_unit_of_work_required: true
-    complete_first_declared_graph_required: true
-    scope: WORKSPACE_INITIAL_ONE_SHOT
-    precondition: ALL_AUTHORITATIVE_V5_DOMAIN_TABLES_EMPTY
-    prior_standalone_registered_catalog_row: BOOTSTRAP_IMPORT_FORBIDDEN
-    component_revision_exact_component_binding:
-      source: SERVER_RESOLVED_FROM_LOCKED_APPEND_ONLY_HISTORY
-      required_lifecycle_state: ACTIVE
-      initial_bootstrap_required_revision: 2
-      mutable_head_or_client_supplied_binding: FORBIDDEN
-    initial_system_version_set_count: 1
-    system_assignment_generation: 1
-    replay_requires_same_idempotency_key_and_same_canonical_body: true
-    same_key_same_body_replay_result: IDENTICAL_TERMINAL_ATOMIC_RESPONSE_ZERO_NEW_FACTS
-    different_key_even_same_manifest_digest: CONFLICT_WITH_ZERO_NEW_FACTS
-    proves: INITIAL_DECLARED_VERSION_AND_DESIRED_ASSIGNMENT_ONLY
-    standalone_system_versions_record: FORBIDDEN
-    second_workspace_bootstrap_or_system_version_set: FORBIDDEN
-    semantic_diff_claim: FORBIDDEN
-  response_contracts:
-    applications_register: {revision: 1, lifecycle_state: REGISTERED}
-    bootstrap_system_manifest:
-      ai_application: {revision: 2, lifecycle_state: ACTIVE}
-      each_system_component: {revision: 2, lifecycle_state: ACTIVE}
-      exact_initial_system_version_set_binding: REQUIRED
-  forbidden_in_r2_catalog_phase:
-    - application_case_binding
-    - acceptance_criteria_revision
-  does_not_prove:
-    - r3_full_second_system_version_or_semantic_diff
-    - observed_runtime_or_external_effect
-    - first_system_case
-    - resolution_or_release
-
-application_component_activation_lifecycle:
-  decision_ref: docs/decisions/D-014-v5-application-component-activation-lifecycle.md
-  decision: PRESERVE_REGISTERED_TO_ACTIVE
-  runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-  immutable_revision_history:
-    ai_application:
-      identity: [workspace_id, application_id, revision]
-      sequence:
-        - {revision: 1, lifecycle_state: REGISTERED}
-        - {revision: 2, lifecycle_state: ACTIVE}
-    system_component:
-      identity: [workspace_id, component_id, revision]
-      sequence:
-        - {revision: 1, lifecycle_state: REGISTERED}
-        - {revision: 2, lifecycle_state: ACTIVE}
-    physical_table_names_are_normative: false
-    recommended_implementation_names:
-      ai_application: ai_application_lifecycle_revisions
-      system_component: system_component_lifecycle_revisions
-  current_head_is_projection_not_history_authority: true
-  exact_previous_binding_is_required_on_activation_revision: true
-  legacy_active_revision_1_may_be_reinterpreted: false
-
 resources:
   ai_application:
     kind: aggregate
@@ -396,11 +351,6 @@ resources:
       - data_classification
       - governance_mode
       - lifecycle_state
-    lifecycle_revision_contract:
-      initial: {revision: 1, lifecycle_state: REGISTERED}
-      activation: {revision: 2, lifecycle_state: ACTIVE}
-      exact_previous_binding_required_after_revision_1: true
-      current_head_is_projection_not_history_authority: true
     forbidden_fields:
       - current_system_version_set_id
       - observed_runtime_state
@@ -430,11 +380,6 @@ resources:
       - permission_classification
       - effect_classification
       - lifecycle_state
-    lifecycle_revision_contract:
-      initial: {revision: 1, lifecycle_state: REGISTERED}
-      activation: {revision: 2, lifecycle_state: ACTIVE}
-      exact_previous_binding_required_after_revision_1: true
-      current_head_is_projection_not_history_authority: true
     optional_fields:
       - dataset_role
     forbidden_fields:
@@ -460,7 +405,6 @@ resources:
     uses_record_envelope: true
     required_fields:
       - component_id
-      - exact_system_component_binding
       - component_kind
       - identity_locator
       - identity_assurance
@@ -481,20 +425,9 @@ resources:
       - artifact_refs
     identity_assurance_contract_ref: contracts/v5/domain-model.yaml#identity_assurance/discriminator_union
     identity_assurance_field_refs:
-      exact_system_component_binding: contracts/v5/schema-profiles.yaml#common/exact_record_binding_v5:SYSTEM_COMPONENT
       immutable_provider_version_attestation: PROVIDER_VERSION_ATTESTATION
       exact_observation_receipt_binding: contracts/v5/schema-profiles.yaml#common/exact_evidence_binding_union
       exact_provenance_receipt_bindings: contracts/v5/schema-profiles.yaml#common/exact_evidence_binding_union
-    exact_system_component_binding_contract:
-      required_kind: SYSTEM_COMPONENT
-      required_lifecycle_state: ACTIVE
-      required_revision_rule: CURRENT_AUTHORITATIVE_ACTIVE_LIFECYCLE_REVISION_AT_RECORDING
-      first_manifest_expected_revision: 2
-      later_active_revision_after_deprecate_reactivate_is_allowed: true
-      stale_historical_active_revision_is_forbidden: true
-      deprecated_or_retired_revision_is_forbidden: true
-      same_workspace_and_application_required: true
-      mutable_current_head_or_bare_component_id_is_not_authority: true
     forbidden_fields:
       - deployed
       - healthy
@@ -1046,11 +979,13 @@ resources:
     identity: acceptance_criteria_revision_id
     uses_record_envelope: true
     owner: case-controller
-    subordinate_to: resolution_contract
+    planned_subordinate_to: resolution_contract
+    current_subordination_status: PENDING_MATERIALIZATION
+    resolution_contract_materialization_stage: V5-4
     does_not_create_new_case_lifecycle: true
     required_fields:
       - exact_case_binding
-      - exact_resolution_contract_binding
+      - resolution_contract_binding_status
       - confirmation_status
       - proposer_principal
       - proposed_at
@@ -1062,7 +997,8 @@ resources:
     optional_fields:
       - confirmer_principal
       - confirmed_at
-      - exact_previous_proposed_revision_binding_or_null
+      - exact_previous_proposed_revision_binding
+      - reauthentication_credential_binding
       - reproducer_input
       - reproducer_environment
       - oracle_or_evaluator
@@ -1075,16 +1011,27 @@ resources:
           is_untrusted: true
           is_authoritative: false
         CONFIRMED:
-          requires: [confirmer_principal, confirmed_at]
+          requires: [confirmer_principal, confirmed_at, exact_previous_proposed_revision_binding, reauthentication_credential_binding]
           requires_confirmer_is_human_maintainer_or_domain_reviewer: true
           forbids: [proposer_principal_equals_confirmer]
-          is_authoritative: true
+          is_authoritative_acceptance_input: true
+          is_executable_contract: false
+    resolution_contract_binding_status:
+      discriminator: status
+      variants:
+        PENDING_MATERIALIZATION:
+          required_fields: [status, owner, materialization_stage, exact_case_binding]
+          constants:
+            owner: resolution-contract-controller
+            materialization_stage: V5-4
+          exact_resolution_contract_binding_forbidden: true
     invariants:
       - proposal_does_not_confirm_itself
       - only_human_maintainer_or_domain_reviewer_can_confirm
       - agent_or_service_or_connector_principal_cannot_confirm
       - confirmed_revision_is_new_immutable_record_not_in_place_rewrite
-      - confirmed_revision_is_subordinate_to_resolution_contract
+      - confirmed_revision_carries_pending_resolution_contract_status_not_fake_exact_binding
+      - confirmed_revision_is_not_executable_until_v5_4_materialization
       - confirmed_revision_does_not_create_new_case_lifecycle
       - confirmed_revision_does_not_rewrite_quality_case_payload_or_digest
 
@@ -1094,6 +1041,7 @@ resources:
     uses_record_envelope: true
     owner: case-controller
     subordinate_to: resolution_contract
+    runtime_status: NOT_IMPLEMENTED_V5_4
     does_not_create_new_case_lifecycle: true
     required_fields:
       - exact_case_binding
@@ -1113,15 +1061,22 @@ resources:
     identity: case_readiness_id
     uses_record_envelope: false
     commands: []
-    derives_from:
+    current_runtime_derives_from:
       - exact_case_binding
-      - exact_resolution_contract_binding
+      - trusted_acceptance_criteria_revision
+      - resolution_contract_binding_status
+    future_ready_derives_from:
+      - exact_case_binding
+      - exact_materialized_resolution_contract_binding
       - confirmed_acceptance_criteria_revision_for_resolution_contract
-    readiness_values: [NEEDS_ACCEPTANCE_CRITERIA, READY]
+    target_readiness_values: [NEEDS_ACCEPTANCE_CRITERIA, READY]
+    current_runtime_readiness_values: [NEEDS_ACCEPTANCE_CRITERIA]
+    integrity_failure_projection_value: UNKNOWN
     invariants:
       - needs_acceptance_criteria_is_projection_not_case_lifecycle
       - needs_acceptance_criteria_does_not_rewrite_quality_case_payload_or_digest
       - needs_acceptance_criteria_blocks_gate_pass_but_allows_case_investigation
+      - pending_resolution_contract_materialization_cannot_project_ready
 
   verified_candidate:
     kind: projection

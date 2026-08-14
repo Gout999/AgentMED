@@ -1,12 +1,14 @@
 version: "0.2-draft"
 status: draft_target_contract
-runtime_status: NOT_IMPLEMENTED
+runtime_status: PARTIALLY_IMPLEMENTED
 
 current_implemented_public_slice:
   contract: v4_s1a
   api_prefix: /api/v1
   schema_major: 1
   behavior: unchanged
+  scope: compatibility_baseline_only
+  additive_v5_runtime_overlay_ref: "#/current_runtime_overlay"
   history_preserved_aggregates:
     - quality_case
   immutable_records:
@@ -20,79 +22,12 @@ current_implemented_public_slice:
     may_append_lifecycle_events: [triage, resolve, reopen]
     prior_payload_event_and_digest_may_be_rewritten: false
 
-r2_application_catalog_contract:
-  stage: R2
-  contract_status: FROZEN_FOR_IMPLEMENTATION
-  runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-  preserves_v5_0_historical_freeze: true
-  preserves_v3_v4_routes_payloads_events_receipts_and_evidence: true
-  contract_activated_public_intents:
-    - capabilities.get
-    - applications.register
-    - applications.get
-    - applications.list
-    - environments.register
-    - environments.get
-    - system-components.register
-    - system-components.get
-    - dependency-edges.record
-    - dependency-edges.get
-    - system-manifests.import
-  public_transport_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-  private_bootstrap_manifest_composition:
-    contract_status: FROZEN_FOR_IMPLEMENTATION
-    runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-    public_route: NONE
-    invoked_only_by_public_root_intent: system-manifests.import
-    catalog_only_public_sub_intent: FORBIDDEN
-    returns:
-      application_lifecycle: {revision: 2, lifecycle_state: ACTIVE}
-      component_lifecycle: {revision: 2, lifecycle_state: ACTIVE}
-  public_bootstrap_manifest:
-    contract_status: FROZEN_R2_R3_BOOTSTRAP
-    runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-    creates_exactly_one_initial_system_version_set: true
-    workspace_initial_one_shot_requires_all_v5_domain_tables_empty: true
-    standalone_registered_catalog_row_disables_one_shot: true
-    returns_complete_first_declared_graph: true
-    component_revision_exact_component_binding: CURRENT_AUTHORITATIVE_ACTIVE_REVISION_2
-    same_key_same_body_replay_returns_identical_terminal_atomic_response: true
-    same_key_same_body_replay_creates_zero_new_facts: true
-    different_key_even_same_manifest_digest: CONFLICT_WITH_ZERO_NEW_FACTS
-    does_not_activate_standalone_system_versions_record: true
-    does_not_prove_second_version_or_diff: true
-  public_application_register_response:
-    lifecycle: {revision: 1, lifecycle_state: REGISTERED}
-    activation_side_effect: FORBIDDEN
-  system_manifest_modes:
-    R2_R3_BOOTSTRAP:
-      public_intent: system-manifests.import
-      contract_status: FROZEN
-      runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-      scope: WORKSPACE_INITIAL_ONE_SHOT
-    R3_FULL:
-      standalone_system_versions_record: NOT_IMPLEMENTED
-      second_system_version_set: NOT_IMPLEMENTED
-      system_versions_get: NOT_IMPLEMENTED
-      system_versions_diff: NOT_IMPLEMENTED
-      semantic_diff: NOT_IMPLEMENTED
-  standalone_activation_transports:
-    http: FORBIDDEN
-    cli: FORBIDDEN
-    sdk: FORBIDDEN
-    mcp: FORBIDDEN
-    a2a: FORBIDDEN
-    capability_discovery: FORBIDDEN
-  later_stage_runtime_status:
-    R3_FULL_SYSTEM_VERSION: NOT_IMPLEMENTED
-    R4_FIRST_SYSTEM_CASE: NOT_IMPLEMENTED
-
 v5_target_surface:
   api_prefix: /api/v2
   schema_major: 2
-  route_status: DISABLED
-  discovery_status: DISABLED
-  cli_status: DISABLED
+  route_status: PARTIALLY_ENABLED_BY_EXPLICIT_ALLOWLIST
+  discovery_status: ENABLED_BY_AUDITED_ALLOWLIST
+  cli_status: PARTIALLY_ENABLED_BY_EXPLICIT_ALLOWLIST
   sdk_status: DISABLED
   mcp_status: DISABLED
   a2a_agent_card_status: DISABLED
@@ -109,6 +44,51 @@ v5_target_surface:
     - acceptance-criteria.propose
     - acceptance-criteria.get
     - acceptance-criteria.confirm
+
+current_runtime_overlay:
+  through_delivery_slice: V5-1C
+  historical_v5_0c_first_slice_is_preserved: true
+  public_http_and_cli_intents:
+    - capabilities.get
+    - applications.register
+    - applications.get
+    - environments.register
+    - environments.get
+    - system-components.register
+    - system-components.get
+    - dependency-edges.record
+    - dependency-edges.get
+    - system-manifests.import
+    - system-versions.get
+    - system-versions.diff
+    - cases.bind-application
+    - case-application-bindings.get
+    - acceptance-criteria.propose
+    - acceptance-criteria.get
+    - acceptance-criteria.confirm
+  public_intents_explicitly_not_implemented:
+    - system-versions.record
+  v5_2_and_later_public_intents: NOT_IMPLEMENTED
+  capability_discovery: ENABLED_AUDITED_ALLOWLIST
+  standalone_system_versions_record:
+    http_route: NOT_IMPLEMENTED
+    cli_command: NOT_IMPLEMENTED
+    internal_use_inside_atomic_manifest_import_is_not_public_intent_activation: true
+  internal_kernel_only_constructs:
+    - component_revision
+    - topology_revision
+    - system_version_set
+    - bootstrap_attestation
+    - system_assignment_bootstrap
+  cli_workflows:
+    caseloop_init: IMPLEMENTED_LOCAL_DRAFT_ONLY
+    caseloop_case_from_issue: IMPLEMENTED_WITHOUT_AUTO_CONFIRMATION
+  acceptance_runtime_boundary:
+    resolution_contract_binding_status: PENDING_MATERIALIZATION
+    materialization_stage: V5-4
+    confirmed_acceptance_is_executable: false
+    case_readiness_before_materialization: NEEDS_ACCEPTANCE_CRITERIA
+    ready_before_v5_4: false
 
 schema_major_rules:
   v4_closed_json_schemas_are_not_extended: true
@@ -137,7 +117,7 @@ additive_links:
     binds_immutable_episode_snapshot_only: true
 
 migration:
-  current_head: "007"
+  current_head: "012"
   next_revision_must_descend_from_current_head: true
   strategy:
     - expand
@@ -194,13 +174,18 @@ api_compatibility:
   transport_adapters_may_not_create_parallel_authority: true
 
 implementation_gate:
-  exact_v5_field_contracts_frozen: false
-  v5_routes_may_activate: false
-  v5_migration_may_run: false
-  implementation_authorized: false
+  exact_v5_field_contracts_frozen: true
+  v5_routes_may_activate: EXPLICIT_RUNTIME_OVERLAY_ONLY
+  v5_migration_may_run: THROUGH_012
+  implementation_authorized: THROUGH_V5_1C_ONLY
+  capability_discovery_authorized: true
+  standalone_system_versions_record_authorized: false
+  v5_2_and_later_authorized: false
 
 first_slice:
   name: V5-0C-first-system-slice
+  historical_freeze: true
+  current_runtime_overlay_ref: "#/current_runtime_overlay"
   status: DRAFT_FROZEN_WIRE_CONTRACT_ONLY
   runtime_status: NOT_IMPLEMENTED
   count: 10
@@ -279,8 +264,18 @@ acceptance_criteria_wire:
   confirmed_revision_is_immutable_and_additive: true
   confirmed_revision_references_prior_proposed_revision: true
   confirmed_revision_never_rewrites_quality_case_payload_or_digest: true
+  resolution_contract_binding_status:
+    status: PENDING_MATERIALIZATION
+    owner: resolution-contract-controller
+    materialization_stage: V5-4
+    exact_case_binding_required: true
+    exact_resolution_contract_binding_forbidden: true
+  confirmed_revision_is_authoritative_acceptance_input: true
+  confirmed_revision_is_executable_contract: false
   readiness_read_path: NEEDS_ACCEPTANCE_CRITERIA
   readiness_blocks_gate_pass_but_allows_case_investigation: true
+  confirmed_pending_materialization_stays_needs_acceptance_criteria: true
+  ready_requires_v5_4_materialized_resolution_contract: true
 
 s1a_receipt_regression:
   byte_for_byte_unchanged: true
@@ -292,11 +287,15 @@ s1a_receipt_regression:
 
 onboarding_workflow_orchestration:
   caseloop_init:
-    steps: [local_read_only_discovery, manifest_draft, human_confirmation, canonical_manifest_import]
-    canonical_import_intent: system-manifests.import
+    steps: [local_read_only_discovery, manifest_draft]
+    writes_server_state: false
+    import_is_a_separate_operator_command: true
+    separate_import_intent: system-manifests.import
   caseloop_case_from_issue:
-    steps: [issue_snapshot, signal_submit, case_open, application_binding, acceptance_criteria_draft]
+    steps: [issue_snapshot, application_read, environment_read, signal_submit_and_case_open, exact_case_read, optional_version_read, application_binding, acceptance_criteria_draft]
     canonical_intents_only: true
+    no_auto_confirmation: true
+    readiness_after_draft: NEEDS_ACCEPTANCE_CRITERIA
   retry_safety:
     no_second_owner_on_retry: true
     no_duplicate_case_on_retry: true

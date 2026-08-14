@@ -300,16 +300,28 @@ def test_acceptance_wire_propose_get_confirm() -> None:
     assert propose["expected"]["confirmation_status"] == "PROPOSED"
     assert propose["expected"]["is_untrusted"] is True
     assert propose["expected"]["is_authoritative"] is False
+    assert propose["expected"]["resolution_contract_binding_status"] == (
+        "PENDING_MATERIALIZATION"
+    )
+    assert propose["expected"]["exact_resolution_contract_binding_present"] is False
 
     confirm = fixture["confirm"]
     assert confirm["confirmer"]["principal_type"] == "human"
     assert confirm["confirmer"]["required_trust_roles"] == ["maintainer", "domain_reviewer"]
     assert confirm["confirmer"]["reauthentication"] == "required"
     assert confirm["expected"]["confirmation_status"] == "CONFIRMED"
-    assert confirm["expected"]["is_authoritative"] is True
+    assert confirm["expected"]["is_authoritative_acceptance_input"] is True
+    assert confirm["expected"]["is_executable_contract"] is False
     assert confirm["expected"]["new_immutable_record_not_in_place_rewrite"] is True
     assert confirm["expected"]["references_prior_proposed_revision"] is True
-    assert confirm["expected"]["readiness_after_confirm"] == "READY"
+    assert confirm["expected"]["readiness_after_confirm"] == (
+        "NEEDS_ACCEPTANCE_CRITERIA"
+    )
+    assert confirm["expected"]["next_action"] == {
+        "code": "MATERIALIZE_RESOLUTION_CONTRACT",
+        "owner": "resolution-contract-controller",
+        "stage": "V5-4",
+    }
 
     provenance = domain["acceptance_provenance"]["acceptance_criteria_revision"]
     assert provenance["agent_can_propose"] is True
@@ -320,11 +332,21 @@ def test_acceptance_wire_propose_get_confirm() -> None:
 
     resource = domain["resources"]["acceptance_criteria_revision"]
     assert resource["owner"] == "case-controller"
-    assert resource["subordinate_to"] == "resolution_contract"
+    assert resource["planned_subordinate_to"] == "resolution_contract"
+    assert resource["current_subordination_status"] == "PENDING_MATERIALIZATION"
     status = resource["confirmation_status_union"]["variants"]
     assert status["PROPOSED"]["is_untrusted"] is True
     assert status["PROPOSED"]["is_authoritative"] is False
-    assert status["CONFIRMED"]["is_authoritative"] is True
+    assert status["CONFIRMED"]["is_authoritative_acceptance_input"] is True
+    assert status["CONFIRMED"]["is_executable_contract"] is False
+    pending = resource["resolution_contract_binding_status"]["variants"][
+        "PENDING_MATERIALIZATION"
+    ]
+    assert pending["constants"] == {
+        "owner": "resolution-contract-controller",
+        "materialization_stage": "V5-4",
+    }
+    assert pending["exact_resolution_contract_binding_forbidden"] is True
 
     confirm_intent = next(i for i in registry["intents"] if i["name"] == "acceptance-criteria.confirm")
     assert confirm_intent["allowed_principal_types"] == ["human"]
@@ -346,6 +368,9 @@ def test_acceptance_wire_propose_get_confirm() -> None:
     assert "confirmer_is_not_the_proposer" in confirmed_ev["guards"]
     assert "confirmed_revision_is_new_immutable_record_not_in_place_rewrite" in confirmed_ev["guards"]
     assert "confirmed_revision_does_not_rewrite_quality_case_payload_or_digest" in confirmed_ev["guards"]
+    assert "resolution_contract_binding_status" in confirmed_ev["payload_required"]
+    assert "exact_resolution_contract_binding" not in confirmed_ev["payload_required"]
+    assert "confirmation_does_not_make_case_ready_before_v5_4" in confirmed_ev["guards"]
 
     # 机检 grounding
     grounding = fixture["contract_grounding"]
@@ -362,7 +387,13 @@ def test_acceptance_readiness_read_path_is_additive_projection() -> None:
     assert readiness["kind"] == "projection"
     assert readiness["commands"] == []
     assert readiness["uses_record_envelope"] is False
-    assert set(readiness["readiness_values"]) == {"NEEDS_ACCEPTANCE_CRITERIA", "READY"}
+    assert set(readiness["target_readiness_values"]) == {
+        "NEEDS_ACCEPTANCE_CRITERIA",
+        "READY",
+    }
+    assert readiness["current_runtime_readiness_values"] == [
+        "NEEDS_ACCEPTANCE_CRITERIA"
+    ]
     assert "needs_acceptance_criteria_is_projection_not_case_lifecycle" in readiness["invariants"]
     assert "needs_acceptance_criteria_does_not_rewrite_quality_case_payload_or_digest" in readiness["invariants"]
     assert "needs_acceptance_criteria_blocks_gate_pass_but_allows_case_investigation" in readiness["invariants"]
@@ -371,6 +402,7 @@ def test_acceptance_readiness_read_path_is_additive_projection() -> None:
     assert fixture["get"]["expected"]["readiness"] == "NEEDS_ACCEPTANCE_CRITERIA"
     assert ownership["resources"]["case_readiness"]["kind"] == "projection"
     assert ownership["resources"]["case_readiness"]["commands"] == []
+    assert ownership["resources"]["case_readiness"]["ready_reachable_before_v5_4"] is False
 
 
 def test_acceptance_adversarial_cannot_self_confirm_or_rewrite() -> None:
@@ -410,19 +442,35 @@ def test_onboarding_orchestration_uses_canonical_intents_and_retry_safety() -> N
     fixture = _fixture("onboarding-orchestration")
     compatibility = _load("compatibility.yaml")
 
-    init = fixture["workflows"]["caseloop_init"]
-    assert init["steps"] == ["local_read_only_discovery", "manifest_draft", "human_confirmation",
-                             "canonical_manifest_import"]
-    assert init["canonical_intents"] == ["capabilities.get", "system-manifests.import"]
-    assert compatibility["onboarding_workflow_orchestration"]["caseloop_init"]["canonical_import_intent"] == (
+    historical_init = fixture["workflows"]["caseloop_init"]
+    assert historical_init["steps"] == ["local_read_only_discovery", "manifest_draft", "human_confirmation",
+                                        "canonical_manifest_import"]
+    assert historical_init["canonical_intents"] == ["capabilities.get", "system-manifests.import"]
+    assert "bypass_human_confirmation" in historical_init["forbidden"]
+
+    runtime = fixture["runtime_overlay"]
+    init = runtime["caseloop_init"]
+    assert init["steps"] == ["local_read_only_discovery", "manifest_draft"]
+    assert init["writes_server_state"] is False
+    assert init["import_is_a_separate_operator_command"] is True
+    assert compatibility["onboarding_workflow_orchestration"]["caseloop_init"]["separate_import_intent"] == (
         "system-manifests.import"
     )
-    assert "bypass_human_confirmation" in init["forbidden"]
 
-    from_issue = fixture["workflows"]["caseloop_case_from_issue"]
-    assert from_issue["steps"] == ["issue_snapshot", "signal_submit", "case_open",
-                                   "application_binding", "acceptance_criteria_draft"]
+    from_issue = runtime["caseloop_case_from_issue"]
+    assert from_issue["steps"] == [
+        "issue_snapshot",
+        "application_read",
+        "environment_read",
+        "signal_submit_and_case_open",
+        "exact_case_read",
+        "optional_version_read",
+        "application_binding",
+        "acceptance_criteria_draft",
+    ]
     assert compatibility["onboarding_workflow_orchestration"]["caseloop_case_from_issue"]["canonical_intents_only"] is True
+    assert from_issue["auto_confirm_acceptance"] is False
+    assert from_issue["readiness_after_draft"] == "NEEDS_ACCEPTANCE_CRITERIA"
 
     # 编排的每个操作必须落在 canonical 面上：v4/v5 公开 intent 或 v4/v5 所有权命令，
     # 且写面都有幂等契约；不允许任何 ad-hoc 私有写入。
@@ -439,7 +487,7 @@ def test_onboarding_orchestration_uses_canonical_intents_and_retry_safety() -> N
         for command in resource.get("commands", [])
     }
     canonical_names = v4_intent_names | v5_intent_names | v4_command_names | v5_command_names
-    for intent_name in init["canonical_intents"] + from_issue["canonical_intents"]:
+    for intent_name in from_issue["canonical_intents"]:
         assert intent_name in canonical_names, intent_name
 
     retry = fixture["retry_safety"]

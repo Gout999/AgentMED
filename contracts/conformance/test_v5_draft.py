@@ -1,4 +1,4 @@
-"""V5 preparation contracts are coherent, strict, and intentionally disabled."""
+"""V5 target contracts and the explicit partial-runtime overlay are coherent."""
 from __future__ import annotations
 
 from collections import defaultdict, deque
@@ -60,7 +60,7 @@ def test_v5_yaml_has_no_duplicate_mapping_keys() -> None:
         yaml.load(path.read_text(encoding="utf-8"), Loader=_UniqueKeyLoader)
 
 
-def test_all_v5_yaml_is_explicitly_draft_and_not_implemented() -> None:
+def test_all_v5_yaml_is_explicitly_partial_without_claiming_full_v5() -> None:
     paths = sorted(V5.glob("*.yaml"))
     assert {path.name for path in paths} == {
         "aggregate-ownership.yaml",
@@ -74,7 +74,14 @@ def test_all_v5_yaml_is_explicitly_draft_and_not_implemented() -> None:
     for path in paths:
         document = yaml.safe_load(path.read_text(encoding="utf-8"))
         assert document["status"] == "draft_target_contract", path
-        assert document["runtime_status"] == "NOT_IMPLEMENTED", path
+        assert document["runtime_status"] == "PARTIALLY_IMPLEMENTED", path
+        overlay = document.get("runtime_overlay") or document.get(
+            "current_runtime_overlay"
+        )
+        assert overlay is not None, path
+        assert overlay.get("status", "PARTIALLY_IMPLEMENTED") == (
+            "PARTIALLY_IMPLEMENTED"
+        ), path
 
 
 def test_runtime_versions_evaluation_assets_and_dataset_roles_are_independent() -> None:
@@ -427,18 +434,15 @@ def test_mutable_state_machines_are_reachable_and_consume_all_aggregate_events()
     assert states["projection_vocabulary"]["evaluation_run_state"]["owns_state_machine"] is False
 
 
-def test_draft_intents_disable_every_transport_and_target_owned_commands() -> None:
+def test_intents_partition_exactly_between_enabled_and_deferred_transports() -> None:
     registry = _load("intent-registry.yaml")
     ownership = _load("aggregate-ownership.yaml")
     v4 = yaml.safe_load(V4_OWNERSHIP.read_text(encoding="utf-8"))
-    r2_intents = set(
-        registry["r2_application_catalog_contract"]["activated_contract_intents"]
-    )
     assert registry["activation_flags"] == {
-        "http_routes": False,
-        "cli_commands": False,
+        "http_routes": True,
+        "cli_commands": True,
         "sdk_methods": False,
-        "capability_discovery": False,
+        "capability_discovery": True,
         "mcp_tools": False,
         "a2a_agent_card": False,
         "a2a_transport": False,
@@ -459,23 +463,22 @@ def test_draft_intents_disable_every_transport_and_target_owned_commands() -> No
 
     names: list[str] = []
     operation_ids: list[str] = []
+    overlay = registry["runtime_overlay"]
+    enabled = set(overlay["enabled_intents"])
+    deferred = set(overlay["explicitly_not_implemented"])
+    assert enabled
+    assert deferred
+    assert enabled.isdisjoint(deferred)
     for intent in registry["intents"]:
         names.append(intent["name"])
         operation_ids.append(intent["http"]["operation_id"])
         assert intent["contract_major"] == 2
-        if intent["name"] in r2_intents:
-            assert intent["wire_status"] == (
-                "FROZEN_R2_R3_BOOTSTRAP"
-                if intent["name"] == "system-manifests.import"
-                else "FROZEN_R2"
-            )
-            assert intent["implementation_status"] == (
-                "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
-            )
-            assert intent["field_contract_ref"].startswith(
-                "contracts/v5/schema-profiles.yaml#r2_wire_profiles/"
-            )
+        if intent["name"] in enabled:
+            assert intent["wire_status"] == "FROZEN"
+            assert intent["implementation_status"] == "IMPLEMENTED"
+            assert intent["field_contract_ref"] is not None
         else:
+            assert intent["name"] in deferred
             assert intent["wire_status"] == "DRAFT"
             assert intent["implementation_status"] == "NOT_IMPLEMENTED"
             assert intent["field_contract_ref"] is None
@@ -492,6 +495,10 @@ def test_draft_intents_disable_every_transport_and_target_owned_commands() -> No
             assert "command_target" not in intent
     assert len(names) == len(set(names))
     assert len(operation_ids) == len(set(operation_ids))
+    assert set(names) == enabled | deferred
+    assert overlay["capability_discovery_enabled"] is True
+    assert overlay["standalone_system_versions_record_route_enabled"] is False
+    assert overlay["standalone_system_versions_record_cli_enabled"] is False
 
 
 def test_v2_cli_and_http_require_explicit_matching_major() -> None:
@@ -596,7 +603,11 @@ def test_v1_history_is_additively_linked_and_quality_case_is_not_frozen() -> Non
     }
     assert compatibility["route_authority"]["one_owner_per_routing_key"] is True
     assert compatibility["route_authority"]["same_fact_dual_write_forbidden"] is True
-    assert compatibility["implementation_gate"]["implementation_authorized"] is False
+    gate = compatibility["implementation_gate"]
+    assert gate["implementation_authorized"] == "THROUGH_V5_1C_ONLY"
+    assert gate["capability_discovery_authorized"] is True
+    assert gate["standalone_system_versions_record_authorized"] is False
+    assert gate["v5_2_and_later_authorized"] is False
 
 
 def test_first_wire_slice_is_reachable_from_empty_v5_domain_with_seeded_trust_roots() -> None:

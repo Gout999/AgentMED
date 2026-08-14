@@ -1,126 +1,29 @@
 version: "0.1-draft"
 status: draft_target_contract
-runtime_status: NOT_IMPLEMENTED
+runtime_status: PARTIALLY_IMPLEMENTED
 event_contract_major: 2
 
-r1_authority_foundation:
-  stage: R1
-  contract_status: CANDIDATE
-  r1_foundation_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-  revision_2_storage_cas_harness: NON_PRODUCTION_IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-  composed_manifest_activation_runtime: NOT_IMPLEMENTED
-  composed_manifest_activation_owner_stage: R2
-  production_activated_event_routes: DISABLED
-  production_direct_revision_2_append: DENY_ALL
-  component_revision_current_active_resolver_runtime: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-  component_revision_major_2_envelope_runtime: NOT_IMPLEMENTED
-  component_revision_writer_validation_runtime: NOT_IMPLEMENTED
-  component_revision_producer_atomic_enforcement_runtime: NOT_IMPLEMENTED
-  component_revision_producer_owner_stage: R3
-  implemented_lifecycle_primitives:
-    ai_application: [registration_revision_1, revision_2_storage_cas_non_production_harness]
-    system_component: [registration_revision_1, revision_2_storage_cas_non_production_harness]
-  later_lifecycle_transitions_runtime: NOT_IMPLEMENTED
-  later_lifecycle_transitions_owner_stage: R2
-  later_lifecycle_transitions:
-    - application.archived
-    - application.restored
-    - system_component.deprecated
-    - system_component.reactivated
-    - system_component.retired
-  public_activation_routes: DISABLED
-  scope:
-    - application_and_component_lifecycle_revision_events
-    - major_2_event_envelope_binding
-    - manifest_only_activation_authority
-    - component_revision_current_active_exact_binding_resolver
-  does_not_prove:
-    - post_commit_verifier_or_evidence_closure
-    - composed_manifest_activation_runtime
-    - component_revision_producer_atomic_enforcement
-    - component_revision_major_2_envelope_runtime
-    - component_revision_writer_validation_runtime
-    - public_activation_transport_or_route
-    - r2_application_catalog_closure
-
-r2_application_catalog_contract:
-  stage: R2
-  contract_status: FROZEN_FOR_IMPLEMENTATION
-  runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-  internal_catalog_manifest_writer:
-    contract_status: ENABLED_ONLY_BEHIND_COORDINATOR
-    runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-    workflow_owner: manifest_import_coordinator
-    authenticated_root_intent: system-manifests.import
-    required_event_types:
-      - application.registered
-      - application.activated
-      - environment.registered
-      - system_component.registered
-      - system_component.activated
-      - dependency_edge.recorded
-      - component_revision.recorded
-      - topology_revision.recorded
-      - system_version_set.recorded
-      - bootstrap_attestation.recorded
-      - system_assignment.recorded
-    every_event_uses_major_2_exact_subject_envelope: true
-    activation_event_requires_exact_previous_and_new_binding: true
-    event_outbox_subject_receipt_and_controller_audit_share_transaction: true
-    initiating_principal_audit_shares_root_transaction: true
-    component_revision_bootstrap_producer_guards:
-      exact_system_component_binding: CURRENT_AUTHORITATIVE_ACTIVE_REVISION_2
-      resolution_source: LOCKED_APPEND_ONLY_LIFECYCLE_HISTORY
-      component_revision_event_and_record_share_atomic_transaction: true
-      stale_registered_or_client_supplied_binding: FORBIDDEN
-    bootstrap_only_constraints:
-      scope: WORKSPACE_INITIAL_ONE_SHOT
-      all_authoritative_v5_domain_tables_empty: REQUIRED
-      initial_system_version_set_count: 1
-      system_assignment_generation: 1
-      replay_requires_same_idempotency_key_and_same_canonical_body: true
-      same_key_same_body_replay_emits_zero_new_events_or_facts: true
-      different_key_even_same_manifest_digest: CONFLICT_WITH_ZERO_NEW_FACTS
-      standalone_system_versions_record_event: FORBIDDEN
-      second_workspace_bootstrap_version_or_diff_event_claim: FORBIDDEN
-  production_public_intent_events:
-    capabilities.get: []
-    applications.register: [application.registered]
-    applications.get: []
-    applications.list: []
-    environments.register: [environment.registered]
-    environments.get: []
-    system-components.register: [system_component.registered]
-    system-components.get: []
-    dependency-edges.record: [dependency_edge.recorded]
-    dependency-edges.get: []
-    system-manifests.import:
-      - application.registered
-      - application.activated
-      - environment.registered
-      - system_component.registered
-      - system_component.activated
-      - dependency_edge.recorded
-      - component_revision.recorded
-      - topology_revision.recorded
-      - system_version_set.recorded
-      - bootstrap_attestation.recorded
-      - system_assignment.recorded
-  public_register_event_state: REGISTERED
-  internal_manifest_result_event_state: ACTIVE
-  standalone_activation_event_routes:
-    http: FORBIDDEN
-    cli: FORBIDDEN
-    sdk: FORBIDDEN
-    mcp: FORBIDDEN
-    a2a: FORBIDDEN
-    capability_discovery: FORBIDDEN
-  r3_bootstrap_event_writers:
-    contract_status: FROZEN_ONLY_INSIDE_BOOTSTRAP_SYSTEM_MANIFEST
-    runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-    complete_one_shot_first_graph_producer: true
-    component_revision_exact_current_active_component_revision_2_binding: REQUIRED
-  r3_full_and_r4_event_writers_remain: NOT_IMPLEMENTED
+runtime_overlay:
+  status: PARTIALLY_IMPLEMENTED
+  migration_head: "012"
+  event_envelope_v5_persisted_for_implemented_events: true
+  implemented_event_types:
+    - application.registered
+    - environment.registered
+    - system_component.registered
+    - dependency_edge.recorded
+    - component_revision.recorded
+    - topology_revision.recorded
+    - system_version_set.recorded
+    - bootstrap_attestation.recorded
+    - system_assignment.recorded
+    - case.application_bound
+    - acceptance_criteria.proposed
+    - acceptance_criteria.confirmed
+  implementation_boundary:
+    system_assignment: bootstrap_record_only
+    acceptance_criteria: confirmed_is_non_executable_until_v5_4
+    all_other_event_types: NOT_IMPLEMENTED
 
 event_envelope_v5:
   applies_to: every_event_in_this_major_2_catalog
@@ -133,13 +36,6 @@ event_envelope_v5:
   outbox_carries_envelope_without_rebinding_current_state: true
   payload_digest_rule: jcs-rfc8785-v1+sha256(payload)
   authority_receipt_must_share_event_subject_transaction_actor_and_command: true
-  lifecycle_revision_rules:
-    exact_subject_binding: exact_new_post_event_lifecycle_revision
-    exact_previous_binding: payload_only_and_server_derived_from_locked_authoritative_history
-    previous_and_new_share_kind_id_and_workspace: true
-    new_revision_equals_previous_revision_plus_one: true
-    new_record_digest_is_independently_canonical: true
-    current_head_projection_is_not_event_or_binding_authority: true
 
 rules:
   v4_event_payloads_are_not_reinterpreted: true
@@ -149,9 +45,6 @@ rules:
   adapter_receipt_does_not_imply_domain_success: true
   ambiguous_external_outcome_is_unknown: true
   authority_fields_are_carried_forward_from_exact_previous_aggregate_revision: true
-  lifecycle_events_are_append_only_and_never_rebind_historical_envelopes: true
-  activation_events_require_manifest_import_transaction_authority: true
-  dependent_record_events_revalidate_current_authoritative_active_binding: true
 
 system_release_sequence:
   ordered_authority:
@@ -181,58 +74,22 @@ ai_application:
   events:
     application.registered:
       event_version: "2.0"
-      payload_required: [exact_previous_application_binding_or_null, exact_application_binding, project_id, slug, lifecycle_state]
-      constants: {lifecycle_state: REGISTERED}
-      guards:
-        - exact_previous_application_binding_or_null_is_null
-        - exact_application_binding_is_revision_1
-        - event_envelope_exact_subject_binding_equals_exact_application_binding
+      payload_required: [exact_application_binding, application_id, project_id, slug, lifecycle_state]
     application.activated:
       event_version: "2.0"
-      composed_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-      composed_runtime_owner_stage: R2
-      production_route_status: DISABLED
-      direct_production_append: FORBIDDEN
-      r1_validation_scope: STRUCTURAL_CONTRACT_ONLY_NON_PRODUCTION
-      r2_internal_writer_contract_status: ENABLED_ONLY_BEHIND_COORDINATOR
-      r2_internal_writer_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-      standalone_event_route_status: FORBIDDEN
-      payload_required: [exact_previous_application_binding, exact_application_binding, lifecycle_state, manifest_activation_context, initiating_command_audit_ref]
-      constants: {lifecycle_state: ACTIVE}
-      guards:
-        - exact_previous_application_binding_is_locked_current_registered_revision_1
-        - exact_application_binding_is_new_revision_2
-        - event_envelope_exact_subject_binding_equals_exact_application_binding
-        - manifest_activation_context_is_exact_authenticated_system_manifest_import
-        - initiating_command_audit_ref_equals_manifest_activation_context_audit_ref
-        - application_catalog_controller_receipt_and_initiating_principal_audit_share_transaction
-        - direct_public_or_internal_controller_activation_is_forbidden
+      payload_required: [exact_previous_application_binding, exact_application_binding, lifecycle_state]
     application.archived:
       event_version: "2.0"
-      runtime_status: NOT_IMPLEMENTED
-      runtime_owner_stage: R2
       payload_required: [exact_previous_application_binding, exact_application_binding, archive_reason, lifecycle_state]
-      constants: {lifecycle_state: ARCHIVED}
-      guards:
-        - exact_previous_binding_is_locked_current_authoritative_revision
-        - exact_application_binding_is_new_adjacent_revision
-        - event_envelope_exact_subject_binding_equals_exact_application_binding
     application.restored:
       event_version: "2.0"
-      runtime_status: NOT_IMPLEMENTED
-      runtime_owner_stage: R2
       payload_required: [exact_previous_application_binding, exact_application_binding, lifecycle_state]
-      constants: {lifecycle_state: ACTIVE}
-      guards:
-        - exact_previous_binding_is_locked_current_authoritative_revision
-        - exact_application_binding_is_new_adjacent_revision
-        - event_envelope_exact_subject_binding_equals_exact_application_binding
 
 environment:
   events:
     environment.registered:
       event_version: "2.0"
-      payload_required: [exact_environment_binding, application_id, logical_name, lifecycle_state]
+      payload_required: [exact_environment_binding, environment_id, application_id, logical_name, lifecycle_state]
     environment.retired:
       event_version: "2.0"
       payload_required: [exact_previous_environment_binding, exact_environment_binding, retirement_reason, lifecycle_state]
@@ -244,109 +101,49 @@ system_component:
   events:
     system_component.registered:
       event_version: "2.0"
-      payload_required: [exact_previous_system_component_binding_or_null, exact_system_component_binding, application_id, component_kind, logical_name, lifecycle_state]
-      constants: {lifecycle_state: REGISTERED}
-      guards:
-        - exact_previous_system_component_binding_or_null_is_null
-        - exact_system_component_binding_is_revision_1
-        - event_envelope_exact_subject_binding_equals_exact_system_component_binding
+      payload_required: [exact_system_component_binding, component_id, application_id, component_kind, logical_name, lifecycle_state]
     system_component.activated:
       event_version: "2.0"
-      composed_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-      composed_runtime_owner_stage: R2
-      production_route_status: DISABLED
-      direct_production_append: FORBIDDEN
-      r1_validation_scope: STRUCTURAL_CONTRACT_ONLY_NON_PRODUCTION
-      r2_internal_writer_contract_status: ENABLED_ONLY_BEHIND_COORDINATOR
-      r2_internal_writer_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-      standalone_event_route_status: FORBIDDEN
-      payload_required: [exact_previous_system_component_binding, exact_system_component_binding, lifecycle_state, manifest_activation_context, initiating_command_audit_ref]
-      constants: {lifecycle_state: ACTIVE}
-      guards:
-        - exact_previous_system_component_binding_is_locked_current_registered_revision_1
-        - exact_system_component_binding_is_new_revision_2
-        - event_envelope_exact_subject_binding_equals_exact_system_component_binding
-        - manifest_activation_context_is_exact_authenticated_system_manifest_import
-        - initiating_command_audit_ref_equals_manifest_activation_context_audit_ref
-        - application_catalog_controller_receipt_and_initiating_principal_audit_share_transaction
-        - direct_public_or_internal_controller_activation_is_forbidden
+      payload_required: [exact_previous_system_component_binding, exact_system_component_binding, lifecycle_state]
     system_component.deprecated:
       event_version: "2.0"
-      runtime_status: NOT_IMPLEMENTED
-      runtime_owner_stage: R2
       payload_required: [exact_previous_system_component_binding, exact_system_component_binding, deprecation_reason, lifecycle_state]
-      constants: {lifecycle_state: DEPRECATED}
-      guards:
-        - exact_previous_binding_is_locked_current_authoritative_revision
-        - exact_system_component_binding_is_new_adjacent_revision
-        - event_envelope_exact_subject_binding_equals_exact_system_component_binding
     system_component.reactivated:
       event_version: "2.0"
-      runtime_status: NOT_IMPLEMENTED
-      runtime_owner_stage: R2
       payload_required: [exact_previous_system_component_binding, exact_system_component_binding, lifecycle_state]
-      constants: {lifecycle_state: ACTIVE}
-      guards:
-        - exact_previous_binding_is_locked_current_authoritative_revision
-        - exact_system_component_binding_is_new_adjacent_revision
-        - event_envelope_exact_subject_binding_equals_exact_system_component_binding
     system_component.retired:
       event_version: "2.0"
-      runtime_status: NOT_IMPLEMENTED
-      runtime_owner_stage: R2
       payload_required: [exact_previous_system_component_binding, exact_system_component_binding, retirement_reason, lifecycle_state]
-      constants: {lifecycle_state: RETIRED}
-      guards:
-        - exact_previous_binding_is_locked_current_authoritative_revision
-        - exact_system_component_binding_is_new_adjacent_revision
-        - event_envelope_exact_subject_binding_equals_exact_system_component_binding
 
 dependency_edge:
   events:
     dependency_edge.recorded:
       event_version: "2.0"
-      payload_required: [exact_dependency_edge_binding, application_id, from_component_id, to_component_id, relation, edge_digest]
+      payload_required: [exact_dependency_edge_binding, edge_id, application_id, from_component_id, to_component_id, relation, edge_digest]
 
 component_revision:
   events:
     component_revision.recorded:
       event_version: "2.0"
-      payload_required: [exact_component_revision_binding, exact_system_component_binding, component_kind, identity_assurance, configuration_digest]
-      r1_available_primitives:
-        - current_authoritative_active_exact_binding_resolver
-        - generic_exact_record_binding_validation
-      event_envelope_runtime_status: NOT_IMPLEMENTED
-      event_envelope_owner_stage: R3
-      writer_validation_runtime_status: NOT_IMPLEMENTED
-      writer_validation_owner_stage: R3
-      producer_runtime_status: NOT_IMPLEMENTED
-      producer_owner_stage: R3
-      r2_r3_bootstrap_writer_contract_status: FROZEN_ONLY_INSIDE_BOOTSTRAP_SYSTEM_MANIFEST
-      r2_r3_bootstrap_writer_runtime_status: IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER
-      standalone_writer_status: FORBIDDEN
-      r3_required_producer_guards:
-        - exact_system_component_binding_resolves_from_append_only_history
-        - exact_system_component_binding_is_current_authoritative_active_at_recording
-        - stale_historical_active_deprecated_retired_registered_or_mutable_head_binding_is_forbidden
-        - system_component_and_component_revision_share_workspace_application_and_transaction
+      payload_required: [exact_component_revision_binding, component_revision_id, exact_system_component_binding, component_id, component_kind, identity_assurance, configuration_digest]
 
 topology_revision:
   events:
     topology_revision.recorded:
       event_version: "2.0"
-      payload_required: [exact_topology_revision_binding, application_id, exact_edge_revision_bindings, topology_digest]
+      payload_required: [exact_topology_revision_binding, topology_revision_id, application_id, exact_edge_revision_bindings, topology_digest]
 
 system_version_set:
   events:
     system_version_set.recorded:
       event_version: "2.0"
-      payload_required: [exact_system_version_set_binding, application_id, declared_environment_id, exact_component_revision_bindings, exact_topology_revision_binding, version_set_digest]
+      payload_required: [exact_system_version_set_binding, system_version_set_id, application_id, declared_environment_id, exact_component_revision_bindings, exact_topology_revision_binding, version_set_digest]
 
 bootstrap_attestation:
   events:
     bootstrap_attestation.recorded:
       event_version: "2.0"
-      payload_required: [exact_bootstrap_attestation_binding, application_id, environment_id, exact_initial_system_version_set_binding, attester_principal_id, attester_trust_role, attestation_scope]
+      payload_required: [exact_bootstrap_attestation_binding, bootstrap_attestation_id, application_id, environment_id, exact_initial_system_version_set_binding, attester_principal_id, attester_trust_role, attestation_scope]
 
 application_case_binding:
   events:
@@ -361,13 +158,21 @@ case_episode_binding:
       payload_required: [exact_case_episode_binding, exact_case_binding, exact_system_episode_snapshot_binding, relation]
 
 acceptance_criteria_revision:
+  resolution_contract_binding_status_contract:
+    required_fields: [status, owner, materialization_stage, exact_case_binding]
+    constants:
+      status: PENDING_MATERIALIZATION
+      owner: resolution-contract-controller
+      materialization_stage: V5-4
+    exact_case_binding_must_equal_event_exact_case_binding: true
+    exact_resolution_contract_binding_forbidden: true
   events:
     acceptance_criteria.proposed:
       event_version: "2.0"
       payload_required:
         - exact_acceptance_criteria_revision_binding
         - exact_case_binding
-        - exact_resolution_contract_binding
+        - resolution_contract_binding_status
         - confirmation_status
         - proposer_principal
         - proposed_at
@@ -380,13 +185,15 @@ acceptance_criteria_revision:
       guards:
         - proposer_is_agent_service_or_connector_not_human_maintainer_or_domain_reviewer
         - proposed_revision_is_untrusted_and_not_authoritative
+        - resolution_contract_status_is_pending_materialization_for_exact_case
+        - exact_resolution_contract_binding_is_forbidden_before_v5_4
     acceptance_criteria.confirmed:
       event_version: "2.0"
       payload_required:
         - exact_acceptance_criteria_revision_binding
         - exact_previous_proposed_revision_binding
         - exact_case_binding
-        - exact_resolution_contract_binding
+        - resolution_contract_binding_status
         - confirmation_status
         - confirmer_principal
         - confirmed_at
@@ -401,6 +208,9 @@ acceptance_criteria_revision:
         - confirmer_is_not_the_proposer
         - confirmed_revision_is_new_immutable_record_not_in_place_rewrite
         - confirmed_revision_does_not_rewrite_quality_case_payload_or_digest
+        - resolution_contract_status_remains_pending_materialization_for_exact_case
+        - confirmation_does_not_create_or_fake_exact_resolution_contract_binding
+        - confirmation_does_not_make_case_ready_before_v5_4
 
 badcase_spec:
   events:
@@ -492,7 +302,7 @@ system_assignment:
   events:
     system_assignment.recorded:
       event_version: "2.0"
-      payload_required: [exact_assignment_binding, exact_bootstrap_attestation_binding, exact_initial_system_version_set_binding, application_id, environment_id, generation, exposure]
+      payload_required: [exact_assignment_binding, assignment_id, exact_bootstrap_attestation_binding, exact_initial_system_version_set_binding, application_id, environment_id, generation, exposure]
       constants: {generation: 1}
       guards:
         - assignment_slots_application_environment_and_scope_equal_bootstrap_attestation

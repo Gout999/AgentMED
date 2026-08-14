@@ -72,14 +72,16 @@ def test_acceptance_criteria_confirm_restricted_to_human_maintainer_or_domain_re
     assert provenance["connector_can_confirm"] is False
     assert provenance["confirmer_must_be_human_maintainer_or_domain_reviewer"] is True
     assert provenance["proposed_revision_is_untrusted"] is True
-    assert provenance["confirmed_revision_is_authoritative"] is True
+    assert provenance["confirmed_revision_is_authoritative_acceptance_input"] is True
+    assert provenance["confirmed_revision_is_executable_contract"] is False
     assert "proposal_does_not_confirm_itself" in provenance["invariants"]
     assert "only_human_maintainer_or_domain_reviewer_can_confirm" in provenance["invariants"]
     assert "agent_or_service_or_connector_principal_cannot_confirm" in provenance["invariants"]
 
     resource = domain["resources"]["acceptance_criteria_revision"]
     assert resource["owner"] == "case-controller"
-    assert resource["subordinate_to"] == "resolution_contract"
+    assert resource["planned_subordinate_to"] == "resolution_contract"
+    assert resource["current_subordination_status"] == "PENDING_MATERIALIZATION"
     assert resource["does_not_create_new_case_lifecycle"] is True
     status = resource["confirmation_status_union"]["variants"]
     assert status["PROPOSED"]["is_untrusted"] is True
@@ -88,13 +90,15 @@ def test_acceptance_criteria_confirm_restricted_to_human_maintainer_or_domain_re
     confirmed = status["CONFIRMED"]
     assert confirmed["requires_confirmer_is_human_maintainer_or_domain_reviewer"] is True
     assert "proposer_principal_equals_confirmer" in confirmed["forbids"]
-    assert confirmed["is_authoritative"] is True
+    assert confirmed["is_authoritative_acceptance_input"] is True
+    assert confirmed["is_executable_contract"] is False
 
     owned = ownership["resources"]["acceptance_criteria_revision"]
     assert owned["owner"] == "case-controller"
     assert set(owned["commands"]) == {"acceptance-criteria.propose", "acceptance-criteria.confirm"}
     assert set(owned["events"]) == {"acceptance_criteria.proposed", "acceptance_criteria.confirmed"}
-    assert owned["subordinate_to"] == "resolution_contract"
+    assert owned["planned_subordinate_to"] == "resolution_contract"
+    assert owned["current_subordination_status"] == "PENDING_MATERIALIZATION"
     assert ownership["record_authority"]["ACCEPTANCE_CRITERIA_REVISION"]["owner"] == "case-controller"
 
     proposed = events["acceptance_criteria_revision"]["events"]["acceptance_criteria.proposed"]
@@ -104,9 +108,12 @@ def test_acceptance_criteria_confirm_restricted_to_human_maintainer_or_domain_re
     assert confirmed_ev["constants"]["confirmation_status"] == "CONFIRMED"
     assert "confirmer_is_human_maintainer_or_domain_reviewer" in confirmed_ev["guards"]
     assert "confirmer_is_not_the_proposer" in confirmed_ev["guards"]
+    for event in (proposed, confirmed_ev):
+        assert "resolution_contract_binding_status" in event["payload_required"]
+        assert "exact_resolution_contract_binding" not in event["payload_required"]
 
 
-def test_case_readiness_is_projection_and_blocks_gate_until_confirmed_acceptance() -> None:
+def test_case_readiness_blocks_gate_until_v5_4_exact_materialization() -> None:
     domain = _load("domain-model.yaml")
     ownership = _load("aggregate-ownership.yaml")
 
@@ -114,14 +121,28 @@ def test_case_readiness_is_projection_and_blocks_gate_until_confirmed_acceptance
     assert readiness["kind"] == "projection"
     assert readiness["commands"] == []
     assert readiness["uses_record_envelope"] is False
-    assert set(readiness["readiness_values"]) == {"NEEDS_ACCEPTANCE_CRITERIA", "READY"}
+    assert set(readiness["target_readiness_values"]) == {
+        "NEEDS_ACCEPTANCE_CRITERIA",
+        "READY",
+    }
+    assert readiness["current_runtime_readiness_values"] == [
+        "NEEDS_ACCEPTANCE_CRITERIA"
+    ]
+    assert readiness["integrity_failure_projection_value"] == "UNKNOWN"
     assert "needs_acceptance_criteria_is_projection_not_case_lifecycle" in readiness["invariants"]
     assert "needs_acceptance_criteria_does_not_rewrite_quality_case_payload_or_digest" in readiness["invariants"]
     assert "needs_acceptance_criteria_blocks_gate_pass_but_allows_case_investigation" in readiness["invariants"]
 
     provenance = domain["acceptance_provenance"]
     assert provenance["case_readiness_is_projection_not_case_lifecycle"] is True
-    assert provenance["case_readiness_values"] == ["NEEDS_ACCEPTANCE_CRITERIA", "READY"]
+    assert provenance["target_case_readiness_values"] == [
+        "NEEDS_ACCEPTANCE_CRITERIA",
+        "READY",
+    ]
+    assert provenance["current_runtime_case_readiness_values"] == [
+        "NEEDS_ACCEPTANCE_CRITERIA"
+    ]
+    assert provenance["ready_reachable_before_v5_4"] is False
     assert provenance["needs_acceptance_criteria_blocks_gate_pass"] is True
     assert provenance["needs_acceptance_criteria_allows_case_investigation"] is True
     assert provenance["needs_acceptance_criteria_does_not_rewrite_quality_case_payload_or_digest"] is True
@@ -130,6 +151,7 @@ def test_case_readiness_is_projection_and_blocks_gate_until_confirmed_acceptance
     owned = ownership["resources"]["case_readiness"]
     assert owned["kind"] == "projection"
     assert owned["commands"] == []
+    assert owned["ready_reachable_before_v5_4"] is False
 
 
 def test_badcase_and_regression_asset_chain_to_confirmed_acceptance() -> None:
@@ -140,6 +162,7 @@ def test_badcase_and_regression_asset_chain_to_confirmed_acceptance() -> None:
     assert badcase["kind"] == "immutable_record"
     assert badcase["owner"] == "case-controller"
     assert badcase["subordinate_to"] == "resolution_contract"
+    assert badcase["runtime_status"] == "NOT_IMPLEMENTED_V5_4"
     assert badcase["does_not_create_new_case_lifecycle"] is True
     assert "exact_confirmed_acceptance_criteria_binding" in badcase["required_fields"]
     assert "badcase_requires_confirmed_acceptance_criteria_revision" in badcase["invariants"]

@@ -42,6 +42,42 @@ workflows:
       - create_second_owner
       - create_duplicate_case_on_retry
 
+# The block above preserves the V5-0C target orchestration freeze. The current
+# CLI implementation is narrower and is recorded additively here.
+runtime_overlay:
+  through_delivery_slice: V5-1C
+  caseloop_init:
+    invocation: "caseloop init <repo>"
+    steps: [local_read_only_discovery, manifest_draft]
+    writes_server_state: false
+    import_is_a_separate_operator_command: true
+    next_commands:
+      - system-manifest validate
+      - system-manifest import
+  caseloop_case_from_issue:
+    invocation: "caseloop case from-issue <github-url>"
+    steps:
+      - issue_snapshot
+      - application_read
+      - environment_read
+      - signal_submit_and_case_open
+      - exact_case_read
+      - optional_version_read
+      - application_binding
+      - acceptance_criteria_draft
+    canonical_intents:
+      - applications.get
+      - environments.get
+      - signals.submit
+      - acceptance-criteria.get
+      - system-versions.get
+      - cases.bind-application
+      - acceptance-criteria.propose
+    auto_confirm_acceptance: false
+    readiness_after_draft: NEEDS_ACCEPTANCE_CRITERIA
+    conditional_intents:
+      system-versions.get: only_when_operator_selects_system_version_set_id
+
 retry_safety:
   idempotency_keys_reused_on_retry: true
   no_second_owner_on_retry: true
@@ -53,11 +89,15 @@ contract_grounding:
   compatibility:
     onboarding_workflow_orchestration:
       caseloop_init:
-        steps: [local_read_only_discovery, manifest_draft, human_confirmation, canonical_manifest_import]
-        canonical_import_intent: system-manifests.import
+        steps: [local_read_only_discovery, manifest_draft]
+        writes_server_state: false
+        import_is_a_separate_operator_command: true
+        separate_import_intent: system-manifests.import
       caseloop_case_from_issue:
-        steps: [issue_snapshot, signal_submit, case_open, application_binding, acceptance_criteria_draft]
+        steps: [issue_snapshot, application_read, environment_read, signal_submit_and_case_open, exact_case_read, optional_version_read, application_binding, acceptance_criteria_draft]
         canonical_intents_only: true
+        no_auto_confirmation: true
+        readiness_after_draft: NEEDS_ACCEPTANCE_CRITERIA
       retry_safety:
         no_second_owner_on_retry: true
         no_duplicate_case_on_retry: true

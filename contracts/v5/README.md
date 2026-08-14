@@ -1,22 +1,31 @@
-# CaseLoop V5 draft contract namespace
+# CaseLoop V5 contract namespace
 
-> Status: **ACCEPTED V5 CONSTRUCTION BASELINE (2026-08-11; freeze `8dd25ca` + `b3727d7`) / NOT IMPLEMENTED**
+> Status: **ACCEPTED V5 CONSTRUCTION BASELINE / V5-1A/B/C WORKTREE OVERLAY / STAGES IN_PROGRESS**
 
-This namespace makes the proposed V5 AI-application governance boundary
-machine-readable before any route, migration, worker, Adapter, Console page, or
-live capability is implemented. The V5-0B (`8dd25ca`, system governance
+This namespace keeps the V5 AI-application governance boundary and its current
+runtime activation overlay machine-readable. The V5-0B (`8dd25ca`, system governance
 ownership) and V5-0C (`b3727d7`, first system wire slice) freezes are accepted
-as the V5 stage construction baseline; acceptance is contract-only and does not
-make any runtime facet exist.
+as the historical construction baseline. The additive runtime overlay records
+only the V5-1A/1B/1C HTTP and CLI paths that now exist; it does not retroactively
+turn the V5-0C contract freeze into runtime evidence.
 
 ## Authority
 
 - `docs/product-principles.md` and D-013 define the accepted product boundary.
 - `docs/prd-v5.md`, `docs/plan-v5.md`, the progressive blueprint, and these files are the
   accepted V5 stage construction baseline as of 2026-08-11 (freeze commits `8dd25ca` + `b3727d7`).
-- V4 Stage 1A remains the current implemented public slice under `/api/v1`.
-- V5 system resources target `/api/v2`; no V5 route or capability discovery is
-  enabled by this directory.
+- V4 Stage 1A remains the compatibility public slice under `/api/v1`.
+- The explicit allowlist in `intent-registry.yaml#runtime_overlay` activates
+  the implemented V5-1A/1B/1C `/api/v2` routes and matching CLI commands only.
+- Audited V5 capability discovery is active through `capabilities.get` over the
+  explicit-major HTTP and CLI paths. Standalone `system-versions.record`, SDK,
+  MCP, A2A, and every V5-2+ public intent remain `NOT_IMPLEMENTED`.
+- The current migration head is `012`. Bootstrap-only owner calls used inside
+  atomic manifest import are not standalone public routes or CLI activation.
+- V5-1C AcceptanceCriteria confirmations carry
+  `resolution_contract_binding_status=PENDING_MATERIALIZATION`. Until the V5-4
+  ResolutionContract owner materializes an exact executable contract, the Case
+  remains `NEEDS_ACCEPTANCE_CRITERIA`, never `READY`.
 - V3 and V4 lifecycle contracts remain authoritative for every fact they
   already own. Because their JSON Schemas are closed, V5 proposes strict
   schema-major-2 system profiles with the same logical Controller owners and
@@ -25,7 +34,7 @@ make any runtime facet exist.
   V5 because V4 named that target resource but did not provide its executable
   state machine.
 
-## Proposed hard invariants
+## Hard invariants
 
 1. `SystemVersionSet` is an immutable declaration of runtime composition. It
    never contains the governance-side `EvaluationBundle`.
@@ -56,13 +65,13 @@ make any runtime facet exist.
     invoking each canonical owner inside one local PostgreSQL transaction; it
     cannot silently synthesize prerequisite resources.
 
-Green V5 draft conformance tests prove only that these documents agree. They
+Green V5 conformance tests prove only that these documents agree. They
 are `contract` evidence, never runtime, provider-live, Agent-causal, external,
 or production evidence.
 
-Run the focused draft check with:
+Run the complete V5 contract checks with:
 
 ```bash
 cd contracts
-../eval-harness/.venv/bin/python -m pytest conformance/test_v5_draft.py -q
+../eval-harness/.venv/bin/python -m pytest conformance/test_v5_*.py -q
 ```

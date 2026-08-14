@@ -2,6 +2,8 @@ version: "0.2-draft"
 status: draft_contract_fixture
 runtime_status: NOT_RUN
 fixture_id: v5-0c-first-wire-slice
+historical_freeze: true
+current_runtime_overlay_ref: contracts/v5/intent-registry.yaml#runtime_overlay
 
 # Freeze of the exact V5-0C first wire slice: the ten canonical intents that
 # may eventually generate transports, the api-major handshake, and the rule

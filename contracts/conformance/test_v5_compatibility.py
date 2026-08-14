@@ -148,27 +148,19 @@ def test_first_wire_slice_matches_registry_and_compatibility() -> None:
     assert [intent["name"] for intent in fixture["slice"]["intents"]] == FIRST_SLICE
     assert registry["first_slice_wire_contract"]["count"] == len(FIRST_SLICE)
     assert compatibility["first_slice"]["count"] == len(FIRST_SLICE)
+    assert registry["first_slice_wire_contract"]["historical_freeze"] is True
+    assert compatibility["first_slice"]["historical_freeze"] is True
+    assert fixture["historical_freeze"] is True
 
     by_name = {intent["name"]: intent for intent in registry["intents"]}
-    r2_intents = set(
-        registry["r2_application_catalog_contract"]["activated_contract_intents"]
-    )
+    enabled = set(registry["runtime_overlay"]["enabled_intents"])
     assert set(FIRST_SLICE) <= set(by_name)
     for name in FIRST_SLICE:
         intent = by_name[name]
         assert intent["contract_major"] == 2
-        if name in r2_intents:
-            assert intent["wire_status"] == (
-                "FROZEN_R2_R3_BOOTSTRAP"
-                if name == "system-manifests.import"
-                else "FROZEN_R2"
-            )
-            assert intent["implementation_status"] == (
-                "IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER"
-            )
-        else:
-            assert intent["wire_status"] == "DRAFT"
-            assert intent["implementation_status"] == "NOT_IMPLEMENTED"
+        assert name in enabled
+        assert intent["wire_status"] == "FROZEN"
+        assert intent["implementation_status"] == "IMPLEMENTED"
         assert intent["cli_requires_explicit_api_major"] is True
         assert intent["http"]["path"].startswith("/api/v2/")
         fixture_intent = next(i for i in fixture["slice"]["intents"] if i["name"] == name)
@@ -181,12 +173,13 @@ def test_first_wire_slice_matches_registry_and_compatibility() -> None:
         else:
             assert intent["idempotency"] == "none"
 
-    # slice 外 intent 保持 undiscoverable skeleton
+    # Historical freeze remains all-disabled; current activation is the
+    # additive explicit allowlist with audited discovery, but no MCP/A2A.
     assert registry["activation_flags"] == {
-        "http_routes": False,
-        "cli_commands": False,
+        "http_routes": True,
+        "cli_commands": True,
         "sdk_methods": False,
-        "capability_discovery": False,
+        "capability_discovery": True,
         "mcp_tools": False,
         "a2a_agent_card": False,
         "a2a_transport": False,
@@ -200,6 +193,9 @@ def test_first_wire_slice_matches_registry_and_compatibility() -> None:
     assert fixture["skeleton_outside_slice"]["skeleton_generates"] == compatibility["first_slice"][
         "skeleton_intents_generate"
     ]
+    assert fixture["transport_status"]["http_routes"] == "DISABLED"
+    assert fixture["transport_status"]["cli_commands"] == "DISABLED"
+    assert registry["runtime_overlay"]["capability_discovery_enabled"] is True
 
 
 def test_api_major_handshake_fail_closed() -> None:
