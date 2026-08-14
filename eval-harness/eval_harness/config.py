@@ -24,7 +24,7 @@ def _env(name: str, default: str = "") -> str:
 class Settings:
     # Quality API
     quality_api_base_url: str = field(
-        default_factory=lambda: _env("CASELOOP_QUALITY_API_BASE_URL", "http://127.0.0.1:8080")
+        default_factory=lambda: _env("CASELOOP_QUALITY_API_BASE_URL", "http://127.0.0.1:8088")
     )
     read_token: str = field(default_factory=lambda: _env("CASELOOP_READ_TOKEN", "conformance-read-token"))
     quality_api_timeout_seconds: float = field(

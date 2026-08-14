@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     control_plane_base_url: str = Field(default="http://127.0.0.1:8090", alias="CONTROL_PLANE_BASE_URL")
     control_plane_role_token: str = Field(default="", alias="CONTROL_PLANE_ROLE_TOKEN")
     gate_authority_token: str = Field(default="", alias="GATE_AUTHORITY_TOKEN")
-    quality_api_base_url: str = Field(default="http://127.0.0.1:8080", alias="QUALITY_API_BASE_URL")
+    quality_api_base_url: str = Field(default="http://127.0.0.1:8088", alias="QUALITY_API_BASE_URL")
     quality_read_token: str = Field(default="conformance-read-token", alias="QUALITY_READ_TOKEN")
     # Required by every served MCP process. One process exposes exactly one
     # role projection; an empty value fails startup instead of exposing all tools.
