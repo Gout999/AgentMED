@@ -1,20 +1,6 @@
 -- CaseLoop mcp-servers 自有表（mcp_* 前缀，与 control-plane 公共 schema 无冲突）
 -- 幂等：全部 IF NOT EXISTS；由 scripts/run_migrations.py 执行。
 
-CREATE TABLE IF NOT EXISTS mcp_trust_ledger (
-  risk_class            TEXT NOT NULL,
-  action_type           TEXT NOT NULL,
-  epoch                 INTEGER NOT NULL,
-  successes             INTEGER NOT NULL DEFAULT 0,
-  trials                INTEGER NOT NULL DEFAULT 0,
-  autonomy_state        TEXT NOT NULL DEFAULT 'MANUAL',
-  suspended_until       TIMESTAMPTZ,
-  pending_promotion_ref TEXT,
-  payload               JSONB NOT NULL DEFAULT '{}',
-  updated_at            TIMESTAMPTZ NOT NULL DEFAULT now(),
-  PRIMARY KEY (risk_class, action_type, epoch)
-);
-
 CREATE TABLE IF NOT EXISTS mcp_approval_grants (
   approval_id     TEXT PRIMARY KEY,
   workorder_id    TEXT NOT NULL,

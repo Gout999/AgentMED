@@ -30,25 +30,6 @@ class Base(DeclarativeBase):
     pass
 
 
-class TrustLedger(Base):
-    """信任账本：PK (risk_class, action_type, epoch)，原始整数计数（spec §6.3）。"""
-
-    __tablename__ = "mcp_trust_ledger"
-
-    risk_class: Mapped[str] = mapped_column(String(32), primary_key=True)
-    action_type: Mapped[str] = mapped_column(String(64), primary_key=True)
-    epoch: Mapped[int] = mapped_column(Integer, primary_key=True)
-    successes: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    trials: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    autonomy_state: Mapped[str] = mapped_column(String(32), nullable=False, default="MANUAL")
-    suspended_until: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    pending_promotion_ref: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
-    payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False, default=dict)
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
-    )
-
-
 class ApprovalGrantRow(Base):
     """审批授权（spec §5.2）：nonce 唯一防重放；pending→consumed/rejected/expired。"""
 
