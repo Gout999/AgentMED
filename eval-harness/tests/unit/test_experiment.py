@@ -79,6 +79,23 @@ def _run(probe_set, samples):
     return runner.run(plan, FakeDriver(), seed=42, suppress_digest_capture=True)
 
 
+def test_immutable_driver_accepts_vset_and_vs_id_spaces():
+    from eval_harness.experiment import ImmutableVersionSetDriver
+
+    good = {arm: "vset_cell_" + arm for arm in ("C", "RP", "RK", "RM", "G")}
+    driver = ImmutableVersionSetDriver(good)
+    driver.setup("C")
+    assert driver.current_versionset_id == "vset_cell_C"
+
+    legacy = {arm: "vs_cell_" + arm for arm in ("C", "RP", "RK", "RM", "G")}
+    ImmutableVersionSetDriver(legacy)
+
+    with pytest.raises(ValueError):
+        ImmutableVersionSetDriver(
+            {"C": "weird_id", "RP": "a", "RK": "b", "RM": "c", "G": "d"}
+        )
+
+
 def test_b1_experiment_attributed_prompt(probe_set, probe_samples):
     res = _run(probe_set, probe_samples)
     assert res.verdict["decision"] == "ATTRIBUTED"

@@ -51,7 +51,8 @@ class ImmutableVersionSetDriver(ArmDriver):
     def __init__(self, arm_versionsets: dict[str, str]):
         required = {"C", "RP", "RK", "RM", "G"}
         if set(arm_versionsets) != required or any(
-            not isinstance(value, str) or not value.startswith("vs_")
+            not isinstance(value, str)
+            or not (value.startswith("vs_") or value.startswith("vset_"))
             for value in arm_versionsets.values()
         ):
             raise ValueError("arm_versionsets must bind exactly C/RP/RK/RM/G to VersionSet ids")
