@@ -28,6 +28,7 @@
 | 执行编排（终态对齐） | `plans/v5-final-state-aligned-plan.md`（`DRAFT`） | 叙事终态 → 施工载体的对齐矩阵与两阶段交付顺序；从属 Master Plan | 覆盖 Master Plan 或契约 |
 | 执行编排（flow-first 收敛） | `plans/flow-first-closure.md`（`DRAFT`） | 五步闭环施工顺序与两处人工卡点；从属 D-015 | 覆盖 Master Plan 或契约 |
 | 审计（原生能力对照） | `plans/native-capability-audit.md` | AgentTeams v1.2.2 原生能力使用审计：使用矩阵、冗余判定、处置方案（A 替换/B 归档/C 精简/D 重定向/E 保留） | 不授权删除；处置仍需逐项走纪律 |
+| 清理账本 | `plans/cleanup-ledger.md` | 以当前闭环为唯一核心的删除/合并/精简清单（owner 授权删除）；逐项=测试+提交+状态更新 | 不授权删除；每项仍需测试证据 |
 | 当前事实 | `PLANS.md`、`PROJECT_STATE.md`、`LAST_HANDOFF.md` | 当前 HEAD/WIP/证据/阻塞 | 覆盖产品或合同 |
 | 证据 | `evidence/` | 绑定特定 commit/run/facet 的结果 | 推导未运行 facet |
 | 导航/背景 | `wiki/`、`research/`、`competition/`、`presentation/` | 蒸馏、历史、研究、对外叙事 | 覆盖前述层级 |
