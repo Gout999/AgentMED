@@ -7,8 +7,8 @@ CREATE DATABASE demo_app;
 CREATE DATABASE casebase;
 
 \c casebase
-CREATE EXTENSION IF NOT EXISTS vector;
+-- CREATE EXTENSION IF NOT EXISTS vector;  -- Phase 1 未启用向量检索；plain postgres 镜像不含该扩展
 
 -- T1 demo-app 库：pgvector 扩展（Phase 1 预留向量列，检索暂用全文+元数据过滤）
 \c demo_app
-CREATE EXTENSION IF NOT EXISTS vector;
+-- CREATE EXTENSION IF NOT EXISTS vector;  -- Phase 1 未启用向量检索；plain postgres 镜像不含该扩展
