@@ -774,7 +774,13 @@ def validate_frozen_protocol(payload: dict[str, Any]) -> None:
     for cell_name, ref in cell_versionsets.items():
         if not isinstance(ref, dict):
             raise AttributionValidationError(f"cell_versionsets.{cell_name} must be an object")
-        if not isinstance(ref.get("versionset_id"), str) or not ref["versionset_id"].startswith("vs_"):
+        if (
+            not isinstance(ref.get("versionset_id"), str)
+            or not (
+                ref["versionset_id"].startswith("vs_")
+                or ref["versionset_id"].startswith("vset_")
+            )
+        ):
             raise AttributionValidationError(f"cell_versionsets.{cell_name}.versionset_id is invalid")
         if not isinstance(ref.get("digest"), str) or DIGEST_RE.fullmatch(ref["digest"]) is None:
             raise AttributionValidationError(f"cell_versionsets.{cell_name}.digest is invalid")

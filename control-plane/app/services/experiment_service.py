@@ -12,6 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
 from app.models.tables import Aggregate, Lease
+from app.models.v5_tables import SystemVersionSet
 from app.quality.client import QualityAPIError, QualityClientProtocol
 from app.services.attribution import (
     AttributionValidationError,
@@ -109,6 +110,37 @@ class ExperimentService:
         )
         agg = self.store.get_aggregate("experiment", eid)
         return {"experiment_id": eid, "state": agg.state if agg else "REQUESTED", "revision": agg.revision if agg else 1}
+
+    def _local_versionset(self, versionset_id: str, *, session: Session) -> dict[str, Any]:
+        """本地版本集验证（flow-first）：控制面自身持有不可变版本集，不再经已退役的
+        demo-app Quality API。从 system_version_sets + 组件绑定构造 Quality wire 形状。"""
+        from sqlalchemy import select
+
+        row = session.scalar(
+            select(SystemVersionSet).where(SystemVersionSet.system_version_set_id == versionset_id)
+        )
+        if row is None:
+            raise ExperimentServiceError(
+                "not_found", f"versionset {versionset_id} not found"
+            )
+        bindings = row.exact_component_revision_bindings or []
+        if len(bindings) < 2:
+            raise ExperimentServiceError(
+                "hash_mismatch", f"versionset {versionset_id} has incomplete component bindings"
+            )
+        app_digest = bindings[0].get("digest") if isinstance(bindings[0], dict) else None
+        model_digest = bindings[1].get("digest") if isinstance(bindings[1], dict) else None
+        content = {
+            "prompt": {"digest": app_digest},
+            "kb_manifest": {"manifest_digest": app_digest},
+            "model": {"digest": model_digest},
+        }
+        return {
+            "versionset_id": row.system_version_set_id,
+            "digest": row.version_set_digest,
+            "revision": 1,
+            "content": content,
+        }
 
     def freeze_protocol(
         self,
@@ -719,7 +751,14 @@ class ExperimentService:
             try:
                 remote = cache.get(versionset_id)
                 if remote is None:
-                    remote = self.quality.get_versionset(versionset_id)
+                    try:
+                        remote = self._local_versionset(versionset_id, session=self.session)
+                    except ExperimentServiceError as local_exc:
+                        if local_exc.code != "not_found":
+                            raise
+                        remote = self.quality.get_versionset(versionset_id)
+                    except Exception:  # noqa: BLE001 - 本地表缺失/不可读 → 回退 Quality（v4 兼容）
+                        remote = self.quality.get_versionset(versionset_id)
                     cache[versionset_id] = remote
             except QualityAPIError as exc:
                 raise ExperimentServiceError(
