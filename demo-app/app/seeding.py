@@ -1,4 +1,4 @@
-"""启动初始化：建表 → 种子 prompt 版本 → 种子 KB → 基线 VersionSet（active）。
+"""启动初始化：验证迁移 → 种子 prompt/KB → 基线 VersionSet（active）。
 
 基线 = P0（v1.4.2）+ 全量 KB manifest + step-3.7-flash(temperature=0)。
 固定 ID vs_baseline0000000001，重复启动幂等。
@@ -9,9 +9,10 @@ from sqlalchemy.orm import Session
 
 from app import jcs, kb
 from app.config import get_settings
-from app.db import SessionLocal, init_schema
+from app.db import SessionLocal, engine
 from app.models import TransitionRecord, VersionSet
 from app.prompts_registry import PROMPTS_DIR, seed_prompt_versions
+from app.schema import require_current_schema
 
 BASELINE_ID = "vs_baseline0000000001"
 BASELINE_PROMPT_VERSION = "v1.4.2"
@@ -114,14 +115,20 @@ def ensure_b1_fault_versionset(db: Session, baseline: VersionSet) -> VersionSet:
     return fault
 
 
+def seed_app_state(db: Session) -> None:
+    """Seed all startup state idempotently after migrations are current."""
+
+    seed_prompt_versions(db)
+    kb.seed_kb_entries(db)
+    baseline = ensure_baseline_versionset(db)
+    ensure_b1_fault_versionset(db, baseline)
+
+
 def init_app() -> None:
     """启动一次性初始化（FastAPI lifespan 调用）。"""
-    init_schema()
+    require_current_schema(engine)
     db = SessionLocal()
     try:
-        seed_prompt_versions(db)
-        kb.seed_kb_entries(db)
-        baseline = ensure_baseline_versionset(db)
-        ensure_b1_fault_versionset(db, baseline)
+        seed_app_state(db)
     finally:
         db.close()

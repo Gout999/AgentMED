@@ -20,7 +20,7 @@ from app.seeding import init_app
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_app()  # 建表 + 种子 prompt/KB + 基线 VersionSet（幂等）
+    init_app()  # 验证迁移版本 + 种子 prompt/KB + 基线 VersionSet（幂等）
     yield
 
 

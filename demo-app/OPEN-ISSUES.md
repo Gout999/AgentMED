@@ -41,19 +41,25 @@
 - **影响**：合成 VersionSet（manifest 只含 x200）promote 后 chat 仍能检索全部种子条目。
   对演示闭环无影响；Phase 2 接入向量检索时建议把 manifest 作为条目作用域。
 
-## 6. pgvector 扩展由应用侧建
+## 6. [已解决 2026-08-11] pgvector 与表结构的部署所有权
 
-- **现象**：`deploy/postgres/init/01-create-databases.sql` 只对 casebase 建 vector 扩展。
-- **当前实现**：demo-app 建连时 `CREATE EXTENSION IF NOT EXISTS vector`（caseloop 为 superuser 可建），
-  并在 init SQL APPEND 了对 demo_app 的扩展创建（双保险，幂等）。
-- **待主控确认**：若要求 demo_app 扩展只能由 init 管理，移除应用侧建连即可。
+- **原问题**：demo-app 曾在每次数据库建连时执行 `CREATE EXTENSION IF NOT EXISTS vector`，
+  lifespan 再通过 `Base.metadata.create_all()` 建表；这不是可审计的部署迁移路径。
+- **当前实现**：`alembic/versions/001_initial_demo_schema.py` 是 9 张业务表和 `vector`
+  extension 的部署迁移。容器 entrypoint 在 uvicorn 前执行 `alembic upgrade head`；应用建连和
+  lifespan 不再执行 schema DDL。`deploy/postgres/init/01-create-databases.sql` 对新 volume 的
+  extension 初始化只是幂等 bootstrap，不能替代 Alembic 版本记录。
+- **既有库边界**：未版本化旧库不会自动 stamp。必须先运行只读
+  `scripts/verify_schema_adoption.py`，确认 schema/extension 精确匹配后，再由操作员显式
+  `alembic stamp 001`；任意 drift 都拒绝接管。
 
-## 7. /oauth/token 为演示简化实现
+## 7. [已解决 2026-08-11] /oauth/token 校验 client_secret
 
-- **现象**：openapi 声明 client_credentials tokenUrl=/oauth/token。
-- **当前实现**：`client_id=release-controller` → write 令牌；`quality-reader/reader` → read 令牌；
-  不校验 client_secret（演示环境）。真实部署由 Higress 凭证托管注入 Authorization 头。
-- **影响**：conformance 不走 /oauth/token（直接用 Bearer 令牌），不影响验收。
+- **原问题**：openapi 声明 client_credentials tokenUrl=/oauth/token，但演示实现曾只按
+  `client_id` 签发令牌。
+- **当前实现**：`release-controller` 与 `quality-reader/reader` 都必须提交各自精确匹配的
+  `client_secret`；缺失配置返回 503，错误凭证返回 401。read/write bearer token 或两类
+  OAuth client secret 相同会 fail closed，避免权限边界退化。
 
 ## 8. 业务端点鉴权为有意简化（主控确认保留）
 

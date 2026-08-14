@@ -105,6 +105,21 @@ def oauth_token(payload: TokenRequest | None = None):
                 "Quality API read and write credentials must be distinct",
             ),
         )
+    if (
+        settings.release_controller_client_secret
+        and settings.quality_reader_client_secret
+        and secrets.compare_digest(
+            settings.release_controller_client_secret,
+            settings.quality_reader_client_secret,
+        )
+    ):
+        raise HTTPException(
+            status_code=503,
+            detail=_err_body(
+                "auth_misconfigured",
+                "Quality API OAuth client credentials must be distinct",
+            ),
+        )
     if payload is None or payload.grant_type != "client_credentials":
         raise HTTPException(status_code=401, detail=_err_body("unauthorized", "invalid client credentials"))
     cid = payload.client_id or ""

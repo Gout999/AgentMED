@@ -62,3 +62,45 @@ def test_release_controller_oauth_requires_exact_secret(monkeypatch):
     )
     assert issued["access_token"] == "write-token"
     assert "quality:write" in issued["scope"]
+
+
+def test_quality_reader_oauth_issues_read_only_token(monkeypatch):
+    settings = SimpleNamespace(
+        release_controller_client_secret="server-secret",
+        quality_reader_client_secret="reader-secret",
+        caseloop_write_token="write-token",
+        caseloop_read_token="read-token",
+    )
+    monkeypatch.setattr(quality, "get_settings", lambda: settings)
+
+    issued = quality.oauth_token(
+        TokenRequest(
+            grant_type="client_credentials",
+            client_id="quality-reader",
+            client_secret="reader-secret",
+        )
+    )
+    assert issued["access_token"] == "read-token"
+    assert issued["scope"] == "quality:read"
+
+
+@pytest.mark.parametrize("client_id", ["release-controller", "quality-reader"])
+def test_oauth_rejects_equal_reader_and_release_client_secrets(monkeypatch, client_id):
+    settings = SimpleNamespace(
+        release_controller_client_secret="shared-client-secret",
+        quality_reader_client_secret="shared-client-secret",
+        caseloop_write_token="write-token",
+        caseloop_read_token="read-token",
+    )
+    monkeypatch.setattr(quality, "get_settings", lambda: settings)
+
+    with pytest.raises(HTTPException) as exc:
+        quality.oauth_token(
+            TokenRequest(
+                grant_type="client_credentials",
+                client_id=client_id,
+                client_secret="shared-client-secret",
+            )
+        )
+    assert exc.value.status_code == 503
+    assert exc.value.detail["error"]["code"] == "auth_misconfigured"
