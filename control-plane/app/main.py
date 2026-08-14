@@ -3,10 +3,16 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
+from functools import lru_cache
+from pathlib import Path
 from typing import Any
 
+from alembic.config import Config as AlembicConfig
+from alembic.migration import MigrationContext
+from alembic.script import ScriptDirectory
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from sqlalchemy import text as sql_text
 
 from app import __version__
 from app.api import (
@@ -21,7 +27,7 @@ from app.api import (
     read_views,
     releases,
 )
-from app.config import Settings, get_settings
+from app.config import Settings, get_settings, validate_public_authority_config
 from app.api.deps import validate_authority_config
 from app.db import get_engine, get_session_factory
 from app.models import Base
@@ -30,6 +36,56 @@ from app.services.event_store import CASConflict
 from app.services.state_machines import IllegalTransition
 
 logger = logging.getLogger(__name__)
+
+
+@lru_cache(maxsize=1)
+def _expected_database_heads() -> frozenset[str]:
+    """Resolve the migration heads shipped in this checkout/container image."""
+
+    service_root = Path(__file__).resolve().parents[1]
+    config = AlembicConfig(str(service_root / "alembic.ini"))
+    config.set_main_option("script_location", str(service_root / "alembic"))
+    heads = frozenset(ScriptDirectory.from_config(config).get_heads())
+    if not heads:
+        raise RuntimeError("no Alembic migration head is available")
+    return heads
+
+
+def _readiness_checks(app: FastAPI) -> dict[str, str]:
+    checks = {
+        "database": "unavailable",
+        "migration": "unknown",
+        "public_auth": "misconfigured",
+    }
+    engine = getattr(app.state, "engine", None)
+    if engine is not None:
+        try:
+            with engine.connect() as connection:
+                connection.execute(sql_text("SELECT 1")).scalar_one()
+                current_heads = frozenset(
+                    MigrationContext.configure(connection).get_current_heads()
+                )
+            checks["database"] = "ok"
+            checks["migration"] = (
+                "current"
+                if current_heads == _expected_database_heads()
+                else "mismatch"
+            )
+        except Exception as exc:  # noqa: BLE001 - readiness must fail closed
+            logger.warning(
+                "control-plane database readiness failed error_type=%s",
+                type(exc).__name__,
+            )
+
+    settings = getattr(app.state, "settings", None)
+    try:
+        if not isinstance(settings, Settings):
+            raise ValueError("settings unavailable")
+        validate_public_authority_config(settings)
+        checks["public_auth"] = "configured"
+    except (TypeError, ValueError):
+        pass
+    return checks
 
 
 def create_app(
@@ -96,6 +152,23 @@ def create_app(
     @app.get("/healthz")
     def healthz() -> dict[str, str]:
         return {"status": "ok", "version": __version__}
+
+    @app.get("/readyz", response_model=None)
+    def readyz(request: Request) -> Any:
+        checks = _readiness_checks(request.app)
+        ready = checks == {
+            "database": "ok",
+            "migration": "current",
+            "public_auth": "configured",
+        }
+        payload: dict[str, Any] = {
+            "status": "ready" if ready else "not_ready",
+            "version": __version__,
+            "checks": checks,
+        }
+        if not ready:
+            return JSONResponse(status_code=503, content=payload)
+        return payload
 
     # 状态机非法迁移 / CAS 冲突 → 结构化错误（避免裸 500）
     @app.exception_handler(IllegalTransition)

@@ -19,6 +19,10 @@ from app.models.tables import (
     TrustLedgerEntry,
     WorkOrder,
 )
+from app.services.case_service import (
+    quality_case_event_filter,
+    quality_case_integrity_error,
+)
 from app.services.event_store import EventStore
 from app.services.gate_service import GateService, GateServiceError
 from app.utils.jcs import workorder_hash as compute_workorder_hash
@@ -243,9 +247,31 @@ def get_case_events(session: Session, case_id: str) -> Optional[dict[str, Any]]:
     """该 case 的事件流（seq 升序），每事件附 payload 证据引用投影。"""
     store = EventStore(session)
     agg = store.get_aggregate("case", case_id)
-    if agg is None:
-        return None
-    events = store.list_events(case_id)
+    if agg is not None:
+        events = store.list_events(case_id)
+        aggregate_evidence_refs = _evidence_refs(agg.payload or {})
+    else:
+        from app.models.v4_tables import QualityCase
+
+        quality_case = session.get(QualityCase, case_id)
+        if quality_case is None:
+            return None
+        events = list(
+            session.scalars(
+                select(Event)
+                .where(*quality_case_event_filter(quality_case))
+                .order_by(Event.occurred_at, Event.event_id)
+            ).all()
+        )
+        integrity_error = quality_case_integrity_error(quality_case)
+        aggregate_evidence_refs = (
+            _evidence_refs(quality_case.snapshot_payload or {})
+            if integrity_error is None
+            else {
+                "integrity_status": "integrity_error",
+                "integrity_error": integrity_error,
+            }
+        )
     items = []
     for ev in events:
         payload = ev.payload or {}
@@ -267,7 +293,7 @@ def get_case_events(session: Session, case_id: str) -> Optional[dict[str, Any]]:
         "case_id": case_id,
         "aggregate_type": "case",
         "items": items,
-        "evidence_refs": _evidence_refs(agg.payload or {}),
+        "evidence_refs": aggregate_evidence_refs,
     }
 
 
@@ -636,6 +662,23 @@ def list_evidence_refs(
     events_query = select(Event).order_by(Event.occurred_at.desc(), Event.event_id).limit(limit)
     if case_id:
         events_query = events_query.where(Event.correlation_id == case_id)
+        legacy_case = session.get(
+            Aggregate,
+            {"aggregate_type": "case", "aggregate_id": case_id},
+        )
+        if legacy_case is not None:
+            events_query = events_query.where(Event.contract_version.is_(None))
+        else:
+            from app.models.v4_tables import QualityCase
+
+            quality_case = session.get(QualityCase, case_id)
+            if quality_case is None:
+                events_query = events_query.where(Event.event_id == "")
+            else:
+                events_query = events_query.where(
+                    Event.workspace_id == quality_case.workspace_id,
+                    Event.contract_version.in_(("v4", "v5")),
+                )
     for event in session.scalars(events_query).all():
         for key, value in _iter_evidence_refs(event.payload or {}):
             items.append(
@@ -880,11 +923,435 @@ def list_applications(
 # ------------------------------------------------------- 9. V5-1C case governance
 
 
+def _wire_time(value: datetime) -> str:
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+
+
+def _safe_integrity_reason(exc: Exception) -> str:
+    message = str(exc)
+    if re.fullmatch(r"[A-Za-z0-9_.:-]{1,160}", message):
+        return message
+    return type(exc).__name__
+
+
+def _expected_v5_record_envelope(row: Any) -> dict[str, Any]:
+    return {
+        "schema_version": "2.0",
+        "workspace_id": row.workspace_id,
+        "revision": row.revision,
+        "recorded_by_principal": row.recorded_by_principal,
+        "recorded_at": _wire_time(row.created_at),
+        "immutable": True,
+        "hash_rule": (
+            "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)"
+        ),
+        "record_digest": row.record_digest,
+        "authority_receipt_id": row.authority_receipt_id,
+    }
+
+
+def _binding_integrity_error(
+    session: Session,
+    row: Any,
+    quality_case: Any,
+    authority: Any,
+) -> str | None:
+    from app.models.v5_tables import SystemVersionSet
+    from app.utils.v4_integrity import canonical_digest
+    from app.utils.v5_integrity import assert_v5_record_digest
+
+    try:
+        payload = row.envelope_payload or {}
+        if assert_v5_record_digest(payload) != row.record_digest:
+            raise ValueError("record_digest_projection_mismatch")
+        binding_digest = canonical_digest(
+            {
+                "application_id": row.application_id,
+                "environment_id": row.environment_id,
+                "declared_system_version_set_binding_or_unknown": (
+                    row.declared_system_version_set_binding_or_unknown
+                ),
+            }
+        )
+        expected = {
+            "application_case_binding_id": row.application_case_binding_id,
+            "workspace_id": row.workspace_id,
+            "exact_case_binding": {
+                "case_id": row.case_id,
+                "case_revision": row.case_revision,
+                "case_digest": row.case_digest,
+            },
+            "application_id": row.application_id,
+            "environment_id": row.environment_id,
+            "declared_system_version_set_binding_or_unknown": (
+                row.declared_system_version_set_binding_or_unknown
+            ),
+            "binding_digest": binding_digest,
+            "record_envelope": _expected_v5_record_envelope(row),
+        }
+        if payload != expected or row.binding_digest != binding_digest:
+            raise ValueError("envelope_scalar_projection_mismatch")
+        declared = row.declared_system_version_set_binding_or_unknown
+        if not isinstance(declared, dict):
+            raise ValueError("declared_version_binding_invalid")
+        if declared.get("kind") == "UNKNOWN":
+            if (
+                set(declared) != {"kind", "reason"}
+                or not isinstance(declared.get("reason"), str)
+                or not declared["reason"].strip()
+            ):
+                raise ValueError("declared_version_unknown_invalid")
+        elif declared.get("kind") == "SYSTEM_VERSION_SET":
+            if set(declared) != {"kind", "id", "revision", "digest"}:
+                raise ValueError("declared_version_binding_invalid")
+            version_set = session.get(SystemVersionSet, declared.get("id"))
+            if (
+                version_set is None
+                or version_set.workspace_id != row.workspace_id
+                or version_set.application_id != row.application_id
+                or version_set.declared_environment_id != row.environment_id
+                or version_set.record_digest != declared.get("digest")
+                or assert_v5_record_digest(version_set.envelope_payload)
+                != declared.get("digest")
+                or (version_set.envelope_payload or {})
+                .get("record_envelope", {})
+                .get("revision")
+                != declared.get("revision")
+            ):
+                raise ValueError("declared_version_binding_mismatch")
+            authority.validate_receipt_binding(
+                authority_receipt_id=version_set.authority_receipt_id,
+                workspace_id=version_set.workspace_id,
+                subject_kind="SYSTEM_VERSION_SET",
+                subject_id=version_set.system_version_set_id,
+                subject_revision=declared["revision"],
+                subject_digest=version_set.record_digest,
+            )
+        else:
+            raise ValueError("declared_version_kind_unknown")
+        if (
+            row.workspace_id != quality_case.workspace_id
+            or row.case_id != quality_case.case_id
+            or row.case_revision != quality_case.revision
+            or row.case_digest != quality_case.record_digest
+        ):
+            raise ValueError("current_case_binding_mismatch")
+        authority.validate_receipt_binding(
+            authority_receipt_id=row.authority_receipt_id,
+            workspace_id=row.workspace_id,
+            subject_kind="APPLICATION_CASE_BINDING",
+            subject_id=row.application_case_binding_id,
+            subject_revision=row.revision,
+            subject_digest=row.record_digest,
+        )
+    except Exception as exc:  # noqa: BLE001 - fail-closed read projection
+        return f"v5.binding_integrity_error:{_safe_integrity_reason(exc)}"
+    return None
+
+
+def _acceptance_executable(row: Any) -> bool:
+    resolution_status = row.resolution_contract_binding_status
+    # V5-1C records only PENDING_MATERIALIZATION for the V5-4-owned
+    # ResolutionContract.  A human confirmation is authoritative acceptance
+    # input, but it is not yet an executable gate contract.
+    if (
+        not isinstance(resolution_status, dict)
+        or resolution_status.get("status") == "PENDING_MATERIALIZATION"
+    ):
+        return False
+    required_objects = (
+        row.acceptance_source,
+        row.reproducer_input,
+        row.reproducer_environment,
+        row.expected_behavior,
+        row.oracle_or_evaluator,
+        row.applicable_workload_profile,
+        row.applicable_deployment_profile,
+    )
+    if any(not isinstance(value, dict) or not value for value in required_objects):
+        return False
+    expected_kind = str(row.expected_behavior.get("kind", "")).strip().lower()
+    if expected_kind in {"maintainer_review_required", "placeholder", "unknown"}:
+        return False
+    for profile in (
+        row.applicable_workload_profile,
+        row.applicable_deployment_profile,
+    ):
+        if str(profile.get("name", "")).strip().lower() in {"", "unknown"}:
+            return False
+    return True
+
+
+def _missing_trace_evidence_fields(receipts: Iterable[Any]) -> list[str]:
+    """Return requested fields that do not have an explicit OBSERVED result.
+
+    ``requested_fields`` describes the query, not its failures. Treating that
+    list itself as missing incorrectly reports successfully observed fields in
+    a partial receipt. Malformed or absent results remain fail-closed and are
+    reported as missing.
+    """
+
+    missing: list[str] = []
+    for row in receipts:
+        observed: set[str] = set()
+        field_results = row.field_results if isinstance(row.field_results, list) else []
+        for result in field_results:
+            if (
+                isinstance(result, dict)
+                and isinstance(result.get("name"), str)
+                and result.get("status") == "OBSERVED"
+            ):
+                observed.add(result["name"])
+        requested = row.requested_fields if isinstance(row.requested_fields, list) else []
+        for field in requested:
+            if isinstance(field, str) and field not in observed and field not in missing:
+                missing.append(field)
+    return missing
+
+
+def _acceptance_integrity_error(
+    session: Session,
+    row: Any,
+    quality_case: Any,
+    authority: Any,
+    *,
+    validate_previous: bool = True,
+) -> str | None:
+    from app.models.v5_tables import AcceptanceCriteriaRevision
+    from app.utils.v4_integrity import canonical_digest
+    from app.utils.v5_integrity import assert_v5_record_digest
+
+    try:
+        payload = row.envelope_payload or {}
+        if assert_v5_record_digest(payload) != row.record_digest:
+            raise ValueError("record_digest_projection_mismatch")
+        acceptance_digest = canonical_digest(
+            {
+                "confirmation_status": row.confirmation_status,
+                "acceptance_source": row.acceptance_source,
+                "reproducer_input": row.reproducer_input,
+                "reproducer_environment": row.reproducer_environment,
+                "expected_behavior": row.expected_behavior,
+                "oracle_or_evaluator": row.oracle_or_evaluator,
+                "applicable_workload_profile": row.applicable_workload_profile,
+                "applicable_deployment_profile": row.applicable_deployment_profile,
+            }
+        )
+        exact_case_binding = {
+            "case_id": row.case_id,
+            "case_revision": row.case_revision,
+            "case_digest": row.case_digest,
+        }
+        expected_resolution_status = {
+            "status": "PENDING_MATERIALIZATION",
+            "owner": "resolution-contract-controller",
+            "materialization_stage": "V5-4",
+            "exact_case_binding": exact_case_binding,
+        }
+        if row.resolution_contract_binding_status != expected_resolution_status:
+            raise ValueError("resolution_contract_status_mismatch")
+        expected = {
+            "acceptance_criteria_revision_id": row.acceptance_criteria_revision_id,
+            "workspace_id": row.workspace_id,
+            "exact_case_binding": exact_case_binding,
+            "resolution_contract_binding_status": expected_resolution_status,
+            "confirmation_status": row.confirmation_status,
+            "proposer_principal": row.proposer_principal,
+            "proposed_at": _wire_time(row.proposed_at),
+            "confirmer_principal": row.confirmer_principal,
+            "confirmed_at": (
+                _wire_time(row.confirmed_at) if row.confirmed_at is not None else None
+            ),
+            "exact_previous_proposed_revision_binding": (
+                row.exact_previous_proposed_revision_binding
+            ),
+            "reauthentication_credential_binding": (
+                row.reauthentication_credential_binding
+            ),
+            "acceptance_source": row.acceptance_source,
+            "reproducer_input": row.reproducer_input,
+            "reproducer_environment": row.reproducer_environment,
+            "expected_behavior": row.expected_behavior,
+            "oracle_or_evaluator": row.oracle_or_evaluator,
+            "applicable_workload_profile": row.applicable_workload_profile,
+            "applicable_deployment_profile": row.applicable_deployment_profile,
+            "acceptance_digest": acceptance_digest,
+            "record_envelope": _expected_v5_record_envelope(row),
+        }
+        if payload != expected or row.acceptance_digest != acceptance_digest:
+            raise ValueError("envelope_scalar_projection_mismatch")
+        if (
+            row.workspace_id != quality_case.workspace_id
+            or row.case_id != quality_case.case_id
+            or row.case_revision != quality_case.revision
+            or row.case_digest != quality_case.record_digest
+        ):
+            raise ValueError("current_case_binding_mismatch")
+        if row.confirmation_status == "PROPOSED":
+            if (
+                row.confirmer_principal is not None
+                or row.confirmed_at is not None
+                or row.exact_previous_proposed_revision_binding is not None
+                or row.exact_previous_proposed_revision_id is not None
+                or row.exact_previous_proposed_revision_digest is not None
+                or row.reauthentication_credential_binding is not None
+            ):
+                raise ValueError("proposed_confirmation_shape_mismatch")
+        elif row.confirmation_status == "CONFIRMED":
+            if row.confirmer_principal is None or row.confirmed_at is None:
+                raise ValueError("confirmed_confirmation_shape_mismatch")
+            previous = row.exact_previous_proposed_revision_binding
+            if not isinstance(previous, dict) or set(previous) != {
+                "kind",
+                "id",
+                "revision",
+                "digest",
+            }:
+                raise ValueError("previous_proposal_binding_missing")
+            if (
+                previous.get("kind") != "ACCEPTANCE_CRITERIA_REVISION"
+                or previous.get("revision") != 1
+                or row.exact_previous_proposed_revision_id != previous.get("id")
+                or row.exact_previous_proposed_revision_digest
+                != previous.get("digest")
+            ):
+                raise ValueError("previous_proposal_binding_invalid")
+            if validate_previous:
+                prior = session.get(AcceptanceCriteriaRevision, previous.get("id"))
+                if (
+                    prior is None
+                    or prior.confirmation_status != "PROPOSED"
+                    or prior.record_digest != previous.get("digest")
+                    or prior.revision != previous.get("revision")
+                    or prior.workspace_id != row.workspace_id
+                    or prior.case_id != row.case_id
+                    or prior.case_revision != row.case_revision
+                    or prior.case_digest != row.case_digest
+                ):
+                    raise ValueError("previous_proposal_binding_mismatch")
+                prior_error = _acceptance_integrity_error(
+                    session,
+                    prior,
+                    quality_case,
+                    authority,
+                    validate_previous=False,
+                )
+                if prior_error is not None:
+                    raise ValueError("previous_proposal_integrity_error")
+                reauthentication = row.reauthentication_credential_binding
+                if not isinstance(reauthentication, dict) or set(reauthentication) != {
+                    "kind",
+                    "credential_id",
+                    "principal_id",
+                    "jti_digest",
+                    "claims_digest",
+                    "issued_at",
+                    "binding_digest",
+                }:
+                    raise ValueError("reauthentication_binding_missing")
+                binding_body = {
+                    key: reauthentication[key]
+                    for key in reauthentication
+                    if key != "binding_digest"
+                }
+                if (
+                    reauthentication.get("kind") != "PUBLIC_CREDENTIAL"
+                    or reauthentication.get("principal_id")
+                    != row.confirmer_principal
+                    or canonical_digest(binding_body)
+                    != reauthentication.get("binding_digest")
+                ):
+                    raise ValueError("reauthentication_binding_mismatch")
+                issued_at_value = reauthentication.get("issued_at")
+                if not isinstance(issued_at_value, str):
+                    raise ValueError("reauthentication_issued_at_invalid")
+                issued_at = datetime.fromisoformat(
+                    issued_at_value.replace("Z", "+00:00")
+                )
+                if issued_at.tzinfo is None:
+                    raise ValueError("reauthentication_issued_at_invalid")
+                if (
+                    issued_at.astimezone(timezone.utc)
+                    <= prior.proposed_at.replace(
+                        tzinfo=prior.proposed_at.tzinfo or timezone.utc
+                    ).astimezone(timezone.utc)
+                    or issued_at.astimezone(timezone.utc)
+                    > row.confirmed_at.replace(
+                        tzinfo=row.confirmed_at.tzinfo or timezone.utc
+                    ).astimezone(timezone.utc)
+                ):
+                    raise ValueError("reauthentication_not_fresh")
+        else:
+            raise ValueError("confirmation_status_unknown")
+        authority.validate_receipt_binding(
+            authority_receipt_id=row.authority_receipt_id,
+            workspace_id=row.workspace_id,
+            subject_kind="ACCEPTANCE_CRITERIA_REVISION",
+            subject_id=row.acceptance_criteria_revision_id,
+            subject_revision=row.revision,
+            subject_digest=row.record_digest,
+        )
+    except Exception as exc:  # noqa: BLE001 - fail-closed read projection
+        return f"v5.acceptance_integrity_error:{_safe_integrity_reason(exc)}"
+    return None
+
+
+def _issue_snapshot_projection(snapshot: Any) -> tuple[dict[str, Any] | None, str | None]:
+    from app.utils.v4_integrity import canonical_digest
+
+    try:
+        payload = snapshot.snapshot_payload or {}
+        stored_digest = payload.get("snapshot_digest")
+        digest_input = dict(payload)
+        digest_input["snapshot_digest"] = ""
+        recomputed = canonical_digest(digest_input)
+        if (
+            stored_digest != recomputed
+            or snapshot.snapshot_digest != recomputed
+            or payload.get("schema_version") != "2.0"
+            or payload.get("immutable") is not True
+            or payload.get("hash_rule")
+            != "jcs-rfc8785-v1+sha256(excluding:/snapshot_digest)"
+            or payload.get("source_kind") != snapshot.source_kind
+            or payload.get("source_url") != snapshot.source_url
+            or payload.get("external_repo") != snapshot.external_repo
+            or payload.get("external_issue_number") != snapshot.external_issue_number
+            or payload.get("edited_flag") is not snapshot.edited_flag
+            or payload.get("deleted_flag") is not snapshot.deleted_flag
+            or payload.get("instruction_markers_detected")
+            is not snapshot.instruction_markers_detected
+            or payload.get("fetched_at") != _wire_time(snapshot.fetched_at)
+        ):
+            raise ValueError("snapshot_digest_or_projection_mismatch")
+        return (
+            {
+                "issue_snapshot_id": snapshot.issue_snapshot_id,
+                "source_kind": snapshot.source_kind,
+                "source_url": snapshot.source_url,
+                "external_repo": snapshot.external_repo,
+                "external_issue_number": snapshot.external_issue_number,
+                "title": payload.get("title"),
+                "edited_flag": snapshot.edited_flag,
+                "deleted_flag": snapshot.deleted_flag,
+                "instruction_markers_detected": snapshot.instruction_markers_detected,
+                "snapshot_digest": snapshot.snapshot_digest,
+            },
+            None,
+        )
+    except Exception as exc:  # noqa: BLE001 - fail-closed read projection
+        return None, (
+            "v5.issue_snapshot_integrity_error:"
+            f"{_safe_integrity_reason(exc)}"
+        )
+
+
 def case_v5_readiness(session: Session, case_id: str) -> dict[str, Any]:
     """V5-1C read-only case governance projection for the Console.
 
     Application binding, acceptance readiness (NEEDS_ACCEPTANCE_CRITERIA /
-    READY), missing-evidence list and the read-only issue snapshot.  Every
+    READY / UNKNOWN), missing-evidence list and the read-only issue snapshot. Every
     v5 envelope is revalidated on read; corrupt rows project as
     integrity_error/UNKNOWN, never as trusted state.
     """
@@ -895,28 +1362,41 @@ def case_v5_readiness(session: Session, case_id: str) -> dict[str, Any]:
         ApplicationCaseBinding,
         IssueSourceSnapshot,
     )
-    from app.utils.v5_integrity import assert_v5_record_digest
+    from app.services.v5_authority import V5AuthorityService
 
     quality_case = session.get(QualityCase, case_id)
     if quality_case is None:
         return {"case_id": None}
+    authority = V5AuthorityService(session)
+    case_error = quality_case_integrity_error(quality_case)
+    case_integrity = "verified" if case_error is None else "integrity_error"
     binding: dict[str, Any] | None = None
-    binding_integrity = "verified"
+    binding_integrity = "unknown"
     binding_error: str | None = None
-    current_binding = session.scalar(
-        select(ApplicationCaseBinding)
-        .where(
-            ApplicationCaseBinding.workspace_id == quality_case.workspace_id,
-            ApplicationCaseBinding.case_id == case_id,
-            ApplicationCaseBinding.case_revision == quality_case.revision,
-        )
-        .order_by(ApplicationCaseBinding.created_at, ApplicationCaseBinding.application_case_binding_id)
+    current_bindings = list(
+        session.scalars(
+            select(ApplicationCaseBinding)
+            .where(
+                ApplicationCaseBinding.workspace_id == quality_case.workspace_id,
+                ApplicationCaseBinding.case_id == case_id,
+                ApplicationCaseBinding.case_revision == quality_case.revision,
+            )
+            .order_by(
+                ApplicationCaseBinding.created_at,
+                ApplicationCaseBinding.application_case_binding_id,
+            )
+        ).all()
     )
+    current_binding = current_bindings[0] if len(current_bindings) == 1 else None
+    if len(current_bindings) > 1:
+        binding_integrity = "integrity_error"
+        binding_error = "v5.binding_integrity_error:current_binding_cardinality"
     if current_binding is not None:
-        try:
-            verified = assert_v5_record_digest(current_binding.envelope_payload)
-            if verified != current_binding.record_digest:
-                raise ValueError("projected record_digest mismatch")
+        binding_error = _binding_integrity_error(
+            session, current_binding, quality_case, authority
+        )
+        if binding_error is None:
+            binding_integrity = "verified"
             envelope = current_binding.envelope_payload
             binding = {
                 "application_case_binding_id": current_binding.application_case_binding_id,
@@ -928,11 +1408,8 @@ def case_v5_readiness(session: Session, case_id: str) -> dict[str, Any]:
                 ),
                 "record_digest": current_binding.record_digest,
             }
-        except Exception as exc:  # noqa: BLE001 - fail-closed projection
+        else:
             binding_integrity = "integrity_error"
-            binding_error = f"v5.binding_integrity_error:{type(exc).__name__}"
-    else:
-        binding = None
 
     revisions = list(
         session.scalars(
@@ -948,25 +1425,28 @@ def case_v5_readiness(session: Session, case_id: str) -> dict[str, Any]:
             )
         ).all()
     )
-    confirmed = [row for row in revisions if row.confirmation_status == "CONFIRMED"]
-    if confirmed:
-        readiness: str = "READY"
-    else:
-        readiness = "NEEDS_ACCEPTANCE_CRITERIA"
-    proposal_count = int(
-        session.scalar(
-            select(func.count())
-            .select_from(AcceptanceCriteriaRevision)
-            .where(
-                AcceptanceCriteriaRevision.workspace_id == quality_case.workspace_id,
-                AcceptanceCriteriaRevision.case_id == case_id,
-                AcceptanceCriteriaRevision.case_revision == quality_case.revision,
-            )
+    acceptance_errors: list[str] = []
+    trusted_proposals = 0
+    trusted_confirmed = 0
+    executable_confirmed = 0
+    for row in revisions:
+        error = _acceptance_integrity_error(
+            session, row, quality_case, authority
         )
-        or 0
+        if error is not None:
+            acceptance_errors.append(error)
+            continue
+        if row.confirmation_status == "PROPOSED":
+            trusted_proposals += 1
+        elif row.confirmation_status == "CONFIRMED":
+            trusted_confirmed += 1
+            if _acceptance_executable(row):
+                executable_confirmed += 1
+    acceptance_integrity = (
+        "integrity_error" if acceptance_errors else "verified"
     )
+    acceptance_error = acceptance_errors[0] if acceptance_errors else None
 
-    missing_evidence: list[str] = []
     evidence_rows = list(
         session.scalars(
             select(TraceEvidenceReceipt).where(
@@ -975,43 +1455,56 @@ def case_v5_readiness(session: Session, case_id: str) -> dict[str, Any]:
             )
         ).all()
     )
-    for row in evidence_rows:
-        for field in row.requested_fields or []:
-            if field not in missing_evidence:
-                missing_evidence.append(field)
+    missing_evidence = _missing_trace_evidence_fields(evidence_rows)
 
     issue_snapshot: dict[str, Any] | None = None
+    issue_snapshot_integrity = "missing"
+    issue_snapshot_error: str | None = None
     snapshot = session.scalar(
         select(IssueSourceSnapshot)
         .where(
             IssueSourceSnapshot.workspace_id == quality_case.workspace_id,
             IssueSourceSnapshot.case_id == case_id,
         )
-        .order_by(IssueSourceSnapshot.created_at, IssueSourceSnapshot.issue_snapshot_id)
+        .order_by(
+            IssueSourceSnapshot.created_at.desc(),
+            IssueSourceSnapshot.issue_snapshot_id.desc(),
+        )
     )
     if snapshot is not None:
-        issue_snapshot = {
-            "issue_snapshot_id": snapshot.issue_snapshot_id,
-            "source_kind": snapshot.source_kind,
-            "source_url": snapshot.source_url,
-            "external_repo": snapshot.external_repo,
-            "external_issue_number": snapshot.external_issue_number,
-            "title": (snapshot.snapshot_payload or {}).get("title"),
-            "edited_flag": snapshot.edited_flag,
-            "deleted_flag": snapshot.deleted_flag,
-            "instruction_markers_detected": snapshot.instruction_markers_detected,
-            "snapshot_digest": snapshot.snapshot_digest,
-        }
+        issue_snapshot, issue_snapshot_error = _issue_snapshot_projection(snapshot)
+        issue_snapshot_integrity = (
+            "verified" if issue_snapshot_error is None else "integrity_error"
+        )
+
+    if (
+        case_error is not None
+        or binding_integrity != "verified"
+        or acceptance_errors
+        or issue_snapshot_error is not None
+    ):
+        readiness = "UNKNOWN"
+    elif executable_confirmed > 0:
+        readiness = "READY"
+    else:
+        readiness = "NEEDS_ACCEPTANCE_CRITERIA"
 
     return {
         "case_id": case_id,
         "case_revision": quality_case.revision,
+        "case_integrity_status": case_integrity,
+        "case_integrity_error": case_error,
         "application_binding": binding,
         "binding_integrity_status": binding_integrity,
         "binding_integrity_error": binding_error,
         "case_readiness": readiness,
-        "acceptance_proposal_count": proposal_count,
-        "confirmed_acceptance_count": len(confirmed),
+        "acceptance_integrity_status": acceptance_integrity,
+        "acceptance_integrity_error": acceptance_error,
+        "acceptance_proposal_count": trusted_proposals,
+        "confirmed_acceptance_count": trusted_confirmed,
+        "executable_acceptance_count": executable_confirmed,
         "missing_evidence": missing_evidence,
         "issue_snapshot": issue_snapshot,
+        "issue_snapshot_integrity_status": issue_snapshot_integrity,
+        "issue_snapshot_integrity_error": issue_snapshot_error,
     }

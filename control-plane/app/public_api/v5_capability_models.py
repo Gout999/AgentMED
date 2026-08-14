@@ -1,7 +1,8 @@
-"""Closed public wire models for R2 V5 capability discovery.
+"""Closed wire models for V5 capability discovery.
 
-Discovery is an exact allowlist.  A target-contract name is not discoverable
-until both its public HTTP route and explicit-major CLI command are active.
+Capability discovery is deliberately an allowlist: only public intents with a
+real HTTP route and CLI command may appear here.  Future V5 skeletons remain
+undiscoverable until their own delivery stage activates them.
 """
 from __future__ import annotations
 
@@ -30,7 +31,6 @@ V5PublicIntentName = Literal[
     "capabilities.get",
     "applications.register",
     "applications.get",
-    "applications.list",
     "environments.register",
     "environments.get",
     "system-components.register",
@@ -38,6 +38,13 @@ V5PublicIntentName = Literal[
     "dependency-edges.record",
     "dependency-edges.get",
     "system-manifests.import",
+    "system-versions.get",
+    "system-versions.diff",
+    "cases.bind-application",
+    "case-application-bindings.get",
+    "acceptance-criteria.propose",
+    "acceptance-criteria.get",
+    "acceptance-criteria.confirm",
 ]
 
 
@@ -56,7 +63,7 @@ class V5CapabilityPrincipal(WireModel):
 class V5EnabledIntent(WireModel):
     name: V5PublicIntentName
     scope: Annotated[str, Field(min_length=1, max_length=128)]
-    execution_mode: Literal["synchronous", "synchronous_local_transaction"]
+    execution_mode: Literal["synchronous"]
     http: StrictBool
     cli: StrictBool
 
@@ -64,13 +71,6 @@ class V5EnabledIntent(WireModel):
     def transports_are_real(self) -> "V5EnabledIntent":
         if self.http is not True or self.cli is not True:
             raise ValueError("advertised V5 intents require http=true and cli=true")
-        expected_mode = (
-            "synchronous_local_transaction"
-            if self.name == "system-manifests.import"
-            else "synchronous"
-        )
-        if self.execution_mode != expected_mode:
-            raise ValueError("advertised V5 intent execution_mode mismatch")
         return self
 
 

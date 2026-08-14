@@ -7,11 +7,12 @@ import re
 from datetime import datetime, timedelta, timezone
 from typing import Any, Optional
 
-from sqlalchemy import select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session
 
 from app.config import Settings, get_settings
 from app.models.tables import Aggregate, Event, Inbox, WorkerSuggestionReceipt, WorkOrder
+from app.models.v4_tables import QualityCase
 from app.services.audit import AuditService, AuditWriteError
 from app.services.event_store import CASConflict, EventStore
 from app.services.lease import LeaseConflict, LeaseLost, LeaseService
@@ -19,10 +20,51 @@ from app.services.state_machines import IllegalTransition
 from app.utils.ids import new_case_id, new_trace_id
 from app.utils.jcs import canonical_json_digest
 from app.utils.pii import PIIRedactionError, normalize_for_dedup, redact_text
+from app.utils.v4_integrity import V4IntegrityError, assert_record_digest
 
 logger = logging.getLogger(__name__)
 
 SUGGESTION_KINDS = {"triage", "attribution", "fix", "gate", "verify"}
+
+
+def quality_case_integrity_error(row: QualityCase) -> str | None:
+    """Revalidate the immutable v4 case before exposing its scalar projection."""
+
+    payload = row.snapshot_payload or {}
+    if not isinstance(payload, dict):
+        return "quality_case_record_digest_mismatch"
+    try:
+        assert_record_digest(payload, self_digest_field="record_digest")
+    except (V4IntegrityError, TypeError, ValueError):
+        return "quality_case_record_digest_mismatch"
+    expected = {
+        "case_id": row.case_id,
+        "workspace_id": row.workspace_id,
+        "revision": row.revision,
+        "status": row.state,
+        "title": row.title,
+        "project_id": row.project_id,
+        "environment_id": row.environment_id,
+        "governed_agent_id": row.governed_agent_id,
+        "correlation_status": row.correlation_status,
+        "triage_status": row.triage_status,
+        "opening_signal_id": row.opening_signal_id,
+        "authority_receipt_id": row.authority_receipt_id,
+        "record_digest": row.record_digest,
+    }
+    if any(payload.get(key) != value for key, value in expected.items()):
+        return "quality_case_projection_mismatch"
+    return None
+
+
+def quality_case_event_filter(row: QualityCase) -> Any:
+    """Scope the additive v4/v5 case timeline to the case's workspace."""
+
+    return (
+        Event.workspace_id == row.workspace_id,
+        Event.contract_version.in_(("v4", "v5")),
+        or_(Event.aggregate_id == row.case_id, Event.correlation_id == row.case_id),
+    )
 
 
 class CaseServiceError(Exception):
@@ -1067,35 +1109,94 @@ class CaseService:
 
     def get_case(self, case_id: str) -> dict[str, Any]:
         agg = self.store.get_aggregate("case", case_id)
-        if agg is None:
+        if agg is not None:
+            events = self.store.list_events(case_id)
+            return {
+                "case_id": case_id,
+                "state": agg.state,
+                "revision": agg.revision,
+                "payload": agg.payload,
+                "updated_at": agg.updated_at.isoformat() if agg.updated_at else None,
+                "event_count": len(events),
+            }
+
+        # V4 QualityCase is an additive authority table and deliberately does
+        # not create a legacy Aggregate.  The Console read path falls back to
+        # it only when no legacy case exists, so mutation/state-machine callers
+        # keep their existing Aggregate semantics.
+        quality_case = self.session.get(QualityCase, case_id)
+        if quality_case is None:
             raise CaseServiceError("not_found", f"case {case_id} not found")
-        events = self.store.list_events(case_id)
+        integrity_error = quality_case_integrity_error(quality_case)
+        event_count = int(
+            self.session.scalar(
+                select(func.count()).select_from(Event).where(
+                    *quality_case_event_filter(quality_case)
+                )
+            )
+            or 0
+        )
         return {
             "case_id": case_id,
-            "state": agg.state,
-            "revision": agg.revision,
-            "payload": agg.payload,
-            "updated_at": agg.updated_at.isoformat() if agg.updated_at else None,
-            "event_count": len(events),
+            "state": quality_case.state if integrity_error is None else "UNKNOWN",
+            "revision": quality_case.revision,
+            "payload": (
+                quality_case.snapshot_payload
+                if integrity_error is None
+                else {
+                    "integrity_status": "integrity_error",
+                    "integrity_error": integrity_error,
+                }
+            ),
+            "updated_at": (
+                quality_case.updated_at.isoformat() if quality_case.updated_at else None
+            ),
+            "event_count": event_count,
         }
 
     def list_cases(self, *, state: Optional[str] = None, limit: int = 100, cursor: int = 0) -> dict[str, Any]:
-        q = select(Aggregate).where(Aggregate.aggregate_type == "case").order_by(Aggregate.aggregate_id)
-        if state:
-            q = q.where(Aggregate.state == state)
-        rows = list(self.session.scalars(q.offset(cursor).limit(limit)).all())
+        if limit < 1 or cursor < 0:
+            raise CaseServiceError(
+                "validation_failed", "limit must be positive and cursor non-negative"
+            )
+        legacy_query = select(Aggregate).where(Aggregate.aggregate_type == "case")
+        quality_query = select(QualityCase)
+        legacy_rows = list(self.session.scalars(legacy_query).all())
+        quality_rows = list(self.session.scalars(quality_query).all())
+
+        # Explicit union with legacy priority on an impossible-but-defensive
+        # duplicate ID.  Pagination is applied after the union so V4 cases are
+        # not skipped merely because they live outside the Aggregate table.
+        items_by_id: dict[str, dict[str, Any]] = {}
+        for row in quality_rows:
+            integrity_error = quality_case_integrity_error(row)
+            projected_state = row.state if integrity_error is None else "UNKNOWN"
+            if state and projected_state != state:
+                continue
+            items_by_id[row.case_id] = {
+                "case_id": row.case_id,
+                "state": projected_state,
+                "revision": row.revision,
+                "title": row.title if integrity_error is None else "UNKNOWN",
+                "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+            }
+        for row in legacy_rows:
+            if state and row.state != state:
+                continue
+            items_by_id[row.aggregate_id] = {
+                "case_id": row.aggregate_id,
+                "state": row.state,
+                "revision": row.revision,
+                "title": (row.payload or {}).get("title"),
+                "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+            }
+
+        merged = [items_by_id[key] for key in sorted(items_by_id)]
+        rows = merged[cursor : cursor + limit]
+        next_cursor = cursor + len(rows)
         return {
-            "items": [
-                {
-                    "case_id": r.aggregate_id,
-                    "state": r.state,
-                    "revision": r.revision,
-                    "title": (r.payload or {}).get("title"),
-                    "updated_at": r.updated_at.isoformat() if r.updated_at else None,
-                }
-                for r in rows
-            ],
-            "next_cursor": cursor + len(rows) if len(rows) == limit else None,
+            "items": rows,
+            "next_cursor": next_cursor if next_cursor < len(merged) else None,
         }
 
     def write_with_fencing(

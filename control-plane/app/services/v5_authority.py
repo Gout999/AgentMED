@@ -22,7 +22,6 @@ from app.models import Audit, Event, Outbox
 from app.models.v4_tables import AuthorityReceipt, ControllerRegistration
 from app.models.v5_tables import (
     AIApplication,
-    AIApplicationLifecycleRevision,
     AcceptanceCriteriaRevision,
     ApplicationCaseBinding,
     BootstrapAttestation,
@@ -31,7 +30,6 @@ from app.models.v5_tables import (
     Environment,
     SystemAssignment,
     SystemComponent,
-    SystemComponentLifecycleRevision,
     SystemVersionSet,
     TopologyRevision,
 )
@@ -40,12 +38,9 @@ from app.services.v4_event_store import (
     V4EventIntegrityError,
     validate_v4_event_row,
     validate_v4_outbox_row,
-    validate_v5_event_row,
-    validate_v5_outbox_row,
 )
 from app.utils.v4_integrity import V4IntegrityError, canonical_digest, record_digest
 from app.utils.v5_integrity import (
-    V5_HASH_RULE,
     assert_v5_record_digest,
     v5_subject_identity_key,
 )
@@ -322,73 +317,15 @@ _V5_SUBJECT_BINDINGS: dict[str, tuple[type[Any], str, str, str, str | None]] = {
         "application_case_binding_id",
         "record_digest",
         "authority_receipt_id",
-        None,
+        "revision",
     ),
     "ACCEPTANCE_CRITERIA_REVISION": (
         AcceptanceCriteriaRevision,
         "acceptance_criteria_revision_id",
         "record_digest",
         "authority_receipt_id",
-        None,
+        "revision",
     ),
-}
-
-# Append-only lifecycle history is authoritative.  The original catalog rows
-# remain mutable current-head projections and therefore are never sufficient
-# to resolve an exact historical binding.
-_V5_LIFECYCLE_BINDINGS: dict[
-    str, tuple[type[Any], type[Any], str, str, tuple[str, ...]]
-] = {
-    "AI_APPLICATION": (
-        AIApplicationLifecycleRevision,
-        AIApplication,
-        "application_id",
-        "exact_previous_application_binding",
-        (
-            "application_id",
-            "workspace_id",
-            "project_id",
-            "slug",
-            "display_name",
-            "owner_principal_ids",
-            "criticality",
-            "data_classification",
-            "governance_mode",
-            "lifecycle_state",
-        ),
-    ),
-    "SYSTEM_COMPONENT": (
-        SystemComponentLifecycleRevision,
-        SystemComponent,
-        "component_id",
-        "exact_previous_system_component_binding",
-        (
-            "component_id",
-            "workspace_id",
-            "application_id",
-            "component_kind",
-            "logical_name",
-            "owner_principal_ids",
-            "criticality",
-            "data_classification",
-            "permission_classification",
-            "effect_classification",
-            "dataset_role",
-            "lifecycle_state",
-        ),
-    ),
-}
-
-_V5_RECORD_ENVELOPE_FIELDS = {
-    "schema_version",
-    "workspace_id",
-    "revision",
-    "recorded_by_principal",
-    "recorded_at",
-    "immutable",
-    "hash_rule",
-    "record_digest",
-    "authority_receipt_id",
 }
 
 # Business fields that the registered event payload must carry, extracted from
@@ -421,18 +358,22 @@ _V5_EVENT_BUSINESS_FIELDS: dict[str, tuple[str, ...]] = {
     "TOPOLOGY_REVISION": (
         "topology_revision_id",
         "application_id",
+        "exact_edge_revision_bindings",
         "topology_digest",
     ),
     "SYSTEM_VERSION_SET": (
         "system_version_set_id",
         "application_id",
         "declared_environment_id",
+        "exact_component_revision_bindings",
+        "exact_topology_revision_binding",
         "version_set_digest",
     ),
     "BOOTSTRAP_ATTESTATION": (
         "bootstrap_attestation_id",
         "application_id",
         "environment_id",
+        "exact_initial_system_version_set_binding",
         "attester_principal_id",
         "attester_trust_role",
         "attestation_scope",
@@ -444,6 +385,18 @@ _V5_EVENT_BUSINESS_FIELDS: dict[str, tuple[str, ...]] = {
         "generation",
         "exposure",
     ),
+}
+
+_V5_EVENT_SELF_BINDING_FIELD: dict[str, str] = {
+    "AI_APPLICATION": "exact_application_binding",
+    "ENVIRONMENT": "exact_environment_binding",
+    "SYSTEM_COMPONENT": "exact_system_component_binding",
+    "DEPENDENCY_EDGE": "exact_dependency_edge_binding",
+    "COMPONENT_REVISION": "exact_component_revision_binding",
+    "TOPOLOGY_REVISION": "exact_topology_revision_binding",
+    "SYSTEM_VERSION_SET": "exact_system_version_set_binding",
+    "BOOTSTRAP_ATTESTATION": "exact_bootstrap_attestation_binding",
+    "SYSTEM_ASSIGNMENT": "exact_assignment_binding",
 }
 
 # V5-1C per-event business fields for case-controller records.  The propose and
@@ -468,7 +421,10 @@ _V5_EVENT_BUSINESS_FIELDS_BY_EVENT: dict[
     ("ACCEPTANCE_CRITERIA_REVISION", "acceptance_criteria.proposed"): (
         ("exact_acceptance_criteria_revision_binding", None),
         ("exact_case_binding", "exact_case_binding"),
-        ("exact_resolution_contract_binding", "exact_resolution_contract_binding"),
+        (
+            "resolution_contract_binding_status",
+            "resolution_contract_binding_status",
+        ),
         ("confirmation_status", "confirmation_status"),
         ("proposer_principal", "proposer_principal"),
         ("proposed_at", "proposed_at"),
@@ -485,7 +441,10 @@ _V5_EVENT_BUSINESS_FIELDS_BY_EVENT: dict[
             "exact_previous_proposed_revision_binding",
         ),
         ("exact_case_binding", "exact_case_binding"),
-        ("exact_resolution_contract_binding", "exact_resolution_contract_binding"),
+        (
+            "resolution_contract_binding_status",
+            "resolution_contract_binding_status",
+        ),
         ("confirmation_status", "confirmation_status"),
         ("confirmer_principal", "confirmer_principal"),
         ("confirmed_at", "confirmed_at"),
@@ -498,6 +457,15 @@ _V5_EVENT_BUSINESS_FIELDS_BY_EVENT: dict[
 }
 
 _V5_EXACT_BINDING_ID_FIELD: dict[str, str] = {
+    "AI_APPLICATION": "application_id",
+    "ENVIRONMENT": "environment_id",
+    "SYSTEM_COMPONENT": "component_id",
+    "DEPENDENCY_EDGE": "edge_id",
+    "COMPONENT_REVISION": "component_revision_id",
+    "TOPOLOGY_REVISION": "topology_revision_id",
+    "SYSTEM_VERSION_SET": "system_version_set_id",
+    "BOOTSTRAP_ATTESTATION": "bootstrap_attestation_id",
+    "SYSTEM_ASSIGNMENT": "assignment_id",
     "APPLICATION_CASE_BINDING": "application_case_binding_id",
     "ACCEPTANCE_CRITERIA_REVISION": "acceptance_criteria_revision_id",
 }
@@ -512,13 +480,16 @@ def _derived_exact_subject_binding(
         not isinstance(envelope_payload, dict)
         or id_field is None
         or envelope.get(id_field) is None
+        or not isinstance(envelope_payload.get("revision"), int)
+        or isinstance(envelope_payload.get("revision"), bool)
+        or envelope_payload["revision"] < 1
         or not isinstance(envelope_payload.get("record_digest"), str)
     ):
         raise V5AuthorityError("v5.authority.subject_binding_invalid")
     return {
         "kind": subject_kind,
         "id": envelope[id_field],
-        "revision": None,
+        "revision": envelope_payload["revision"],
         "digest": envelope_payload["record_digest"],
     }
 
@@ -702,263 +673,6 @@ class V5AuthorityService:
         ):
             raise V5AuthorityError("v5.authority.registration_not_authorized_at_receipt")
 
-    def _validate_lifecycle_authority_mode(
-        self, *, kind: str, event_id: str, lifecycle_history: bool
-    ) -> None:
-        event = self.session.get(Event, event_id)
-        persisted_major2_lifecycle = (
-            kind in _V5_LIFECYCLE_BINDINGS
-            and event is not None
-            and event.event_contract_major == 2
-        )
-        if lifecycle_history != persisted_major2_lifecycle:
-            raise V5AuthorityError("v5.authority.lifecycle_mode_mismatch")
-
-    @staticmethod
-    def _exact_lifecycle_binding(
-        *, kind: str, subject_id: str, revision: int, digest: str
-    ) -> dict[str, Any]:
-        return {
-            "kind": kind,
-            "id": subject_id,
-            "revision": revision,
-            "digest": digest,
-        }
-
-    def _validate_lifecycle_history_row(
-        self,
-        *,
-        kind: str,
-        row: Any,
-        seen: set[int] | None = None,
-    ) -> None:
-        spec = _V5_LIFECYCLE_BINDINGS[kind]
-        history_model, _projection_model, id_attr, previous_attr, _fields = spec
-        subject_id = getattr(row, id_attr)
-        revision = row.revision
-        visited = set() if seen is None else seen
-        if revision in visited:
-            raise V5AuthorityError("v5.authority.lifecycle_history_cycle")
-        visited.add(revision)
-
-        envelope = row.envelope_payload
-        previous_wire_field = (
-            "exact_previous_application_binding"
-            if kind == "AI_APPLICATION"
-            else "exact_previous_system_component_binding"
-        )
-        initial_previous_wire_field = f"{previous_wire_field}_or_null"
-        expected_previous_wire_field = (
-            initial_previous_wire_field if revision == 1 else previous_wire_field
-        )
-        projection_fields = set(spec[4])
-        expected_fields = projection_fields | {
-            expected_previous_wire_field,
-            "record_envelope",
-        }
-        allowed_shapes = {frozenset(expected_fields)}
-        if kind == "SYSTEM_COMPONENT":
-            allowed_shapes.add(frozenset(expected_fields - {"dataset_role"}))
-        if not isinstance(envelope, dict) or frozenset(envelope) not in allowed_shapes:
-            raise V5AuthorityError("v5.authority.lifecycle_history_fields_invalid")
-        try:
-            verified_digest = assert_v5_record_digest(envelope)
-        except (V4IntegrityError, AttributeError, TypeError) as exc:
-            raise V5AuthorityError(
-                "v5.authority.lifecycle_history_integrity_invalid"
-            ) from exc
-        record_envelope = envelope.get("record_envelope")
-        if (
-            not isinstance(record_envelope, dict)
-            or set(record_envelope) != _V5_RECORD_ENVELOPE_FIELDS
-            or record_envelope.get("schema_version") != "2.0"
-            or record_envelope.get("immutable") is not True
-            or record_envelope.get("hash_rule") != V5_HASH_RULE
-        ):
-            raise V5AuthorityError("v5.authority.lifecycle_history_integrity_invalid")
-
-        previous = getattr(row, previous_attr)
-        envelope_previous = envelope.get(
-            expected_previous_wire_field
-        )
-        expected_scalars = {
-            id_attr: subject_id,
-            "workspace_id": row.workspace_id,
-            "lifecycle_state": row.lifecycle_state,
-        }
-        if kind == "SYSTEM_COMPONENT":
-            expected_scalars["application_id"] = row.application_id
-        if (
-            any(envelope.get(field) != value for field, value in expected_scalars.items())
-            or record_envelope.get("workspace_id") != row.workspace_id
-            or record_envelope.get("revision") != revision
-            or record_envelope.get("authority_receipt_id") != row.authority_receipt_id
-            or record_envelope.get("recorded_by_principal")
-            != row.recorded_by_principal
-            or record_envelope.get("recorded_at") != _wire_time(row.recorded_at)
-            or verified_digest != row.record_digest
-            or expected_previous_wire_field not in envelope
-            or envelope_previous != previous
-        ):
-            raise V5AuthorityError("v5.authority.lifecycle_history_binding_mismatch")
-
-        if revision == 1:
-            if row.lifecycle_state != "REGISTERED" or previous is not None:
-                raise V5AuthorityError("v5.authority.lifecycle_history_semantics_invalid")
-            return
-        if not isinstance(previous, dict) or set(previous) != {
-            "kind",
-            "id",
-            "revision",
-            "digest",
-        }:
-            raise V5AuthorityError("v5.authority.lifecycle_previous_binding_invalid")
-        if (
-            previous.get("kind") != kind
-            or previous.get("id") != subject_id
-            or previous.get("revision") != revision - 1
-            or not isinstance(previous.get("digest"), str)
-        ):
-            raise V5AuthorityError("v5.authority.lifecycle_previous_binding_invalid")
-        previous_row = self.session.get(
-            history_model, (row.workspace_id, subject_id, revision - 1)
-        )
-        if previous_row is None or previous_row.record_digest != previous["digest"]:
-            raise V5AuthorityError("v5.authority.lifecycle_previous_binding_missing")
-        if (
-            kind == "SYSTEM_COMPONENT"
-            and previous_row.application_id != row.application_id
-        ):
-            raise V5AuthorityError("v5.authority.lifecycle_previous_binding_invalid")
-        self._validate_lifecycle_history_row(
-            kind=kind, row=previous_row, seen=visited
-        )
-
-    def _resolve_exact_lifecycle_revision(
-        self,
-        *,
-        kind: str,
-        workspace_id: str,
-        subject_id: str,
-        subject_revision: int,
-        subject_digest: str,
-        authority_receipt_id: str | None = None,
-    ) -> Any:
-        spec = _V5_LIFECYCLE_BINDINGS.get(kind)
-        if spec is None or subject_revision < 1:
-            raise V5AuthorityError("v5.authority.lifecycle_binding_invalid")
-        history_model, projection_model, id_attr, _previous_attr, projection_fields = spec
-        row = self.session.get(
-            history_model, (workspace_id, subject_id, subject_revision)
-        )
-        if row is None:
-            raise V5AuthorityError("v5.authority.lifecycle_history_missing")
-        self._validate_lifecycle_history_row(kind=kind, row=row)
-        if (
-            getattr(row, id_attr) != subject_id
-            or row.workspace_id != workspace_id
-            or row.record_digest != subject_digest
-            or (
-                authority_receipt_id is not None
-                and row.authority_receipt_id != authority_receipt_id
-            )
-        ):
-            raise V5AuthorityError("v5.authority.lifecycle_binding_mismatch")
-
-        head_history = self.session.scalar(
-            select(history_model)
-            .where(
-                history_model.workspace_id == workspace_id,
-                getattr(history_model, id_attr) == subject_id,
-            )
-            .order_by(history_model.revision.desc())
-            .limit(1)
-        )
-        projection = self.session.get(projection_model, subject_id)
-        if head_history is None or projection is None:
-            raise V5AuthorityError("v5.authority.lifecycle_current_head_missing")
-        self._validate_lifecycle_history_row(kind=kind, row=head_history)
-        head_envelope = head_history.envelope_payload
-        if (
-            projection.workspace_id != workspace_id
-            or getattr(projection, id_attr) != subject_id
-            or projection.revision != head_history.revision
-            or projection.lifecycle_state != head_history.lifecycle_state
-            or projection.record_digest != head_history.record_digest
-            or projection.authority_receipt_id != head_history.authority_receipt_id
-            or projection.recorded_by_principal
-            != head_history.recorded_by_principal
-            or projection.envelope_payload != head_envelope
-            or any(
-                getattr(projection, field) != head_envelope.get(field)
-                for field in projection_fields
-            )
-        ):
-            raise V5AuthorityError(
-                "v5.authority.lifecycle_current_head_binding_mismatch"
-            )
-        return row
-
-    def validate_exact_lifecycle_binding(
-        self,
-        *,
-        workspace_id: str,
-        binding: dict[str, Any],
-        require_current: bool = False,
-        require_active: bool = False,
-        application_id: str | None = None,
-    ) -> Any:
-        """Resolve a closed exact binding from immutable lifecycle history.
-
-        ``require_current`` and ``require_active`` are used by dependent
-        records such as ComponentRevision.  Merely pointing at an old ACTIVE
-        revision is deliberately insufficient.
-        """
-
-        if not isinstance(binding, dict) or set(binding) != {
-            "kind",
-            "id",
-            "revision",
-            "digest",
-        }:
-            raise V5AuthorityError("v5.authority.lifecycle_binding_invalid")
-        kind = binding.get("kind")
-        subject_id = binding.get("id")
-        revision = binding.get("revision")
-        digest = binding.get("digest")
-        if (
-            kind not in _V5_LIFECYCLE_BINDINGS
-            or not isinstance(subject_id, str)
-            or not isinstance(revision, int)
-            or isinstance(revision, bool)
-            or revision < 1
-            or not isinstance(digest, str)
-        ):
-            raise V5AuthorityError("v5.authority.lifecycle_binding_invalid")
-        row = self._resolve_exact_lifecycle_revision(
-            kind=kind,
-            workspace_id=workspace_id,
-            subject_id=subject_id,
-            subject_revision=revision,
-            subject_digest=digest,
-        )
-        if application_id is not None and (
-            kind != "SYSTEM_COMPONENT" or row.application_id != application_id
-        ):
-            raise V5AuthorityError("v5.authority.lifecycle_application_mismatch")
-        if require_current:
-            spec = _V5_LIFECYCLE_BINDINGS[kind]
-            projection = self.session.get(spec[1], subject_id)
-            if (
-                projection is None
-                or projection.revision != revision
-                or projection.record_digest != digest
-            ):
-                raise V5AuthorityError("v5.authority.lifecycle_binding_not_current")
-        if require_active and row.lifecycle_state != "ACTIVE":
-            raise V5AuthorityError("v5.authority.lifecycle_binding_not_active")
-        return row
-
     def _validate_v5_subject(
         self,
         *,
@@ -968,19 +682,7 @@ class V5AuthorityService:
         subject_revision: int | None,
         subject_digest: str,
         authority_receipt_id: str,
-        lifecycle_history: bool = False,
     ) -> Any:
-        if lifecycle_history:
-            if kind not in _V5_LIFECYCLE_BINDINGS or subject_revision is None:
-                raise V5AuthorityError("v5.authority.lifecycle_binding_invalid")
-            return self._resolve_exact_lifecycle_revision(
-                kind=kind,
-                workspace_id=workspace_id,
-                subject_id=subject_id,
-                subject_revision=subject_revision,
-                subject_digest=subject_digest,
-                authority_receipt_id=authority_receipt_id,
-            )
         binding = _V5_SUBJECT_BINDINGS.get(kind)
         if binding is None:
             raise V5AuthorityError("v5.authority.subject_kind_not_implemented")
@@ -993,29 +695,132 @@ class V5AuthorityService:
             verified_digest = assert_v5_record_digest(envelope)
         except V4IntegrityError as exc:
             raise V5AuthorityError("v5.authority.subject_integrity_invalid") from exc
-        if revision_attr is not None:
-            actual_revision = getattr(row, revision_attr)
-            revision_matches = actual_revision == subject_revision
-        else:
-            record_envelope = (
-                envelope.get("record_envelope") if isinstance(envelope, dict) else None
-            )
-            envelope_revision = (
-                record_envelope.get("revision")
-                if isinstance(record_envelope, dict)
-                else None
-            )
-            revision_matches = subject_revision in {None, envelope_revision}
+        record_envelope = envelope.get("record_envelope")
+        if not isinstance(record_envelope, dict):
+            raise V5AuthorityError("v5.authority.subject_binding_invalid")
+        envelope_revision = record_envelope.get("revision")
+        if (
+            not isinstance(envelope_revision, int)
+            or isinstance(envelope_revision, bool)
+            or envelope_revision < 1
+        ):
+            raise V5AuthorityError("v5.authority.subject_binding_invalid")
+        actual_revision = (
+            getattr(row, revision_attr)
+            if revision_attr is not None
+            else envelope_revision
+        )
         if (
             getattr(row, "workspace_id") != workspace_id
             or getattr(row, id_attr) != subject_id
             or getattr(row, digest_attr) != subject_digest
             or verified_digest != subject_digest
             or getattr(row, receipt_attr) != authority_receipt_id
-            or not revision_matches
+            or actual_revision != subject_revision
+            or envelope_revision != subject_revision
         ):
             raise V5AuthorityError("v5.authority.subject_binding_mismatch")
         return row
+
+    def _validate_dependent_exact_binding(
+        self,
+        binding: Any,
+        *,
+        expected_kind: str,
+        workspace_id: str,
+    ) -> None:
+        if (
+            not isinstance(binding, dict)
+            or set(binding) != {"kind", "id", "revision", "digest"}
+            or binding.get("kind") != expected_kind
+            or not isinstance(binding.get("id"), str)
+            or not isinstance(binding.get("revision"), int)
+            or isinstance(binding.get("revision"), bool)
+            or binding["revision"] < 1
+            or not isinstance(binding.get("digest"), str)
+        ):
+            raise V5AuthorityError("v5.authority.dependent_binding_invalid")
+        subject_spec = _V5_SUBJECT_BINDINGS.get(expected_kind)
+        if subject_spec is None:
+            raise V5AuthorityError("v5.authority.subject_kind_not_implemented")
+        model, _id_attr, _digest_attr, receipt_attr, _revision_attr = subject_spec
+        row = self.session.get(model, binding["id"])
+        if row is None:
+            raise V5AuthorityError("v5.authority.dependent_binding_missing")
+        receipt_id = getattr(row, receipt_attr)
+        self._validate_v5_subject(
+            kind=expected_kind,
+            workspace_id=workspace_id,
+            subject_id=binding["id"],
+            subject_revision=binding["revision"],
+            subject_digest=binding["digest"],
+            authority_receipt_id=receipt_id,
+        )
+        self.validate_receipt_binding(
+            authority_receipt_id=receipt_id,
+            workspace_id=workspace_id,
+            subject_kind=expected_kind,
+            subject_id=binding["id"],
+            subject_revision=binding["revision"],
+            subject_digest=binding["digest"],
+        )
+
+    def _validate_v5_event_dependencies(
+        self,
+        *,
+        subject_kind: str,
+        workspace_id: str,
+        expected_business: dict[str, Any],
+    ) -> None:
+        dependencies: list[tuple[Any, str]] = []
+        if subject_kind == "COMPONENT_REVISION":
+            dependencies.append(
+                (expected_business.get("exact_system_component_binding"), "SYSTEM_COMPONENT")
+            )
+        elif subject_kind == "TOPOLOGY_REVISION":
+            dependencies.extend(
+                (binding, "DEPENDENCY_EDGE")
+                for binding in expected_business.get("exact_edge_revision_bindings", [])
+            )
+        elif subject_kind == "SYSTEM_VERSION_SET":
+            dependencies.extend(
+                (binding, "COMPONENT_REVISION")
+                for binding in expected_business.get(
+                    "exact_component_revision_bindings", []
+                )
+            )
+            dependencies.append(
+                (
+                    expected_business.get("exact_topology_revision_binding"),
+                    "TOPOLOGY_REVISION",
+                )
+            )
+        elif subject_kind == "BOOTSTRAP_ATTESTATION":
+            dependencies.append(
+                (
+                    expected_business.get("exact_initial_system_version_set_binding"),
+                    "SYSTEM_VERSION_SET",
+                )
+            )
+        elif subject_kind == "SYSTEM_ASSIGNMENT":
+            dependencies.extend(
+                [
+                    (
+                        expected_business.get("exact_bootstrap_attestation_binding"),
+                        "BOOTSTRAP_ATTESTATION",
+                    ),
+                    (
+                        expected_business.get("exact_initial_system_version_set_binding"),
+                        "SYSTEM_VERSION_SET",
+                    ),
+                ]
+            )
+        for binding, expected_kind in dependencies:
+            self._validate_dependent_exact_binding(
+                binding,
+                expected_kind=expected_kind,
+                workspace_id=workspace_id,
+            )
 
     def _validate_v5_event_business_payload(
         self, event: Event, *, subject_kind: str, row: Any
@@ -1038,6 +843,42 @@ class V5AuthorityService:
         if set(expected_business) != set(fields):
             raise V5AuthorityError("v5.authority.event_business_fields_mismatch")
         payload = event.payload or {}
+        self_binding_field = _V5_EVENT_SELF_BINDING_FIELD.get(subject_kind)
+        if self_binding_field is None:
+            raise V5AuthorityError("v5.authority.event_self_binding_field_missing")
+        expected_business[self_binding_field] = _derived_exact_subject_binding(
+            subject_kind, envelope
+        )
+        if subject_kind == "COMPONENT_REVISION":
+            exact_component = payload.get("exact_system_component_binding")
+            if (
+                not isinstance(exact_component, dict)
+                or exact_component.get("id") != envelope.get("component_id")
+            ):
+                raise V5AuthorityError("v5.authority.event_dependency_binding_mismatch")
+            expected_business["exact_system_component_binding"] = exact_component
+        elif subject_kind == "SYSTEM_ASSIGNMENT":
+            authority = envelope.get("exact_assignment_authority_binding")
+            slots = envelope.get("exact_slot_version_set_bindings")
+            if (
+                not isinstance(authority, dict)
+                or authority.get("binding_kind") != "BOOTSTRAP_ATTESTATION"
+                or not isinstance(slots, list)
+                or len(slots) != 1
+            ):
+                raise V5AuthorityError("v5.authority.event_dependency_binding_mismatch")
+            expected_business["exact_bootstrap_attestation_binding"] = {
+                "kind": authority.get("binding_kind"),
+                "id": authority.get("id"),
+                "revision": authority.get("revision"),
+                "digest": authority.get("digest"),
+            }
+            expected_business["exact_initial_system_version_set_binding"] = slots[0]
+        self._validate_v5_event_dependencies(
+            subject_kind=subject_kind,
+            workspace_id=row.workspace_id,
+            expected_business=expected_business,
+        )
         expected: dict[str, Any] = {
             **expected_business,
             "subject_kind": subject_kind,
@@ -1048,149 +889,12 @@ class V5AuthorityService:
         }
         if payload != expected:
             raise V5AuthorityError("v5.authority.event_binding_mismatch")
+        if getattr(event, "exact_subject_binding", None) != _derived_exact_subject_binding(
+            subject_kind, envelope
+        ):
+            raise V5AuthorityError("v5.authority.event_exact_subject_binding_mismatch")
         if event.correlation_id != envelope.get("application_id"):
             raise V5AuthorityError("v5.authority.event_correlation_mismatch")
-
-    def _validate_v5_major2_lifecycle_event_business_payload(
-        self, event: Event, *, subject_kind: str, row: Any
-    ) -> None:
-        """Bind frozen major-2 business payload fields back to history."""
-
-        if subject_kind not in _V5_LIFECYCLE_BINDINGS:
-            envelope = row.envelope_payload
-            exact = {
-                "kind": subject_kind,
-                "id": event.exact_subject_binding["id"],
-                "revision": event.exact_subject_binding["revision"],
-                "digest": row.record_digest,
-            }
-            expected_by_kind: dict[str, dict[str, Any]] = {
-                "ENVIRONMENT": {
-                    "exact_environment_binding": exact,
-                    "application_id": envelope.get("application_id"),
-                    "logical_name": envelope.get("logical_name"),
-                    "lifecycle_state": envelope.get("lifecycle_state"),
-                },
-                "DEPENDENCY_EDGE": {
-                    "exact_dependency_edge_binding": exact,
-                    "application_id": envelope.get("application_id"),
-                    "from_component_id": envelope.get("from_component_id"),
-                    "to_component_id": envelope.get("to_component_id"),
-                    "relation": envelope.get("relation"),
-                    "edge_digest": envelope.get("edge_digest"),
-                },
-                "COMPONENT_REVISION": {
-                    "exact_component_revision_binding": exact,
-                    "exact_system_component_binding": envelope.get(
-                        "exact_system_component_binding"
-                    ),
-                    "component_kind": envelope.get("component_kind"),
-                    "identity_assurance": envelope.get("identity_assurance"),
-                    "configuration_digest": envelope.get("configuration_digest"),
-                },
-                "TOPOLOGY_REVISION": {
-                    "exact_topology_revision_binding": exact,
-                    "application_id": envelope.get("application_id"),
-                    "exact_edge_revision_bindings": envelope.get(
-                        "exact_edge_revision_bindings"
-                    ),
-                    "topology_digest": envelope.get("topology_digest"),
-                },
-                "SYSTEM_VERSION_SET": {
-                    "exact_system_version_set_binding": exact,
-                    "application_id": envelope.get("application_id"),
-                    "declared_environment_id": envelope.get(
-                        "declared_environment_id"
-                    ),
-                    "exact_component_revision_bindings": envelope.get(
-                        "exact_component_revision_bindings"
-                    ),
-                    "exact_topology_revision_binding": envelope.get(
-                        "exact_topology_revision_binding"
-                    ),
-                    "version_set_digest": envelope.get("version_set_digest"),
-                },
-                "BOOTSTRAP_ATTESTATION": {
-                    "exact_bootstrap_attestation_binding": exact,
-                    "application_id": envelope.get("application_id"),
-                    "environment_id": envelope.get("environment_id"),
-                    "exact_initial_system_version_set_binding": envelope.get(
-                        "exact_initial_system_version_set_binding"
-                    ),
-                    "attester_principal_id": envelope.get("attester_principal_id"),
-                    "attester_trust_role": envelope.get("attester_trust_role"),
-                    "attestation_scope": envelope.get("attestation_scope"),
-                },
-            }
-            if subject_kind == "SYSTEM_ASSIGNMENT":
-                authority = envelope.get("exact_assignment_authority_binding") or {}
-                slots = envelope.get("exact_slot_version_set_bindings") or []
-                initial = (
-                    {key: value for key, value in slots[0].items() if key != "slot"}
-                    if len(slots) == 1 and isinstance(slots[0], dict)
-                    else None
-                )
-                expected_by_kind[subject_kind] = {
-                    "exact_assignment_binding": exact,
-                    "exact_bootstrap_attestation_binding": {
-                        "kind": "BOOTSTRAP_ATTESTATION",
-                        "id": authority.get("id"),
-                        "revision": authority.get("revision"),
-                        "digest": authority.get("digest"),
-                    },
-                    "exact_initial_system_version_set_binding": initial,
-                    "application_id": envelope.get("application_id"),
-                    "environment_id": envelope.get("environment_id"),
-                    "generation": envelope.get("generation"),
-                    "exposure": envelope.get("exposure"),
-                }
-            expected = expected_by_kind.get(subject_kind)
-            if expected is None or event.payload != expected:
-                raise V5AuthorityError("v5.authority.event_binding_mismatch")
-            return
-        envelope = row.envelope_payload
-        id_attr = _V5_LIFECYCLE_BINDINGS[subject_kind][2]
-        exact = self._exact_lifecycle_binding(
-            kind=subject_kind,
-            subject_id=getattr(row, id_attr),
-            revision=row.revision,
-            digest=row.record_digest,
-        )
-        if event.event_type == "application.registered":
-            expected = {
-                "exact_previous_application_binding_or_null": None,
-                "exact_application_binding": exact,
-                "project_id": envelope.get("project_id"),
-                "slug": envelope.get("slug"),
-                "lifecycle_state": "REGISTERED",
-            }
-        elif event.event_type == "system_component.registered":
-            expected = {
-                "exact_previous_system_component_binding_or_null": None,
-                "exact_system_component_binding": exact,
-                "application_id": envelope.get("application_id"),
-                "component_kind": envelope.get("component_kind"),
-                "logical_name": envelope.get("logical_name"),
-                "lifecycle_state": "REGISTERED",
-            }
-        elif event.event_type == "application.activated":
-            expected = {
-                "exact_previous_application_binding": row.exact_previous_application_binding,
-                "exact_application_binding": exact,
-                "lifecycle_state": "ACTIVE",
-            }
-        elif event.event_type == "system_component.activated":
-            expected = {
-                "exact_previous_system_component_binding": (
-                    row.exact_previous_system_component_binding
-                ),
-                "exact_system_component_binding": exact,
-                "lifecycle_state": "ACTIVE",
-            }
-        else:
-            raise V5AuthorityError("v5.authority.major2_lifecycle_event_invalid")
-        if any(event.payload.get(field) != value for field, value in expected.items()):
-            raise V5AuthorityError("v5.authority.event_binding_mismatch")
 
     def _validate_v5_event_business_payload_by_event(
         self,
@@ -1228,6 +932,10 @@ class V5AuthorityService:
         }
         if payload != expected:
             raise V5AuthorityError("v5.authority.event_binding_mismatch")
+        if getattr(event, "exact_subject_binding", None) != _derived_exact_subject_binding(
+            subject_kind, envelope
+        ):
+            raise V5AuthorityError("v5.authority.event_exact_subject_binding_mismatch")
         # Case records correlate on the exact case binding's case id.
         exact_case_binding = envelope.get("exact_case_binding")
         correlation_id = (
@@ -1272,34 +980,18 @@ class V5AuthorityService:
             ).all()
         )
         try:
-            if event is not None and event.event_contract_major == 2:
-                if subject_revision is None:
-                    raise V4EventIntegrityError("v5.event_subject_revision_invalid")
-                exact_event = validate_v5_event_row(
-                    event,
-                    workspace_id=workspace_id,
-                    event_type=resolved.event_type,
-                    transaction_id=transaction_id,
-                    actor_principal=resolved.controller_principal,
-                    subject_kind=resolved.subject_kind,
-                    subject_id=subject_id,
-                    subject_revision=subject_revision,
-                    subject_digest=subject_digest,
-                    authority_receipt_id=authority_receipt_id,
-                )
-            else:
-                exact_event = validate_v4_event_row(
-                    event,
-                    workspace_id=workspace_id,
-                    event_type=resolved.event_type,
-                    transaction_id=transaction_id,
-                    actor_principal=resolved.controller_principal,
-                    subject_kind=resolved.subject_kind,
-                    subject_id=subject_id,
-                    subject_revision=subject_revision,
-                    subject_digest=subject_digest,
-                    authority_receipt_id=authority_receipt_id,
-                )
+            exact_event = validate_v4_event_row(
+                event,
+                workspace_id=workspace_id,
+                event_type=resolved.event_type,
+                transaction_id=transaction_id,
+                actor_principal=resolved.controller_principal,
+                subject_kind=resolved.subject_kind,
+                subject_id=subject_id,
+                subject_revision=subject_revision,
+                subject_digest=subject_digest,
+                authority_receipt_id=authority_receipt_id,
+            )
             exact_audit = validate_v4_audit_row(
                 audit,
                 workspace_id=workspace_id,
@@ -1314,11 +1006,7 @@ class V5AuthorityService:
             )
             if len(outboxes) != 1:
                 raise V4EventIntegrityError("v4.outbox_cardinality_mismatch")
-            exact_outbox = (
-                validate_v5_outbox_row(outboxes[0], event=exact_event)
-                if exact_event.event_contract_major == 2
-                else validate_v4_outbox_row(outboxes[0], event=exact_event)
-            )
+            exact_outbox = validate_v4_outbox_row(outboxes[0], event=exact_event)
             chain_time = _as_utc(recorded_at)
             if any(
                 _as_utc(value) != chain_time
@@ -1330,14 +1018,9 @@ class V5AuthorityService:
                 )
             ):
                 raise V4EventIntegrityError("v4.controller_chain_time_mismatch")
-            if exact_event.event_contract_major != 2:
-                self._validate_v5_event_business_payload(
-                    exact_event, subject_kind=resolved.subject_kind, row=subject_row
-                )
-            else:
-                self._validate_v5_major2_lifecycle_event_business_payload(
-                    exact_event, subject_kind=resolved.subject_kind, row=subject_row
-                )
+            self._validate_v5_event_business_payload(
+                exact_event, subject_kind=resolved.subject_kind, row=subject_row
+            )
         except (V4AuditIntegrityError, V4EventIntegrityError) as exc:
             raise V5AuthorityError(
                 "v5.authority.controller_chain_binding_mismatch"
@@ -1358,13 +1041,7 @@ class V5AuthorityService:
         transaction_id: str,
         audit_ref: str,
         recorded_at: datetime,
-        lifecycle_history: bool = False,
     ) -> AuthorityReceipt:
-        self._validate_lifecycle_authority_mode(
-            kind=resolved.subject_kind,
-            event_id=event_id,
-            lifecycle_history=lifecycle_history,
-        )
         self._validate_registration_at(
             resolved.registration, recorded_at=recorded_at
         )
@@ -1375,7 +1052,6 @@ class V5AuthorityService:
             subject_revision=subject_revision,
             subject_digest=subject_digest,
             authority_receipt_id=authority_receipt_id,
-            lifecycle_history=lifecycle_history,
         )
         self._validate_v5_controller_chain(
             resolved=resolved,
@@ -1392,15 +1068,12 @@ class V5AuthorityService:
         )
 
         registration = resolved.registration
-        persisted_event = self.session.get(Event, event_id)
-        closed_major2 = bool(
-            persisted_event is not None and persisted_event.event_contract_major == 2
-        )
         payload: dict[str, Any] = {
             "schema_version": "2.0",
             "authority_receipt_id": authority_receipt_id,
             "workspace_id": workspace_id,
             "controller_registration": {
+                "contract_major": 1,
                 "kind": "CONTROLLER_REGISTRATION",
                 "id": registration.controller_registration_id,
                 "revision": registration.revision,
@@ -1425,19 +1098,6 @@ class V5AuthorityService:
             ),
             "authority_receipt_digest": "",
         }
-        if not closed_major2:
-            # Compatibility shape for existing V5-1A/1B producers.  New
-            # lifecycle major-2 receipts use the frozen closed shape above.
-            payload.pop("source_event_id")
-            payload.update(
-                {
-                    "resource": resolved.resource,
-                    "event_type": resolved.event_type,
-                    "event_id": event_id,
-                }
-            )
-        else:
-            payload["controller_registration"]["contract_major"] = 1
         digest = record_digest(
             payload, self_digest_field="authority_receipt_digest"
         )
@@ -1483,7 +1143,6 @@ class V5AuthorityService:
         subject_id: str,
         subject_revision: int | None,
         subject_digest: str,
-        lifecycle_history: bool = False,
     ) -> AuthorityReceipt:
         """Re-verify a durable v5 receipt before replaying an existing subject."""
 
@@ -1503,11 +1162,6 @@ class V5AuthorityService:
             or row.subject_digest != subject_digest
         ):
             raise V5AuthorityError("v5.authority.receipt_subject_binding_mismatch")
-        self._validate_lifecycle_authority_mode(
-            kind=row.subject_kind,
-            event_id=row.event_id,
-            lifecycle_history=lifecycle_history,
-        )
         registration = self.session.get(
             ControllerRegistration,
             (row.controller_registration_id, row.controller_registration_revision),
@@ -1554,6 +1208,7 @@ class V5AuthorityService:
             "authority_receipt_id": row.authority_receipt_id,
             "workspace_id": row.workspace_id,
             "controller_registration": {
+                "contract_major": 1,
                 "kind": "CONTROLLER_REGISTRATION",
                 "id": row.controller_registration_id,
                 "revision": row.controller_registration_revision,
@@ -1578,21 +1233,6 @@ class V5AuthorityService:
             ),
             "authority_receipt_digest": row.authority_receipt_digest,
         }
-        persisted_event = self.session.get(Event, row.event_id)
-        closed_major2 = bool(
-            persisted_event is not None and persisted_event.event_contract_major == 2
-        )
-        if not closed_major2:
-            expected.pop("source_event_id")
-            expected.update(
-                {
-                    "resource": row.resource,
-                    "event_type": row.event_type,
-                    "event_id": row.event_id,
-                }
-            )
-        else:
-            expected["controller_registration"]["contract_major"] = 1
         if payload != expected:
             raise V5AuthorityError("v5.authority.receipt_projection_binding_mismatch")
 
@@ -1603,7 +1243,6 @@ class V5AuthorityService:
             subject_revision=row.subject_revision,
             subject_digest=row.subject_digest,
             authority_receipt_id=row.authority_receipt_id,
-            lifecycle_history=lifecycle_history,
         )
         self._validate_v5_controller_chain(
             resolved=resolved,

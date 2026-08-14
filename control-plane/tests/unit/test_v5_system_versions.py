@@ -8,7 +8,9 @@ bootstrap assignment CAS constraints and adversarial cases.
 """
 from __future__ import annotations
 
+import copy
 from datetime import timedelta
+from types import SimpleNamespace
 
 import sqlalchemy as sa
 import pytest
@@ -22,26 +24,21 @@ from app.models.v4_tables import (
 )
 from app.models.v5_tables import (
     AIApplication,
-    AIApplicationLifecycleRevision,
     BootstrapAttestation,
     ComponentRevision,
     DependencyEdge,
     Environment,
     SystemAssignment,
     SystemComponent,
-    SystemComponentLifecycleRevision,
     SystemVersionSet,
     TopologyRevision,
 )
 from app.public_api.v5_models import SystemManifestImportRequest
-from app.services.application_catalog import ApplicationCatalogService
 from app.services.system_versions import SystemVersionsError, SystemVersionsService
 from app.services.v4_audit import V4AuditService
 from app.utils.v5_integrity import v5_record_digest
 
 from test_v5_application_catalog import (
-    _app_request,
-    _claims,
     _principal_context,
     _seed_principal,
     _seed_v5_controller,
@@ -56,9 +53,6 @@ from app.services.v5_authority import (
 from app.models.v4_tables import ControllerRegistration
 from app.utils.ids import (
     new_authority_receipt_id,
-    new_component_revision_id,
-    new_topology_revision_id,
-    new_system_version_set_id,
 )
 from app.utils.v4_integrity import canonical_digest
 
@@ -141,8 +135,9 @@ def _seed_env(session) -> None:
         session,
         principal_id=IMPORT_PRINCIPAL,
         scopes=["system_manifests:import", "system_versions:read"],
-        trust_roles=["integrator"],
     )
+    session.flush()
+    session.get(PublicPrincipal, IMPORT_PRINCIPAL).trust_roles = ["integrator"]
     _seed_v5_controller(session)
     _seed_version_controller(session)
     session.commit()
@@ -150,6 +145,15 @@ def _seed_env(session) -> None:
 
 def _service(session, **kwargs) -> SystemVersionsService:
     return SystemVersionsService(session, clock=lambda: NOW, **kwargs)
+
+
+class _NoopReadAuthority:
+    def validate_receipt_binding(self, **_kwargs) -> None:
+        return None
+
+
+def _diff_service(session) -> SystemVersionsService:
+    return _service(session, authority_service=_NoopReadAuthority())
 
 
 def _import_principal(**overrides):
@@ -241,6 +245,28 @@ def _manifest(**overrides):
     return SystemManifestImportRequest.model_validate({**base, **overrides})
 
 
+def _manifest_with_dataset(dataset_role: str) -> SystemManifestImportRequest:
+    payload = _manifest().model_dump(mode="json")
+    payload["components"].append(
+        {
+            "logical_name": "runtime-corpus",
+            "component_kind": "DATASET",
+            "owner_principal_ids": [OWNER],
+            "criticality": "P1",
+            "data_classification": "CONFIDENTIAL",
+            "permission_classification": "READ_ONLY",
+            "effect_classification": "NONE",
+            "dataset_role": dataset_role,
+            "revision": {
+                "identity_locator": {"type": "dataset", "name": "runtime-corpus"},
+                "identity_assurance": "UNKNOWN",
+                "unknown_reason": "no immutable dataset snapshot supplied",
+            },
+        }
+    )
+    return SystemManifestImportRequest.model_validate(payload)
+
+
 def _import(session, manifest, *, key="import-key-0001", principal=None, request_id="req_01J000000000000A"):
     return _service(session).import_manifest(
         manifest,
@@ -254,19 +280,21 @@ def _count(session, model) -> int:
     return int(session.scalar(select(sa.func.count()).select_from(model)) or 0)
 
 
-def _mk_envelope(workspace_id: str, subject_id: str) -> dict:
-    payload = {
-        "record_envelope": {
-            "schema_version": "2.0",
-            "workspace_id": workspace_id,
-            "revision": 1,
-            "recorded_by_principal": OWNER,
-            "recorded_at": "2026-08-11T09:00:00Z",
-            "immutable": True,
-            "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
-            "record_digest": "",
-            "authority_receipt_id": new_authority_receipt_id(),
-        }
+def _mk_envelope(
+    workspace_id: str, subject_id: str, payload: dict | None = None
+) -> dict:
+    del subject_id  # the caller's business payload carries the typed id field
+    payload = dict(payload or {})
+    payload["record_envelope"] = {
+        "schema_version": "2.0",
+        "workspace_id": workspace_id,
+        "revision": 1,
+        "recorded_by_principal": OWNER,
+        "recorded_at": "2026-08-11T09:00:00Z",
+        "immutable": True,
+        "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+        "record_digest": "",
+        "authority_receipt_id": new_authority_receipt_id(),
     }
     payload["record_envelope"]["record_digest"] = v5_record_digest(payload)
     return payload
@@ -289,19 +317,82 @@ def test_trusted_manifest_import_creates_exact_construct_set(sqlite_session) -> 
     assert response.system_assignment.exact_previous_assignment_binding_or_null is None
     assert response.system_assignment.exposure == "EXPOSED"
     assert (
-        response.system_assignment.exact_assignment_authority_binding.binding_kind
+        response.system_assignment.exact_assignment_authority_binding["binding_kind"]
         == "BOOTSTRAP_ATTESTATION"
     )
     assert (
         response.bootstrap_attestation.attestation_scope
         == "INITIAL_DESIRED_ASSIGNMENT"
     )
+    assert response.bootstrap_attestation.attester_trust_role == "integrator"
     # approver policy revision is recorded but NOT part of the runtime VersionSet
     assert response.approver_policy_revision is not None
     bound_ids = {
-        binding.id for binding in response.system_version_set.exact_component_revision_bindings
+        binding["id"] for binding in response.system_version_set.exact_component_revision_bindings
     }
     assert response.approver_policy_revision.component_revision_id not in bound_ids
+
+    # All immutable-record bindings use the durable envelope revision and the
+    # target record digest (never the edge business digest or null revision).
+    edge = response.dependency_edges[0]
+    edge_binding = response.topology_revision.exact_edge_revision_bindings[0]
+    assert edge_binding == {
+        "kind": "DEPENDENCY_EDGE",
+        "id": edge.edge_id,
+        "revision": 1,
+        "digest": edge.record_envelope.record_digest,
+    }
+    assert edge_binding["digest"] != edge.edge_digest
+    revision_records = {
+        row.component_revision_id: row for row in response.component_revisions
+    }
+    for binding in response.system_version_set.exact_component_revision_bindings:
+        assert binding["revision"] == 1
+        assert binding["digest"] == revision_records[binding["id"]].record_envelope.record_digest
+    assert response.system_version_set.exact_topology_revision_binding == {
+        "kind": "TOPOLOGY_REVISION",
+        "id": response.topology_revision.topology_revision_id,
+        "revision": 1,
+        "digest": response.topology_revision.record_envelope.record_digest,
+    }
+    expected_topology_provenance = sorted(
+        {
+            response.application.record_envelope.authority_receipt_id,
+            response.environment.record_envelope.authority_receipt_id,
+        }
+    )
+    assert (
+        response.topology_revision.provenance_receipt_ids
+        == expected_topology_provenance
+    )
+    for receipt_id, subject_kind, subject_id, subject_digest in (
+        (
+            response.application.record_envelope.authority_receipt_id,
+            "AI_APPLICATION",
+            response.application.application_id,
+            response.application.record_envelope.record_digest,
+        ),
+        (
+            response.environment.record_envelope.authority_receipt_id,
+            "ENVIRONMENT",
+            response.environment.environment_id,
+            response.environment.record_envelope.record_digest,
+        ),
+    ):
+        receipt = sqlite_session.get(AuthorityReceipt, receipt_id)
+        assert receipt is not None
+        assert (
+            receipt.subject_kind,
+            receipt.subject_id,
+            receipt.subject_revision,
+            receipt.subject_digest,
+        ) == (subject_kind, subject_id, 1, subject_digest)
+    assert response.bootstrap_attestation.exact_initial_system_version_set_binding == {
+        "kind": "SYSTEM_VERSION_SET",
+        "id": response.system_version_set.system_version_set_id,
+        "revision": 1,
+        "digest": response.system_version_set.record_envelope.record_digest,
+    }
 
     assert _count(sqlite_session, AIApplication) == 1
     assert _count(sqlite_session, Environment) == 1
@@ -312,124 +403,70 @@ def test_trusted_manifest_import_creates_exact_construct_set(sqlite_session) -> 
     assert _count(sqlite_session, SystemVersionSet) == 1
     assert _count(sqlite_session, BootstrapAttestation) == 1
     assert _count(sqlite_session, SystemAssignment) == 1
-    assert _count(sqlite_session, AIApplicationLifecycleRevision) == 2
-    assert _count(sqlite_session, SystemComponentLifecycleRevision) == 6
-    assert response.application.lifecycle_state == "ACTIVE"
-    assert response.application.record_envelope.revision == 2
-    assert all(item.lifecycle_state == "ACTIVE" for item in response.components)
-    assert all(item.record_envelope.revision == 2 for item in response.components)
-    active_components = {
-        item.component_id: item for item in response.components
-    }
-    for revision in [*response.component_revisions, response.approver_policy_revision]:
-        assert revision is not None
-        binding = revision.exact_system_component_binding
-        component = active_components.get(revision.component_id)
-        if component is None:
-            component = next(
-                row
-                for row in sqlite_session.scalars(select(SystemComponent)).all()
-                if row.component_id == revision.component_id
-            ).envelope_payload
-            assert binding.revision == component["record_envelope"]["revision"]
-            assert binding.digest == component["record_envelope"]["record_digest"]
-        else:
-            assert binding.revision == 2
-            assert binding.digest == component.record_envelope.record_digest
-        assert binding.kind == "SYSTEM_COMPONENT"
-        assert binding.id == revision.component_id
-    assert _count(sqlite_session, Event) == 17
-    assert _count(sqlite_session, Outbox) == 17
-    assert _count(sqlite_session, AuthorityReceipt) == 17
+    assert _count(sqlite_session, Event) == 13
+    assert _count(sqlite_session, Outbox) == 13
+    assert _count(sqlite_session, AuthorityReceipt) == 13
     assert _count(sqlite_session, PublicCommandIdempotency) == 1
+
+    receipts = sqlite_session.scalars(select(AuthorityReceipt)).all()
+    assert receipts and all(receipt.subject_revision == 1 for receipt in receipts)
+
+    events = sqlite_session.scalars(select(Event)).all()
+    assert events and all(event.contract_version == "v5" for event in events)
+    assert all(event.event_version == "2.0" for event in events)
+    assert all(event.payload["subject_revision"] == 1 for event in events)
+    assert all(event.exact_subject_binding["revision"] == 1 for event in events)
+    for event in events:
+        if event.event_type == "component_revision.recorded":
+            component = sqlite_session.get(
+                SystemComponent, event.payload["component_id"]
+            )
+            assert component is not None
+            assert event.payload["exact_system_component_binding"] == {
+                "kind": "SYSTEM_COMPONENT",
+                "id": component.component_id,
+                "revision": 1,
+                "digest": component.record_digest,
+            }
+        elif event.event_type == "topology_revision.recorded":
+            assert (
+                event.payload["exact_edge_revision_bindings"]
+                == response.topology_revision.exact_edge_revision_bindings
+            )
+        elif event.event_type == "system_version_set.recorded":
+            assert (
+                event.payload["exact_component_revision_bindings"]
+                == response.system_version_set.exact_component_revision_bindings
+            )
+            assert (
+                event.payload["exact_topology_revision_binding"]
+                == response.system_version_set.exact_topology_revision_binding
+            )
+        elif event.event_type == "bootstrap_attestation.recorded":
+            assert (
+                event.payload["exact_initial_system_version_set_binding"]
+                == response.bootstrap_attestation.exact_initial_system_version_set_binding
+            )
+        elif event.event_type == "system_assignment.recorded":
+            authority = response.system_assignment.exact_assignment_authority_binding
+            assert event.payload["exact_bootstrap_attestation_binding"] == {
+                "kind": "BOOTSTRAP_ATTESTATION",
+                "id": authority["id"],
+                "revision": authority["revision"],
+                "digest": authority["digest"],
+            }
+            assert (
+                event.payload["exact_initial_system_version_set_binding"]
+                == response.bootstrap_attestation.exact_initial_system_version_set_binding
+            )
 
     audits = sqlite_session.scalars(
         select(Audit).where(Audit.contract_version == "v4")
     ).all()
     actions = {row.action for row in audits}
     assert "system-manifests.import" in actions
-    root_audit = next(row for row in audits if row.action == "system-manifests.import")
-
-    major2_types = {
-        "environment.registered",
-        "dependency_edge.recorded",
-        "component_revision.recorded",
-        "topology_revision.recorded",
-        "system_version_set.recorded",
-        "bootstrap_attestation.recorded",
-        "system_assignment.recorded",
-    }
-    major2_events = list(
-        sqlite_session.scalars(select(Event).where(Event.event_type.in_(major2_types))).all()
-    )
-    assert {event.event_type for event in major2_events} == major2_types
-    assert all(
-        event.contract_version == "v5"
-        and event.event_version == "2.0"
-        and event.event_contract_major == 2
-        and event.exact_subject_binding["revision"] == 1
-        and event.authority_receipt_id is not None
-        for event in major2_events
-    )
-    major2_receipts = [
-        sqlite_session.get(AuthorityReceipt, event.authority_receipt_id)
-        for event in major2_events
-    ]
-    assert all(
-        receipt is not None
-        and receipt.subject_revision == 1
-        and receipt.receipt_payload["source_event_id"] == receipt.event_id
-        and receipt.receipt_payload["controller_registration"]["contract_major"] == 1
-        and "resource" not in receipt.receipt_payload
-        and "event_id" not in receipt.receipt_payload
-        for receipt in major2_receipts
-    )
-    outboxes = list(
-        sqlite_session.scalars(
-            select(Outbox).where(
-                Outbox.source_event_id.in_([event.event_id for event in major2_events])
-            )
-        ).all()
-    )
-    assert len(outboxes) == len(major2_events)
-    assert all(
-        row.contract_version == "v5" and row.event_contract_major == 2
-        for row in outboxes
-    )
-    transaction_ids = {root_audit.transaction_id}
-    transaction_ids.update(event.transaction_id for event in sqlite_session.scalars(select(Event)))
-    transaction_ids.update(
-        receipt.transaction_id
-        for receipt in sqlite_session.scalars(select(AuthorityReceipt))
-    )
-    transaction_ids.update(row.transaction_id for row in sqlite_session.scalars(select(Outbox)))
-    assert transaction_ids == {root_audit.transaction_id}
-    assert response.idempotency.receipt.audit_ref == f"audit://{root_audit.audit_id}"
-    assert response.topology_revision.provenance_receipt_ids
-    assert all(
-        receipt_id.startswith("arec_")
-        for receipt_id in response.topology_revision.provenance_receipt_ids
-    )
-    edge_row = sqlite_session.get(
-        DependencyEdge, response.dependency_edges[0].edge_id
-    )
-    edge_binding = response.topology_revision.exact_edge_revision_bindings[0]
-    assert edge_row is not None
-    assert edge_binding.revision == 1
-    assert edge_binding.digest == edge_row.record_digest
-
-    assert root_audit.params_digest == canonical_digest(
-        {
-            "authenticated_request_digest": response.idempotency.receipt.request_fingerprint,
-            "manifest_digest": response.manifest_digest,
-            "idempotency_key": response.idempotency.receipt.idempotency_key,
-        }
-    )
     assert {
         "controller.application.registered",
-        "controller.application.activated",
-        "controller.system_component.registered",
-        "controller.system_component.activated",
         "controller.component_revision.recorded",
         "controller.topology_revision.recorded",
         "controller.system_version_set.recorded",
@@ -438,76 +475,78 @@ def test_trusted_manifest_import_creates_exact_construct_set(sqlite_session) -> 
     } <= actions
 
 
-def test_same_key_replay_preserves_canonical_logical_graph_order(sqlite_session) -> None:
-    _seed_env(sqlite_session)
-    base = _manifest().model_dump(mode="json")
-    code, model = base["components"]
-    skill = {
-        **code,
-        "logical_name": "aaa-skill",
-        "component_kind": "SKILL",
-        "criticality": "P1",
-        "permission_classification": "READ_ONLY",
-        "effect_classification": "NONE",
-        "revision": {
-            "identity_locator": {"type": "git", "path": "skills/aaa"},
-            "identity_assurance": "IMMUTABLE_DIGEST",
-            "content_digest": _DIGEST_C,
-        },
-    }
-    base["components"] = [model, code, skill]
-    base["dependency_edges"] = [
-        {
-            "from_component": "llm-model",
-            "to_component": "aaa-skill",
-            "relation": "INVOKES",
-            "required": True,
-        },
-        {
-            "from_component": "llm-code",
-            "to_component": "llm-model",
-            "relation": "INVOKES",
-            "required": True,
-        },
-    ]
-    manifest = SystemManifestImportRequest.model_validate(base)
-
-    created = _import(sqlite_session, manifest, key="import-key-order")
-    sqlite_session.commit()
-    assert [item.logical_name for item in created.components] == [
-        "aaa-skill",
-        "llm-code",
-        "llm-model",
-    ]
-    assert [item.logical_name for item in created.component_revisions] == [
-        "aaa-skill",
-        "llm-code",
-        "llm-model",
-    ]
-    names_by_id = {item.component_id: item.logical_name for item in created.components}
-    assert [
-        (names_by_id[item.from_component_id], names_by_id[item.to_component_id])
-        for item in created.dependency_edges
-    ] == [("llm-code", "llm-model"), ("llm-model", "aaa-skill")]
-
-    replayed = _import(sqlite_session, manifest, key="import-key-order")
-    created_wire = created.model_dump(mode="json")
-    replayed_wire = replayed.model_dump(mode="json")
-    created_wire["idempotency"]["replayed"] = True
-    assert replayed_wire == created_wire
-
-
 def test_import_identity_assurance_is_recorded_honestly(sqlite_session) -> None:
     _seed_env(sqlite_session)
     response = _import(sqlite_session, _manifest())
     sqlite_session.commit()
     assurances = {
-        entry.identity_assurance
-        for entry in response.system_version_set.identity_assurance_summary.component_assurances
+        entry["identity_assurance"]
+        for entry in response.system_version_set.identity_assurance_summary[
+            "component_assurances"
+        ]
     }
     assert {"IMMUTABLE_DIGEST", "MUTABLE_ALIAS"} <= assurances
     model_rev = sqlite_session.get(ComponentRevision, response.component_revisions[1].component_revision_id)
     assert model_rev is not None and model_rev.identity_assurance == "MUTABLE_ALIAS"
+
+
+def test_runtime_dataset_role_is_persisted_and_digest_recomputes(sqlite_session) -> None:
+    _seed_env(sqlite_session)
+    response = _import(sqlite_session, _manifest_with_dataset("RUNTIME_DATA"))
+    sqlite_session.commit()
+
+    component = next(
+        row for row in response.components if row.logical_name == "runtime-corpus"
+    )
+    revision = next(
+        row
+        for row in response.component_revisions
+        if row.component_id == component.component_id
+    )
+    assert component.dataset_role == "RUNTIME_DATA"
+    assert revision.dataset_role == "RUNTIME_DATA"
+    assert revision.exact_provenance_receipt_bindings == []
+    assert component.component_id in response.topology_revision.component_ids
+    assert revision.component_revision_id in {
+        binding["id"]
+        for binding in response.system_version_set.exact_component_revision_bindings
+    }
+
+    durable_revision = sqlite_session.get(
+        ComponentRevision, revision.component_revision_id
+    )
+    assert durable_revision.exact_provenance_receipt_bindings == []
+    assert (
+        _service(sqlite_session)._component_configuration_digest(durable_revision)
+        == durable_revision.configuration_digest
+    )
+    got = _service(sqlite_session).get_system_version(
+        response.system_version_set.system_version_set_id,
+        principal=_reader_principal(),
+        request_id="req_01J000000000000D",
+    )
+    assert (
+        got.system_version_set.system_version_set_id
+        == response.system_version_set.system_version_set_id
+    )
+    sqlite_session.commit()
+
+
+@pytest.mark.parametrize("dataset_role", ["EVALUATION_DATA", "SEALED_HOLDOUT"])
+def test_governing_datasets_cannot_enter_runtime_version_set(
+    sqlite_session, dataset_role: str
+) -> None:
+    _seed_env(sqlite_session)
+
+    with pytest.raises(SystemVersionsError) as raised:
+        _import(sqlite_session, _manifest_with_dataset(dataset_role))
+    assert raised.value.code == "VALIDATION_FAILED"
+    assert raised.value.details == {
+        "reason": "GOVERNING_DATASET_NOT_RUNTIME_COMPONENT"
+    }
+    assert _count(sqlite_session, PublicCommandIdempotency) == 0
+    assert _count(sqlite_session, AIApplication) == 0
+    sqlite_session.rollback()
 
 
 def test_mutable_alias_cannot_masquerade_as_immutable(sqlite_session) -> None:
@@ -653,6 +692,48 @@ def test_import_principal_allowlist_rejects_connector_and_missing_scope(sqlite_s
     sqlite_session.rollback()
 
 
+def test_import_requires_server_derived_trust_role(sqlite_session) -> None:
+    _seed_env(sqlite_session)
+    importer = sqlite_session.get(PublicPrincipal, IMPORT_PRINCIPAL)
+    importer.trust_roles = []
+    sqlite_session.commit()
+
+    with pytest.raises(SystemVersionsError) as raised:
+        _import(sqlite_session, _manifest())
+    assert raised.value.code == "SCOPE_FORBIDDEN"
+    assert _count(sqlite_session, PublicCommandIdempotency) == 0
+    assert _count(sqlite_session, AIApplication) == 0
+    sqlite_session.rollback()
+
+
+def test_import_requires_manifest_project_grant(sqlite_session) -> None:
+    _seed_env(sqlite_session)
+    from test_v5_application_catalog import OTHER_PROJECT
+
+    project_limited_principal = "prn_01J00000000000D2"
+    _seed_principal(
+        sqlite_session,
+        principal_id=project_limited_principal,
+        scopes=["system_manifests:import", "system_versions:read"],
+        project_ids=[OTHER_PROJECT],
+        trust_roles=["integrator"],
+    )
+    sqlite_session.commit()
+    principal = _principal_context(
+        principal_id=project_limited_principal,
+        project_ids=[OTHER_PROJECT],
+        scopes=["system_manifests:import", "system_versions:read"],
+        required_scope="system_manifests:import",
+    )
+
+    with pytest.raises(SystemVersionsError) as raised:
+        _import(sqlite_session, _manifest(), principal=principal)
+    assert raised.value.code == "SCOPE_FORBIDDEN"
+    assert _count(sqlite_session, PublicCommandIdempotency) == 0
+    assert _count(sqlite_session, AIApplication) == 0
+    sqlite_session.rollback()
+
+
 def test_audit_failure_rolls_back_every_construct(sqlite_session) -> None:
     _seed_env(sqlite_session)
     failing_audit = V4AuditService(sqlite_session, clock=lambda: NOW, force_fail=False, fail_on_call=1)
@@ -675,35 +756,6 @@ def test_audit_failure_rolls_back_every_construct(sqlite_session) -> None:
         SystemVersionSet,
         BootstrapAttestation,
         SystemAssignment,
-        Event,
-        Outbox,
-        AuthorityReceipt,
-        PublicCommandIdempotency,
-    ):
-        assert _count(sqlite_session, model) == 0, model.__name__
-
-
-def test_failure_after_activation_permit_rolls_back_lifecycle_and_terminal_idempotency(
-    sqlite_session,
-) -> None:
-    _seed_env(sqlite_session)
-    failing_audit = V4AuditService(
-        sqlite_session, clock=lambda: NOW, force_fail=False, fail_on_call=3
-    )
-    with pytest.raises(SystemVersionsError) as raised:
-        _service(sqlite_session, audit_service=failing_audit).import_manifest(
-            _manifest(),
-            principal=_import_principal(),
-            idempotency_key="import-late-failure",
-            request_id="req_01J000000000000F",
-        )
-    assert raised.value.code == "AUDIT_UNAVAILABLE"
-    sqlite_session.rollback()
-    for model in (
-        AIApplication,
-        AIApplicationLifecycleRevision,
-        SystemComponent,
-        SystemComponentLifecycleRevision,
         Event,
         Outbox,
         AuthorityReceipt,
@@ -742,263 +794,26 @@ def test_same_key_replay_returns_same_records(sqlite_session) -> None:
     sqlite_session.commit()
 
 
-def test_same_key_replay_rechecks_current_import_trust_role(sqlite_session) -> None:
+def test_same_manifest_digest_different_key_replays_same_records(sqlite_session) -> None:
     _seed_env(sqlite_session)
-    _import(sqlite_session, _manifest(), key="import-key-0001")
+    first = _import(sqlite_session, _manifest(), key="import-key-0001")
     sqlite_session.commit()
-    principal_row = sqlite_session.get(PublicPrincipal, IMPORT_PRINCIPAL)
-    assert principal_row is not None
-    principal_row.trust_roles = []
-    sqlite_session.commit()
-
-    with pytest.raises(SystemVersionsError) as raised:
-        _import(
-            sqlite_session,
-            _manifest(),
-            key="import-key-0001",
-            request_id="req_01J000000000000B",
-        )
-    assert raised.value.code == "v5.manifest.principal_not_authorized"
-    assert _count(sqlite_session, SystemVersionSet) == 1
-    assert _count(sqlite_session, SystemAssignment) == 1
-    assert _count(sqlite_session, PublicCommandIdempotency) == 1
-
-
-@pytest.mark.parametrize(
-    "target",
-    [
-        "application_history",
-        "environment",
-        "component",
-        "edge",
-        "component_revision",
-        "topology",
-        "version_set",
-        "attestation",
-        "assignment",
-        "receipt",
-        "event",
-        "outbox",
-        "root_audit",
-    ],
-)
-def test_same_key_replay_rejects_any_tampered_authoritative_graph_node(
-    sqlite_session, target: str
-) -> None:
-    _seed_env(sqlite_session)
-    response = _import(sqlite_session, _manifest(), key="import-key-0001")
-    sqlite_session.commit()
-    event = sqlite_session.scalar(
-        select(Event).where(Event.event_type == "environment.registered")
+    replay = _import(
+        sqlite_session,
+        _manifest(),
+        key="import-key-9999",
+        request_id="req_01J000000000000C",
     )
-    assert event is not None
-    outbox = sqlite_session.scalar(
-        select(Outbox).where(Outbox.source_event_id == event.event_id)
+    assert replay.idempotency.replayed is True
+    assert (
+        replay.system_version_set.system_version_set_id
+        == first.system_version_set.system_version_set_id
     )
-    assert outbox is not None
-    root_audit = sqlite_session.scalar(
-        select(Audit).where(Audit.action == "system-manifests.import")
-    )
-    assert root_audit is not None
-    tamper = "sha256:" + "f" * 64
-    updates = {
-        "application_history": (
-            "ai_application_lifecycle_revisions", "record_digest",
-            "application_id", response.application.application_id,
-        ),
-        "environment": (
-            "environments", "record_digest", "environment_id",
-            response.environment.environment_id,
-        ),
-        "component": (
-            "system_components", "record_digest", "component_id",
-            response.components[0].component_id,
-        ),
-        "edge": (
-            "dependency_edges", "record_digest", "edge_id",
-            response.dependency_edges[0].edge_id,
-        ),
-        "component_revision": (
-            "component_revisions", "record_digest", "component_revision_id",
-            response.component_revisions[0].component_revision_id,
-        ),
-        "topology": (
-            "topology_revisions", "record_digest", "topology_revision_id",
-            response.topology_revision.topology_revision_id,
-        ),
-        "version_set": (
-            "system_version_sets", "record_digest", "system_version_set_id",
-            response.system_version_set.system_version_set_id,
-        ),
-        "attestation": (
-            "bootstrap_attestations", "record_digest", "bootstrap_attestation_id",
-            response.bootstrap_attestation.bootstrap_attestation_id,
-        ),
-        "assignment": (
-            "system_assignments", "record_digest", "assignment_id",
-            response.system_assignment.assignment_id,
-        ),
-        "receipt": (
-            "authority_receipts", "authority_receipt_digest", "authority_receipt_id",
-            event.authority_receipt_id,
-        ),
-        "event": ("events", "payload_digest", "event_id", event.event_id),
-        "outbox": ("outbox", "payload_digest", "outbox_id", outbox.outbox_id),
-        "root_audit": ("audit", "audit_digest", "audit_id", root_audit.audit_id),
-    }
-    table, column, id_column, row_id = updates[target]
-    where = f"{id_column} = :row_id"
-    if target == "application_history":
-        where += " AND revision = 1"
-    sqlite_session.execute(
-        sa.text(f"UPDATE {table} SET {column} = :tamper WHERE {where}"),
-        {"tamper": tamper, "row_id": row_id},
-    )
-    sqlite_session.commit()
-
-    with pytest.raises(SystemVersionsError) as raised:
-        _import(
-            sqlite_session,
-            _manifest(),
-            key="import-key-0001",
-            request_id="req_01J000000000000B",
-        )
-    assert raised.value.code == "INTERNAL_ERROR"
-    sqlite_session.rollback()
-
-
-def test_same_key_replay_rejects_cross_transaction_receipt_rebind(sqlite_session) -> None:
-    _seed_env(sqlite_session)
-    _import(sqlite_session, _manifest(), key="import-key-0001")
-    sqlite_session.commit()
-    event = sqlite_session.scalar(
-        select(Event).where(Event.event_type == "system_version_set.recorded")
-    )
-    assert event is not None
-    sqlite_session.execute(
-        sa.text(
-            "UPDATE authority_receipts SET transaction_id = :transaction_id "
-            "WHERE authority_receipt_id = :receipt_id"
-        ),
-        {
-            "transaction_id": "txn_cross_transaction_rebind",
-            "receipt_id": event.authority_receipt_id,
-        },
-    )
-    sqlite_session.commit()
-    with pytest.raises(SystemVersionsError) as raised:
-        _import(sqlite_session, _manifest(), key="import-key-0001")
-    assert raised.value.code == "INTERNAL_ERROR"
-    sqlite_session.rollback()
-
-
-def test_same_manifest_digest_different_key_conflicts_without_new_records(sqlite_session) -> None:
-    _seed_env(sqlite_session)
-    _import(sqlite_session, _manifest(), key="import-key-0001")
-    sqlite_session.commit()
-    counts = {
-        model: _count(sqlite_session, model)
-        for model in (SystemVersionSet, AIApplication, AuthorityReceipt, Audit, PublicCommandIdempotency)
-    }
-    with pytest.raises(SystemVersionsError) as raised:
-        _import(
-            sqlite_session,
-            _manifest(),
-            key="import-key-9999",
-            request_id="req_01J000000000000C",
-        )
-    assert raised.value.code == "CATALOG_CONFLICT"
+    assert replay.system_version_set.manifest_digest == first.system_version_set.manifest_digest
+    assert replay.audit_ref == first.audit_ref
     assert _count(sqlite_session, SystemVersionSet) == 1
     assert _count(sqlite_session, AIApplication) == 1
-    assert all(_count(sqlite_session, model) == count for model, count in counts.items())
-    sqlite_session.rollback()
-
-
-def test_same_key_replay_ignores_unrelated_legacy_event_and_audit(sqlite_session) -> None:
-    _seed_env(sqlite_session)
-    unrelated_payload = {"legacy": True, "case_id": "case_unrelated"}
-    V4AuditService(sqlite_session, clock=lambda: NOW).record(
-        workspace_id=WORKSPACE,
-        actor_principal=OWNER,
-        action="controller.legacy.observed",
-        target="case_unrelated",
-        params={"source": "preexisting-v4"},
-        transaction_id="txn_unrelated_v4",
-        evidence_refs={"case_id": "case_unrelated"},
-        occurred_at=NOW,
-    )
-    sqlite_session.add(
-        Event(
-            event_id="evt_01J0000000000LEGACY1",
-            aggregate_type="legacy_case",
-            aggregate_id="case_unrelated",
-            seq=1,
-            event_type="legacy.case.observed",
-            payload=unrelated_payload,
-            causation_id="legacy-cause",
-            correlation_id="legacy-correlation",
-            actor="legacy-controller",
-            trace_id=None,
-            occurred_at=NOW,
-            created_at=NOW,
-            contract_version="v4",
-            workspace_id=WORKSPACE,
-            event_version="1.0",
-            event_contract_major=None,
-            routing_key=None,
-            exact_subject_binding=None,
-            authority_receipt_id=None,
-            transaction_id="txn_unrelated_v4",
-            actor_principal=OWNER,
-            payload_digest=canonical_digest(unrelated_payload),
-        )
-    )
     sqlite_session.commit()
-
-    created = _import(sqlite_session, _manifest(), key="import-key-unrelated")
-    sqlite_session.commit()
-    replayed = _import(sqlite_session, _manifest(), key="import-key-unrelated")
-    assert replayed.idempotency.replayed is True
-    assert (
-        replayed.system_version_set.system_version_set_id
-        == created.system_version_set.system_version_set_id
-    )
-
-
-def test_same_key_replay_ignores_later_valid_catalog_transaction(sqlite_session) -> None:
-    _seed_env(sqlite_session)
-    created = _import(sqlite_session, _manifest(), key="import-key-later-catalog")
-    sqlite_session.commit()
-
-    later_principal_id = "prn_01J000000000000D"
-    _seed_principal(
-        sqlite_session,
-        principal_id=later_principal_id,
-        scopes=["applications:manage"],
-        trust_roles=["integrator"],
-    )
-    sqlite_session.commit()
-    later = ApplicationCatalogService(sqlite_session, clock=lambda: NOW).register_application(
-        _app_request(
-            slug="later-sidecar",
-            display_name="Later Sidecar",
-        ),
-        principal=_principal_context(
-            principal_id=later_principal_id,
-            scopes=["applications:manage"],
-            required_scope="applications:manage",
-        ),
-        idempotency_key="later-catalog-key",
-        request_id="req_01J000000000LATER1",
-    )
-    sqlite_session.commit()
-    assert later.application.application_id != created.application.application_id
-
-    replayed = _import(sqlite_session, _manifest(), key="import-key-later-catalog")
-    created_wire = created.model_dump(mode="json")
-    replayed_wire = replayed.model_dump(mode="json")
-    created_wire["idempotency"]["replayed"] = True
-    assert replayed_wire == created_wire
 
 
 def test_idempotency_conflict_on_different_manifest_same_key(sqlite_session) -> None:
@@ -1029,48 +844,6 @@ def test_bootstrap_one_shot_per_workspace_conflicts_on_second_manifest(sqlite_se
     # The second manifest left nothing behind.
     assert _count(sqlite_session, AIApplication) == 1
     assert _count(sqlite_session, SystemAssignment) == 1
-
-
-def test_bootstrap_rejects_partial_orphan_authoritative_state_before_writes(
-    sqlite_session,
-) -> None:
-    _seed_env(sqlite_session)
-    payload = {
-        "environment_id": "env_01J0000000000ORPHAN",
-        "workspace_id": WORKSPACE,
-        "application_id": "app_01J0000000000ORPHAN",
-        "logical_name": "orphan",
-        "risk_classification": "LOW",
-        "lifecycle_state": "ACTIVE",
-        **_mk_envelope(WORKSPACE, "env_01J0000000000ORPHAN"),
-    }
-    digest = v5_record_digest(payload)
-    payload["record_envelope"]["record_digest"] = digest
-    sqlite_session.add(
-        Environment(
-            environment_id=payload["environment_id"],
-            workspace_id=WORKSPACE,
-            application_id=payload["application_id"],
-            logical_name=payload["logical_name"],
-            risk_classification=payload["risk_classification"],
-            lifecycle_state="ACTIVE",
-            revision=1,
-            envelope_payload=payload,
-            record_digest=digest,
-            authority_receipt_id=payload["record_envelope"]["authority_receipt_id"],
-            recorded_by_principal=OWNER,
-            created_at=NOW,
-            updated_at=NOW,
-        )
-    )
-    sqlite_session.commit()
-    before = _count(sqlite_session, PublicCommandIdempotency)
-    with pytest.raises(SystemVersionsError) as raised:
-        _import(sqlite_session, _manifest(), key="import-key-orphan")
-    assert raised.value.code == "CATALOG_CONFLICT"
-    assert _count(sqlite_session, PublicCommandIdempotency) == before
-    assert _count(sqlite_session, AIApplication) == 0
-    sqlite_session.rollback()
 
 
 def test_assignment_cas_guard_one_active_aggregate(sqlite_session) -> None:
@@ -1105,7 +878,7 @@ def test_assignment_cas_guard_one_active_aggregate(sqlite_session) -> None:
                 "application_id": existing.application_id,
                 "environment_id": existing.environment_id,
                 "slots": "[]",
-                "authority": '{"binding_kind":"BOOTSTRAP_ATTESTATION","id":"batt_x","revision":null,"digest":"sha256:' + "e" * 64 + '"}',
+                "authority": '{"binding_kind":"BOOTSTRAP_ATTESTATION","id":"batt_x","revision":1,"digest":"sha256:' + "e" * 64 + '"}',
                 "envelope": "{}",
                 "digest": "sha256:" + "f" * 64,
                 "receipt": new_authority_receipt_id(),
@@ -1162,6 +935,35 @@ def test_version_set_digest_is_deterministic_and_binding_sensitive() -> None:
     assert d1 != d3
 
 
+def test_topology_digest_binds_component_membership_even_without_edges() -> None:
+    assert SystemVersionsService._topology_digest(
+        [], component_ids=["cmp_01J0000000000A01"]
+    ) != SystemVersionsService._topology_digest(
+        [], component_ids=["cmp_01J0000000000A02"]
+    )
+
+
+def test_postgres_import_uses_workspace_transaction_lock() -> None:
+    executed: list[tuple[object, dict[str, str]]] = []
+
+    class _PostgresSession:
+        @staticmethod
+        def get_bind():
+            return SimpleNamespace(dialect=SimpleNamespace(name="postgresql"))
+
+        @staticmethod
+        def execute(statement, params):
+            executed.append((statement, params))
+
+    service = SimpleNamespace(session=_PostgresSession())
+    SystemVersionsService._acquire_workspace_import_lock(service, WORKSPACE)
+
+    assert len(executed) == 1
+    statement, params = executed[0]
+    assert "pg_advisory_xact_lock" in str(statement)
+    assert params == {"lock_key": f"caseloop:v5-manifest-import:{WORKSPACE}"}
+
+
 # ------------------------------------------------------------------------- diff
 
 
@@ -1171,9 +973,40 @@ def _seed_version_set_row(
     version_set_id: str,
     bindings: list[dict],
     topology_binding: dict,
-    version_set_digest: str = _DIGEST_A,
+    version_set_digest: str | None = None,
 ) -> SystemVersionSet:
-    envelope = _mk_envelope(WORKSPACE, version_set_id)
+    revisions = [session.get(ComponentRevision, binding["id"]) for binding in bindings]
+    assurance_summary = SystemVersionsService._assurance_summary(
+        [
+            {
+                "component_revision_id": revision.component_revision_id,
+                "component_id": revision.component_id,
+                "identity_assurance": revision.identity_assurance,
+            }
+            for revision in revisions
+        ]
+    )
+    version_set_digest = version_set_digest or SystemVersionsService._version_set_digest(
+        application_id="app_01J0000000000001",
+        declared_environment_id="env_01J0000000000001",
+        component_bindings=bindings,
+        topology_binding=topology_binding,
+        provenance_receipt_ids=[],
+        assurance_summary=assurance_summary,
+    )
+    payload = {
+        "system_version_set_id": version_set_id,
+        "workspace_id": WORKSPACE,
+        "application_id": "app_01J0000000000001",
+        "declared_environment_id": "env_01J0000000000001",
+        "exact_component_revision_bindings": bindings,
+        "exact_topology_revision_binding": topology_binding,
+        "identity_assurance_summary": assurance_summary,
+        "provenance_receipt_ids": [],
+        "version_set_digest": version_set_digest,
+        "manifest_digest": None,
+    }
+    envelope = _mk_envelope(WORKSPACE, version_set_id, payload)
     row = SystemVersionSet(
         system_version_set_id=version_set_id,
         workspace_id=WORKSPACE,
@@ -1181,7 +1014,7 @@ def _seed_version_set_row(
         declared_environment_id="env_01J0000000000001",
         exact_component_revision_bindings=bindings,
         exact_topology_revision_binding=topology_binding,
-        identity_assurance_summary={"component_assurances": []},
+        identity_assurance_summary=assurance_summary,
         provenance_receipt_ids=[],
         version_set_digest=version_set_digest,
         manifest_digest=None,
@@ -1204,19 +1037,53 @@ def _seed_component_revision(
     configuration_digest: str,
     permission_manifest_digest: str | None = None,
     identity_assurance: str = "IMMUTABLE_DIGEST",
-) -> None:
-    envelope = _mk_envelope(WORKSPACE, revision_id)
-    session.add(
-        ComponentRevision(
+) -> ComponentRevision:
+    revision_fields = {
+        "identity_locator": {
+            "type": "git",
+            "path": ".",
+            "seed": configuration_digest,
+        },
+        "identity_assurance": identity_assurance,
+        "content_digest": configuration_digest,
+        "declared_version": None,
+        "provider_origin": None,
+        "resolved_at": None,
+        "immutable_provider_version_attestation": None,
+        "exact_observation_receipt_binding": None,
+        "unknown_reason": None,
+        "interface_schema_digest": None,
+        "permission_manifest_digest": permission_manifest_digest,
+        "dependency_lock_digest": None,
+        "artifact_refs": None,
+        "exact_provenance_receipt_bindings": [],
+        "dataset_role": None,
+    }
+    actual_configuration_digest = _service(session)._component_configuration_digest(
+        SimpleNamespace(**revision_fields)
+    )
+    payload = {
+        "component_revision_id": revision_id,
+        "workspace_id": WORKSPACE,
+        "application_id": "app_01J0000000000001",
+        "component_id": component_id,
+        "component_kind": component_kind,
+        "logical_name": component_id,
+        "configuration_digest": actual_configuration_digest,
+        **revision_fields,
+    }
+    envelope = _mk_envelope(WORKSPACE, revision_id, payload)
+    row = ComponentRevision(
             component_revision_id=revision_id,
             workspace_id=WORKSPACE,
             application_id="app_01J0000000000001",
             component_id=component_id,
             component_kind=component_kind,
-            identity_locator={"type": "git", "path": "."},
+            identity_locator=revision_fields["identity_locator"],
             identity_assurance=identity_assurance,
-            configuration_digest=configuration_digest,
+            configuration_digest=actual_configuration_digest,
             exact_provenance_receipt_bindings=[],
+            content_digest=configuration_digest,
             permission_manifest_digest=permission_manifest_digest,
             envelope_payload=envelope,
             record_digest=envelope["record_envelope"]["record_digest"],
@@ -1224,13 +1091,30 @@ def _seed_component_revision(
             recorded_by_principal=OWNER,
             created_at=NOW,
         )
-    )
+    session.add(row)
+    session.flush()
+    return row
 
 
-def _seed_component(session, *, component_id: str, kind: str, logical_name: str) -> None:
-    envelope = _mk_envelope(WORKSPACE, component_id)
-    session.add(
-        SystemComponent(
+def _seed_component(
+    session, *, component_id: str, kind: str, logical_name: str
+) -> SystemComponent:
+    payload = {
+        "component_id": component_id,
+        "workspace_id": WORKSPACE,
+        "application_id": "app_01J0000000000001",
+        "component_kind": kind,
+        "logical_name": logical_name,
+        "owner_principal_ids": [OWNER],
+        "criticality": "P1",
+        "data_classification": "INTERNAL",
+        "permission_classification": "READ_ONLY",
+        "effect_classification": "NONE",
+        "dataset_role": None,
+        "lifecycle_state": "ACTIVE",
+    }
+    envelope = _mk_envelope(WORKSPACE, component_id, payload)
+    row = SystemComponent(
             component_id=component_id,
             workspace_id=WORKSPACE,
             application_id="app_01J0000000000001",
@@ -1250,34 +1134,113 @@ def _seed_component(session, *, component_id: str, kind: str, logical_name: str)
             created_at=NOW,
             updated_at=NOW,
         )
-    )
+    session.add(row)
+    session.flush()
+    return row
 
 
-def _seed_diff_pair(session) -> tuple[str, str]:
-    """Base: code+model+pipeline; Target: code'(digest changed)+model+retriever
-    (dependency substitution) + policy permission manifest change."""
-    envelope = _mk_envelope(WORKSPACE, "app_01J0000000000001")
+def _seed_diff_application_environment(session) -> None:
+    application_id = "app_01J0000000000001"
+    app_payload = {
+        "application_id": application_id,
+        "workspace_id": WORKSPACE,
+        "project_id": PROJECT,
+        "slug": "diff-app",
+        "display_name": "Diff app",
+        "owner_principal_ids": [OWNER],
+        "criticality": "P0",
+        "data_classification": "INTERNAL",
+        "governance_mode": "MANAGED",
+        "lifecycle_state": "ACTIVE",
+    }
+    app_envelope = _mk_envelope(WORKSPACE, application_id, app_payload)
     session.add(
         AIApplication(
-            application_id="app_01J0000000000001",
-            workspace_id=WORKSPACE,
-            project_id=PROJECT,
-            slug="diff-app",
-            display_name="Diff app",
-            owner_principal_ids=[OWNER],
-            criticality="P0",
-            data_classification="INTERNAL",
-            governance_mode="MANAGED",
-            lifecycle_state="ACTIVE",
+            **app_payload,
             revision=1,
-            envelope_payload=envelope,
-            record_digest=envelope["record_envelope"]["record_digest"],
-            authority_receipt_id=envelope["record_envelope"]["authority_receipt_id"],
+            envelope_payload=app_envelope,
+            record_digest=app_envelope["record_envelope"]["record_digest"],
+            authority_receipt_id=app_envelope["record_envelope"][
+                "authority_receipt_id"
+            ],
             recorded_by_principal=OWNER,
             created_at=NOW,
             updated_at=NOW,
         )
     )
+    environment_id = "env_01J0000000000001"
+    environment_payload = {
+        "environment_id": environment_id,
+        "workspace_id": WORKSPACE,
+        "application_id": application_id,
+        "logical_name": "prod",
+        "risk_classification": "MEDIUM",
+        "lifecycle_state": "ACTIVE",
+    }
+    environment_envelope = _mk_envelope(
+        WORKSPACE, environment_id, environment_payload
+    )
+    session.add(
+        Environment(
+            **environment_payload,
+            revision=1,
+            envelope_payload=environment_envelope,
+            record_digest=environment_envelope["record_envelope"]["record_digest"],
+            authority_receipt_id=environment_envelope["record_envelope"][
+                "authority_receipt_id"
+            ],
+            recorded_by_principal=OWNER,
+            created_at=NOW,
+            updated_at=NOW,
+        )
+    )
+    session.flush()
+
+
+def _seed_empty_topology(
+    session, *, topology_id: str, component_ids: list[str]
+) -> TopologyRevision:
+    application = session.get(AIApplication, "app_01J0000000000001")
+    environment = session.get(Environment, "env_01J0000000000001")
+    provenance_receipt_ids = sorted(
+        {application.authority_receipt_id, environment.authority_receipt_id}
+    )
+    topology_digest = SystemVersionsService._topology_digest(
+        [], component_ids=component_ids
+    )
+    payload = {
+        "topology_revision_id": topology_id,
+        "workspace_id": WORKSPACE,
+        "application_id": "app_01J0000000000001",
+        "component_ids": sorted(component_ids),
+        "exact_edge_revision_bindings": [],
+        "topology_digest": topology_digest,
+        "provenance_receipt_ids": provenance_receipt_ids,
+    }
+    envelope = _mk_envelope(WORKSPACE, topology_id, payload)
+    row = TopologyRevision(
+        topology_revision_id=topology_id,
+        workspace_id=WORKSPACE,
+        application_id="app_01J0000000000001",
+        component_ids=payload["component_ids"],
+        exact_edge_revision_bindings=[],
+        topology_digest=topology_digest,
+        provenance_receipt_ids=provenance_receipt_ids,
+        envelope_payload=envelope,
+        record_digest=envelope["record_envelope"]["record_digest"],
+        authority_receipt_id=envelope["record_envelope"]["authority_receipt_id"],
+        recorded_by_principal=OWNER,
+        created_at=NOW,
+    )
+    session.add(row)
+    session.flush()
+    return row
+
+
+def _seed_diff_pair(session) -> tuple[str, str]:
+    """Base: code+model+pipeline; Target: code'(digest changed)+model+retriever
+    (dependency substitution) + policy permission manifest change."""
+    _seed_diff_application_environment(session)
     for component_id, kind, name in (
         ("cmp_01J0000000000A01", "APPLICATION_CODE", "code"),
         ("cmp_01J0000000000A02", "MODEL_BINDING", "model"),
@@ -1286,58 +1249,95 @@ def _seed_diff_pair(session) -> tuple[str, str]:
     ):
         _seed_component(session, component_id=component_id, kind=kind, logical_name=name)
     # base revisions
-    _seed_component_revision(
+    base_code = _seed_component_revision(
         session, revision_id="crv_01J0000000000B01", component_id="cmp_01J0000000000A01",
         component_kind="APPLICATION_CODE", configuration_digest=_DIGEST_A,
     )
-    _seed_component_revision(
+    base_model = _seed_component_revision(
         session, revision_id="crv_01J0000000000B02", component_id="cmp_01J0000000000A02",
         component_kind="MODEL_BINDING", configuration_digest=_DIGEST_B,
     )
-    _seed_component_revision(
+    base_policy = _seed_component_revision(
         session, revision_id="crv_01J0000000000B03", component_id="cmp_01J0000000000A04",
         component_kind="POLICY", configuration_digest=_DIGEST_C,
         permission_manifest_digest="sha256:" + "1" * 64,
     )
     # target revisions
-    _seed_component_revision(
+    target_code = _seed_component_revision(
         session, revision_id="crv_01J0000000000B11", component_id="cmp_01J0000000000A01",
         component_kind="APPLICATION_CODE", configuration_digest=_DIGEST_D,
     )
-    _seed_component_revision(
+    target_model = _seed_component_revision(
         session, revision_id="crv_01J0000000000B12", component_id="cmp_01J0000000000A02",
         component_kind="MODEL_BINDING", configuration_digest=_DIGEST_B,
     )
-    _seed_component_revision(
+    target_retriever = _seed_component_revision(
         session, revision_id="crv_01J0000000000B13", component_id="cmp_01J0000000000A03",
         component_kind="RETRIEVER", configuration_digest=_DIGEST_C,
     )
-    _seed_component_revision(
+    target_policy = _seed_component_revision(
         session, revision_id="crv_01J0000000000B14", component_id="cmp_01J0000000000A04",
         component_kind="POLICY", configuration_digest=_DIGEST_C,
         permission_manifest_digest="sha256:" + "2" * 64,
     )
+    base_topology = _seed_empty_topology(
+        session,
+        topology_id="tpr_01J0000000000C01",
+        component_ids=[
+            base_code.component_id,
+            base_model.component_id,
+            base_policy.component_id,
+        ],
+    )
+    target_topology = _seed_empty_topology(
+        session,
+        topology_id="tpr_01J0000000000C02",
+        component_ids=[
+            target_code.component_id,
+            target_model.component_id,
+            target_retriever.component_id,
+            target_policy.component_id,
+        ],
+    )
+    base_bindings = [
+        {
+            "kind": "COMPONENT_REVISION",
+            "id": revision.component_revision_id,
+            "revision": 1,
+            "digest": revision.record_digest,
+        }
+        for revision in (base_code, base_model, base_policy)
+    ]
+    target_bindings = [
+        {
+            "kind": "COMPONENT_REVISION",
+            "id": revision.component_revision_id,
+            "revision": 1,
+            "digest": revision.record_digest,
+        }
+        for revision in (target_code, target_model, target_retriever, target_policy)
+    ]
     base = _seed_version_set_row(
         session,
         version_set_id="vset_01J0000000000C01",
-        bindings=[
-            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B01", "revision": None, "digest": _DIGEST_A},
-            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B02", "revision": None, "digest": _DIGEST_B},
-            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B03", "revision": None, "digest": _DIGEST_C},
-        ],
-        topology_binding={"kind": "TOPOLOGY_REVISION", "id": "tpr_01J0000000000C01", "revision": None, "digest": _DIGEST_A},
+        bindings=base_bindings,
+        topology_binding={
+            "kind": "TOPOLOGY_REVISION",
+            "id": base_topology.topology_revision_id,
+            "revision": 1,
+            "digest": base_topology.record_digest,
+        },
     )
     target = _seed_version_set_row(
         session,
         version_set_id="vset_01J0000000000C02",
-        bindings=[
-            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B11", "revision": None, "digest": _DIGEST_D},
-            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B12", "revision": None, "digest": _DIGEST_B},
-            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B13", "revision": None, "digest": _DIGEST_C},
-            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000B14", "revision": None, "digest": _DIGEST_C},
-        ],
-        topology_binding={"kind": "TOPOLOGY_REVISION", "id": "tpr_01J0000000000C02", "revision": None, "digest": _DIGEST_B},
-        version_set_digest=_DIGEST_B,
+        bindings=target_bindings,
+        topology_binding={
+            "kind": "TOPOLOGY_REVISION",
+            "id": target_topology.topology_revision_id,
+            "revision": 1,
+            "digest": target_topology.record_digest,
+        },
     )
     session.commit()
     return base.system_version_set_id, target.system_version_set_id
@@ -1346,7 +1346,7 @@ def _seed_diff_pair(session) -> tuple[str, str]:
 def test_diff_semantics_digest_substitution_permission_expansion(sqlite_session) -> None:
     _seed_env(sqlite_session)
     base_id, target_id = _seed_diff_pair(sqlite_session)
-    diff = _service(sqlite_session).diff_system_versions(
+    diff = _diff_service(sqlite_session).diff_system_versions(
         base_id,
         target_id,
         principal=_reader_principal(),
@@ -1358,8 +1358,12 @@ def test_diff_semantics_digest_substitution_permission_expansion(sqlite_session)
     changed = {item.component_id: item for item in diff.changed}
     assert "cmp_01J0000000000A01" in changed
     assert changed["cmp_01J0000000000A01"].diff_kind == "DIGEST_CHANGED"
-    assert changed["cmp_01J0000000000A01"].base_digest == _DIGEST_A
-    assert changed["cmp_01J0000000000A01"].target_digest == _DIGEST_D
+    assert changed["cmp_01J0000000000A01"].base_digest == sqlite_session.get(
+        ComponentRevision, "crv_01J0000000000B01"
+    ).configuration_digest
+    assert changed["cmp_01J0000000000A01"].target_digest == sqlite_session.get(
+        ComponentRevision, "crv_01J0000000000B11"
+    ).configuration_digest
     expansions = {
         item.component_id: item for item in diff.policy_permission_expansions
     }
@@ -1377,7 +1381,7 @@ def test_diff_same_label_different_digest_uses_component_identity(sqlite_session
     """same label (component_id), different digest -> DIGEST_CHANGED, not ADDED."""
     _seed_env(sqlite_session)
     base_id, target_id = _seed_diff_pair(sqlite_session)
-    diff = _service(sqlite_session).diff_system_versions(
+    diff = _diff_service(sqlite_session).diff_system_versions(
         base_id,
         target_id,
         principal=_reader_principal(),
@@ -1412,7 +1416,7 @@ def test_diff_requires_visibility_of_both_versions(sqlite_session) -> None:
     from app.services.system_versions import V5ReadDenial
 
     with pytest.raises(V5ReadDenial) as raised:
-        _service(sqlite_session).diff_system_versions(
+        _diff_service(sqlite_session).diff_system_versions(
             base_id,
             target_id,
             principal=foreign,
@@ -1420,6 +1424,188 @@ def test_diff_requires_visibility_of_both_versions(sqlite_session) -> None:
         )
     assert raised.value.code == "RESOURCE_NOT_FOUND"
     sqlite_session.commit()
+
+
+def test_get_fails_closed_on_envelope_scalar_and_receipt_tampering(
+    sqlite_session,
+) -> None:
+    _seed_env(sqlite_session)
+    response = _import(sqlite_session, _manifest())
+    sqlite_session.commit()
+    version_set_id = response.system_version_set.system_version_set_id
+
+    row = sqlite_session.get(SystemVersionSet, version_set_id)
+    tampered_envelope = copy.deepcopy(row.envelope_payload)
+    tampered_envelope["version_set_digest"] = _DIGEST_D
+    sqlite_session.execute(
+        sa.update(SystemVersionSet)
+        .where(SystemVersionSet.system_version_set_id == version_set_id)
+        .values(envelope_payload=tampered_envelope)
+    )
+    sqlite_session.expire_all()
+    with pytest.raises(SystemVersionsError) as raised:
+        _service(sqlite_session).get_system_version(
+            version_set_id,
+            principal=_reader_principal(),
+            request_id="req_01J000000000000E",
+        )
+    assert raised.value.details == {"reason": "VERSION_GRAPH_INTEGRITY_INVALID"}
+    sqlite_session.rollback()
+
+    sqlite_session.execute(
+        sa.update(SystemVersionSet)
+        .where(SystemVersionSet.system_version_set_id == version_set_id)
+        .values(version_set_digest=_DIGEST_D)
+    )
+    sqlite_session.expire_all()
+    with pytest.raises(SystemVersionsError) as raised:
+        _service(sqlite_session).get_system_version(
+            version_set_id,
+            principal=_reader_principal(),
+            request_id="req_01J000000000000F",
+        )
+    assert raised.value.details == {"reason": "VERSION_GRAPH_INTEGRITY_INVALID"}
+    sqlite_session.rollback()
+
+    row = sqlite_session.get(SystemVersionSet, version_set_id)
+    sqlite_session.execute(
+        sa.update(AuthorityReceipt)
+        .where(
+            AuthorityReceipt.authority_receipt_id == row.authority_receipt_id
+        )
+        .values(subject_digest=_DIGEST_D)
+    )
+    sqlite_session.expire_all()
+    with pytest.raises(SystemVersionsError) as raised:
+        _service(sqlite_session).get_system_version(
+            version_set_id,
+            principal=_reader_principal(),
+            request_id="req_01J000000000000G",
+        )
+    assert raised.value.details == {"reason": "VERSION_GRAPH_INTEGRITY_INVALID"}
+    sqlite_session.rollback()
+
+
+def test_get_and_diff_reject_rehashed_but_inexact_child_binding(
+    sqlite_session,
+) -> None:
+    _seed_env(sqlite_session)
+    response = _import(sqlite_session, _manifest())
+    sqlite_session.commit()
+    version_set_id = response.system_version_set.system_version_set_id
+    row = sqlite_session.get(SystemVersionSet, version_set_id)
+
+    bindings = copy.deepcopy(row.exact_component_revision_bindings)
+    bindings[0]["digest"] = _DIGEST_D
+    version_set_digest = SystemVersionsService._version_set_digest(
+        application_id=row.application_id,
+        declared_environment_id=row.declared_environment_id,
+        component_bindings=bindings,
+        topology_binding=row.exact_topology_revision_binding,
+        provenance_receipt_ids=row.provenance_receipt_ids,
+        assurance_summary=row.identity_assurance_summary,
+    )
+    envelope = copy.deepcopy(row.envelope_payload)
+    envelope["exact_component_revision_bindings"] = bindings
+    envelope["version_set_digest"] = version_set_digest
+    envelope["record_envelope"]["record_digest"] = ""
+    record_digest = v5_record_digest(envelope)
+    envelope["record_envelope"]["record_digest"] = record_digest
+    sqlite_session.execute(
+        sa.update(SystemVersionSet)
+        .where(SystemVersionSet.system_version_set_id == version_set_id)
+        .values(
+            exact_component_revision_bindings=bindings,
+            version_set_digest=version_set_digest,
+            envelope_payload=envelope,
+            record_digest=record_digest,
+        )
+    )
+    sqlite_session.expire_all()
+
+    service = _diff_service(sqlite_session)
+    with pytest.raises(SystemVersionsError) as raised:
+        service.get_system_version(
+            version_set_id,
+            principal=_reader_principal(),
+            request_id="req_01J000000000000H",
+        )
+    assert raised.value.details == {"reason": "VERSION_GRAPH_INTEGRITY_INVALID"}
+    with pytest.raises(SystemVersionsError) as raised:
+        service.diff_system_versions(
+            version_set_id,
+            version_set_id,
+            principal=_reader_principal(),
+            request_id="req_01J000000000000I",
+        )
+    assert raised.value.details == {"reason": "VERSION_GRAPH_INTEGRITY_INVALID"}
+    sqlite_session.rollback()
+
+
+def test_get_rejects_rehashed_topology_with_wrong_provenance_receipt(
+    sqlite_session,
+) -> None:
+    _seed_env(sqlite_session)
+    response = _import(sqlite_session, _manifest())
+    sqlite_session.commit()
+    version_set = sqlite_session.get(
+        SystemVersionSet, response.system_version_set.system_version_set_id
+    )
+    topology = sqlite_session.get(
+        TopologyRevision, response.topology_revision.topology_revision_id
+    )
+    environment = sqlite_session.get(
+        Environment, response.environment.environment_id
+    )
+    component = sqlite_session.get(
+        SystemComponent, response.components[0].component_id
+    )
+    wrong_provenance = sorted(
+        {component.authority_receipt_id, environment.authority_receipt_id}
+    )
+
+    topology_envelope = copy.deepcopy(topology.envelope_payload)
+    topology_envelope["provenance_receipt_ids"] = wrong_provenance
+    topology_envelope["record_envelope"]["record_digest"] = ""
+    topology_record_digest = v5_record_digest(topology_envelope)
+    topology_envelope["record_envelope"]["record_digest"] = topology_record_digest
+    topology.provenance_receipt_ids = wrong_provenance
+    topology.envelope_payload = topology_envelope
+    topology.record_digest = topology_record_digest
+
+    topology_binding = {
+        "kind": "TOPOLOGY_REVISION",
+        "id": topology.topology_revision_id,
+        "revision": 1,
+        "digest": topology_record_digest,
+    }
+    version_set_digest = SystemVersionsService._version_set_digest(
+        application_id=version_set.application_id,
+        declared_environment_id=version_set.declared_environment_id,
+        component_bindings=version_set.exact_component_revision_bindings,
+        topology_binding=topology_binding,
+        provenance_receipt_ids=version_set.provenance_receipt_ids,
+        assurance_summary=version_set.identity_assurance_summary,
+    )
+    version_envelope = copy.deepcopy(version_set.envelope_payload)
+    version_envelope["exact_topology_revision_binding"] = topology_binding
+    version_envelope["version_set_digest"] = version_set_digest
+    version_envelope["record_envelope"]["record_digest"] = ""
+    version_record_digest = v5_record_digest(version_envelope)
+    version_envelope["record_envelope"]["record_digest"] = version_record_digest
+    version_set.exact_topology_revision_binding = topology_binding
+    version_set.version_set_digest = version_set_digest
+    version_set.envelope_payload = version_envelope
+    version_set.record_digest = version_record_digest
+
+    with pytest.raises(SystemVersionsError) as raised:
+        _diff_service(sqlite_session).get_system_version(
+            version_set.system_version_set_id,
+            principal=_reader_principal(),
+            request_id="req_01J000000000000J",
+        )
+    assert raised.value.details == {"reason": "VERSION_GRAPH_INTEGRITY_INVALID"}
+    sqlite_session.rollback()
 
 
 def test_get_missing_and_cross_workspace_denied(sqlite_session) -> None:
@@ -1433,4 +1619,6 @@ def test_get_missing_and_cross_workspace_denied(sqlite_session) -> None:
             request_id="req_01J000000000000A",
         )
     assert raised.value.code == "RESOURCE_NOT_FOUND"
+    assert raised.value.commit_audit_on_denial is True
+    assert raised.value.rollback_required is False
     sqlite_session.commit()

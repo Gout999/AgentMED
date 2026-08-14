@@ -34,7 +34,6 @@ from app.public_api.v5_models import (
     AcceptanceCriteriaProposeResponse,
     ApplicationBindingGetResponse,
     ApplicationGetResponse,
-    ApplicationListResponse,
     ApplicationRegisterRequest,
     ApplicationRegisterResponse,
     CaseBindApplicationRequest,
@@ -62,16 +61,10 @@ from app.services.case_binding import (
 )
 from app.services.system_versions import SystemVersionsError, V5ReadDenial
 from app.services.v5_capabilities import V5CapabilitiesService
-from app.services.v5_application_list import (
-    V5ApplicationListReadDenial,
-    V5ApplicationListService,
-)
 
 router = APIRouter(prefix="/api/v2", tags=["public-v5-1a-catalog"])
 
 _APPLICATION_ID = re.compile(r"^app_[0-9A-Za-z]{8,64}$")
-_PROJECT_ID = re.compile(r"^proj_[0-9A-Za-z]{8,64}$")
-_WORKSPACE_ID = re.compile(r"^ws_[0-9A-Za-z]{8,64}$")
 _ENVIRONMENT_ID = re.compile(r"^env_[0-9A-Za-z]{8,64}$")
 _COMPONENT_ID = re.compile(r"^cmp_[0-9A-Za-z]{8,64}$")
 _EDGE_ID = re.compile(r"^de_[0-9A-Za-z]{8,64}$")
@@ -217,13 +210,10 @@ def _handle_failure(
     )
 
     if (
-        allow_read_denial_commit
-        and session is not None
+        session is not None
         and principal is not None
-        and isinstance(
-            exc,
-            (V5ReadDenial, CatalogReadDenial, V5ApplicationListReadDenial),
-        )
+        and getattr(exc, "commit_audit_on_denial", False) is True
+        and getattr(exc, "rollback_required", True) is False
     ):
         code = getattr(exc, "code", None)
         audit_ref = getattr(exc, "audit_ref", None)
@@ -231,18 +221,18 @@ def _handle_failure(
         if (
             code
             not in {
-                "REQUEST_INVALID",
                 "RESOURCE_NOT_FOUND",
                 "SCOPE_FORBIDDEN",
                 "VALIDATION_FAILED",
+                "CATALOG_CONFLICT",
+                "IDEMPOTENCY_CONFLICT",
+                "WORKSPACE_ACCESS_DENIED",
             }
             or not isinstance(audit_ref, str)
+            or not audit_ref.startswith("audit://aud_")
             or not isinstance(details, dict)
-            or getattr(exc, "rollback_required", True) is not False
-            or (
-                isinstance(exc, V5ApplicationListReadDenial)
-                and details != {}
-            )
+            or not isinstance(error_workspace, str)
+            or error_workspace != principal.workspace_id
         ):
             _rollback(session)
             return _error_response(
@@ -376,17 +366,6 @@ def _capabilities_service(request: Request, session: Session) -> Any:
     return V5CapabilitiesService(session)
 
 
-def _application_list_service(request: Request, session: Session) -> Any:
-    factory = getattr(request.app.state, "v5_application_list_service_factory", None)
-    if factory is not None:
-        return factory(session)
-    signing_key = request.app.state.settings.public_cursor_signing_key
-    return V5ApplicationListService(
-        session,
-        cursor_signing_key=signing_key.get_secret_value(),
-    )
-
-
 def _system_versions_service(request: Request, session: Session) -> Any:
     factory = getattr(request.app.state, "system_versions_service_factory", None)
     if factory is not None:
@@ -433,25 +412,6 @@ def _authenticate(
 def _validate_path(value: str, pattern: re.Pattern[str], field: str) -> None:
     if pattern.fullmatch(value) is None:
         raise _RouteFailure("VALIDATION_FAILED", {"fields": [field]})
-
-
-def _application_list_query(request: Request) -> tuple[str | None, int, str | None]:
-    allowed = {"project_id", "limit", "cursor"}
-    if not set(request.query_params) <= allowed or any(
-        len(request.query_params.getlist(name)) != 1
-        for name in set(request.query_params)
-    ):
-        raise _RouteFailure("VALIDATION_FAILED", {"fields": ["query"]})
-    project_id = request.query_params.get("project_id")
-    if project_id is None:
-        raise _RouteFailure("VALIDATION_FAILED", {"fields": ["project_id"]})
-    _validate_path(project_id, _PROJECT_ID, "project_id")
-    cursor = request.query_params.get("cursor")
-    try:
-        limit = int(request.query_params.get("limit", "50"))
-    except ValueError:
-        raise _RouteFailure("VALIDATION_FAILED", {"fields": ["limit"]}) from None
-    return project_id, limit, cursor
 
 
 async def _parse_body(request: Request, model: type[ResponseModel]) -> ResponseModel:
@@ -510,15 +470,8 @@ def _audit_header_violation(
     failures carry no workspace and are mapped without an audit row.
     """
 
-    workspace_values = [
-        value.decode("latin-1")
-        for name, value in request.scope.get("headers", [])
-        if name.decode("latin-1").lower() == "x-caseloop-workspace-id"
-    ]
-    if session is None or len(workspace_values) != 1:
-        return None
-    workspace_id = workspace_values[0]
-    if _WORKSPACE_ID.fullmatch(workspace_id) is None:
+    workspace_id = request.headers.get("x-caseloop-workspace-id")
+    if session is None or not isinstance(workspace_id, str) or not workspace_id:
         return None
     if code in {
         "AUTHENTICATION_REQUIRED",
@@ -528,95 +481,27 @@ def _audit_header_violation(
         "SIGNATURE_INVALID",
     }:
         return None
-    from app.services.v4_audit import V4AuditService
-
-    recorded = V4AuditService(session).record(
-        workspace_id=workspace_id,
-        actor_principal=_ANONYMOUS_AUDIT_ACTOR,
-        action="public-v2.header_rejected",
-        target="request",
-        params={"request_id": request_id, "code": code},
-        result="denied",
-        error_code=code,
-        trace_id=request_id,
-    )
-    return recorded.audit_ref
-
-
-def _handle_header_violation(
-    session: Any | None,
-    request: Request,
-    exc: HeaderContractViolation,
-    *,
-    request_id: str,
-    mutation: bool,
-) -> JSONResponse:
-    """Persist safe denials, including V2 version rejection before mutations."""
-
-    code = getattr(exc, "code", "REQUEST_INVALID")
-    contract_version_denial = (
-        code == "REQUEST_INVALID"
-        and "X-CaseLoop-Contract-Version" in str(exc)
-    )
-    if mutation and not contract_version_denial:
-        if session is not None:
-            _rollback(session)
-        return _error_response(
-            exc,
-            request_id=request_id,
-            workspace_id=None,
-            keep_audit_ref=False,
-        )
-
-    if mutation and session is not None:
-        _rollback(session)
-    audit_session = None if mutation else session
-    owns_session = audit_session is None
     try:
-        if audit_session is None:
-            audit_session = _session_for(request)
-        else:
-            _rollback(audit_session)
-        audit_ref = _audit_header_violation(
-            audit_session,
-            request,
-            request_id,
-            code,
+        from app.services.v4_audit import V4AuditService
+
+        recorded = V4AuditService(session).record(
+            workspace_id=workspace_id,
+            actor_principal=_ANONYMOUS_AUDIT_ACTOR,
+            action="public-v2.header_rejected",
+            target="request",
+            params={"request_id": request_id, "code": code},
+            result="denied",
+            error_code=code,
+            trace_id=request_id,
         )
-        if audit_ref is None:
-            _rollback(audit_session)
-            return _error_response(
-                exc,
-                request_id=request_id,
-                workspace_id=None,
-                keep_audit_ref=False,
-            )
-        _commit(audit_session)
-        return _error_response(
-            _RouteFailure(code, audit_ref=audit_ref),
-            request_id=request_id,
-            keep_audit_ref=True,
-        )
+        return recorded.audit_ref
     except Exception:
-        if audit_session is not None:
-            _rollback(audit_session)
-        return _error_response(
-            _RouteFailure("AUDIT_UNAVAILABLE"),
-            request_id=request_id,
-            workspace_id=None,
-        )
-    finally:
-        if owns_session and audit_session is not None:
-            _close(audit_session)
+        return None
 
 
-@router.get(
-    "/capabilities",
-    response_model=V5ServerCapabilitiesResponse,
-    operation_id="getV5Capabilities",
-)
+@router.get("/capabilities", response_model=V5ServerCapabilitiesResponse)
 def get_v5_capabilities(request: Request) -> JSONResponse:
-    """Discover only R2 intents backed by public HTTP and explicit-major CLI."""
+    """Discover only V5 intents with a real HTTP and explicit-major CLI path."""
 
     request_id = _request_id(request)
     session: Any | None = None
@@ -633,18 +518,28 @@ def get_v5_capabilities(request: Request) -> JSONResponse:
         result = _capabilities_service(request, session).get_capabilities(
             principal=principal,
             request_id=request_id,
-            server_version=f"{__version__}+v5-r2",
+            server_version=f"{__version__}+v5-1c",
         )
         response = V5ServerCapabilitiesResponse.model_validate(result)
         _commit(session)
         return _json_response(response, status_code=200)
     except HeaderContractViolation as exc:
-        return _handle_header_violation(
-            session,
-            request,
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
             exc,
             request_id=request_id,
-            mutation=False,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
         )
     except Exception as exc:
         return _handle_failure(
@@ -662,7 +557,6 @@ def get_v5_capabilities(request: Request) -> JSONResponse:
     "/applications",
     response_model=ApplicationRegisterResponse,
     status_code=201,
-    operation_id="registerApplication",
     openapi_extra={
         "requestBody": {
             "required": True,
@@ -706,12 +600,22 @@ async def register_application(request: Request) -> JSONResponse:
         _commit(session)
         return _json_response(response, status_code=201)
     except HeaderContractViolation as exc:
-        return _handle_header_violation(
-            session,
-            request,
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
             exc,
             request_id=request_id,
-            mutation=True,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
         )
     except Exception as exc:
         return _handle_failure(
@@ -725,69 +629,7 @@ async def register_application(request: Request) -> JSONResponse:
             _close(session)
 
 
-@router.get(
-    "/applications",
-    response_model=ApplicationListResponse,
-    operation_id="listApplications",
-)
-def list_applications(request: Request) -> JSONResponse:
-    request_id = _request_id(request)
-    session: Any | None = None
-    principal: AcceptedPrincipalContext | None = None
-    try:
-        headers = PublicV2RequestHeaders.from_headers(_public_headers(request))
-        session = _session_for(request)
-        principal, _resolver = _authenticate(
-            request,
-            session,
-            headers=headers,
-            required_scope="applications:read",
-        )
-        request.state.public_principal = principal
-        service = _application_list_service(request, session)
-        try:
-            project_id, limit, cursor = _application_list_query(request)
-        except _RouteFailure:
-            service.deny_invalid_query(
-                principal=principal,
-                request_id=request_id,
-            )
-        result = service.list_applications(
-            principal=principal,
-            request_id=request_id,
-            project_id=project_id,
-            limit=limit,
-            cursor=cursor,
-        )
-        response = ApplicationListResponse.model_validate(result)
-        _commit(session)
-        return _json_response(response, status_code=200)
-    except HeaderContractViolation as exc:
-        return _handle_header_violation(
-            session,
-            request,
-            exc,
-            request_id=request_id,
-            mutation=False,
-        )
-    except Exception as exc:
-        return _handle_failure(
-            session,
-            exc,
-            request_id=request_id,
-            principal=principal,
-            allow_read_denial_commit=True,
-        )
-    finally:
-        if session is not None:
-            _close(session)
-
-
-@router.get(
-    "/applications/{application_id}",
-    response_model=ApplicationGetResponse,
-    operation_id="getApplication",
-)
+@router.get("/applications/{application_id}", response_model=ApplicationGetResponse)
 def get_application(application_id: str, request: Request) -> JSONResponse:
     request_id = _request_id(request)
     session: Any | None = None
@@ -808,12 +650,22 @@ def get_application(application_id: str, request: Request) -> JSONResponse:
         _commit(session)
         return _json_response(response, status_code=200)
     except HeaderContractViolation as exc:
-        return _handle_header_violation(
-            session,
-            request,
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
             exc,
             request_id=request_id,
-            mutation=False,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
         )
     except Exception as exc:
         return _handle_failure(
@@ -832,7 +684,6 @@ def get_application(application_id: str, request: Request) -> JSONResponse:
     "/environments",
     response_model=EnvironmentRegisterResponse,
     status_code=201,
-    operation_id="registerEnvironment",
     openapi_extra={
         "requestBody": {
             "required": True,
@@ -878,12 +729,22 @@ async def register_environment(request: Request) -> JSONResponse:
         _commit(session)
         return _json_response(response, status_code=201)
     except HeaderContractViolation as exc:
-        return _handle_header_violation(
-            session,
-            request,
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
             exc,
             request_id=request_id,
-            mutation=True,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
         )
     except Exception as exc:
         return _handle_failure(
@@ -897,11 +758,7 @@ async def register_environment(request: Request) -> JSONResponse:
             _close(session)
 
 
-@router.get(
-    "/environments/{environment_id}",
-    response_model=EnvironmentGetResponse,
-    operation_id="getEnvironment",
-)
+@router.get("/environments/{environment_id}", response_model=EnvironmentGetResponse)
 def get_environment(environment_id: str, request: Request) -> JSONResponse:
     request_id = _request_id(request)
     session: Any | None = None
@@ -922,12 +779,22 @@ def get_environment(environment_id: str, request: Request) -> JSONResponse:
         _commit(session)
         return _json_response(response, status_code=200)
     except HeaderContractViolation as exc:
-        return _handle_header_violation(
-            session,
-            request,
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
             exc,
             request_id=request_id,
-            mutation=False,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
         )
     except Exception as exc:
         return _handle_failure(
@@ -946,7 +813,6 @@ def get_environment(environment_id: str, request: Request) -> JSONResponse:
     "/system-components",
     response_model=ComponentRegisterResponse,
     status_code=201,
-    operation_id="registerSystemComponent",
     openapi_extra={
         "requestBody": {
             "required": True,
@@ -992,12 +858,22 @@ async def register_component(request: Request) -> JSONResponse:
         _commit(session)
         return _json_response(response, status_code=201)
     except HeaderContractViolation as exc:
-        return _handle_header_violation(
-            session,
-            request,
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
             exc,
             request_id=request_id,
-            mutation=True,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
         )
     except Exception as exc:
         return _handle_failure(
@@ -1011,11 +887,7 @@ async def register_component(request: Request) -> JSONResponse:
             _close(session)
 
 
-@router.get(
-    "/system-components/{component_id}",
-    response_model=ComponentGetResponse,
-    operation_id="getSystemComponent",
-)
+@router.get("/system-components/{component_id}", response_model=ComponentGetResponse)
 def get_component(component_id: str, request: Request) -> JSONResponse:
     request_id = _request_id(request)
     session: Any | None = None
@@ -1036,12 +908,22 @@ def get_component(component_id: str, request: Request) -> JSONResponse:
         _commit(session)
         return _json_response(response, status_code=200)
     except HeaderContractViolation as exc:
-        return _handle_header_violation(
-            session,
-            request,
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
             exc,
             request_id=request_id,
-            mutation=False,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
         )
     except Exception as exc:
         return _handle_failure(
@@ -1060,7 +942,6 @@ def get_component(component_id: str, request: Request) -> JSONResponse:
     "/dependency-edges",
     response_model=DependencyEdgeRecordResponse,
     status_code=201,
-    operation_id="recordDependencyEdge",
     openapi_extra={
         "requestBody": {
             "required": True,
@@ -1106,12 +987,22 @@ async def record_dependency_edge(request: Request) -> JSONResponse:
         _commit(session)
         return _json_response(response, status_code=201)
     except HeaderContractViolation as exc:
-        return _handle_header_violation(
-            session,
-            request,
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
             exc,
             request_id=request_id,
-            mutation=True,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
         )
     except Exception as exc:
         return _handle_failure(
@@ -1125,12 +1016,8 @@ async def record_dependency_edge(request: Request) -> JSONResponse:
             _close(session)
 
 
-@router.get(
-    "/dependency-edges/{dependency_edge_id}",
-    response_model=DependencyEdgeGetResponse,
-    operation_id="getDependencyEdge",
-)
-def get_dependency_edge(dependency_edge_id: str, request: Request) -> JSONResponse:
+@router.get("/dependency-edges/{edge_id}", response_model=DependencyEdgeGetResponse)
+def get_dependency_edge(edge_id: str, request: Request) -> JSONResponse:
     request_id = _request_id(request)
     session: Any | None = None
     principal: AcceptedPrincipalContext | None = None
@@ -1140,22 +1027,32 @@ def get_dependency_edge(dependency_edge_id: str, request: Request) -> JSONRespon
         principal, _resolver = _authenticate(
             request, session, headers=headers, required_scope="applications:read"
         )
-        _validate_path(dependency_edge_id, _EDGE_ID, "dependency_edge_id")
+        _validate_path(edge_id, _EDGE_ID, "edge_id")
         result = _catalog_service(request, session).get_dependency_edge(
             principal=principal,
-            edge_id=dependency_edge_id,
+            edge_id=edge_id,
             request_id=request_id,
         )
         response = DependencyEdgeGetResponse.model_validate(result)
         _commit(session)
         return _json_response(response, status_code=200)
     except HeaderContractViolation as exc:
-        return _handle_header_violation(
-            session,
-            request,
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
             exc,
             request_id=request_id,
-            mutation=False,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
         )
     except Exception as exc:
         return _handle_failure(
@@ -1171,8 +1068,8 @@ def get_dependency_edge(dependency_edge_id: str, request: Request) -> JSONRespon
 
 
 # ---------------------------------------------------------------------------
-# R2 trusted one-shot manifest bootstrap.  Version read/diff implementations
-# remain reserved below but are deliberately not registered as public routes.
+# V5-1B trusted manifest import / system versions (system-manifests.import,
+# system-versions.get, system-versions.diff).
 # ---------------------------------------------------------------------------
 
 
@@ -1180,7 +1077,6 @@ def get_dependency_edge(dependency_edge_id: str, request: Request) -> JSONRespon
     "/system-manifests:import",
     response_model=SystemManifestImportResponse,
     status_code=201,
-    operation_id="importSystemManifest",
     openapi_extra={
         "requestBody": {
             "required": True,
@@ -1210,7 +1106,7 @@ async def import_system_manifest(request: Request) -> JSONResponse:
         )
         principal = resolver.bind_requested_context(
             principal,
-            project_id=submission.application.project_id,
+            project_id=None,
             environment_id=None,
             required_scope="system_manifests:import",
         )
@@ -1226,12 +1122,22 @@ async def import_system_manifest(request: Request) -> JSONResponse:
         _commit(session)
         return _json_response(response, status_code=201)
     except HeaderContractViolation as exc:
-        return _handle_header_violation(
-            session,
-            request,
+        if session is not None:
+            _rollback(session)
+        audit_ref = _audit_header_violation(
+            session, request, request_id, getattr(exc, "code", "REQUEST_INVALID")
+        )
+        return _error_response(
             exc,
             request_id=request_id,
-            mutation=True,
+            workspace_id=None,
+            keep_audit_ref=False,
+        ) if audit_ref is None else _error_response(
+            _RouteFailure(
+                getattr(exc, "code", "REQUEST_INVALID"),
+                audit_ref=audit_ref,
+            ),
+            request_id=request_id,
         )
     except Exception as exc:
         return _handle_failure(
@@ -1245,10 +1151,11 @@ async def import_system_manifest(request: Request) -> JSONResponse:
             _close(session)
 
 
-def _unregistered_get_system_version(
-    system_version_set_id: str, request: Request
-) -> JSONResponse:
-    """Reserved implementation helper; R2 intentionally registers no route."""
+@router.get(
+    "/system-versions/{system_version_set_id}",
+    response_model=SystemVersionGetResponse,
+)
+def get_system_version(system_version_set_id: str, request: Request) -> JSONResponse:
     request_id = _request_id(request)
     session: Any | None = None
     principal: AcceptedPrincipalContext | None = None
@@ -1298,12 +1205,12 @@ def _unregistered_get_system_version(
             _close(session)
 
 
-def _unregistered_diff_system_versions(
+@router.get("/system-versions:diff", response_model=SystemVersionDiffResponse)
+def diff_system_versions(
     base_system_version_set_id: str,
     target_system_version_set_id: str,
     request: Request,
 ) -> JSONResponse:
-    """Reserved implementation helper; R2 intentionally registers no route."""
     request_id = _request_id(request)
     session: Any | None = None
     principal: AcceptedPrincipalContext | None = None
@@ -1360,14 +1267,28 @@ def _unregistered_diff_system_versions(
 
 
 # ---------------------------------------------------------------------------
-# Reserved R4 application case binding / acceptance criteria helpers.  R2
-# intentionally registers none of these functions as public routes.
+# V5-1C application case binding / acceptance criteria
+# (cases.bind-application, case-application-bindings.get,
+# acceptance-criteria.propose/get/confirm).
 # ---------------------------------------------------------------------------
 
 
-async def _unregistered_bind_case_application(
-    case_id: str, request: Request
-) -> JSONResponse:
+@router.post(
+    "/cases/{case_id}:bind-application",
+    response_model=CaseBindApplicationResponse,
+    status_code=201,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": CaseBindApplicationRequest.model_json_schema()
+                }
+            },
+        }
+    },
+)
+async def bind_case_application(case_id: str, request: Request) -> JSONResponse:
     request_id = _request_id(request)
     session: Any | None = None
     principal: AcceptedPrincipalContext | None = None
@@ -1433,7 +1354,11 @@ async def _unregistered_bind_case_application(
             _close(session)
 
 
-def _unregistered_get_case_application_binding(
+@router.get(
+    "/cases/{case_id}/application-binding",
+    response_model=ApplicationBindingGetResponse,
+)
+def get_case_application_binding(
     case_id: str,
     case_revision: int,
     case_digest: str,
@@ -1490,9 +1415,22 @@ def _unregistered_get_case_application_binding(
             _close(session)
 
 
-async def _unregistered_propose_acceptance_criteria(
-    case_id: str, request: Request
-) -> JSONResponse:
+@router.post(
+    "/cases/{case_id}:propose-acceptance-criteria",
+    response_model=AcceptanceCriteriaProposeResponse,
+    status_code=201,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": AcceptanceCriteriaProposeRequest.model_json_schema()
+                }
+            },
+        }
+    },
+)
+async def propose_acceptance_criteria(case_id: str, request: Request) -> JSONResponse:
     request_id = _request_id(request)
     session: Any | None = None
     principal: AcceptedPrincipalContext | None = None
@@ -1558,7 +1496,11 @@ async def _unregistered_propose_acceptance_criteria(
             _close(session)
 
 
-def _unregistered_get_acceptance_criteria(
+@router.get(
+    "/cases/{case_id}/acceptance-criteria",
+    response_model=AcceptanceCriteriaGetResponse,
+)
+def get_acceptance_criteria(
     case_id: str,
     case_revision: int,
     request: Request,
@@ -1613,7 +1555,22 @@ def _unregistered_get_acceptance_criteria(
             _close(session)
 
 
-async def _unregistered_confirm_acceptance_criteria(
+@router.post(
+    "/acceptance-criteria/{acceptance_criteria_revision_id}:confirm",
+    response_model=AcceptanceCriteriaConfirmResponse,
+    status_code=201,
+    openapi_extra={
+        "requestBody": {
+            "required": True,
+            "content": {
+                "application/json": {
+                    "schema": AcceptanceCriteriaConfirmRequest.model_json_schema()
+                }
+            },
+        }
+    },
+)
+async def confirm_acceptance_criteria(
     acceptance_criteria_revision_id: str, request: Request
 ) -> JSONResponse:
     request_id = _request_id(request)
@@ -1649,6 +1606,7 @@ async def _unregistered_confirm_acceptance_criteria(
             principal=principal,
             idempotency_key=headers.idempotency_key,
             request_id=request_id,
+            expected_proposed_revision_id=acceptance_criteria_revision_id,
         )
         response = AcceptanceCriteriaConfirmResponse.model_validate(result)
         _commit(session)

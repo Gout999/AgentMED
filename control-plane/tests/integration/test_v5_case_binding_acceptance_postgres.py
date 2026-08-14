@@ -1,12 +1,13 @@
 """V5-1C PostgreSQL integration: First System Case from a real issue snapshot.
 
 Mirrors the Stage-1A / V5-1B integration proofs: disposable PG database, real
-Alembic chain (head = 010), real uvicorn server, real installed ``caseloop``
+Alembic chain (current script head), real uvicorn server, real installed ``caseloop``
 CLI speaking /api/v2 with an explicit ``--api-version 2``.  The CLI pulls a
 local snapshot of simonw/llm issue #1466 (stored as a JSON fixture), composes
 signals.submit → cases.bind-application → acceptance-criteria.propose, never
-auto-confirms, and a reauthenticated human confirms through the CLI to reach
-READY.  A retry of from-issue produces no duplicate case.
+auto-confirms, and a reauthenticated human confirms through the CLI while the
+ResolutionContract remains honestly pending V5-4 materialization.  A retry of
+from-issue produces no duplicate case.
 """
 from __future__ import annotations
 
@@ -24,6 +25,7 @@ import pytest
 import sqlalchemy as sa
 from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy.orm import Session, sessionmaker
 
 from conftest import (
@@ -73,6 +75,9 @@ CATALOG_REGISTRATION_ID = "creg_01J0000000000G02"
 VERSION_REGISTRATION_ID = "creg_01J0000000000G03"
 BINDER_CREDENTIAL_ID = "cred_01J0000000000G01"
 CONFIRMER_CREDENTIAL_ID = "cred_01J0000000000G02"
+BINDER_ENV_CREDENTIAL_ID = "cred_01J0000000000G03"
+CONFIRMER_ENV_CREDENTIAL_ID = "cred_01J0000000000G04"
+CONFIRMER_FRESH_CREDENTIAL_ID = "cred_01J0000000000G05"
 AUTH_SUBJECT = "v5-1c-e2e-operator"
 ISSUER = "https://auth.caseloop.dev"
 AUDIENCES = ["caseloop-public-api"]
@@ -96,19 +101,29 @@ ISSUE_FIXTURE = (
 )
 
 
-def _claims(scopes: list[str]) -> str:
+def _claims_for(
+    *, subject: str, scopes: list[str], environment_ids: list[str] | None = None
+) -> str:
     return canonical_digest(
         {
             "schema_version": "1.0",
             "issuer": ISSUER,
-            "subject": AUTH_SUBJECT,
+            "subject": subject,
             "principal_type": "human",
             "audiences": AUDIENCES,
             "workspace_id": WORKSPACE_ID,
             "project_ids": [PROJECT_ID],
-            "environment_ids": [],
+            "environment_ids": list(environment_ids or []),
             "scopes": scopes,
         }
+    )
+
+
+def _claims(scopes: list[str], environment_ids: list[str] | None = None) -> str:
+    return _claims_for(
+        subject=AUTH_SUBJECT,
+        scopes=scopes,
+        environment_ids=environment_ids,
     )
 
 
@@ -131,6 +146,7 @@ def _seed_auth_and_controllers(
             project_ids=[PROJECT_ID],
             environment_ids=[],
             scopes=["cases:read", "acceptance_criteria:read"],
+            trust_roles=["maintainer"],
             claims_digest=canonical_digest(
                 {
                     "schema_version": "1.0",
@@ -158,6 +174,7 @@ def _seed_auth_and_controllers(
             project_ids=[PROJECT_ID],
             environment_ids=[],
             scopes=binder_scopes,
+            trust_roles=["integrator"],
             claims_digest=_claims(binder_scopes),
             revoked_at=None,
         )
@@ -173,6 +190,7 @@ def _seed_auth_and_controllers(
             project_ids=[PROJECT_ID],
             environment_ids=[],
             scopes=confirmer_scopes,
+            trust_roles=["maintainer", "domain_reviewer"],
             claims_digest=canonical_digest(
                 {
                     "schema_version": "1.0",
@@ -271,8 +289,8 @@ def _seed_auth_and_controllers(
             environment_ids=[],
             scopes=confirmer_scopes,
             state="ACTIVE",
-            issued_at=now,
-            not_before=now,
+            issued_at=now - timedelta(days=2),
+            not_before=now - timedelta(days=2),
             expires_at=now + timedelta(days=30),
         )
     )
@@ -480,6 +498,62 @@ def _seed_auth_and_controllers(
     session.commit()
 
 
+def _rotate_credential_with_environment(
+    session: Session,
+    *,
+    principal_id: str,
+    previous_credential_id: str,
+    credential_id: str,
+    subject: str,
+    scopes: list[str],
+    environment_id: str,
+    raw_bearer: str,
+    pepper: str,
+    jti_digest: str,
+    issued_at: datetime,
+) -> None:
+    """Reissue, rather than mutate, a credential after the environment exists."""
+
+    principal = session.get(PublicPrincipal, principal_id)
+    previous = session.get(PublicCredential, previous_credential_id)
+    assert principal is not None and previous is not None
+    previous.state = "REVOKED"
+    previous.revoked_at = issued_at
+
+    environment_ids = [environment_id]
+    claims_digest = _claims_for(
+        subject=subject,
+        scopes=scopes,
+        environment_ids=environment_ids,
+    )
+    principal.environment_ids = environment_ids
+    principal.claims_digest = claims_digest
+    session.add(
+        PublicCredential(
+            credential_id=credential_id,
+            workspace_id=WORKSPACE_ID,
+            principal_id=principal_id,
+            issuer=ISSUER,
+            subject=subject,
+            credential_hash=hash_opaque_bearer(raw_bearer, pepper),
+            hash_algorithm="hmac-sha256-v1",
+            jti_digest=jti_digest,
+            claims_digest=claims_digest,
+            audiences=list(AUDIENCES),
+            project_ids=[PROJECT_ID],
+            environment_ids=environment_ids,
+            scopes=list(scopes),
+            state="ACTIVE",
+            issued_at=issued_at,
+            not_before=issued_at,
+            expires_at=issued_at + timedelta(days=30),
+            revoked_at=None,
+            created_at=issued_at,
+        )
+    )
+    session.flush()
+
+
 def _count(session: Session, model: type[object]) -> int:
     return int(session.scalar(sa.select(sa.func.count()).select_from(model)) or 0)
 
@@ -507,9 +581,19 @@ def _run_cli_allow_stderr(
 
 
 
-def _binder_principal_context(required_scope: str, now: datetime) -> "Any":
+def _binder_principal_context(
+    required_scope: str,
+    now: datetime,
+    *,
+    environment_id: str | None = None,
+    credential_id: str = BINDER_CREDENTIAL_ID,
+    jti_digest: str = "sha256:" + "a" * 64,
+    issued_at: datetime | None = None,
+) -> "Any":
     from app.public_api.auth_contract import AcceptedPrincipalContext
 
+    environments = [environment_id] if environment_id is not None else []
+    credential_issued_at = issued_at or now - timedelta(days=1)
     return AcceptedPrincipalContext.model_validate(
         {
             "schema_version": "1.0",
@@ -520,23 +604,23 @@ def _binder_principal_context(required_scope: str, now: datetime) -> "Any":
             "audiences": AUDIENCES,
             "workspace_id": WORKSPACE_ID,
             "project_ids": [PROJECT_ID],
-            "environment_ids": [],
+            "environment_ids": environments,
             "scopes": list(BINDER_SCOPES),
-            "credential_id": BINDER_CREDENTIAL_ID,
-            "jti_digest": "sha256:" + "a" * 64,
-            "issued_at": now - timedelta(days=1),
-            "not_before": now - timedelta(days=1),
-            "expires_at": now + timedelta(days=30),
+            "credential_id": credential_id,
+            "jti_digest": jti_digest,
+            "issued_at": credential_issued_at,
+            "not_before": credential_issued_at,
+            "expires_at": credential_issued_at + timedelta(days=30),
             "revoked_at": None,
             "revocation_checked_at": now,
             "requested_context": {
                 "workspace_id": WORKSPACE_ID,
                 "project_id": PROJECT_ID,
-                "environment_id": None,
+                "environment_id": environment_id,
                 "required_scope": required_scope,
             },
             "evaluated_at": now,
-            "claims_digest": _claims(list(BINDER_SCOPES)),
+            "claims_digest": _claims(list(BINDER_SCOPES), environments),
         }
     )
 
@@ -555,11 +639,13 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
             "create_all",
             side_effect=AssertionError("v5_1c.must_not_use_create_all"),
         ):
-            command.upgrade(_alembic_config(control_plane_root), "head")
+            migration_config = _alembic_config(control_plane_root)
+            command.upgrade(migration_config, "head")
+        expected_head = ScriptDirectory.from_config(migration_config).get_current_head()
         with engine.connect() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "010"
+            ).scalar_one() == expected_head
 
         now = datetime.now(timezone.utc)
         session = factory()
@@ -642,6 +728,37 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
             application_id = app_response.application.application_id
             environment_id = env_response.environment.environment_id
 
+            # The environment did not exist when the bootstrap credential was
+            # issued. Revoke it and issue a new exact-grant credential; never
+            # rewrite the old credential's immutable claims.
+            _rotate_credential_with_environment(
+                session,
+                principal_id=BINDER_PRINCIPAL_ID,
+                previous_credential_id=BINDER_CREDENTIAL_ID,
+                credential_id=BINDER_ENV_CREDENTIAL_ID,
+                subject=AUTH_SUBJECT,
+                scopes=list(BINDER_SCOPES),
+                environment_id=environment_id,
+                raw_bearer="unused-direct-service-binder-rotation",
+                pepper="seed-pepper",
+                jti_digest="sha256:" + "c" * 64,
+                issued_at=now,
+            )
+            _rotate_credential_with_environment(
+                session,
+                principal_id=CONFIRMER_PRINCIPAL_ID,
+                previous_credential_id=CONFIRMER_CREDENTIAL_ID,
+                credential_id=CONFIRMER_ENV_CREDENTIAL_ID,
+                subject="v5-1c-e2e-confirmer",
+                scopes=list(CONFIRMER_SCOPES),
+                environment_id=environment_id,
+                raw_bearer="unused-direct-service-confirmer-environment",
+                pepper="seed-pepper",
+                jti_digest="sha256:" + "d" * 64,
+                issued_at=now - timedelta(days=2),
+            )
+            session.commit()
+
             from app.services.signal_intake import SignalIntakeService
 
             signal = SignalIntakeService(session, clock=lambda: now)
@@ -657,7 +774,7 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
                         "signal_kind": "maintainer_report",
                         "reporter": {"kind": "maintainer", "source_subject_ref": AUTH_SUBJECT},
                         "project_id": PROJECT_ID,
-                        "environment_id": None,
+                        "environment_id": environment_id,
                         "governed_agent_id": None,
                         "occurred_at": now,
                         "content": {
@@ -669,7 +786,14 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
                         "privacy_classification": "PUBLIC",
                     }
                 ),
-                principal=_binder_principal_context("signals:write", now),
+                principal=_binder_principal_context(
+                    "signals:write",
+                    now,
+                    environment_id=environment_id,
+                    credential_id=BINDER_ENV_CREDENTIAL_ID,
+                    jti_digest="sha256:" + "c" * 64,
+                    issued_at=now,
+                ),
                 idempotency_key="from-issue-signal-0001",
                 request_id="req_01J0000000000G03",
             )
@@ -692,7 +816,10 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
                         "case_digest": case_digest,
                         "application_id": application_id,
                         "environment_id": environment_id,
-                        "declared_system_version_set_binding_or_unknown": None,
+                        "declared_system_version_set_binding_or_unknown": {
+                            "kind": "UNKNOWN",
+                            "reason": "NOT_DECLARED_BY_DIRECT_INTEGRATION",
+                        },
                         "issue_snapshot": {
                             "source_kind": "github_issue",
                             "source_url": "https://github.com/simonw/llm/issues/1466",
@@ -705,7 +832,14 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
                         },
                     }
                 ),
-                principal=_binder_principal_context("cases:bind", now),
+                principal=_binder_principal_context(
+                    "cases:bind",
+                    now,
+                    environment_id=environment_id,
+                    credential_id=BINDER_ENV_CREDENTIAL_ID,
+                    jti_digest="sha256:" + "c" * 64,
+                    issued_at=now,
+                ),
                 idempotency_key="from-issue-bind-0001",
                 request_id="req_01J0000000000G04",
             )
@@ -754,7 +888,14 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
                         "applicable_deployment_profile": {"name": "local-shadow"},
                     }
                 ),
-                principal=_binder_principal_context("acceptance_criteria:propose", now),
+                principal=_binder_principal_context(
+                    "acceptance_criteria:propose",
+                    now,
+                    environment_id=environment_id,
+                    credential_id=BINDER_ENV_CREDENTIAL_ID,
+                    jti_digest="sha256:" + "c" * 64,
+                    issued_at=now,
+                ),
                 idempotency_key="from-issue-propose-0001",
                 request_id="req_01J0000000000G05",
             )
@@ -777,34 +918,26 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
                     "audiences": AUDIENCES,
                     "workspace_id": WORKSPACE_ID,
                     "project_ids": [PROJECT_ID],
-                    "environment_ids": [],
+                    "environment_ids": [environment_id],
                     "scopes": list(CONFIRMER_SCOPES),
-                    "credential_id": CONFIRMER_CREDENTIAL_ID,
-                    "jti_digest": "sha256:" + "b" * 64,
+                    "credential_id": CONFIRMER_ENV_CREDENTIAL_ID,
+                    "jti_digest": "sha256:" + "d" * 64,
                     "issued_at": now - timedelta(days=2),
                     "not_before": now - timedelta(days=2),
-                    "expires_at": now + timedelta(days=30),
+                    "expires_at": now + timedelta(days=28),
                     "revoked_at": None,
                     "revocation_checked_at": now,
                     "requested_context": {
                         "workspace_id": WORKSPACE_ID,
                         "project_id": PROJECT_ID,
-                        "environment_id": None,
+                        "environment_id": environment_id,
                         "required_scope": "acceptance_criteria:confirm",
                     },
                     "evaluated_at": now,
-                    "claims_digest": canonical_digest(
-                        {
-                            "schema_version": "1.0",
-                            "issuer": ISSUER,
-                            "subject": "v5-1c-e2e-confirmer",
-                            "principal_type": "human",
-                            "audiences": AUDIENCES,
-                            "workspace_id": WORKSPACE_ID,
-                            "project_ids": [PROJECT_ID],
-                            "environment_ids": [],
-                            "scopes": list(CONFIRMER_SCOPES),
-                        }
+                    "claims_digest": _claims_for(
+                        subject="v5-1c-e2e-confirmer",
+                        scopes=list(CONFIRMER_SCOPES),
+                        environment_ids=[environment_id],
                     ),
                 }
             )
@@ -816,7 +949,7 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
                             "exact_proposed_revision_binding": {
                                 "kind": "ACCEPTANCE_CRITERIA_REVISION",
                                 "id": proposed.acceptance_criteria_revision_id,
-                                "revision": None,
+                                "revision": 1,
                                 "digest": proposed.record_envelope.record_digest,
                             },
                         }
@@ -834,7 +967,20 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
 
             # A reauthenticated human (fresh credential issued after the
             # proposal) confirms, producing a new immutable CONFIRMED record.
-            from app.public_api.credential_resolver import digest_public_subject as _dg
+            _rotate_credential_with_environment(
+                session,
+                principal_id=CONFIRMER_PRINCIPAL_ID,
+                previous_credential_id=CONFIRMER_ENV_CREDENTIAL_ID,
+                credential_id=CONFIRMER_FRESH_CREDENTIAL_ID,
+                subject="v5-1c-e2e-confirmer",
+                scopes=list(CONFIRMER_SCOPES),
+                environment_id=environment_id,
+                raw_bearer="unused-direct-service-confirmer-fresh",
+                pepper="seed-pepper",
+                jti_digest="sha256:" + "e" * 64,
+                issued_at=now + timedelta(seconds=5),
+            )
+            session.commit()
 
             confirmer_principal = AcceptedPrincipalContext.model_validate(
                 {
@@ -846,34 +992,26 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
                     "audiences": AUDIENCES,
                     "workspace_id": WORKSPACE_ID,
                     "project_ids": [PROJECT_ID],
-                    "environment_ids": [],
+                    "environment_ids": [environment_id],
                     "scopes": list(CONFIRMER_SCOPES),
-                    "credential_id": CONFIRMER_CREDENTIAL_ID,
-                    "jti_digest": "sha256:" + "b" * 64,
+                    "credential_id": CONFIRMER_FRESH_CREDENTIAL_ID,
+                    "jti_digest": "sha256:" + "e" * 64,
                     "issued_at": now + timedelta(seconds=5),
                     "not_before": now + timedelta(seconds=5),
-                    "expires_at": now + timedelta(days=30),
+                    "expires_at": now + timedelta(days=30, seconds=5),
                     "revoked_at": None,
                     "revocation_checked_at": now + timedelta(seconds=5),
                     "requested_context": {
                         "workspace_id": WORKSPACE_ID,
                         "project_id": PROJECT_ID,
-                        "environment_id": None,
+                        "environment_id": environment_id,
                         "required_scope": "acceptance_criteria:confirm",
                     },
                     "evaluated_at": now + timedelta(seconds=5),
-                    "claims_digest": canonical_digest(
-                        {
-                            "schema_version": "1.0",
-                            "issuer": ISSUER,
-                            "subject": "v5-1c-e2e-confirmer",
-                            "principal_type": "human",
-                            "audiences": AUDIENCES,
-                            "workspace_id": WORKSPACE_ID,
-                            "project_ids": [PROJECT_ID],
-                            "environment_ids": [],
-                            "scopes": list(CONFIRMER_SCOPES),
-                        }
+                    "claims_digest": _claims_for(
+                        subject="v5-1c-e2e-confirmer",
+                        scopes=list(CONFIRMER_SCOPES),
+                        environment_ids=[environment_id],
                     ),
                 }
             )
@@ -884,7 +1022,7 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
                         "exact_proposed_revision_binding": {
                             "kind": "ACCEPTANCE_CRITERIA_REVISION",
                             "id": proposed.acceptance_criteria_revision_id,
-                            "revision": None,
+                            "revision": 1,
                             "digest": proposed.record_envelope.record_digest,
                         },
                     }
@@ -897,8 +1035,9 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
             confirmed = confirmed_response.acceptance_criteria_revision
             assert confirmed.confirmation_status == "CONFIRMED"
             assert confirmed.confirmer_principal == CONFIRMER_PRINCIPAL_ID
+            assert confirmed.exact_previous_proposed_revision_binding is not None
             assert (
-                confirmed.exact_previous_proposed_revision_binding["id"]
+                confirmed.exact_previous_proposed_revision_binding.id
                 == proposed.acceptance_criteria_revision_id
             )
             reader = _APC.model_validate(
@@ -911,34 +1050,26 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
                     "audiences": AUDIENCES,
                     "workspace_id": WORKSPACE_ID,
                     "project_ids": [PROJECT_ID],
-                    "environment_ids": [],
+                    "environment_ids": [environment_id],
                     "scopes": list(CONFIRMER_SCOPES),
-                    "credential_id": CONFIRMER_CREDENTIAL_ID,
-                    "jti_digest": "sha256:" + "b" * 64,
+                    "credential_id": CONFIRMER_FRESH_CREDENTIAL_ID,
+                    "jti_digest": "sha256:" + "e" * 64,
                     "issued_at": now + timedelta(seconds=5),
                     "not_before": now + timedelta(seconds=5),
-                    "expires_at": now + timedelta(days=30),
+                    "expires_at": now + timedelta(days=30, seconds=5),
                     "revoked_at": None,
                     "revocation_checked_at": now + timedelta(seconds=5),
                     "requested_context": {
                         "workspace_id": WORKSPACE_ID,
                         "project_id": PROJECT_ID,
-                        "environment_id": None,
+                        "environment_id": environment_id,
                         "required_scope": "acceptance_criteria:read",
                     },
                     "evaluated_at": now + timedelta(seconds=5),
-                    "claims_digest": canonical_digest(
-                        {
-                            "schema_version": "1.0",
-                            "issuer": ISSUER,
-                            "subject": "v5-1c-e2e-confirmer",
-                            "principal_type": "human",
-                            "audiences": AUDIENCES,
-                            "workspace_id": WORKSPACE_ID,
-                            "project_ids": [PROJECT_ID],
-                            "environment_ids": [],
-                            "scopes": list(CONFIRMER_SCOPES),
-                        }
+                    "claims_digest": _claims_for(
+                        subject="v5-1c-e2e-confirmer",
+                        scopes=list(CONFIRMER_SCOPES),
+                        environment_ids=[environment_id],
                     ),
                 }
             )
@@ -949,9 +1080,12 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
                 request_id="req_01J0000000000G08",
             )
             session.commit()
-            assert get_response.case_readiness == "READY"
-            assert get_response.exact_case_binding["case_digest"] == case_digest
-            assert get_response.next_action is None
+            assert get_response.case_readiness == "NEEDS_ACCEPTANCE_CRITERIA"
+            assert get_response.exact_case_binding.case_digest == case_digest
+            assert get_response.next_action is not None
+            assert get_response.next_action["code"] == (
+                "MATERIALIZE_RESOLUTION_CONTRACT"
+            )
         finally:
             session.close()
     finally:
@@ -969,10 +1103,19 @@ def test_v5_1c_cli_from_issue_e2e_no_duplicate_on_retry(
         )
 
     raw_bearer = secrets.token_urlsafe(48)
+    binder_env_bearer = secrets.token_urlsafe(48)
     confirmer_bearer = secrets.token_urlsafe(48)
+    fresh_confirmer_bearer = secrets.token_urlsafe(48)
     public_pepper = secrets.token_urlsafe(48)
     cursor_key = secrets.token_urlsafe(48)
-    guarded_secrets = (raw_bearer, public_pepper, cursor_key, confirmer_bearer)
+    guarded_secrets = (
+        raw_bearer,
+        binder_env_bearer,
+        public_pepper,
+        cursor_key,
+        confirmer_bearer,
+        fresh_confirmer_bearer,
+    )
     now = datetime.now(timezone.utc)
     engine = _new_pg_engine()
     factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
@@ -1096,6 +1239,29 @@ def test_v5_1c_cli_from_issue_e2e_no_duplicate_on_retry(
         application_id = imported["application"]["application_id"]
         environment_id = imported["environment"]["environment_id"]
 
+        # The manifest created the environment after the bootstrap token was
+        # issued. Rotate to a new bearer with the exact environment grant;
+        # retain the old credential as REVOKED immutable history.
+        rotation_session = factory()
+        try:
+            _rotate_credential_with_environment(
+                rotation_session,
+                principal_id=BINDER_PRINCIPAL_ID,
+                previous_credential_id=BINDER_CREDENTIAL_ID,
+                credential_id=BINDER_ENV_CREDENTIAL_ID,
+                subject=AUTH_SUBJECT,
+                scopes=list(BINDER_SCOPES),
+                environment_id=environment_id,
+                raw_bearer=binder_env_bearer,
+                pepper=public_pepper,
+                jti_digest="sha256:" + "c" * 64,
+                issued_at=datetime.now(timezone.utc),
+            )
+            rotation_session.commit()
+        finally:
+            rotation_session.close()
+        cli_env["CASELOOP_PUBLIC_TOKEN"] = binder_env_bearer
+
         # First System Case from a local issue snapshot (data only).
         from_issue_args = [
             "--api-version",
@@ -1149,6 +1315,8 @@ def test_v5_1c_cli_from_issue_e2e_no_duplicate_on_retry(
                 "acceptance-criteria",
                 "confirm",
                 first["acceptance_criteria_revision_id"],
+                "--case-id",
+                case_id,
                 "--proposed-revision-digest",
                 first["acceptance_criteria_revision_digest"],
             ],
@@ -1159,17 +1327,22 @@ def test_v5_1c_cli_from_issue_e2e_no_duplicate_on_retry(
         )
         assert stale_confirm["error"]["code"] == "SCOPE_FORBIDDEN"
 
-        # The human reauthenticates: the confirmer credential is re-issued
-        # (fresh issued_at) after the proposal was recorded.
+        # The human reauthenticates: issue a distinct fresh credential after
+        # the proposal and preserve the old credential as revoked history.
         reauth_session = factory()
         try:
-            reauth_session.execute(
-                sa.text(
-                    "UPDATE public_credentials SET issued_at = CURRENT_TIMESTAMP, "
-                    "not_before = CURRENT_TIMESTAMP "
-                    "WHERE credential_id = :credential_id"
-                ),
-                {"credential_id": CONFIRMER_CREDENTIAL_ID},
+            _rotate_credential_with_environment(
+                reauth_session,
+                principal_id=CONFIRMER_PRINCIPAL_ID,
+                previous_credential_id=CONFIRMER_CREDENTIAL_ID,
+                credential_id=CONFIRMER_FRESH_CREDENTIAL_ID,
+                subject="v5-1c-e2e-confirmer",
+                scopes=list(CONFIRMER_SCOPES),
+                environment_id=environment_id,
+                raw_bearer=fresh_confirmer_bearer,
+                pepper=public_pepper,
+                jti_digest="sha256:" + "e" * 64,
+                issued_at=datetime.now(timezone.utc),
             )
             reauth_session.commit()
         finally:
@@ -1177,7 +1350,7 @@ def test_v5_1c_cli_from_issue_e2e_no_duplicate_on_retry(
 
         # The reauthenticated human confirms through the CLI (fresh credential).
         confirmer_env = dict(cli_env)
-        confirmer_env["CASELOOP_PUBLIC_TOKEN"] = confirmer_bearer
+        confirmer_env["CASELOOP_PUBLIC_TOKEN"] = fresh_confirmer_bearer
         confirmed = _run_cli(
             cli,
             [
@@ -1187,6 +1360,8 @@ def test_v5_1c_cli_from_issue_e2e_no_duplicate_on_retry(
                 "acceptance-criteria",
                 "confirm",
                 first["acceptance_criteria_revision_id"],
+                "--case-id",
+                case_id,
                 "--proposed-revision-digest",
                 first["acceptance_criteria_revision_digest"],
             ],
@@ -1210,8 +1385,9 @@ def test_v5_1c_cli_from_issue_e2e_no_duplicate_on_retry(
             repo_root=repo_root,
             guarded_secrets=guarded_secrets,
         )
-        assert got["case_readiness"] == "READY"
+        assert got["case_readiness"] == "NEEDS_ACCEPTANCE_CRITERIA"
         assert got["exact_case_binding"]["case_digest"].startswith("sha256:")
+        assert got["next_action"]["code"] == "MATERIALIZE_RESOLUTION_CONTRACT"
     finally:
         if server is not None:
             server.terminate()

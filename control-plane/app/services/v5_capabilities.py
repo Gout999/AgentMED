@@ -1,4 +1,9 @@
-"""Audited R2 public capability discovery with an exact transport allowlist."""
+"""Audited V5 public capability discovery.
+
+This service advertises only the stage slices that are implemented by both an
+HTTP route and the explicit-major CLI.  It never derives capabilities from the
+broader V5 target registry or exposes later-stage skeletons.
+"""
 from __future__ import annotations
 
 from datetime import datetime, timezone
@@ -7,9 +12,7 @@ from typing import Sequence
 from pydantic import ValidationError
 from sqlalchemy.orm import Session
 
-from app.models.v4_tables import PublicPrincipal
 from app.public_api.auth_contract import AcceptedPrincipalContext
-from app.public_api.credential_resolver import digest_public_subject
 from app.public_api.v5_capability_models import (
     V5CapabilityPrincipal,
     V5EnabledIntent,
@@ -21,8 +24,6 @@ from app.services.v4_audit import V4AuditService, V4AuditUnavailable
 
 _ALL_PRINCIPAL_TYPES = ("human", "external_agent", "service", "connector")
 _HUMAN_OR_SERVICE = ("human", "service")
-_CATALOG_TRUST_ROLES = ("integrator", "catalog_admin")
-_MANIFEST_TRUST_ROLES = ("integrator", "catalog_admin", "trusted_builder")
 
 IMPLEMENTED_V5_PUBLIC_INTENTS: tuple[dict[str, object], ...] = (
     {
@@ -34,7 +35,6 @@ IMPLEMENTED_V5_PUBLIC_INTENTS: tuple[dict[str, object], ...] = (
         "name": "applications.register",
         "scope": "applications:manage",
         "principal_types": _HUMAN_OR_SERVICE,
-        "trust_roles": _CATALOG_TRUST_ROLES,
     },
     {
         "name": "applications.get",
@@ -42,15 +42,9 @@ IMPLEMENTED_V5_PUBLIC_INTENTS: tuple[dict[str, object], ...] = (
         "principal_types": _ALL_PRINCIPAL_TYPES,
     },
     {
-        "name": "applications.list",
-        "scope": "applications:read",
-        "principal_types": _ALL_PRINCIPAL_TYPES,
-    },
-    {
         "name": "environments.register",
         "scope": "applications:manage",
         "principal_types": _HUMAN_OR_SERVICE,
-        "trust_roles": _CATALOG_TRUST_ROLES,
     },
     {
         "name": "environments.get",
@@ -61,7 +55,6 @@ IMPLEMENTED_V5_PUBLIC_INTENTS: tuple[dict[str, object], ...] = (
         "name": "system-components.register",
         "scope": "applications:manage",
         "principal_types": _HUMAN_OR_SERVICE,
-        "trust_roles": _CATALOG_TRUST_ROLES,
     },
     {
         "name": "system-components.get",
@@ -72,7 +65,6 @@ IMPLEMENTED_V5_PUBLIC_INTENTS: tuple[dict[str, object], ...] = (
         "name": "dependency-edges.record",
         "scope": "applications:manage",
         "principal_types": _HUMAN_OR_SERVICE,
-        "trust_roles": _CATALOG_TRUST_ROLES,
     },
     {
         "name": "dependency-edges.get",
@@ -83,8 +75,41 @@ IMPLEMENTED_V5_PUBLIC_INTENTS: tuple[dict[str, object], ...] = (
         "name": "system-manifests.import",
         "scope": "system_manifests:import",
         "principal_types": _HUMAN_OR_SERVICE,
-        "trust_roles": _MANIFEST_TRUST_ROLES,
-        "execution_mode": "synchronous_local_transaction",
+    },
+    {
+        "name": "system-versions.get",
+        "scope": "system_versions:read",
+        "principal_types": _ALL_PRINCIPAL_TYPES,
+    },
+    {
+        "name": "system-versions.diff",
+        "scope": "system_versions:read",
+        "principal_types": _ALL_PRINCIPAL_TYPES,
+    },
+    {
+        "name": "cases.bind-application",
+        "scope": "cases:bind",
+        "principal_types": _HUMAN_OR_SERVICE,
+    },
+    {
+        "name": "case-application-bindings.get",
+        "scope": "cases:read",
+        "principal_types": _ALL_PRINCIPAL_TYPES,
+    },
+    {
+        "name": "acceptance-criteria.propose",
+        "scope": "acceptance_criteria:propose",
+        "principal_types": _ALL_PRINCIPAL_TYPES,
+    },
+    {
+        "name": "acceptance-criteria.get",
+        "scope": "acceptance_criteria:read",
+        "principal_types": _ALL_PRINCIPAL_TYPES,
+    },
+    {
+        "name": "acceptance-criteria.confirm",
+        "scope": "acceptance_criteria:confirm",
+        "principal_types": ("human",),
     },
 )
 
@@ -117,37 +142,13 @@ class V5CapabilitiesService:
         self.clock = clock or (lambda: datetime.now(timezone.utc))
         self.audit = audit_service or V4AuditService(session, clock=self.clock)
 
-    def _persisted_trust_roles(
-        self, principal: AcceptedPrincipalContext
-    ) -> frozenset[str]:
-        row = self.session.get(PublicPrincipal, principal.principal_id)
-        if (
-            row is None
-            or row.workspace_id != principal.workspace_id
-            or row.state != "ACTIVE"
-            or row.revoked_at is not None
-            or row.claims_digest != principal.claims_digest
-            or row.principal_type != principal.principal_type
-            or row.subject_digest != digest_public_subject(principal.subject)
-            or row.audiences != principal.audiences
-            or row.project_ids != principal.project_ids
-            or row.environment_ids != principal.environment_ids
-            or row.scopes != principal.scopes
-        ):
-            raise V5CapabilitiesError(
-                "TOKEN_INVALID", workspace_id=principal.workspace_id
-            )
-        return frozenset(row.trust_roles or [])
-
     def get_capabilities(
         self,
         *,
         principal: AcceptedPrincipalContext,
         request_id: str,
         server_version: str,
-        implemented_intents: Sequence[
-            dict[str, object]
-        ] = IMPLEMENTED_V5_PUBLIC_INTENTS,
+        implemented_intents: Sequence[dict[str, object]] = IMPLEMENTED_V5_PUBLIC_INTENTS,
     ) -> V5ServerCapabilitiesResponse:
         if (
             "capabilities:read" not in principal.scopes
@@ -157,7 +158,6 @@ class V5CapabilitiesService:
             raise V5CapabilitiesError(
                 "SCOPE_FORBIDDEN", workspace_id=principal.workspace_id
             )
-        trust_roles = self._persisted_trust_roles(principal)
 
         try:
             enabled = [
@@ -165,7 +165,7 @@ class V5CapabilitiesService:
                     {
                         "name": raw["name"],
                         "scope": raw["scope"],
-                        "execution_mode": raw.get("execution_mode", "synchronous"),
+                        "execution_mode": "synchronous",
                         "http": True,
                         "cli": True,
                     }
@@ -173,10 +173,6 @@ class V5CapabilitiesService:
                 for raw in implemented_intents
                 if raw.get("scope") in principal.scopes
                 and principal.principal_type in raw.get("principal_types", ())
-                and (
-                    not raw.get("trust_roles")
-                    or bool(trust_roles.intersection(raw.get("trust_roles", ())))
-                )
             ]
             data = V5ServerCapabilitiesData(
                 server_version=server_version,

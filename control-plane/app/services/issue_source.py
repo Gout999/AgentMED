@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.models.v5_tables import IssueSourceSnapshot
@@ -91,10 +92,12 @@ def normalize_issue_snapshot(
     payload: dict[str, Any],
     *,
     source_kind: str,
-    source_url: str,
-    external_repo: str,
-    external_issue_number: int,
+    source_url: str | None,
+    external_repo: str | None,
+    external_issue_number: int | None,
     fetched_at: datetime,
+    edited_flag: bool | None = None,
+    deleted_flag: bool | None = None,
 ) -> dict[str, Any]:
     """Validate and normalize a raw issue snapshot into canonical data.
 
@@ -106,15 +109,41 @@ def normalize_issue_snapshot(
 
     if source_kind not in {"github_issue", "manual"}:
         raise IssueSourceError("VALIDATION_FAILED", details={"reason": "SOURCE_KIND"})
-    if not source_url.startswith(("https://", "http://")) or len(source_url) > 1024:
-        raise IssueSourceError("VALIDATION_FAILED", details={"reason": "SOURCE_URL"})
-    if not isinstance(external_repo, str) or not 1 <= len(external_repo) <= 256:
-        raise IssueSourceError("VALIDATION_FAILED", details={"reason": "EXTERNAL_REPO"})
-    if not isinstance(external_issue_number, int) or isinstance(
-        external_issue_number, bool
-    ) or external_issue_number < 1:
+    if source_kind == "github_issue":
+        if (
+            not isinstance(source_url, str)
+            or not source_url.startswith(("https://", "http://"))
+            or len(source_url) > 1024
+        ):
+            raise IssueSourceError("VALIDATION_FAILED", details={"reason": "SOURCE_URL"})
+        if not isinstance(external_repo, str) or not 1 <= len(external_repo) <= 256:
+            raise IssueSourceError(
+                "VALIDATION_FAILED", details={"reason": "EXTERNAL_REPO"}
+            )
+        if not isinstance(external_issue_number, int) or isinstance(
+            external_issue_number, bool
+        ) or external_issue_number < 1:
+            raise IssueSourceError(
+                "VALIDATION_FAILED", details={"reason": "EXTERNAL_ISSUE_NUMBER"}
+            )
+    else:
+        if source_url is not None and (
+            not isinstance(source_url, str) or not 1 <= len(source_url) <= 1024
+        ):
+            raise IssueSourceError("VALIDATION_FAILED", details={"reason": "SOURCE_URL"})
+        if external_repo is not None or external_issue_number is not None:
+            raise IssueSourceError(
+                "VALIDATION_FAILED", details={"reason": "MANUAL_SOURCE_IDENTITY"}
+            )
+    explicit_flag_invalid = (
+        edited_flag is not None and type(edited_flag) is not bool
+    ) or (deleted_flag is not None and type(deleted_flag) is not bool)
+    payload_flag_invalid = (
+        "edited_flag" in payload and type(payload["edited_flag"]) is not bool
+    ) or ("deleted_flag" in payload and type(payload["deleted_flag"]) is not bool)
+    if explicit_flag_invalid or payload_flag_invalid:
         raise IssueSourceError(
-            "VALIDATION_FAILED", details={"reason": "EXTERNAL_ISSUE_NUMBER"}
+            "VALIDATION_FAILED", details={"reason": "SOURCE_STATE_FLAGS"}
         )
     title = payload.get("title")
     body = payload.get("body")
@@ -130,7 +159,14 @@ def normalize_issue_snapshot(
     non_text_attachment_detected = _contains_any(text_blob, _NON_TEXT_ATTACHMENT_MARKERS)
 
     state = payload.get("state")
-    deleted_flag = bool(state in ("deleted", "DELETED"))
+    canonical_edited_flag = bool(
+        edited_flag if edited_flag is not None else payload.get("edited_flag", False)
+    )
+    canonical_deleted_flag = bool(
+        deleted_flag
+        if deleted_flag is not None
+        else payload.get("deleted_flag", False)
+    ) or bool(state in ("deleted", "DELETED"))
     body_text = body if isinstance(body, str) else ""
     # The summary a signal/case can carry is a bounded human-readable title; the
     # body stays data-only and is never treated as an instruction.
@@ -143,9 +179,13 @@ def normalize_issue_snapshot(
         "title": title,
         "body": body_text,
         "state": state if isinstance(state, str) else None,
-        "attachments": payload.get("attachments") if isinstance(payload.get("attachments"), list) else [],
-        "edited_flag": bool(payload.get("edited_flag", False)),
-        "deleted_flag": deleted_flag,
+        "attachments": (
+            payload.get("attachments")
+            if isinstance(payload.get("attachments"), list)
+            else []
+        ),
+        "edited_flag": canonical_edited_flag,
+        "deleted_flag": canonical_deleted_flag,
         "instruction_markers_detected": instruction_markers_detected,
         "non_text_attachment_detected": non_text_attachment_detected,
         "fetched_at": _wire_time(fetched_at),
@@ -183,21 +223,13 @@ class IssueSourceService:
             select(IssueSourceSnapshot).where(
                 IssueSourceSnapshot.workspace_id == workspace_id,
                 IssueSourceSnapshot.case_id == case_id,
-                IssueSourceSnapshot.external_repo
-                == canonical_snapshot["external_repo"],
-                IssueSourceSnapshot.external_issue_number
-                == canonical_snapshot["external_issue_number"],
+                IssueSourceSnapshot.snapshot_digest == stored_digest,
             )
         )
         if existing is not None:
-            # Same issue on the same case: a replayed snapshot must be the same
-            # record; a different digest is a genuine conflict.
-            if existing.snapshot_digest != stored_digest:
-                raise IssueSourceError(
-                    "CATALOG_CONFLICT",
-                    details={"reason": "ISSUE_SNAPSHOT_DIGEST_CONFLICT"},
-                    workspace_id=workspace_id,
-                )
+            # Replaying the same exact snapshot for the same Case is idempotent.
+            # A later provider version has a different digest and is appended as
+            # a separate immutable snapshot instead of rewriting history.
             return existing
         row = IssueSourceSnapshot(
             issue_snapshot_id=new_issue_snapshot_id(),
@@ -217,8 +249,28 @@ class IssueSourceService:
             fetched_at=_as_utc(fetched_at),
             recorded_by_principal=recorded_by_principal,
         )
-        self.session.add(row)
-        self.session.flush()
+        try:
+            # The database carries the same (workspace, case, digest) unique
+            # key.  A savepoint turns a concurrent duplicate into a safe replay
+            # without aborting the caller-owned binding transaction.
+            with self.session.begin_nested():
+                self.session.add(row)
+                self.session.flush()
+        except IntegrityError as exc:
+            existing = self.session.scalar(
+                select(IssueSourceSnapshot).where(
+                    IssueSourceSnapshot.workspace_id == workspace_id,
+                    IssueSourceSnapshot.case_id == case_id,
+                    IssueSourceSnapshot.snapshot_digest == stored_digest,
+                )
+            )
+            if existing is not None:
+                return existing
+            raise IssueSourceError(
+                "CATALOG_CONFLICT",
+                details={"reason": "ISSUE_SNAPSHOT_IDENTITY_CONFLICT"},
+                workspace_id=workspace_id,
+            ) from exc
         return row
 
 

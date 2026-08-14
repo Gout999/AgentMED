@@ -1,8 +1,8 @@
 """V5-1B PostgreSQL integration: atomic trusted import, idempotent replay,
 CLI ``caseloop init`` + ``system-manifest`` end-to-end over a real server.
 
-Mirrors the Stage-1A integration proof: disposable PG database, real Alembic
-chain (head = 009), real uvicorn server, real installed ``caseloop`` CLI
+Mirrors the Stage-1A integration proof: disposable PG database, the real
+current Alembic head, real uvicorn server, and the installed ``caseloop`` CLI
 speaking /api/v2 with an explicit ``--api-version 2``.
 """
 from __future__ import annotations
@@ -22,7 +22,7 @@ from unittest.mock import patch
 import pytest
 import sqlalchemy as sa
 from alembic import command
-from alembic.config import Config
+from alembic.script import ScriptDirectory
 from sqlalchemy.orm import Session, sessionmaker
 
 from conftest import (
@@ -132,6 +132,7 @@ def _seed_auth_and_controllers(
             project_ids=[PROJECT_ID],
             environment_ids=[],
             scopes=IMPORT_SCOPES,
+            trust_roles=["integrator"],
             claims_digest=_claims(IMPORT_SCOPES),
             revoked_at=None,
         )
@@ -308,11 +309,13 @@ def test_v5_1b_pg_import_atomic_rollback_and_replay() -> None:
             "create_all",
             side_effect=AssertionError("v5_1b.must_not_use_create_all"),
         ):
-            command.upgrade(_alembic_config(control_plane_root), "head")
+            alembic_config = _alembic_config(control_plane_root)
+            command.upgrade(alembic_config, "head")
+        expected_head = ScriptDirectory.from_config(alembic_config).get_current_head()
         with engine.connect() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "010"
+            ).scalar_one() == expected_head
 
         now = datetime.now(timezone.utc)
         session = factory()
@@ -401,13 +404,89 @@ def test_v5_1b_pg_import_atomic_rollback_and_replay() -> None:
             finally:
                 session2.close()
 
-            imported = service.import_manifest(
-                manifest,
-                principal=principal,
-                idempotency_key="manifest-import-0001",
-                request_id="req_01J00000000000G1",
+            # Two different first manifests race in separate transactions.
+            # The workspace advisory xact lock must make the empty check +
+            # graph insert one decision: exactly one wins and one conflicts.
+            contenders = [
+                (
+                    manifest,
+                    "manifest-import-0001",
+                    "req_01J00000000000G1",
+                ),
+                (
+                    SystemManifestImportRequest.model_validate(
+                        _manifest_payload(slug="concurrent-app")
+                    ),
+                    "manifest-concurrent-0001",
+                    "req_01J00000000000G5",
+                ),
+            ]
+            barrier = threading.Barrier(2)
+            outcomes: list[tuple[int, str, Any]] = []
+            outcomes_lock = threading.Lock()
+
+            def _race_import(
+                contender_index: int,
+                contender_manifest: SystemManifestImportRequest,
+                idempotency_key: str,
+                request_id: str,
+            ) -> None:
+                contender_session = factory()
+                try:
+                    contender_service = SystemVersionsService(
+                        contender_session, clock=lambda: now
+                    )
+                    barrier.wait(timeout=10)
+                    try:
+                        result = contender_service.import_manifest(
+                            contender_manifest,
+                            principal=principal,
+                            idempotency_key=idempotency_key,
+                            request_id=request_id,
+                        )
+                        contender_session.commit()
+                    except SystemVersionsError as exc:
+                        contender_session.rollback()
+                        outcome: tuple[int, str, Any] = (
+                            contender_index,
+                            exc.code,
+                            None,
+                        )
+                    except Exception as exc:  # pragma: no cover - diagnostic path
+                        contender_session.rollback()
+                        outcome = (
+                            contender_index,
+                            f"UNEXPECTED:{type(exc).__name__}:{exc}",
+                            None,
+                        )
+                    else:
+                        outcome = (contender_index, "SUCCESS", result)
+                    with outcomes_lock:
+                        outcomes.append(outcome)
+                finally:
+                    contender_session.close()
+
+            threads = [
+                threading.Thread(
+                    target=_race_import,
+                    args=(index, *contender),
+                    daemon=True,
+                )
+                for index, contender in enumerate(contenders)
+            ]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join(timeout=20)
+            assert all(not thread.is_alive() for thread in threads)
+            assert sorted(status for _index, status, _result in outcomes) == [
+                "CATALOG_CONFLICT",
+                "SUCCESS",
+            ]
+            winner_index, _status, imported = next(
+                outcome for outcome in outcomes if outcome[1] == "SUCCESS"
             )
-            session.commit()
+            manifest = contenders[winner_index][0]
             assert imported.idempotency.replayed is False
             version_set_id = imported.system_version_set.system_version_set_id
 

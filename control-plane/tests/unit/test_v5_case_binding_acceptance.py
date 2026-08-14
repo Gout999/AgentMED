@@ -14,13 +14,15 @@ from typing import Any
 
 import pytest
 import sqlalchemy as sa
+from pydantic import ValidationError
 from sqlalchemy import select
 
-from app.models import Audit, Event, Outbox
+from app.models import Aggregate, Audit, Event, Outbox
 from app.models.v4_tables import (
     AuthorityReceipt,
     ControllerRegistration,
     PublicCommandIdempotency,
+    PublicCredential,
     PublicPrincipal,
     QualityCase,
 )
@@ -38,11 +40,18 @@ from app.public_api.v5_models import (
     CaseBindApplicationRequest,
     IssueSnapshotRequest,
 )
+from app.services import read_views
 from app.services.acceptance import AcceptanceError, AcceptanceService
 from app.services.case_binding import CaseBindingError, CaseBindingService
-from app.services.issue_source import IssueSourceError, normalize_issue_snapshot
+from app.services.case_service import CaseService
+from app.services.issue_source import normalize_issue_snapshot
 from app.services.v4_audit import V4AuditService
-from app.services.v5_authority import build_v5_controller_registration_record
+from app.services.v4_event_store import V4EventStore
+from app.services.v5_authority import (
+    V5AuthorityService,
+    V5_CATALOG_OWNER,
+    build_v5_controller_registration_record,
+)
 from app.utils.ids import (
     new_application_id,
     new_catalog_environment_id,
@@ -63,6 +72,8 @@ CONFIRMER = "prn_01J000000000000C"
 EXTERNAL_AGENT = "prn_01J000000000000F"
 CASE_CONTROLLER_PRINCIPAL = "prn_01J000000000000D"
 CASE_CONTROLLER_REGISTRATION = "creg_01J00000000000CD"
+CATALOG_CONTROLLER_PRINCIPAL = "prn_01J0000000000009"
+CATALOG_CONTROLLER_REGISTRATION = "creg_01J00000000000C9"
 SUBJECT = "v5-1c-operator"
 ISSUER = "https://auth.caseloop.dev"
 AUDIENCES = ["caseloop-public-api"]
@@ -82,7 +93,7 @@ def _claims(scopes: list[str]) -> str:
             "audiences": AUDIENCES,
             "workspace_id": WORKSPACE,
             "project_ids": [PROJECT],
-            "environment_ids": [],
+            "environment_ids": [ENVIRONMENT_ID, "env_01J0000000000002"],
             "scopes": scopes,
         }
     )
@@ -105,6 +116,28 @@ _PRINCIPAL_SCOPES = {
     CONFIRMER: CONFIRMER_SCOPES,
     EXTERNAL_AGENT: AGENT_SCOPES,
 }
+
+_PRINCIPAL_TRUST_ROLES = {
+    OWNER: ["maintainer"],
+    BINDER: ["integrator"],
+    AGENT_PROPOSER: [],
+    HUMAN_PROPOSER: ["maintainer"],
+    CONFIRMER: ["maintainer", "domain_reviewer"],
+    EXTERNAL_AGENT: [],
+}
+
+_PRINCIPAL_CREDENTIAL_IDS = {
+    OWNER: "cred_01J0000000000001",
+    BINDER: "cred_01J000000000000A",
+    AGENT_PROPOSER: "cred_01J000000000000B",
+    HUMAN_PROPOSER: "cred_01J000000000000E",
+    CONFIRMER: "cred_01J000000000000C",
+    EXTERNAL_AGENT: "cred_01J000000000000F",
+}
+
+
+def _jti(principal_id: str) -> str:
+    return canonical_digest({"principal_id": principal_id, "kind": "fixture-jti"})
 
 
 def _principal(
@@ -129,10 +162,10 @@ def _principal(
             "audiences": AUDIENCES,
             "workspace_id": WORKSPACE,
             "project_ids": [PROJECT],
-            "environment_ids": [],
+            "environment_ids": [ENVIRONMENT_ID, "env_01J0000000000002"],
             "scopes": scopes,
-            "credential_id": "cred_01J000000000000A",
-            "jti_digest": "sha256:" + "a" * 64,
+            "credential_id": _PRINCIPAL_CREDENTIAL_IDS[principal_id],
+            "jti_digest": _jti(principal_id),
             "issued_at": issued,
             "not_before": issued,
             "expires_at": issued + timedelta(days=30),
@@ -163,11 +196,63 @@ def _seed_principal(session, *, principal_id: str, principal_type: str = "human"
             subject_digest=digest_public_subject(SUBJECT),
             audiences=list(AUDIENCES),
             project_ids=[PROJECT],
-            environment_ids=[],
+            environment_ids=[ENVIRONMENT_ID, "env_01J0000000000002"],
             scopes=list(scopes),
+            trust_roles=list(_PRINCIPAL_TRUST_ROLES[principal_id]),
             claims_digest=_claims(scopes),
             revoked_at=None,
         )
+    )
+    issued = NOW - timedelta(minutes=10)
+    session.add(
+        PublicCredential(
+            credential_id=_PRINCIPAL_CREDENTIAL_IDS[principal_id],
+            workspace_id=WORKSPACE,
+            principal_id=principal_id,
+            issuer=ISSUER,
+            subject=SUBJECT,
+            credential_hash=canonical_digest(
+                {"principal_id": principal_id, "kind": "fixture-credential"}
+            ),
+            hash_algorithm="hmac-sha256-v1",
+            jti_digest=_jti(principal_id),
+            claims_digest=_claims(scopes),
+            audiences=list(AUDIENCES),
+            project_ids=[PROJECT],
+            environment_ids=[ENVIRONMENT_ID, "env_01J0000000000002"],
+            scopes=list(scopes),
+            state="ACTIVE",
+            issued_at=issued,
+            not_before=issued,
+            expires_at=issued + timedelta(days=30),
+            revoked_at=None,
+            created_at=issued,
+        )
+    )
+
+
+def _credential_bound_principal(
+    session,
+    *,
+    principal_id: str,
+    required_scope: str,
+    issued_at: datetime,
+    principal_type: str = "human",
+) -> AcceptedPrincipalContext:
+    credential = session.get(
+        PublicCredential, _PRINCIPAL_CREDENTIAL_IDS[principal_id]
+    )
+    assert credential is not None
+    credential.issued_at = issued_at
+    credential.not_before = issued_at
+    credential.expires_at = issued_at + timedelta(days=30)
+    session.flush()
+    return _principal(
+        principal_id=principal_id,
+        required_scope=required_scope,
+        issued_at=issued_at,
+        evaluated_at=max(NOW, issued_at),
+        principal_type=principal_type,
     )
 
 
@@ -226,6 +311,48 @@ def _seed_case_controller(session) -> None:
         contracts_root=REPO / "contracts" / "v5",
     )
     session.add(ControllerRegistration(**built.row_values))
+
+    catalog_identity = canonical_digest(
+        {
+            "schema_version": "1.0",
+            "workspace_id": WORKSPACE,
+            "owner": V5_CATALOG_OWNER,
+            "controller_principal": CATALOG_CONTROLLER_PRINCIPAL,
+            "principal_type": "CONTROLLER_SERVICE",
+            "service": "caseloop-control-plane",
+        }
+    )
+    catalog_audit = audit.record(
+        workspace_id=WORKSPACE,
+        actor_principal=OWNER,
+        action="controllers.register",
+        target=CATALOG_CONTROLLER_REGISTRATION,
+        params={
+            "owner": V5_CATALOG_OWNER,
+            "service_identity_digest": catalog_identity,
+        },
+        transaction_id="txn_v5_1c_catalog_controller",
+        evidence_refs={
+            "owner": V5_CATALOG_OWNER,
+            "controller_registration_id": CATALOG_CONTROLLER_REGISTRATION,
+            "controller_principal": CATALOG_CONTROLLER_PRINCIPAL,
+        },
+        occurred_at=NOW,
+    )
+    catalog_built = build_v5_controller_registration_record(
+        controller_registration_id=CATALOG_CONTROLLER_REGISTRATION,
+        workspace_id=WORKSPACE,
+        owner=V5_CATALOG_OWNER,
+        controller_principal=CATALOG_CONTROLLER_PRINCIPAL,
+        allowed_commands=["applications.register", "environments.register"],
+        service_identity_digest=catalog_identity,
+        registered_by_human_principal=OWNER,
+        registration_audit_ref=catalog_audit.audit_ref,
+        valid_from=NOW - timedelta(minutes=1),
+        registered_at=NOW,
+        contracts_root=REPO / "contracts" / "v5",
+    )
+    session.add(ControllerRegistration(**catalog_built.row_values))
     session.flush()
 
 
@@ -245,6 +372,94 @@ def _envelope_payload(
     }
 
 
+def _record_catalog_authority(
+    session,
+    *,
+    subject_kind: str,
+    subject_id: str,
+    subject_digest: str,
+    authority_receipt_id: str,
+    business_payload: dict[str, Any],
+    suffix: str,
+) -> None:
+    command = (
+        "applications.register"
+        if subject_kind == "AI_APPLICATION"
+        else "environments.register"
+    )
+    event_type = (
+        "application.registered"
+        if subject_kind == "AI_APPLICATION"
+        else "environment.registered"
+    )
+    aggregate_type = (
+        "ai_application" if subject_kind == "AI_APPLICATION" else "environment"
+    )
+    authority = V5AuthorityService(
+        session, contracts_root=REPO / "contracts" / "v5"
+    )
+    resolved = authority.resolve_controller(
+        workspace_id=WORKSPACE,
+        subject_kind=subject_kind,
+        command=command,
+        event_type=event_type,
+        recorded_at=NOW,
+    )
+    transaction_id = f"txn_v5_1c_catalog_{suffix}"
+    event = V4EventStore(session).append_event(
+        workspace_id=WORKSPACE,
+        aggregate_type=aggregate_type,
+        aggregate_id=subject_id,
+        event_type=event_type,
+        payload={
+            **business_payload,
+            "subject_kind": subject_kind,
+            "subject_id": subject_id,
+            "subject_revision": 1,
+            "subject_digest": subject_digest,
+            "authority_receipt_id": authority_receipt_id,
+        },
+        causation_id=f"req_01J0000000000{suffix}",
+        correlation_id=(
+            subject_id
+            if subject_kind == "AI_APPLICATION"
+            else business_payload["application_id"]
+        ),
+        actor_principal=resolved.controller_principal,
+        transaction_id=transaction_id,
+        occurred_at=NOW,
+    )
+    audit = V4AuditService(session, clock=lambda: NOW).record(
+        workspace_id=WORKSPACE,
+        actor_principal=resolved.controller_principal,
+        action=f"controller.{event_type}",
+        target=subject_id,
+        params={"command": command},
+        transaction_id=transaction_id,
+        trace_id=f"req_01J0000000000{suffix}",
+        evidence_refs={
+            "subject_kind": subject_kind,
+            "subject_id": subject_id,
+            "subject_revision": 1,
+            "subject_digest": subject_digest,
+            "event_id": event.event_id,
+        },
+        occurred_at=NOW,
+    )
+    authority.record_receipt(
+        resolved=resolved,
+        authority_receipt_id=authority_receipt_id,
+        workspace_id=WORKSPACE,
+        subject_id=subject_id,
+        subject_revision=1,
+        subject_digest=subject_digest,
+        event_id=event.event_id,
+        transaction_id=transaction_id,
+        audit_ref=audit.audit_ref,
+        recorded_at=NOW,
+    )
+
+
 def _seed_catalog(session) -> None:
     application_payload = {
         "application_id": APPLICATION_ID,
@@ -257,7 +472,9 @@ def _seed_catalog(session) -> None:
         "data_classification": "INTERNAL",
         "governance_mode": "MANAGED",
         "lifecycle_state": "ACTIVE",
-        "record_envelope": _envelope_payload(),
+        "record_envelope": _envelope_payload(
+            authority_receipt_id="arec_01J0000000000001"
+        ),
     }
     app_digest = v5_record_digest(application_payload)
     application_payload["record_envelope"]["record_digest"] = app_digest
@@ -282,6 +499,20 @@ def _seed_catalog(session) -> None:
             updated_at=NOW,
         )
     )
+    _record_catalog_authority(
+        session,
+        subject_kind="AI_APPLICATION",
+        subject_id=APPLICATION_ID,
+        subject_digest=app_digest,
+        authority_receipt_id="arec_01J0000000000001",
+        business_payload={
+            "application_id": APPLICATION_ID,
+            "project_id": PROJECT,
+            "slug": "fixture-ai-app",
+            "lifecycle_state": "ACTIVE",
+        },
+        suffix="A01",
+    )
     environment_payload = {
         "environment_id": ENVIRONMENT_ID,
         "workspace_id": WORKSPACE,
@@ -289,7 +520,9 @@ def _seed_catalog(session) -> None:
         "logical_name": "local-shadow",
         "risk_classification": "LOW",
         "lifecycle_state": "ACTIVE",
-        "record_envelope": _envelope_payload(),
+        "record_envelope": _envelope_payload(
+            authority_receipt_id="arec_01J0000000000002"
+        ),
     }
     env_digest = v5_record_digest(environment_payload)
     environment_payload["record_envelope"]["record_digest"] = env_digest
@@ -310,6 +543,20 @@ def _seed_catalog(session) -> None:
             updated_at=NOW,
         )
     )
+    _record_catalog_authority(
+        session,
+        subject_kind="ENVIRONMENT",
+        subject_id=ENVIRONMENT_ID,
+        subject_digest=env_digest,
+        authority_receipt_id="arec_01J0000000000002",
+        business_payload={
+            "environment_id": ENVIRONMENT_ID,
+            "application_id": APPLICATION_ID,
+            "logical_name": "local-shadow",
+            "lifecycle_state": "ACTIVE",
+        },
+        suffix="E01",
+    )
     second_env_payload = {
         "environment_id": "env_01J0000000000002",
         "workspace_id": WORKSPACE,
@@ -317,7 +564,9 @@ def _seed_catalog(session) -> None:
         "logical_name": "staging-shadow",
         "risk_classification": "LOW",
         "lifecycle_state": "ACTIVE",
-        "record_envelope": _envelope_payload(),
+        "record_envelope": _envelope_payload(
+            authority_receipt_id="arec_01J0000000000004"
+        ),
     }
     second_env_digest = v5_record_digest(second_env_payload)
     second_env_payload["record_envelope"]["record_digest"] = second_env_digest
@@ -332,11 +581,25 @@ def _seed_catalog(session) -> None:
             revision=1,
             envelope_payload=second_env_payload,
             record_digest=second_env_digest,
-            authority_receipt_id="arec_01J0000000000002",
+            authority_receipt_id="arec_01J0000000000004",
             recorded_by_principal=BINDER,
             created_at=NOW,
             updated_at=NOW,
         )
+    )
+    _record_catalog_authority(
+        session,
+        subject_kind="ENVIRONMENT",
+        subject_id="env_01J0000000000002",
+        subject_digest=second_env_digest,
+        authority_receipt_id="arec_01J0000000000004",
+        business_payload={
+            "environment_id": "env_01J0000000000002",
+            "application_id": APPLICATION_ID,
+            "logical_name": "staging-shadow",
+            "lifecycle_state": "ACTIVE",
+        },
+        suffix="E02",
     )
     session.flush()
 
@@ -435,7 +698,10 @@ def _bind_request(
         "case_digest": case_digest or _last_case_digest,
         "application_id": application_id,
         "environment_id": environment_id,
-        "declared_system_version_set_binding_or_unknown": None,
+        "declared_system_version_set_binding_or_unknown": {
+            "kind": "UNKNOWN",
+            "reason": "NOT_DECLARED_BY_FIXTURE",
+        },
         "issue_snapshot": None,
     }
     base.update(overrides)
@@ -654,7 +920,7 @@ def test_bind_application_rebind_requires_new_case_revision(sqlite_session) -> N
         request_id="req_01J0000000000009",
     )
     sqlite_session.commit()
-    assert response.application_case_binding.exact_case_binding["case_revision"] == 2
+    assert response.application_case_binding.exact_case_binding.case_revision == 2
     assert _count(sqlite_session, ApplicationCaseBinding) == 2
 
 
@@ -735,6 +1001,7 @@ def test_bind_application_binder_cannot_read_application_opaque(sqlite_session) 
             project_ids=[],
             environment_ids=[],
             scopes=list(no_grant_scopes),
+            trust_roles=["integrator"],
             claims_digest=no_grant_claims,
             revoked_at=None,
         )
@@ -780,12 +1047,45 @@ def test_bind_application_binder_cannot_read_application_opaque(sqlite_session) 
     assert exc_info.value.audit_ref is not None
 
 
+def test_bind_requires_server_persisted_trust_role_and_denial_audit_commits(
+    sqlite_session,
+) -> None:
+    global _last_case_digest
+    case_digest, principal = _seed_env(sqlite_session)
+    _last_case_digest = case_digest
+    binder_row = sqlite_session.get(PublicPrincipal, BINDER)
+    assert binder_row is not None
+    binder_row.trust_roles = []
+    sqlite_session.flush()
+
+    with pytest.raises(CaseBindingError) as exc_info:
+        _binding_service(sqlite_session).bind_application(
+            _bind_request(),
+            principal=principal,
+            idempotency_key="bind-role-denial-1c",
+            request_id="req_01J00000000000A1",
+        )
+    denial = exc_info.value
+    assert denial.code == "SCOPE_FORBIDDEN"
+    assert denial.details["reason"] == "BINDER_TRUST_ROLE_REQUIRED"
+    assert denial.commit_audit_on_denial is True
+    assert denial.rollback_required is False
+    sqlite_session.commit()
+    assert _count(sqlite_session, ApplicationCaseBinding) == 0
+    audit_id = denial.audit_ref.removeprefix("audit://")
+    audit = sqlite_session.get(Audit, audit_id)
+    assert audit is not None
+    assert audit.result == "denied"
+    assert audit.error_code == "SCOPE_FORBIDDEN"
+
+
 def test_bind_application_audit_failure_rolls_back_everything(sqlite_session, monkeypatch) -> None:
     global _last_case_digest
     case_digest, principal = _seed_env(sqlite_session)
     _last_case_digest = case_digest
     audit = V4AuditService(sqlite_session, clock=lambda: NOW, force_fail=True)
     service = CaseBindingService(sqlite_session, clock=lambda: NOW, audit_service=audit)
+    events_before = _count(sqlite_session, Event)
     with pytest.raises(CaseBindingError) as exc_info:
         service.bind_application(
             _bind_request(),
@@ -796,7 +1096,7 @@ def test_bind_application_audit_failure_rolls_back_everything(sqlite_session, mo
     assert exc_info.value.code == "AUDIT_UNAVAILABLE"
     sqlite_session.rollback()
     assert _count(sqlite_session, ApplicationCaseBinding) == 0
-    assert _count(sqlite_session, Event) == 0
+    assert _count(sqlite_session, Event) == events_before
 
 
 def test_bind_application_read_back_after_lost_write(sqlite_session) -> None:
@@ -824,7 +1124,9 @@ def test_bind_application_read_back_after_lost_write(sqlite_session) -> None:
     assert (
         read_back.application_case_binding.application_case_binding_id == binding_id
     )
-    assert read_back.application_case_binding.exact_case_binding == {
+    assert read_back.application_case_binding.exact_case_binding.model_dump(
+        mode="json"
+    ) == {
         "case_id": CASE_ID,
         "case_revision": 1,
         "case_digest": case_digest,
@@ -998,28 +1300,44 @@ def test_issue_snapshot_edited_deleted_annotation(sqlite_session) -> None:
     global _last_case_digest
     case_digest, principal = _seed_env(sqlite_session)
     _last_case_digest = case_digest
-    normalized = normalize_issue_snapshot(
+    request = IssueSnapshotRequest.model_validate(
         {
-            "title": "T",
-            "body": "edited body",
-            "state": "deleted",
+            "source_kind": "github_issue",
+            "source_url": "https://github.com/simonw/llm/issues/1466",
+            "external_repo": "simonw/llm",
+            "external_issue_number": 1466,
+            "snapshot_payload": {"title": "T", "body": "edited body", "state": "open"},
             "edited_flag": True,
-        },
-        source_kind="github_issue",
-        source_url="https://github.com/simonw/llm/issues/1466",
-        external_repo="simonw/llm",
-        external_issue_number=1466,
-        fetched_at=NOW,
+            "deleted_flag": True,
+            "fetched_at": NOW,
+        }
+    )
+    # The explicit transport flags override the nested provider payload and are
+    # forwarded through CaseBindingService's existing data-only boundary.
+    assert request.snapshot_payload["edited_flag"] is True
+    assert request.snapshot_payload["deleted_flag"] is True
+    normalized = normalize_issue_snapshot(
+        request.snapshot_payload,
+        source_kind=request.source_kind,
+        source_url=request.source_url,
+        external_repo=request.external_repo,
+        external_issue_number=request.external_issue_number,
+        fetched_at=request.fetched_at,
     )
     assert normalized["edited_flag"] is True
     assert normalized["deleted_flag"] is True
     service = _binding_service(sqlite_session)
-    service.issue_source.record_snapshot(
-        workspace_id=WORKSPACE,
-        case_id=CASE_ID,
-        canonical_snapshot=normalized,
-        recorded_by_principal=BINDER,
-        fetched_at=NOW,
+    service.bind_application(
+        _bind_request(
+            declared_system_version_set_binding_or_unknown={
+                "kind": "UNKNOWN",
+                "reason": "NOT_DECLARED",
+            },
+            issue_snapshot=request,
+        ),
+        principal=principal,
+        idempotency_key="bind-1c-flags-0001",
+        request_id="req_01J00000000000F01",
     )
     sqlite_session.commit()
     snapshot = sqlite_session.scalar(select(IssueSourceSnapshot))
@@ -1027,44 +1345,144 @@ def test_issue_snapshot_edited_deleted_annotation(sqlite_session) -> None:
     assert snapshot.deleted_flag is True
 
 
-def test_issue_snapshot_digest_conflict_on_same_issue(sqlite_session) -> None:
+def test_issue_snapshot_new_digest_appends_and_same_digest_replays(sqlite_session) -> None:
     global _last_case_digest
     case_digest, principal = _seed_env(sqlite_session)
     _last_case_digest = case_digest
     service = _binding_service(sqlite_session)
-    first = normalize_issue_snapshot(
-        {"title": "T", "body": "one"},
+    unknown_binding = {"kind": "UNKNOWN", "reason": "NOT_DECLARED"}
+    first = IssueSnapshotRequest.model_validate(
+        {
+            "source_kind": "github_issue",
+            "source_url": "https://github.com/simonw/llm/issues/1466",
+            "external_repo": "simonw/llm",
+            "external_issue_number": 1466,
+            "snapshot_payload": {"title": "T", "body": "one"},
+            "fetched_at": NOW,
+        }
+    )
+    service.bind_application(
+        _bind_request(
+            declared_system_version_set_binding_or_unknown=unknown_binding,
+            issue_snapshot=first,
+        ),
+        principal=principal,
+        idempotency_key="bind-1c-source-v1",
+        request_id="req_01J00000000000F03",
+    )
+    sqlite_session.commit()
+    second = IssueSnapshotRequest.model_validate(
+        {
+            "source_kind": "github_issue",
+            "source_url": "https://github.com/simonw/llm/issues/1466",
+            "external_repo": "simonw/llm",
+            "external_issue_number": 1466,
+            "snapshot_payload": {"title": "T", "body": "two"},
+            "edited_flag": True,
+            "fetched_at": NOW + timedelta(minutes=1),
+        }
+    )
+    service.bind_application(
+        _bind_request(
+            declared_system_version_set_binding_or_unknown=unknown_binding,
+            issue_snapshot=second,
+        ),
+        principal=principal,
+        idempotency_key="bind-1c-source-v2",
+        request_id="req_01J00000000000F04",
+    )
+    sqlite_session.commit()
+    replay = service.bind_application(
+        _bind_request(
+            declared_system_version_set_binding_or_unknown=unknown_binding,
+            issue_snapshot=second,
+        ),
+        principal=principal,
+        idempotency_key="bind-1c-source-v2-replay",
+        request_id="req_01J00000000000F05",
+    )
+    sqlite_session.commit()
+    rows = list(
+        sqlite_session.scalars(
+            select(IssueSourceSnapshot).order_by(IssueSourceSnapshot.fetched_at)
+        )
+    )
+    assert rows[0].issue_snapshot_id != rows[1].issue_snapshot_id
+    assert rows[0].snapshot_digest != rows[1].snapshot_digest
+    assert replay.idempotency.replayed is True
+    assert _count(sqlite_session, IssueSourceSnapshot) == 2
+
+
+def test_manual_snapshot_needs_no_fake_github_identity(sqlite_session) -> None:
+    global _last_case_digest
+    case_digest, principal = _seed_env(sqlite_session)
+    _last_case_digest = case_digest
+    request = IssueSnapshotRequest.model_validate(
+        {
+            "source_kind": "manual",
+            "source_url": None,
+            "external_repo": None,
+            "external_issue_number": None,
+            "snapshot_payload": {
+                "title": "Maintainer observed a wrong tool call",
+                "body": "No external issue exists.",
+            },
+            "fetched_at": NOW,
+        }
+    )
+    _binding_service(sqlite_session).bind_application(
+        _bind_request(
+            declared_system_version_set_binding_or_unknown={
+                "kind": "UNKNOWN",
+                "reason": "NOT_DECLARED",
+            },
+            issue_snapshot=request,
+        ),
+        principal=principal,
+        idempotency_key="bind-1c-manual-0001",
+        request_id="req_01J00000000000F02",
+    )
+    sqlite_session.commit()
+    row = sqlite_session.scalar(select(IssueSourceSnapshot))
+    assert row is not None
+    assert row.source_kind == "manual"
+    assert row.source_url is None
+    assert row.external_repo is None
+    assert row.external_issue_number is None
+
+
+def test_same_snapshot_digest_is_allowed_for_different_cases(sqlite_session) -> None:
+    global _last_case_digest
+    case_digest, principal = _seed_env(sqlite_session)
+    _last_case_digest = case_digest
+    other_case_id = "case_01J0000000000002"
+    _seed_case(sqlite_session, case_id=other_case_id)
+    normalized = normalize_issue_snapshot(
+        {"title": "Shared upstream report", "body": "same immutable source"},
         source_kind="github_issue",
         source_url="https://github.com/simonw/llm/issues/1466",
         external_repo="simonw/llm",
         external_issue_number=1466,
         fetched_at=NOW,
     )
-    service.issue_source.record_snapshot(
+    service = _binding_service(sqlite_session).issue_source
+    first = service.record_snapshot(
         workspace_id=WORKSPACE,
         case_id=CASE_ID,
-        canonical_snapshot=first,
+        canonical_snapshot=normalized,
+        recorded_by_principal=BINDER,
+        fetched_at=NOW,
+    )
+    second = service.record_snapshot(
+        workspace_id=WORKSPACE,
+        case_id=other_case_id,
+        canonical_snapshot=normalized,
         recorded_by_principal=BINDER,
         fetched_at=NOW,
     )
     sqlite_session.commit()
-    second = normalize_issue_snapshot(
-        {"title": "T", "body": "two"},
-        source_kind="github_issue",
-        source_url="https://github.com/simonw/llm/issues/1466",
-        external_repo="simonw/llm",
-        external_issue_number=1466,
-        fetched_at=NOW,
-    )
-    with pytest.raises(IssueSourceError) as exc_info:
-        service.issue_source.record_snapshot(
-            workspace_id=WORKSPACE,
-            case_id=CASE_ID,
-            canonical_snapshot=second,
-            recorded_by_principal=BINDER,
-            fetched_at=NOW,
-        )
-    assert exc_info.value.code == "CATALOG_CONFLICT"
+    assert first.issue_snapshot_id != second.issue_snapshot_id
+    assert first.snapshot_digest == second.snapshot_digest
 
 
 # --------------------------------------------------------------------------
@@ -1154,7 +1572,7 @@ def test_non_human_cannot_confirm(sqlite_session) -> None:
                     "exact_proposed_revision_binding": {
                         "kind": "ACCEPTANCE_CRITERIA_REVISION",
                         "id": proposed.acceptance_criteria_revision.acceptance_criteria_revision_id,
-                        "revision": None,
+                        "revision": 1,
                         "digest": proposed.acceptance_criteria_revision.record_envelope.record_digest,
                     },
                 }
@@ -1195,7 +1613,7 @@ def test_proposer_cannot_self_confirm(sqlite_session) -> None:
                     "exact_proposed_revision_binding": {
                         "kind": "ACCEPTANCE_CRITERIA_REVISION",
                         "id": proposed.acceptance_criteria_revision.acceptance_criteria_revision_id,
-                        "revision": None,
+                        "revision": 1,
                         "digest": proposed.acceptance_criteria_revision.record_envelope.record_digest,
                     },
                 }
@@ -1229,7 +1647,8 @@ def test_confirm_without_reauthentication_rejected(sqlite_session) -> None:
     sqlite_session.commit()
     service = _acceptance_service(sqlite_session)
     # Confirming credential was issued BEFORE the proposal -> not reauthenticated.
-    stale = _principal(
+    stale = _credential_bound_principal(
+        sqlite_session,
         principal_id=CONFIRMER,
         required_scope="acceptance_criteria:confirm",
         issued_at=NOW - timedelta(days=1),
@@ -1242,7 +1661,7 @@ def test_confirm_without_reauthentication_rejected(sqlite_session) -> None:
                     "exact_proposed_revision_binding": {
                         "kind": "ACCEPTANCE_CRITERIA_REVISION",
                         "id": proposed.acceptance_criteria_revision.acceptance_criteria_revision_id,
-                        "revision": None,
+                        "revision": 1,
                         "digest": proposed.acceptance_criteria_revision.record_envelope.record_digest,
                     },
                 }
@@ -1253,6 +1672,55 @@ def test_confirm_without_reauthentication_rejected(sqlite_session) -> None:
         )
     assert exc_info.value.code == "VALIDATION_FAILED"
     assert exc_info.value.details.get("reason") == "REAUTHENTICATION_REQUIRED"
+
+
+def test_confirm_path_body_identity_mismatch_is_durably_audited(sqlite_session) -> None:
+    global _last_case_digest
+    case_digest, _principal_context = _seed_env(sqlite_session)
+    _last_case_digest = case_digest
+    proposed = _acceptance_service(sqlite_session).propose(
+        _propose_request(case_digest=case_digest),
+        principal=_principal(
+            principal_id=AGENT_PROPOSER,
+            required_scope="acceptance_criteria:propose",
+        ),
+        idempotency_key="ac-propose-path-body-1c",
+        request_id="req_01J00000000000A2",
+    )
+    sqlite_session.commit()
+    proposal = proposed.acceptance_criteria_revision
+    with pytest.raises(AcceptanceError) as exc_info:
+        _acceptance_service(sqlite_session).confirm(
+            AcceptanceCriteriaConfirmRequest.model_validate(
+                {
+                    "schema_version": "2.0",
+                    "exact_proposed_revision_binding": {
+                        "kind": "ACCEPTANCE_CRITERIA_REVISION",
+                        "id": proposal.acceptance_criteria_revision_id,
+                        "revision": 1,
+                        "digest": proposal.record_envelope.record_digest,
+                    },
+                }
+            ),
+            principal=_principal(
+                principal_id=CONFIRMER,
+                required_scope="acceptance_criteria:confirm",
+            ),
+            idempotency_key="ac-confirm-path-body-1c",
+            request_id="req_01J00000000000A3",
+            expected_proposed_revision_id="acr_01J00000000000BAD",
+        )
+    denial = exc_info.value
+    assert denial.code == "VALIDATION_FAILED"
+    assert denial.details["reason"] == "PATH_BODY_REVISION_ID_MISMATCH"
+    assert denial.commit_audit_on_denial is True
+    assert denial.rollback_required is False
+    sqlite_session.commit()
+    assert _count(sqlite_session, AcceptanceCriteriaRevision) == 1
+    audit = sqlite_session.get(Audit, denial.audit_ref.removeprefix("audit://"))
+    assert audit is not None
+    assert audit.result == "denied"
+    assert audit.error_code == "VALIDATION_FAILED"
 
 
 def test_confirm_creates_new_immutable_confirmed_revision(sqlite_session) -> None:
@@ -1277,16 +1745,17 @@ def test_confirm_creates_new_immutable_confirmed_revision(sqlite_session) -> Non
                 "exact_proposed_revision_binding": {
                     "kind": "ACCEPTANCE_CRITERIA_REVISION",
                     "id": proposed_envelope.acceptance_criteria_revision_id,
-                    "revision": None,
+                    "revision": 1,
                     "digest": proposed_envelope.record_envelope.record_digest,
                 },
+                "confirmation_note": "Reviewed the exact reproducer and oracle.",
             }
         ),
-        principal=_principal(
+        principal=_credential_bound_principal(
+            sqlite_session,
             principal_id=CONFIRMER,
             required_scope="acceptance_criteria:confirm",
             issued_at=NOW + timedelta(minutes=1),
-            evaluated_at=NOW + timedelta(minutes=1),
         ),
         idempotency_key="ac-confirm-1c-0004",
         request_id="req_01J000000000001C",
@@ -1297,12 +1766,73 @@ def test_confirm_creates_new_immutable_confirmed_revision(sqlite_session) -> Non
     assert confirmed_env.confirmer_principal == CONFIRMER
     assert confirmed_env.confirmed_at is not None
     assert confirmed_env.proposer_principal == AGENT_PROPOSER
-    assert confirmed_env.exact_previous_proposed_revision_binding == {
+    assert confirmed_env.exact_previous_proposed_revision_binding.model_dump(
+        mode="json"
+    ) == {
         "kind": "ACCEPTANCE_CRITERIA_REVISION",
         "id": proposed_envelope.acceptance_criteria_revision_id,
-        "revision": None,
+        "revision": 1,
         "digest": proposed_envelope.record_envelope.record_digest,
     }
+    assert confirmed_env.reauthentication_credential_binding is not None
+    assert confirmed_env.reauthentication_credential_binding.credential_id == (
+        _PRINCIPAL_CREDENTIAL_IDS[CONFIRMER]
+    )
+    assert confirmed_env.reauthentication_credential_binding.binding_digest == (
+        canonical_digest(
+            {
+                "kind": "PUBLIC_CREDENTIAL",
+                "credential_id": _PRINCIPAL_CREDENTIAL_IDS[CONFIRMER],
+                "principal_id": CONFIRMER,
+                "jti_digest": _jti(CONFIRMER),
+                "claims_digest": _claims(CONFIRMER_SCOPES),
+                "issued_at": "2026-08-11T10:01:00Z",
+            }
+        )
+    )
+    command_audit = sqlite_session.scalar(
+        select(Audit).where(
+            Audit.action == "acceptance-criteria.confirm",
+            Audit.target == confirmed_env.acceptance_criteria_revision_id,
+        )
+    )
+    assert command_audit is not None
+    assert command_audit.params_digest == canonical_digest(
+        {
+            "request_fingerprint": canonical_digest(
+                {
+                    "schema_version": "2.0",
+                    "exact_proposed_revision_binding": {
+                        "kind": "ACCEPTANCE_CRITERIA_REVISION",
+                        "id": proposed_envelope.acceptance_criteria_revision_id,
+                        "revision": 1,
+                        "digest": proposed_envelope.record_envelope.record_digest,
+                    },
+                    "confirmation_note": (
+                        "Reviewed the exact reproducer and oracle."
+                    ),
+                }
+            ),
+            "confirmation_note": "Reviewed the exact reproducer and oracle.",
+        }
+    )
+
+    impossible = confirmed_env.model_dump(mode="json")
+    impossible["confirmation_status"] = "PROPOSED"
+    with pytest.raises(ValidationError):
+        type(confirmed_env).model_validate(impossible)
+    impossible = confirmed_env.model_dump(mode="json")
+    impossible["reauthentication_credential_binding"] = None
+    with pytest.raises(ValidationError):
+        type(confirmed_env).model_validate(impossible)
+    impossible = confirmed_env.model_dump(mode="json")
+    impossible["resolution_contract_binding_status"]["exact_case_binding"] = {
+        "case_id": "case_01J0000000000002",
+        "case_revision": 1,
+        "case_digest": "sha256:" + "f" * 64,
+    }
+    with pytest.raises(ValidationError):
+        type(confirmed_env).model_validate(impossible)
     # A NEW immutable record, not an in-place rewrite of the proposal.
     assert (
         confirmed_env.acceptance_criteria_revision_id
@@ -1323,8 +1853,9 @@ def test_confirm_creates_new_immutable_confirmed_revision(sqlite_session) -> Non
         request_id="req_01J000000000001D",
     )
     sqlite_session.commit()
-    assert get_response.case_readiness == "READY"
-    assert get_response.next_action is None
+    assert get_response.case_readiness == "NEEDS_ACCEPTANCE_CRITERIA"
+    assert get_response.next_action is not None
+    assert get_response.next_action["code"] == "MATERIALIZE_RESOLUTION_CONTRACT"
     assert len(get_response.revisions) == 2
 
 
@@ -1349,16 +1880,16 @@ def test_confirmed_revision_cannot_be_rewritten_in_place(sqlite_session) -> None
                 "exact_proposed_revision_binding": {
                     "kind": "ACCEPTANCE_CRITERIA_REVISION",
                     "id": proposed.acceptance_criteria_revision.acceptance_criteria_revision_id,
-                    "revision": None,
+                    "revision": 1,
                     "digest": proposed.acceptance_criteria_revision.record_envelope.record_digest,
                 },
             }
         ),
-        principal=_principal(
+        principal=_credential_bound_principal(
+            sqlite_session,
             principal_id=CONFIRMER,
             required_scope="acceptance_criteria:confirm",
             issued_at=NOW + timedelta(minutes=1),
-            evaluated_at=NOW + timedelta(minutes=1),
         ),
         idempotency_key="ac-confirm-1c-0005",
         request_id="req_01J000000000001F",
@@ -1371,6 +1902,72 @@ def test_confirmed_revision_cannot_be_rewritten_in_place(sqlite_session) -> None
     row.confirmation_status = "PROPOSED"
     with pytest.raises(RuntimeError):
         sqlite_session.commit()
+
+
+def test_same_proposal_can_produce_only_one_confirmed_revision(sqlite_session) -> None:
+    global _last_case_digest
+    case_digest, _principal_context = _seed_env(sqlite_session)
+    _last_case_digest = case_digest
+    service = _acceptance_service(sqlite_session)
+    proposed = service.propose(
+        _propose_request(case_digest=case_digest),
+        principal=_principal(
+            principal_id=AGENT_PROPOSER,
+            required_scope="acceptance_criteria:propose",
+        ),
+        idempotency_key="ac-propose-single-confirm-1c",
+        request_id="req_01J00000000000A4",
+    )
+    sqlite_session.commit()
+    proposal = proposed.acceptance_criteria_revision
+    request = AcceptanceCriteriaConfirmRequest.model_validate(
+        {
+            "schema_version": "2.0",
+            "exact_proposed_revision_binding": {
+                "kind": "ACCEPTANCE_CRITERIA_REVISION",
+                "id": proposal.acceptance_criteria_revision_id,
+                "revision": 1,
+                "digest": proposal.record_envelope.record_digest,
+            },
+        }
+    )
+    service.confirm(
+        request,
+        principal=_credential_bound_principal(
+            sqlite_session,
+            principal_id=CONFIRMER,
+            required_scope="acceptance_criteria:confirm",
+            issued_at=NOW + timedelta(minutes=1),
+        ),
+        idempotency_key="ac-confirm-single-first-1c",
+        request_id="req_01J00000000000A5",
+    )
+    sqlite_session.commit()
+
+    with pytest.raises(AcceptanceError) as exc_info:
+        service.confirm(
+            request,
+            principal=_credential_bound_principal(
+                sqlite_session,
+                principal_id=HUMAN_PROPOSER,
+                required_scope="acceptance_criteria:confirm",
+                issued_at=NOW + timedelta(minutes=2),
+            ),
+            idempotency_key="ac-confirm-single-second-1c",
+            request_id="req_01J00000000000A6",
+        )
+    assert exc_info.value.code == "CATALOG_CONFLICT"
+    assert exc_info.value.details["reason"] == "PROPOSAL_ALREADY_CONFIRMED"
+    sqlite_session.commit()
+    confirmed_count = int(
+        sqlite_session.scalar(
+            select(sa.func.count())
+            .select_from(AcceptanceCriteriaRevision)
+            .where(AcceptanceCriteriaRevision.confirmation_status == "CONFIRMED")
+        )
+        or 0
+    )
+    assert confirmed_count == 1
 
 
 def test_propose_idempotent_replay(sqlite_session) -> None:
@@ -1424,3 +2021,256 @@ def test_vague_issue_readiness_blocks_gate_start(sqlite_session) -> None:
     assert get_response.case_readiness == "NEEDS_ACCEPTANCE_CRITERIA"
     assert get_response.next_action is not None
     assert get_response.revisions == []
+
+
+# --------------------------------------------------------------------------
+# Console/read projections over the additive V4 + V5-1C case slice
+# --------------------------------------------------------------------------
+
+
+def _projection_bind_case(sqlite_session, *, issue_snapshot=None) -> str:
+    global _last_case_digest
+    case_digest, principal = _seed_env(sqlite_session)
+    _last_case_digest = case_digest
+    claims_digest = canonical_digest(
+        {
+            "schema_version": "1.0",
+            "issuer": ISSUER,
+            "subject": SUBJECT,
+            "principal_type": "human",
+            "audiences": AUDIENCES,
+            "workspace_id": WORKSPACE,
+            "project_ids": [PROJECT],
+            "environment_ids": [ENVIRONMENT_ID],
+            "scopes": BINDER_SCOPES,
+        }
+    )
+    principal = principal.model_copy(
+        update={
+            "environment_ids": [ENVIRONMENT_ID],
+            "claims_digest": claims_digest,
+        }
+    )
+    binder_row = sqlite_session.get(PublicPrincipal, BINDER)
+    binder_row.trust_roles = ["integrator"]
+    binder_row.environment_ids = [ENVIRONMENT_ID]
+    binder_row.claims_digest = claims_digest
+    sqlite_session.flush()
+    _binding_service(sqlite_session).bind_application(
+        _bind_request(
+            issue_snapshot=issue_snapshot,
+            declared_system_version_set_binding_or_unknown={
+                "kind": "UNKNOWN",
+                "reason": "not declared by focused console fixture",
+            },
+        ),
+        principal=principal,
+        idempotency_key="bind-console-projection-0001",
+        request_id="req_01J0000000000CB1",
+    )
+    sqlite_session.commit()
+    return case_digest
+
+
+def _projection_confirm_acceptance(
+    sqlite_session, *, case_digest: str, **propose_overrides: Any
+) -> AcceptanceCriteriaRevision:
+    proposed = _acceptance_service(sqlite_session).propose(
+        _propose_request(case_digest=case_digest, **propose_overrides),
+        principal=_principal(
+            principal_id=AGENT_PROPOSER,
+            required_scope="acceptance_criteria:propose",
+        ),
+        idempotency_key="acceptance-console-propose-0001",
+        request_id="req_01J0000000000CB2",
+    )
+    sqlite_session.commit()
+    proposed_record = proposed.acceptance_criteria_revision
+    confirmed = AcceptanceService(
+        sqlite_session, clock=lambda: NOW + timedelta(minutes=2)
+    ).confirm(
+        AcceptanceCriteriaConfirmRequest.model_validate(
+            {
+                "schema_version": "2.0",
+                "exact_proposed_revision_binding": {
+                    "kind": "ACCEPTANCE_CRITERIA_REVISION",
+                    "id": proposed_record.acceptance_criteria_revision_id,
+                    "revision": 1,
+                    "digest": proposed_record.record_envelope.record_digest,
+                },
+            }
+        ),
+        principal=_credential_bound_principal(
+            sqlite_session,
+            principal_id=CONFIRMER,
+            required_scope="acceptance_criteria:confirm",
+            issued_at=NOW + timedelta(minutes=1),
+        ),
+        idempotency_key="acceptance-console-confirm-0001",
+        request_id="req_01J0000000000CB3",
+    )
+    sqlite_session.commit()
+    return sqlite_session.get(
+        AcceptanceCriteriaRevision,
+        confirmed.acceptance_criteria_revision.acceptance_criteria_revision_id,
+    )
+
+
+def test_console_case_reads_explicit_legacy_and_quality_case_union(sqlite_session) -> None:
+    case_digest = _projection_bind_case(sqlite_session)
+    sqlite_session.add(
+        Aggregate(
+            aggregate_type="case",
+            aggregate_id="case_legacy_console_0001",
+            state="OPEN",
+            revision=1,
+            payload={"title": "Legacy Console Case"},
+            updated_at=NOW,
+        )
+    )
+    sqlite_session.commit()
+
+    service = CaseService(sqlite_session)
+    listed = service.list_cases()
+    assert {item["case_id"] for item in listed["items"]} == {
+        CASE_ID,
+        "case_legacy_console_0001",
+    }
+    detail = service.get_case(CASE_ID)
+    assert detail["state"] == "OPEN"
+    assert detail["payload"]["record_digest"] == case_digest
+    assert detail["event_count"] >= 1
+    assert service.get_case("case_legacy_console_0001")["payload"] == {
+        "title": "Legacy Console Case"
+    }
+
+    timeline = read_views.get_case_events(sqlite_session, CASE_ID)
+    assert timeline is not None
+    assert "case.application_bound" in {
+        item["event_type"] for item in timeline["items"]
+    }
+
+
+def test_console_readiness_does_not_treat_confirmed_pending_contract_as_ready(
+    sqlite_session,
+) -> None:
+    case_digest = _projection_bind_case(sqlite_session)
+    confirmed = _projection_confirm_acceptance(
+        sqlite_session, case_digest=case_digest
+    )
+
+    pending = read_views.case_v5_readiness(sqlite_session, CASE_ID)
+    assert pending["case_readiness"] == "NEEDS_ACCEPTANCE_CRITERIA"
+    assert pending["case_integrity_status"] == "verified"
+    assert pending["binding_integrity_status"] == "verified"
+    assert pending["acceptance_integrity_status"] == "verified"
+    assert pending["confirmed_acceptance_count"] == 1
+    assert pending["executable_acceptance_count"] == 0
+
+    sqlite_session.execute(
+        sa.update(AcceptanceCriteriaRevision)
+        .where(
+            AcceptanceCriteriaRevision.acceptance_criteria_revision_id
+            == confirmed.acceptance_criteria_revision_id
+        )
+        .values(acceptance_digest="sha256:" + "f" * 64)
+    )
+    sqlite_session.commit()
+    sqlite_session.expire_all()
+    corrupt = read_views.case_v5_readiness(sqlite_session, CASE_ID)
+    assert corrupt["case_readiness"] == "UNKNOWN"
+    assert corrupt["acceptance_integrity_status"] == "integrity_error"
+    assert corrupt["executable_acceptance_count"] == 0
+
+
+def test_console_readiness_revalidates_acceptance_authority_receipt(
+    sqlite_session,
+) -> None:
+    case_digest = _projection_bind_case(sqlite_session)
+    confirmed = _projection_confirm_acceptance(
+        sqlite_session, case_digest=case_digest
+    )
+    sqlite_session.execute(
+        sa.update(AuthorityReceipt)
+        .where(
+            AuthorityReceipt.authority_receipt_id
+            == confirmed.authority_receipt_id
+        )
+        .values(subject_digest="sha256:" + "d" * 64)
+    )
+    sqlite_session.commit()
+    sqlite_session.expire_all()
+
+    projection = read_views.case_v5_readiness(sqlite_session, CASE_ID)
+    assert projection["case_readiness"] == "UNKNOWN"
+    assert projection["acceptance_integrity_status"] == "integrity_error"
+    assert projection["confirmed_acceptance_count"] == 0
+
+
+def test_console_readiness_revalidates_current_case_digest(sqlite_session) -> None:
+    _projection_bind_case(sqlite_session)
+    sqlite_session.execute(
+        sa.update(QualityCase)
+        .where(QualityCase.case_id == CASE_ID)
+        .values(record_digest="sha256:" + "c" * 64)
+    )
+    sqlite_session.commit()
+    sqlite_session.expire_all()
+
+    projection = read_views.case_v5_readiness(sqlite_session, CASE_ID)
+    assert projection["case_readiness"] == "UNKNOWN"
+    assert projection["case_integrity_status"] == "integrity_error"
+    assert projection["application_binding"] is None
+    assert projection["binding_integrity_status"] == "integrity_error"
+
+
+def test_console_readiness_rejects_confirmed_placeholder_and_tampered_issue_snapshot(
+    sqlite_session,
+) -> None:
+    issue_snapshot = IssueSnapshotRequest.model_validate(
+        {
+            "source_kind": "github_issue",
+            "source_url": "https://github.com/simonw/llm/issues/1466",
+            "external_repo": "simonw/llm",
+            "external_issue_number": 1466,
+            "snapshot_payload": {
+                "title": "Vague report",
+                "body": "please investigate",
+                "state": "open",
+            },
+            "edited_flag": False,
+            "deleted_flag": False,
+            "fetched_at": NOW,
+        }
+    )
+    case_digest = _projection_bind_case(
+        sqlite_session, issue_snapshot=issue_snapshot
+    )
+    _projection_confirm_acceptance(
+        sqlite_session,
+        case_digest=case_digest,
+        reproducer_environment=None,
+        oracle_or_evaluator=None,
+        expected_behavior={"kind": "maintainer_review_required"},
+        applicable_workload_profile={"name": "unknown"},
+        applicable_deployment_profile={"name": "unknown"},
+    )
+
+    needs = read_views.case_v5_readiness(sqlite_session, CASE_ID)
+    assert needs["case_readiness"] == "NEEDS_ACCEPTANCE_CRITERIA"
+    assert needs["confirmed_acceptance_count"] == 1
+    assert needs["executable_acceptance_count"] == 0
+    assert needs["issue_snapshot_integrity_status"] == "verified"
+
+    snapshot = sqlite_session.scalar(select(IssueSourceSnapshot))
+    sqlite_session.execute(
+        sa.update(IssueSourceSnapshot)
+        .where(IssueSourceSnapshot.issue_snapshot_id == snapshot.issue_snapshot_id)
+        .values(snapshot_digest="sha256:" + "e" * 64)
+    )
+    sqlite_session.commit()
+    sqlite_session.expire_all()
+    corrupt = read_views.case_v5_readiness(sqlite_session, CASE_ID)
+    assert corrupt["case_readiness"] == "UNKNOWN"
+    assert corrupt["issue_snapshot"] is None
+    assert corrupt["issue_snapshot_integrity_status"] == "integrity_error"

@@ -66,16 +66,13 @@ def _augment_legacy_metadata() -> None:
                 "contract_version": String(16),
                 "workspace_id": String(128),
                 "event_version": String(16),
-                # Major-2 event-envelope fields are expand-only here.  They
-                # remain NULL for every legacy/v4 row, so v3/v4 wire payloads
-                # and persisted semantics are not reinterpreted.
+                "transaction_id": String(128),
+                "actor_principal": String(128),
+                "payload_digest": String(80),
                 "event_contract_major": Integer(),
                 "routing_key": JSON(none_as_null=True),
                 "exact_subject_binding": JSON(none_as_null=True),
                 "authority_receipt_id": String(128),
-                "transaction_id": String(128),
-                "actor_principal": String(128),
-                "payload_digest": String(80),
             },
         ),
         (
@@ -95,7 +92,6 @@ def _augment_legacy_metadata() -> None:
                 "workspace_id": String(128),
                 "aggregate_type": String(64),
                 "event_version": String(16),
-                "event_contract_major": Integer(),
                 "transaction_id": String(128),
                 "actor_principal": String(128),
             },
@@ -122,20 +118,17 @@ def _augment_legacy_metadata() -> None:
     if not _has_named_schema_item(event_table, "ck_events_v4_context"):
         event_table.append_constraint(
             CheckConstraint(
-                "(contract_version IS NULL AND event_contract_major IS NULL AND "
-                "routing_key IS NULL AND exact_subject_binding IS NULL AND "
-                "authority_receipt_id IS NULL) OR "
-                "(contract_version IS NOT NULL AND ((contract_version = 'v4' AND "
-                "workspace_id IS NOT NULL AND "
-                "event_version = '1.0' AND event_contract_major IS NULL AND "
-                "routing_key IS NULL AND exact_subject_binding IS NULL AND "
-                "authority_receipt_id IS NULL AND transaction_id IS NOT NULL AND "
-                "actor_principal IS NOT NULL AND payload_digest IS NOT NULL) OR "
+                "contract_version IS NULL OR "
+                "(contract_version = 'v4' AND workspace_id IS NOT NULL AND "
+                "event_version IS NOT NULL AND transaction_id IS NOT NULL AND "
+                "actor_principal IS NOT NULL AND payload_digest IS NOT NULL AND "
+                "event_contract_major IS NULL AND routing_key IS NULL AND "
+                "exact_subject_binding IS NULL AND authority_receipt_id IS NULL) OR "
                 "(contract_version = 'v5' AND workspace_id IS NOT NULL AND "
-                "event_version = '2.0' AND event_contract_major = 2 AND "
-                "routing_key IS NOT NULL AND exact_subject_binding IS NOT NULL AND "
-                "authority_receipt_id IS NOT NULL AND transaction_id IS NOT NULL AND "
-                "actor_principal IS NOT NULL AND payload_digest IS NOT NULL)))",
+                "event_version IS NOT NULL AND transaction_id IS NOT NULL AND "
+                "actor_principal IS NOT NULL AND payload_digest IS NOT NULL AND "
+                "event_contract_major = 2 AND routing_key IS NOT NULL AND "
+                "exact_subject_binding IS NOT NULL AND authority_receipt_id IS NOT NULL)",
                 name="ck_events_v4_context",
             )
         )
@@ -207,18 +200,15 @@ def _augment_legacy_metadata() -> None:
     if not _has_named_schema_item(outbox_table, "ck_outbox_v4_context"):
         outbox_table.append_constraint(
             CheckConstraint(
-                "(contract_version IS NULL AND event_contract_major IS NULL) OR "
-                "(contract_version IS NOT NULL AND ((contract_version = 'v4' AND "
-                "workspace_id IS NOT NULL AND "
-                "aggregate_type IS NOT NULL AND event_version = '1.0' AND "
-                "event_contract_major IS NULL AND transaction_id IS NOT NULL AND "
-                "actor_principal IS NOT NULL AND payload_digest IS NOT NULL AND "
-                "channel = 'v4.domain.events') OR "
+                "contract_version IS NULL OR "
+                "(contract_version = 'v4' AND workspace_id IS NOT NULL AND "
+                "aggregate_type IS NOT NULL AND event_version IS NOT NULL AND "
+                "transaction_id IS NOT NULL AND actor_principal IS NOT NULL AND "
+                "payload_digest IS NOT NULL AND channel = 'v4.domain.events') OR "
                 "(contract_version = 'v5' AND workspace_id IS NOT NULL AND "
-                "aggregate_type IS NOT NULL AND event_version = '2.0' AND "
-                "event_contract_major = 2 AND transaction_id IS NOT NULL AND "
-                "actor_principal IS NOT NULL AND payload_digest IS NOT NULL AND "
-                "channel = 'v5.domain.events')))",
+                "aggregate_type IS NOT NULL AND event_version IS NOT NULL AND "
+                "transaction_id IS NOT NULL AND actor_principal IS NOT NULL AND "
+                "payload_digest IS NOT NULL AND channel = 'v5.domain.events')",
                 name="ck_outbox_v4_context",
             )
         )
@@ -294,8 +284,11 @@ class PublicPrincipal(Base):
     audiences: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     project_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     environment_ids: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
-    trust_roles: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     scopes: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    # Server-owned authorization roles.  These are intentionally not copied
+    # from bearer claims: services re-read this row on every privileged
+    # operation so a role grant or revocation takes effect immediately.
+    trust_roles: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     claims_digest: Mapped[str] = mapped_column(String(80), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now()

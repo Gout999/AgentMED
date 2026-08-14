@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 import re
 from typing import Any, Optional
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 
@@ -330,13 +330,13 @@ def post_complaint(
 @router.get("/v1/cases")
 def list_cases(
     state: Optional[str] = None,
-    limit: int = 100,
-    cursor: int = 0,
+    limit: int = Query(default=100, ge=1, le=500),
+    cursor: int = Query(default=0, ge=0),
     session: Session = Depends(get_db_session),
     settings: Settings = Depends(get_app_settings),
 ) -> dict[str, Any]:
     svc = CaseService(session, settings)
-    return svc.list_cases(state=state, limit=min(limit, 500), cursor=cursor)
+    return svc.list_cases(state=state, limit=limit, cursor=cursor)
 
 
 @router.get("/v1/cases/{case_id}")

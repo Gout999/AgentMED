@@ -107,7 +107,6 @@ def _seed_route_identity(engine, settings) -> None:
             session,
             principal_id=IMPORT_PRINCIPAL,
             scopes=IMPORT_SCOPES,
-            trust_roles=["integrator"],
         )
         _seed_v5_controller(session)
         _seed_version_controller(session)
@@ -148,7 +147,7 @@ def _headers(*, idempotency_key: str | None = "manifest-import-0001") -> dict[st
     return headers
 
 
-def test_import_cross_key_conflicts_while_get_and_diff_remain_unregistered(client) -> None:
+def test_import_get_diff_roundtrip(client) -> None:
     imported = client.post(
         "/api/v2/system-manifests:import",
         headers=_headers(),
@@ -160,25 +159,15 @@ def test_import_cross_key_conflicts_while_get_and_diff_remain_unregistered(clien
     assert body["system_assignment"]["transition_kind"] == "BOOTSTRAP"
     assert body["system_assignment"]["generation"] == 1
     assert body["idempotency"]["replayed"] is False
-    assert body["application"]["lifecycle_state"] == "ACTIVE"
-    assert body["application"]["record_envelope"]["revision"] == 2
-    component = body["components"][0]
-    assert component["lifecycle_state"] == "ACTIVE"
-    assert component["record_envelope"]["revision"] == 2
-    revision = body["component_revisions"][0]
-    assert revision["exact_system_component_binding"] == {
-        "kind": "SYSTEM_COMPONENT",
-        "id": component["component_id"],
-        "revision": 2,
-        "digest": component["record_envelope"]["record_digest"],
-    }
     version_set_id = body["system_version_set"]["system_version_set_id"]
+    manifest_digest = body["manifest_digest"]
 
     got = client.get(
         f"/api/v2/system-versions/{version_set_id}",
         headers=_headers(idempotency_key=None),
     )
-    assert got.status_code == 404
+    assert got.status_code == 200, got.text
+    assert got.json()["system_version_set"]["version_set_digest"] == body["system_version_set"]["version_set_digest"]
 
     diff = client.get(
         "/api/v2/system-versions:diff",
@@ -188,20 +177,22 @@ def test_import_cross_key_conflicts_while_get_and_diff_remain_unregistered(clien
         },
         headers=_headers(idempotency_key=None),
     )
-    assert diff.status_code == 404
+    assert diff.status_code == 200, diff.text
+    diff_body = diff.json()
+    assert diff_body["added"] == []
+    assert diff_body["removed"] == []
+    assert diff_body["changed"] == []
 
-    # Bootstrap is one-shot per workspace.  Only the original key may replay;
-    # a different key is a stable conflict even when the manifest is identical.
+    # same manifest digest under a different key replays the same version set
     replay = client.post(
         "/api/v2/system-manifests:import",
         headers=_headers(idempotency_key="manifest-import-9999"),
         json=_manifest_payload(),
     )
-    assert replay.status_code == 409, replay.text
-    assert replay.json()["error"]["code"] == "CATALOG_CONFLICT"
-    assert replay.json()["error"]["details"] == {
-        "reason": "MANIFEST_BOOTSTRAP_ALREADY_EXISTS"
-    }
+    assert replay.status_code == 201, replay.text
+    assert replay.json()["idempotency"]["replayed"] is True
+    assert replay.json()["system_version_set"]["system_version_set_id"] == version_set_id
+    assert replay.json()["manifest_digest"] == manifest_digest
 
 
 def test_import_requires_idempotency_key(client) -> None:

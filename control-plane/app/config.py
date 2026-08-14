@@ -1,6 +1,8 @@
 """环境变量配置（D-001 默认值）。"""
 from __future__ import annotations
 
+import json
+import secrets
 from functools import lru_cache
 from typing import List
 
@@ -99,6 +101,52 @@ class Settings(BaseSettings):
     @property
     def canary_step_list(self) -> List[int]:
         return [int(x.strip()) for x in self.canary_steps.split(",") if x.strip()]
+
+
+def _secret_text(value: object) -> str:
+    if isinstance(value, SecretStr):
+        return value.get_secret_value()
+    return str(value or "")
+
+
+def validate_public_authority_config(settings: Settings) -> None:
+    """Fail closed unless the public authority secrets are independent.
+
+    Public credential hashing and cursor signing are separate from all internal
+    controller and worker credentials.  Readiness uses this shared preflight so
+    a process cannot be advertised as ready while every public V4/V5 request
+    would fail at its authentication boundary.
+    """
+
+    pepper = _secret_text(settings.public_credential_hash_pepper)
+    cursor_key = _secret_text(settings.public_cursor_signing_key)
+    if not pepper or not cursor_key:
+        raise ValueError("public authority secrets are not configured")
+
+    try:
+        role_tokens = json.loads(settings.control_plane_role_tokens_json or "{}")
+    except json.JSONDecodeError as exc:
+        raise ValueError("control-plane role token map is invalid") from exc
+    if not isinstance(role_tokens, dict) or any(
+        not isinstance(token, str) for token in role_tokens.values()
+    ):
+        raise ValueError("control-plane role token map is invalid")
+
+    internal_peers = [
+        settings.control_plane_internal_token,
+        settings.approval_authority_token,
+        settings.gate_authority_token,
+        *(token for token in role_tokens.values() if token),
+    ]
+    if secrets.compare_digest(pepper, cursor_key) or any(
+        peer
+        and (
+            secrets.compare_digest(pepper, peer)
+            or secrets.compare_digest(cursor_key, peer)
+        )
+        for peer in internal_peers
+    ):
+        raise ValueError("public authority secrets must be independent")
 
 
 @lru_cache

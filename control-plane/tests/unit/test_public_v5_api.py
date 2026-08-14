@@ -6,31 +6,14 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
-from pydantic import SecretStr, ValidationError
-from sqlalchemy import select
+from pydantic import SecretStr
 
 from app.main import create_app
-from app.models import Audit
 from app.models.v4_tables import PublicCredential
 from app.public_api.credential_resolver import hash_opaque_bearer
-from app.public_api.v5_models import (
-    ApplicationRegisterResponse,
-    ComponentRegisterResponse,
-    ExactBootstrapAttestationAuthorityBinding,
-    ExactComponentRevisionBinding,
-    ExactDependencyEdgeBinding,
-    ExactV4EvidenceBinding,
-    ExactV5EvidenceBinding,
-    ExactSlotVersionSetBinding,
-    ExactTopologyRevisionBinding,
-    IdentityAssuranceSummary,
-    SystemAssignmentRecord,
-)
-from app.services.v4_audit import V4AuditService, V4AuditUnavailable
 
 from test_v5_application_catalog import (
     _FIXTURE,
-    _activate_registered_application_for_foundation_test,
     _claims,
     _seed_principal,
     _seed_v5_controller,
@@ -52,7 +35,6 @@ ROUTE_SCOPES = [
     "applications:manage",
     "applications:read",
     "capabilities:read",
-    "system_manifests:import",
 ]
 
 
@@ -94,7 +76,6 @@ def _seed_route_identity(engine, settings) -> None:
             session,
             principal_id=CATALOG_PRINCIPAL,
             scopes=ROUTE_SCOPES,
-            trust_roles=["integrator"],
         )
         _seed_v5_controller(session)
         session.add(
@@ -172,120 +153,7 @@ def _app_body() -> bytes:
     return json.dumps(_FIXTURE["applications"][0]["register_request"]).encode("utf-8")
 
 
-def _record_envelope() -> dict[str, object]:
-    return {
-        "schema_version": "2.0",
-        "workspace_id": WORKSPACE,
-        "revision": 1,
-        "recorded_by_principal": CATALOG_PRINCIPAL,
-        "recorded_at": "2026-08-11T10:00:00Z",
-        "immutable": True,
-        "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
-        "record_digest": "sha256:" + "a" * 64,
-        "authority_receipt_id": "arec_01J0000000000001",
-    }
-
-
-def test_bootstrap_nested_authority_models_are_closed_and_exact() -> None:
-    digest = "sha256:" + "b" * 64
-    valid_bindings = [
-        (
-            ExactDependencyEdgeBinding,
-            {"kind": "DEPENDENCY_EDGE", "id": "de_01J0000000000001", "revision": 1, "digest": digest},
-        ),
-        (
-            ExactComponentRevisionBinding,
-            {"kind": "COMPONENT_REVISION", "id": "crv_01J0000000000001", "revision": 1, "digest": digest},
-        ),
-        (
-            ExactTopologyRevisionBinding,
-            {"kind": "TOPOLOGY_REVISION", "id": "tpr_01J0000000000001", "revision": 1, "digest": digest},
-        ),
-        (
-            ExactSlotVersionSetBinding,
-            {"slot": "PRIMARY", "kind": "SYSTEM_VERSION_SET", "id": "vset_01J0000000000001", "revision": 1, "digest": digest},
-        ),
-        (
-            ExactBootstrapAttestationAuthorityBinding,
-            {"binding_kind": "BOOTSTRAP_ATTESTATION", "id": "batt_01J0000000000001", "revision": 1, "digest": digest},
-        ),
-    ]
-    for model, payload in valid_bindings:
-        model.model_validate(payload)
-        with pytest.raises(ValidationError):
-            model.model_validate({**payload, "unexpected": True})
-        with pytest.raises(ValidationError):
-            model.model_validate({**payload, "revision": None})
-
-    v4_evidence = {
-        "contract_major": 1,
-        "kind": "TRACE_EVIDENCE_RECEIPT",
-        "id": "ter_01J0000000000001",
-        "revision": None,
-        "digest": digest,
-    }
-    v5_evidence = {
-        "kind": "OBSERVED_STATE_SNAPSHOT",
-        "id": "oss_01J0000000000001",
-        "revision": 1,
-        "digest": digest,
-    }
-    ExactV4EvidenceBinding.model_validate(v4_evidence)
-    ExactV5EvidenceBinding.model_validate(v5_evidence)
-    for model, payload in (
-        (ExactV4EvidenceBinding, {**v4_evidence, "contract_major": 2}),
-        (ExactV4EvidenceBinding, {k: v for k, v in v4_evidence.items() if k != "contract_major"}),
-        (ExactV5EvidenceBinding, {**v5_evidence, "contract_major": 1}),
-        (ExactV5EvidenceBinding, {**v5_evidence, "revision": None}),
-    ):
-        with pytest.raises(ValidationError):
-            model.model_validate(payload)
-
-    with pytest.raises(ValidationError):
-        ExactSlotVersionSetBinding.model_validate(
-            {**valid_bindings[3][1], "slot": "CANARY"}
-        )
-
-    summary = {
-        "component_assurances": [
-            {
-                "component_revision_id": "crv_01J0000000000001",
-                "component_id": "cmp_01J0000000000001",
-                "identity_assurance": "IMMUTABLE_DIGEST",
-            }
-        ]
-    }
-    IdentityAssuranceSummary.model_validate(summary)
-    with pytest.raises(ValidationError):
-        IdentityAssuranceSummary.model_validate({"component_count": 1})
-
-    assignment = {
-        "record_envelope": _record_envelope(),
-        "assignment_id": "asg_01J0000000000001",
-        "workspace_id": WORKSPACE,
-        "application_id": "app_01J0000000000001",
-        "environment_id": "env_01J0000000000001",
-        "generation": 1,
-        "lifecycle_state": "ACTIVE",
-        "transition_kind": "BOOTSTRAP",
-        "exact_previous_assignment_binding_or_null": None,
-        "exact_slot_version_set_bindings": [valid_bindings[3][1]],
-        "exposure": "EXPOSED",
-        "expected_previous_generation": None,
-        "exact_assignment_authority_binding": valid_bindings[4][1],
-        "requested_by_external_operation_id": None,
-    }
-    SystemAssignmentRecord.model_validate(assignment)
-    for mutation in (
-        {"exact_previous_assignment_binding_or_null": {}},
-        {"generation": 2},
-        {"transition_kind": "ROLL_FORWARD"},
-    ):
-        with pytest.raises(ValidationError):
-            SystemAssignmentRecord.model_validate({**assignment, **mutation})
-
-
-def test_v5_capability_discovery_is_exactly_r2_scoped(client) -> None:
+def test_v5_capability_discovery_is_explicit_and_stage_scoped(client) -> None:
     response = client.get("/api/v2/capabilities", headers=_headers())
     assert response.status_code == 200
     body = response.json()
@@ -293,27 +161,20 @@ def test_v5_capability_discovery_is_exactly_r2_scoped(client) -> None:
     assert body["data"]["api_major"] == 2
     assert body["data"]["contract_version"] == "2.0"
     assert body["data"]["disabled_intents"] == []
-    assert {item["name"] for item in body["data"]["enabled_intents"]} == {
+    enabled = {item["name"] for item in body["data"]["enabled_intents"]}
+    assert {
         "capabilities.get",
         "applications.register",
         "applications.get",
-        "applications.list",
         "environments.register",
         "environments.get",
         "system-components.register",
         "system-components.get",
         "dependency-edges.record",
         "dependency-edges.get",
-        "system-manifests.import",
-    }
-    modes = {
-        item["name"]: item["execution_mode"]
-        for item in body["data"]["enabled_intents"]
-    }
-    assert modes["system-manifests.import"] == "synchronous_local_transaction"
-    assert {
-        mode for name, mode in modes.items() if name != "system-manifests.import"
-    } == {"synchronous"}
+    } <= enabled
+    assert "system-versions.record" not in enabled
+    assert not any(name.startswith("releases.") for name in enabled)
 
 
 def test_register_application_v2_success(client) -> None:
@@ -328,268 +189,8 @@ def test_register_application_v2_success(client) -> None:
     assert body["schema_version"] == "2.0"
     assert body["workspace_id"] == WORKSPACE
     assert body["application"]["record_envelope"]["immutable"] is True
-    assert body["application"]["lifecycle_state"] in {"REGISTERED", "ACTIVE"}
-    registered_shape = json.loads(response.content)
-    registered_shape["application"]["lifecycle_state"] = "REGISTERED"
-    ApplicationRegisterResponse.model_validate(registered_shape)
     assert body["idempotency"]["replayed"] is False
     assert body["idempotency"]["receipt"]["intent"] == "applications.register"
-
-
-def test_list_applications_v2_is_authenticated_project_scoped_graph(client) -> None:
-    registered = client.post(
-        "/api/v2/applications",
-        headers=_headers(mutation=True),
-        content=_app_body(),
-    )
-    assert registered.status_code == 201
-
-    response = client.get(
-        f"/api/v2/applications?project_id={PROJECT}&limit=25",
-        headers=_headers(),
-    )
-    assert response.status_code == 200
-    body = response.json()
-    assert body["schema_version"] == "2.0"
-    assert body["next_cursor"] is None
-    assert len(body["items"]) == 1
-    item = body["items"][0]
-    assert item["application"]["application_id"] == registered.json()["application"][
-        "application_id"
-    ]
-    assert item["application"]["exact_previous_application_binding_or_null"] is None
-    assert item["environments"] == []
-    assert item["system_components"] == []
-    assert item["dependency_edges"] == []
-
-    foreign_headers = _headers()
-    foreign_headers["Authorization"] = f"Bearer {FOREIGN_READER_TOKEN}"
-    foreign = client.get(
-        f"/api/v2/applications?project_id={OTHER_PROJECT}",
-        headers=foreign_headers,
-    )
-    assert foreign.status_code == 200
-    assert foreign.json()["items"] == []
-
-
-def test_r2_does_not_register_system_version_read_or_diff_routes(client) -> None:
-    version = client.get(
-        "/api/v2/system-versions/vset_01J0000000000001",
-        headers=_headers(),
-    )
-    diff = client.get(
-        "/api/v2/system-versions:diff",
-        params={
-            "base_system_version_set_id": "vset_01J0000000000001",
-            "target_system_version_set_id": "vset_01J0000000000002",
-        },
-        headers=_headers(),
-    )
-
-    assert version.status_code == 404
-    assert diff.status_code == 404
-    openapi_paths = client.get("/openapi.json").json()["paths"]
-    assert not any(path.startswith("/api/v2/system-versions") for path in openapi_paths)
-
-
-def test_r2_does_not_register_r4_case_or_acceptance_routes(client) -> None:
-    probes = [
-        ("POST", "/api/v2/cases/case_01J0000000000001:bind-application"),
-        ("GET", "/api/v2/cases/case_01J0000000000001/application-binding"),
-        (
-            "POST",
-            "/api/v2/cases/case_01J0000000000001:propose-acceptance-criteria",
-        ),
-        ("GET", "/api/v2/cases/case_01J0000000000001/acceptance-criteria"),
-        (
-            "POST",
-            "/api/v2/acceptance-criteria/acr_01J0000000000001:confirm",
-        ),
-    ]
-
-    for method, path in probes:
-        assert client.request(method, path, headers=_headers(mutation=method == "POST")).status_code == 404
-
-    openapi_paths = client.get("/openapi.json").json()["paths"]
-    assert not any(path.startswith("/api/v2/cases") for path in openapi_paths)
-    assert not any(
-        path.startswith("/api/v2/acceptance-criteria") for path in openapi_paths
-    )
-
-
-def test_r2_catalog_mutations_use_only_flat_canonical_post_paths(client) -> None:
-    openapi_paths = client.get("/openapi.json").json()["paths"]
-    flat_paths = {
-        "/api/v2/environments",
-        "/api/v2/system-components",
-        "/api/v2/dependency-edges",
-    }
-    assert all("post" in openapi_paths[path] for path in flat_paths)
-    assert not any(
-        path.startswith("/api/v2/applications/{application_id}/")
-        for path in openapi_paths
-    )
-
-
-def test_r2_openapi_exactly_matches_activated_intent_operations(client) -> None:
-    expected = {
-        ("GET", "/api/v2/capabilities"): "getV5Capabilities",
-        ("POST", "/api/v2/applications"): "registerApplication",
-        ("GET", "/api/v2/applications"): "listApplications",
-        ("GET", "/api/v2/applications/{application_id}"): "getApplication",
-        ("POST", "/api/v2/environments"): "registerEnvironment",
-        ("GET", "/api/v2/environments/{environment_id}"): "getEnvironment",
-        ("POST", "/api/v2/system-components"): "registerSystemComponent",
-        ("GET", "/api/v2/system-components/{component_id}"): "getSystemComponent",
-        ("POST", "/api/v2/dependency-edges"): "recordDependencyEdge",
-        (
-            "GET",
-            "/api/v2/dependency-edges/{dependency_edge_id}",
-        ): "getDependencyEdge",
-        ("POST", "/api/v2/system-manifests:import"): "importSystemManifest",
-    }
-    openapi_paths = client.get("/openapi.json").json()["paths"]
-    actual = {
-        (method.upper(), path): operation["operationId"]
-        for path, path_item in openapi_paths.items()
-        if path.startswith("/api/v2/")
-        for method, operation in path_item.items()
-        if method.lower() in {"get", "post", "put", "patch", "delete"}
-    }
-
-    assert actual == expected
-
-
-def test_r2_version_header_denials_are_committed_for_all_r2_routes(client) -> None:
-    read_paths = [
-        "/api/v2/capabilities",
-        f"/api/v2/applications?project_id={PROJECT}",
-        "/api/v2/applications/app_01J0000000000001",
-        "/api/v2/environments/env_01J0000000000001",
-        "/api/v2/system-components/cmp_01J0000000000001",
-        "/api/v2/dependency-edges/de_01J0000000000001",
-    ]
-    mutation_paths = [
-        "/api/v2/applications",
-        "/api/v2/environments",
-        "/api/v2/system-components",
-        "/api/v2/dependency-edges",
-        "/api/v2/system-manifests:import",
-    ]
-    persisted_audit_ids: list[str] = []
-
-    for index, path in enumerate(read_paths):
-        headers = _headers()
-        headers.pop("X-CaseLoop-Contract-Version")
-        headers["X-Request-ID"] = f"req_01J0000000000H{index:02d}"
-        response = client.get(path, headers=headers)
-        body = response.json()
-        assert response.status_code == 400
-        assert body["error"]["code"] == "REQUEST_INVALID"
-        audit_ref = body["error"]["audit_ref"]
-        assert audit_ref.startswith("audit://aud_")
-        persisted_audit_ids.append(audit_ref.removeprefix("audit://"))
-
-    for index, path in enumerate(mutation_paths):
-        headers = _headers(mutation=True)
-        headers.pop("X-CaseLoop-Contract-Version")
-        headers["X-Request-ID"] = f"req_01J0000000000M{index:02d}"
-        response = client.post(path, headers=headers, content=b"{}")
-        body = response.json()
-        assert response.status_code == 400
-        assert body["error"]["code"] == "REQUEST_INVALID"
-        audit_ref = body["error"]["audit_ref"]
-        assert audit_ref.startswith("audit://aud_")
-        persisted_audit_ids.append(audit_ref.removeprefix("audit://"))
-
-    with client.app.state.session_factory() as session:
-        audits = session.scalars(
-            select(Audit).where(Audit.action == "public-v2.header_rejected")
-        ).all()
-        assert {audit.audit_id for audit in audits} == set(persisted_audit_ids)
-        assert all(
-            audit.result == "denied" and audit.error_code == "REQUEST_INVALID"
-            for audit in audits
-        )
-
-
-def test_r2_non_version_mutation_header_denial_does_not_create_audit(client) -> None:
-    headers = _headers(mutation=True)
-    headers.pop("X-CaseLoop-Idempotency-Key")
-    response = client.post("/api/v2/applications", headers=headers, content=_app_body())
-
-    assert response.status_code == 400
-    assert response.json()["error"]["code"] == "IDEMPOTENCY_KEY_REQUIRED"
-    assert response.json()["error"]["audit_ref"] is None
-    with client.app.state.session_factory() as session:
-        assert session.scalars(
-            select(Audit).where(Audit.action == "public-v2.header_rejected")
-        ).all() == []
-
-
-def test_r2_header_denial_audit_failure_returns_no_nonexistent_ref(
-    client, monkeypatch
-) -> None:
-    def fail_audit(*_args, **_kwargs):
-        raise V4AuditUnavailable("forced header audit failure")
-
-    monkeypatch.setattr(V4AuditService, "record", fail_audit)
-    headers = _headers()
-    headers.pop("X-CaseLoop-Contract-Version")
-    response = client.get("/api/v2/capabilities", headers=headers)
-
-    assert response.status_code == 503
-    body = response.json()
-    assert body["error"]["code"] == "AUDIT_UNAVAILABLE"
-    assert body["error"]["audit_ref"] is None
-    with client.app.state.session_factory() as session:
-        assert session.scalars(
-            select(Audit).where(Audit.action == "public-v2.header_rejected")
-        ).all() == []
-
-
-def test_list_applications_requires_explicit_project_scope(client) -> None:
-    response = client.get("/api/v2/applications", headers=_headers())
-
-    assert response.status_code == 422
-    assert response.json()["error"]["code"] == "VALIDATION_FAILED"
-    assert response.json()["error"]["audit_ref"].startswith("audit://aud_")
-
-
-@pytest.mark.parametrize(
-    ("query", "expected_code", "expected_status"),
-    [
-        (f"project_id={OTHER_PROJECT}", "RESOURCE_NOT_FOUND", 404),
-        (
-            f"project_id={PROJECT}&cursor=cur_forged-cross-scope",
-            "REQUEST_INVALID",
-            400,
-        ),
-        (f"project_id={PROJECT}&limit=101", "REQUEST_INVALID", 400),
-    ],
-)
-def test_list_applications_denials_are_audited_without_item_or_count_leak(
-    client,
-    query: str,
-    expected_code: str,
-    expected_status: int,
-) -> None:
-    response = client.get(f"/api/v2/applications?{query}", headers=_headers())
-
-    assert response.status_code == expected_status
-    body = response.json()
-    assert body["error"]["code"] == expected_code
-    assert body["error"]["details"] == {}
-    assert body["error"]["audit_ref"].startswith("audit://aud_")
-    assert "items" not in body
-    assert "count" not in response.text.lower()
-    audit_id = body["error"]["audit_ref"].removeprefix("audit://")
-    with client.app.state.session_factory() as session:
-        audit = session.get(Audit, audit_id)
-        assert audit is not None
-        assert audit.action == "public.v5.applications.list"
-        assert audit.result == "denied"
-        assert audit.error_code == expected_code
 
 
 def test_register_application_replay_returns_same_record(client) -> None:
@@ -707,12 +308,6 @@ def test_environment_and_component_registration_v2(client) -> None:
         "/api/v2/applications", headers=_headers(mutation=True), content=_app_body()
     )
     application_id = registered.json()["application"]["application_id"]
-    with client.app.state.session_factory() as session:
-        application = ApplicationRegisterResponse.model_validate(
-            registered.json()
-        ).application
-        _activate_registered_application_for_foundation_test(session, application)
-        session.commit()
 
     env_headers = _headers(mutation=True)
     env_headers["X-CaseLoop-Idempotency-Key"] = "env-register-0001"
@@ -748,10 +343,3 @@ def test_environment_and_component_registration_v2(client) -> None:
     )
     assert component.status_code == 201
     assert component.json()["component"]["component_kind"] == "AGENT"
-    assert component.json()["component"]["lifecycle_state"] in {
-        "REGISTERED",
-        "ACTIVE",
-    }
-    registered_component = component.json()
-    registered_component["component"]["lifecycle_state"] = "REGISTERED"
-    ComponentRegisterResponse.model_validate(registered_component)

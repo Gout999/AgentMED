@@ -5,9 +5,12 @@ import pytest
 
 from app.config import Settings
 from app.models.tables import Event, Inbox, Lease
+from app.models.v4_tables import QualityCase
+from app.services import read_views
 from app.services.case_service import CaseService, CaseServiceError
 from app.services.event_store import EventStore
 from app.services.lease import LeaseService
+from app.utils.v4_integrity import canonical_digest, record_digest
 
 
 def _settings(**kw) -> Settings:
@@ -38,6 +41,204 @@ def test_ingest_creates_open_case(sqlite_session):
     assert agg.state == "OPEN"
     assert (agg.payload or {})["channel"] == "feishu:oc_contract"
     assert svc.list_cases()["items"][0]["title"] == "屏幕问题"
+
+
+def _add_quality_case(sqlite_session, *, case_id: str = "case_v4_console_0001"):
+    now = datetime(2026, 8, 11, 10, 0, tzinfo=timezone.utc)
+    payload = {
+        "schema_version": "1.0",
+        "case_id": case_id,
+        "workspace_id": "ws_console_0001",
+        "revision": 1,
+        "status": "OPEN",
+        "title": "V4 Console Case",
+        "project_id": "proj_console_0001",
+        "environment_id": None,
+        "governed_agent_id": None,
+        "correlation_status": "NEEDS_CORRELATION",
+        "triage_status": "UNTRIAGED",
+        "opening_signal_id": "sig_console_0001",
+        "authority_receipt_id": "arec_console_0001",
+        "opened_at": now.isoformat().replace("+00:00", "Z"),
+        "updated_at": now.isoformat().replace("+00:00", "Z"),
+        "resolved_at": None,
+        "immutable": True,
+        "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_digest)",
+        "record_digest": "",
+    }
+    payload["record_digest"] = record_digest(
+        payload, self_digest_field="record_digest"
+    )
+    row = QualityCase(
+        case_id=case_id,
+        workspace_id="ws_console_0001",
+        state="OPEN",
+        revision=1,
+        title="V4 Console Case",
+        project_id="proj_console_0001",
+        environment_id=None,
+        governed_agent_id=None,
+        correlation_status="NEEDS_CORRELATION",
+        triage_status="UNTRIAGED",
+        opening_signal_id="sig_console_0001",
+        snapshot_payload=payload,
+        record_digest=payload["record_digest"],
+        authority_receipt_id="arec_console_0001",
+        opened_at=now,
+        updated_at=now,
+        resolved_at=None,
+    )
+    sqlite_session.add(row)
+    event_payload = {
+        "subject_kind": "QUALITY_CASE",
+        "subject_id": case_id,
+        "subject_revision": 1,
+        "subject_digest": payload["record_digest"],
+        "authority_receipt_id": "arec_console_0001",
+        "case_id": case_id,
+        "opening_signal_id": "sig_console_0001",
+    }
+    sqlite_session.add(
+        Event(
+            event_id="evt_v4_console_0001",
+            aggregate_type="quality_case",
+            aggregate_id=case_id,
+            seq=1,
+            event_type="case.opened",
+            payload=event_payload,
+            causation_id="req_console_0001",
+            correlation_id=case_id,
+            actor="case-controller",
+            trace_id=None,
+            occurred_at=now,
+            created_at=now,
+            contract_version="v4",
+            workspace_id="ws_console_0001",
+            event_version="1.0",
+            transaction_id="txn_console_0001",
+            actor_principal="prn_console_0001",
+            payload_digest=canonical_digest(event_payload),
+        )
+    )
+    cross_workspace_payload = {
+        "subject_kind": "ACCEPTANCE_CRITERIA_REVISION",
+        "subject_id": "acr_other_workspace_0001",
+        "subject_revision": 1,
+        "subject_digest": "sha256:" + "9" * 64,
+        "authority_receipt_id": "arec_other_workspace_0001",
+    }
+    sqlite_session.add(
+        Event(
+            event_id="evt_cross_workspace_0001",
+            aggregate_type="acceptance_criteria_revision",
+            aggregate_id="acr_other_workspace_0001",
+            seq=1,
+            event_type="acceptance_criteria.confirmed",
+            payload=cross_workspace_payload,
+            causation_id="req_other_workspace_0001",
+            correlation_id=case_id,
+            actor="case-controller",
+            trace_id=None,
+            occurred_at=now,
+            created_at=now,
+            contract_version="v5",
+            workspace_id="ws_other_console_0001",
+            event_version="2.0",
+            transaction_id="txn_other_console_0001",
+            actor_principal="prn_other_console_0001",
+            payload_digest=canonical_digest(cross_workspace_payload),
+            event_contract_major=2,
+            routing_key={
+                "contract_major": 2,
+                "resource_kind": "ACCEPTANCE_CRITERIA_REVISION",
+                "subject_id": "acr_other_workspace_0001",
+            },
+            exact_subject_binding={
+                "kind": "ACCEPTANCE_CRITERIA_REVISION",
+                "id": "acr_other_workspace_0001",
+                "revision": 1,
+                "digest": "sha256:" + "9" * 64,
+            },
+            authority_receipt_id="arec_other_workspace_0001",
+        )
+    )
+    sqlite_session.flush()
+    return row
+
+
+def test_console_reads_union_of_legacy_and_v4_quality_cases(sqlite_session):
+    svc = CaseService(sqlite_session, _settings())
+    legacy_id = svc.ingest_complaint(
+        source="webhook", text="legacy", external_id="legacy-console"
+    )["case_id"]
+    quality_case = _add_quality_case(sqlite_session)
+
+    listed = svc.list_cases()
+    assert {item["case_id"] for item in listed["items"]} == {
+        legacy_id,
+        quality_case.case_id,
+    }
+    first_page = svc.list_cases(limit=1)
+    second_page = svc.list_cases(limit=1, cursor=first_page["next_cursor"])
+    assert {
+        first_page["items"][0]["case_id"],
+        second_page["items"][0]["case_id"],
+    } == {legacy_id, quality_case.case_id}
+    assert second_page["next_cursor"] is None
+    detail = svc.get_case(quality_case.case_id)
+    assert detail["state"] == "OPEN"
+    assert detail["payload"]["record_digest"] == quality_case.record_digest
+    assert detail["event_count"] == 1
+
+    timeline = read_views.get_case_events(sqlite_session, quality_case.case_id)
+    assert timeline is not None
+    assert [item["event_type"] for item in timeline["items"]] == ["case.opened"]
+    evidence = read_views.list_evidence_refs(
+        sqlite_session, case_id=quality_case.case_id
+    )
+    assert all(
+        "evt_cross_workspace_0001" not in item["evidence_id"]
+        for item in evidence["items"]
+    )
+
+
+def test_console_fails_closed_for_corrupt_quality_case_projection(sqlite_session):
+    svc = CaseService(sqlite_session, _settings())
+    quality_case = _add_quality_case(sqlite_session)
+    quality_case.record_digest = "sha256:" + "f" * 64
+    sqlite_session.flush()
+
+    detail = svc.get_case(quality_case.case_id)
+    assert detail["state"] == "UNKNOWN"
+    assert detail["payload"] == {
+        "integrity_status": "integrity_error",
+        "integrity_error": "quality_case_projection_mismatch",
+    }
+    assert svc.list_cases()["items"][0]["state"] == "UNKNOWN"
+    timeline = read_views.get_case_events(sqlite_session, quality_case.case_id)
+    assert timeline is not None
+    assert timeline["evidence_refs"]["integrity_status"] == "integrity_error"
+
+
+def test_console_http_case_routes_do_not_404_for_quality_case(
+    sqlite_session, app_client
+):
+    quality_case = _add_quality_case(sqlite_session)
+    sqlite_session.commit()
+    client, _ = app_client
+
+    listed = client.get("/v1/cases")
+    detail = client.get(f"/v1/cases/{quality_case.case_id}")
+    events = client.get(f"/v1/cases/{quality_case.case_id}/events")
+
+    assert listed.status_code == 200
+    assert listed.json()["items"][0]["case_id"] == quality_case.case_id
+    assert detail.status_code == 200
+    assert detail.json()["case_id"] == quality_case.case_id
+    assert events.status_code == 200
+    assert events.json()["items"][0]["event_type"] == "case.opened"
+    assert client.get("/v1/cases?limit=0").status_code == 422
+    assert client.get("/v1/cases?cursor=-1").status_code == 422
 
 
 def test_ingest_dedup_within_window(sqlite_session):

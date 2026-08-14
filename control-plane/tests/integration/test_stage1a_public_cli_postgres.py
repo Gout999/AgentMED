@@ -21,6 +21,7 @@ from unittest.mock import patch
 
 from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 import httpx
 import pytest
 from pydantic import SecretStr
@@ -333,11 +334,15 @@ def test_stage1a_public_installed_cli_real_postgres_loopback(
             "create_all",
             side_effect=AssertionError("stage1a.e2e_must_not_use_create_all"),
         ):
-            command.upgrade(_alembic_config(control_plane_root), "head")
+            alembic_config = _alembic_config(control_plane_root)
+            command.upgrade(alembic_config, "head")
+        expected_head = ScriptDirectory.from_config(
+            alembic_config
+        ).get_current_head()
         with engine.connect() as connection:
             assert connection.execute(
                 sa.text("SELECT version_num FROM alembic_version")
-            ).scalar_one() == "010"
+            ).scalar_one() == expected_head
 
         bootstrap = _safe_process(
             [sys.executable, "-m", "app.bootstrap.stage1a_local"],

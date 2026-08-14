@@ -12,6 +12,7 @@ from unittest.mock import patch
 
 from alembic import command
 from alembic.config import Config
+from alembic.script import ScriptDirectory
 import pytest
 import sqlalchemy as sa
 from pydantic import SecretStr
@@ -127,7 +128,11 @@ def test_stage1a_local_bootstrap_real_postgres_head_and_atomic_reuse(
             "create_all",
             side_effect=AssertionError("stage1a.bootstrap_must_not_use_create_all"),
         ):
-            command.upgrade(_alembic_config(root), "head")
+            alembic_config = _alembic_config(root)
+            command.upgrade(alembic_config, "head")
+            expected_head = ScriptDirectory.from_config(
+                alembic_config
+            ).get_current_head()
 
             with factory() as session:
                 first = execute_stage1a_local_bootstrap(
@@ -141,7 +146,7 @@ def test_stage1a_local_bootstrap_real_postgres_head_and_atomic_reuse(
             with factory() as session:
                 assert session.execute(
                     sa.text("SELECT version_num FROM alembic_version")
-                ).scalar_one() == "010"
+                ).scalar_one() == expected_head
                 assert session.execute(
                     sa.text("SELECT current_database()")
                 ).scalar_one().endswith("_test")

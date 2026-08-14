@@ -33,9 +33,9 @@ from app.models.tables import Base
 # value sets yet (field_contract_ref is null); these conservative closed
 # domains are the runtime slice's interpretation and are reported as honest
 # uncertainty in evidence/v5/stage-1/application-catalog.
-CATALOG_LIFECYCLE_STATES = ("REGISTERED", "ACTIVE", "ARCHIVED")
+CATALOG_LIFECYCLE_STATES = ("ACTIVE", "ARCHIVED")
 ENVIRONMENT_LIFECYCLE_STATES = ("ACTIVE", "RETIRED")
-COMPONENT_LIFECYCLE_STATES = ("REGISTERED", "ACTIVE", "DEPRECATED", "RETIRED")
+COMPONENT_LIFECYCLE_STATES = ("ACTIVE", "DEPRECATED", "RETIRED")
 CRITICALITY_VALUES = ("P0", "P1", "P2", "P3")
 DATA_CLASSIFICATION_VALUES = ("PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED")
 GOVERNANCE_MODE_VALUES = ("MANAGED", "OBSERVED")
@@ -94,8 +94,7 @@ class AIApplication(Base):
             name="uq_ai_application_workspace_project_slug",
         ),
         CheckConstraint(
-            "lifecycle_state IN ('REGISTERED','ACTIVE','ARCHIVED')",
-            name="ck_ai_application_lifecycle",
+            "lifecycle_state IN ('ACTIVE','ARCHIVED')", name="ck_ai_application_lifecycle"
         ),
         CheckConstraint(
             "criticality IN ('P0','P1','P2','P3')", name="ck_ai_application_criticality"
@@ -193,63 +192,6 @@ class Environment(Base):
     )
 
 
-class AIApplicationLifecycleRevision(Base):
-    """Append-only authority for every AIApplication lifecycle revision.
-
-    ``ai_applications`` is only the mutable current-head projection.  Exact
-    historical bindings must resolve through this table and its independently
-    integrity-checked record envelope.
-    """
-
-    __tablename__ = "ai_application_lifecycle_revisions"
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["workspace_id", "application_id"],
-            ["ai_applications.workspace_id", "ai_applications.application_id"],
-            name="fk_ai_application_lifecycle_head",
-        ),
-        UniqueConstraint(
-            "record_digest", name="uq_ai_application_lifecycle_record_digest"
-        ),
-        UniqueConstraint(
-            "authority_receipt_id",
-            name="uq_ai_application_lifecycle_authority_receipt",
-        ),
-        CheckConstraint(
-            "lifecycle_state IN ('REGISTERED','ACTIVE','ARCHIVED')",
-            name="ck_ai_application_lifecycle_revision_state",
-        ),
-        CheckConstraint(
-            "(revision = 1 AND lifecycle_state = 'REGISTERED' "
-            "AND exact_previous_application_binding IS NULL) OR "
-            "(revision > 1 AND exact_previous_application_binding IS NOT NULL)",
-            name="ck_ai_application_lifecycle_revision_shape",
-        ),
-        Index(
-            "ix_ai_application_lifecycle_current",
-            "workspace_id",
-            "application_id",
-            "revision",
-            "lifecycle_state",
-        ),
-    )
-
-    workspace_id: Mapped[str] = mapped_column(String(128), primary_key=True)
-    application_id: Mapped[str] = mapped_column(String(128), primary_key=True)
-    revision: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    lifecycle_state: Mapped[str] = mapped_column(String(32), nullable=False)
-    exact_previous_application_binding: Mapped[Optional[dict[str, Any]]] = (
-        mapped_column(JSON(none_as_null=True), nullable=True)
-    )
-    envelope_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
-    record_digest: Mapped[str] = mapped_column(String(80), nullable=False)
-    authority_receipt_id: Mapped[str] = mapped_column(String(128), nullable=False)
-    recorded_by_principal: Mapped[str] = mapped_column(String(128), nullable=False)
-    recorded_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
-
-
 class SystemComponent(Base):
     __tablename__ = "system_components"
     __table_args__ = (
@@ -275,7 +217,7 @@ class SystemComponent(Base):
             name="uq_system_component_workspace_application_identity",
         ),
         CheckConstraint(
-            "lifecycle_state IN ('REGISTERED','ACTIVE','DEPRECATED','RETIRED')",
+            "lifecycle_state IN ('ACTIVE','DEPRECATED','RETIRED')",
             name="ck_system_component_lifecycle",
         ),
         CheckConstraint(
@@ -331,63 +273,6 @@ class SystemComponent(Base):
     )
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
-    )
-
-
-class SystemComponentLifecycleRevision(Base):
-    """Append-only authority for every SystemComponent lifecycle revision."""
-
-    __tablename__ = "system_component_lifecycle_revisions"
-    __table_args__ = (
-        ForeignKeyConstraint(
-            ["workspace_id", "application_id", "component_id"],
-            [
-                "system_components.workspace_id",
-                "system_components.application_id",
-                "system_components.component_id",
-            ],
-            name="fk_system_component_lifecycle_head",
-        ),
-        UniqueConstraint(
-            "record_digest", name="uq_system_component_lifecycle_record_digest"
-        ),
-        UniqueConstraint(
-            "authority_receipt_id",
-            name="uq_system_component_lifecycle_authority_receipt",
-        ),
-        CheckConstraint(
-            "lifecycle_state IN ('REGISTERED','ACTIVE','DEPRECATED','RETIRED')",
-            name="ck_system_component_lifecycle_revision_state",
-        ),
-        CheckConstraint(
-            "(revision = 1 AND lifecycle_state = 'REGISTERED' "
-            "AND exact_previous_system_component_binding IS NULL) OR "
-            "(revision > 1 AND exact_previous_system_component_binding IS NOT NULL)",
-            name="ck_system_component_lifecycle_revision_shape",
-        ),
-        Index(
-            "ix_system_component_lifecycle_current",
-            "workspace_id",
-            "component_id",
-            "revision",
-            "lifecycle_state",
-        ),
-    )
-
-    workspace_id: Mapped[str] = mapped_column(String(128), primary_key=True)
-    component_id: Mapped[str] = mapped_column(String(128), primary_key=True)
-    revision: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    application_id: Mapped[str] = mapped_column(String(128), nullable=False)
-    lifecycle_state: Mapped[str] = mapped_column(String(32), nullable=False)
-    exact_previous_system_component_binding: Mapped[Optional[dict[str, Any]]] = (
-        mapped_column(JSON(none_as_null=True), nullable=True)
-    )
-    envelope_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
-    record_digest: Mapped[str] = mapped_column(String(80), nullable=False)
-    authority_receipt_id: Mapped[str] = mapped_column(String(128), nullable=False)
-    recorded_by_principal: Mapped[str] = mapped_column(String(128), nullable=False)
-    recorded_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
     )
 
 
@@ -851,6 +736,9 @@ class ApplicationCaseBinding(Base):
         CheckConstraint(
             "case_revision >= 1", name="ck_application_case_binding_case_revision"
         ),
+        CheckConstraint(
+            "revision >= 1", name="ck_application_case_binding_revision"
+        ),
         Index(
             "ix_application_case_binding_workspace_case",
             "workspace_id",
@@ -876,8 +764,9 @@ class ApplicationCaseBinding(Base):
     case_digest: Mapped[str] = mapped_column(String(80), nullable=False)
     application_id: Mapped[str] = mapped_column(String(128), nullable=False)
     environment_id: Mapped[str] = mapped_column(String(128), nullable=False)
-    declared_system_version_set_binding_or_unknown: Mapped[Optional[dict[str, Any]]] = (
-        mapped_column(JSON, nullable=True)
+    revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=1)
+    declared_system_version_set_binding_or_unknown: Mapped[dict[str, Any]] = mapped_column(
+        JSON, nullable=False
     )
     binding_digest: Mapped[str] = mapped_column(String(80), nullable=False)
     envelope_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
@@ -921,11 +810,28 @@ class AcceptanceCriteriaRevision(Base):
             "case_revision >= 1", name="ck_acceptance_criteria_revision_case_revision"
         ),
         CheckConstraint(
+            "revision >= 1", name="ck_acceptance_criteria_revision_revision"
+        ),
+        CheckConstraint(
             "(confirmation_status = 'PROPOSED' AND confirmer_principal IS NULL "
-            "AND confirmed_at IS NULL) "
+            "AND confirmed_at IS NULL "
+            "AND exact_previous_proposed_revision_id IS NULL "
+            "AND exact_previous_proposed_revision_digest IS NULL "
+            "AND reauthentication_credential_binding IS NULL) "
             "OR (confirmation_status = 'CONFIRMED' AND confirmer_principal IS NOT NULL "
-            "AND confirmed_at IS NOT NULL)",
+            "AND confirmed_at IS NOT NULL "
+            "AND exact_previous_proposed_revision_id IS NOT NULL "
+            "AND exact_previous_proposed_revision_digest IS NOT NULL "
+            "AND reauthentication_credential_binding IS NOT NULL)",
             name="ck_acceptance_criteria_revision_status_shape",
+        ),
+        Index(
+            "uq_acceptance_confirmed_previous_proposal",
+            "workspace_id",
+            "exact_previous_proposed_revision_id",
+            unique=True,
+            sqlite_where=sa.text("confirmation_status = 'CONFIRMED'"),
+            postgresql_where=sa.text("confirmation_status = 'CONFIRMED'"),
         ),
         Index(
             "ix_acceptance_criteria_revision_workspace_case",
@@ -943,7 +849,8 @@ class AcceptanceCriteriaRevision(Base):
     case_id: Mapped[str] = mapped_column(String(128), nullable=False)
     case_revision: Mapped[int] = mapped_column(BigInteger, nullable=False)
     case_digest: Mapped[str] = mapped_column(String(80), nullable=False)
-    exact_resolution_contract_binding: Mapped[dict[str, Any]] = mapped_column(
+    revision: Mapped[int] = mapped_column(BigInteger, nullable=False, default=1)
+    resolution_contract_binding_status: Mapped[dict[str, Any]] = mapped_column(
         JSON, nullable=False
     )
     confirmation_status: Mapped[str] = mapped_column(String(16), nullable=False)
@@ -958,7 +865,16 @@ class AcceptanceCriteriaRevision(Base):
         DateTime(timezone=True), nullable=True
     )
     exact_previous_proposed_revision_binding: Mapped[Optional[dict[str, Any]]] = (
-        mapped_column(JSON, nullable=True)
+        mapped_column(JSON(none_as_null=True), nullable=True)
+    )
+    exact_previous_proposed_revision_id: Mapped[Optional[str]] = mapped_column(
+        String(128), nullable=True
+    )
+    exact_previous_proposed_revision_digest: Mapped[Optional[str]] = mapped_column(
+        String(80), nullable=True
+    )
+    reauthentication_credential_binding: Mapped[Optional[dict[str, Any]]] = mapped_column(
+        JSON(none_as_null=True), nullable=True
     )
     acceptance_source: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     reproducer_input: Mapped[Optional[dict[str, Any]]] = mapped_column(
@@ -1006,20 +922,24 @@ class IssueSourceSnapshot(Base):
         UniqueConstraint(
             "workspace_id", "issue_snapshot_id", name="uq_issue_source_snapshot_workspace"
         ),
-        UniqueConstraint("snapshot_digest", name="uq_issue_source_snapshot_digest"),
         UniqueConstraint(
             "workspace_id",
             "case_id",
-            "external_repo",
-            "external_issue_number",
-            name="uq_issue_source_snapshot_issue",
+            "snapshot_digest",
+            name="uq_issue_source_snapshot_case_digest",
         ),
         CheckConstraint(
             "source_kind IN ('github_issue','manual')",
             name="ck_issue_source_snapshot_source_kind",
         ),
         CheckConstraint(
-            "external_issue_number >= 1", name="ck_issue_source_snapshot_issue_number"
+            "(source_kind = 'github_issue' "
+            "AND (source_url LIKE 'http://%' OR source_url LIKE 'https://%') "
+            "AND external_repo IS NOT NULL AND length(external_repo) >= 1 "
+            "AND external_issue_number >= 1) "
+            "OR (source_kind = 'manual' "
+            "AND external_repo IS NULL AND external_issue_number IS NULL)",
+            name="ck_issue_source_snapshot_identity_shape",
         ),
         Index(
             "ix_issue_source_snapshot_workspace_issue",
@@ -1034,9 +954,11 @@ class IssueSourceSnapshot(Base):
     workspace_id: Mapped[str] = mapped_column(String(128), nullable=False)
     case_id: Mapped[str] = mapped_column(String(128), nullable=False)
     source_kind: Mapped[str] = mapped_column(String(32), nullable=False)
-    source_url: Mapped[str] = mapped_column(String(1024), nullable=False)
-    external_repo: Mapped[str] = mapped_column(String(256), nullable=False)
-    external_issue_number: Mapped[int] = mapped_column(BigInteger, nullable=False)
+    source_url: Mapped[Optional[str]] = mapped_column(String(1024), nullable=True)
+    external_repo: Mapped[Optional[str]] = mapped_column(String(256), nullable=True)
+    external_issue_number: Mapped[Optional[int]] = mapped_column(
+        BigInteger, nullable=True
+    )
     snapshot_payload: Mapped[dict[str, Any]] = mapped_column(JSON, nullable=False)
     snapshot_digest: Mapped[str] = mapped_column(String(80), nullable=False)
     edited_flag: Mapped[bool] = mapped_column(Boolean, nullable=False)
@@ -1053,24 +975,14 @@ def _immutable_write_forbidden(_mapper, _connection, target) -> None:  # type: i
     raise RuntimeError(f"v5.immutable_record_update_forbidden:{target.__tablename__}")
 
 
-for _catalog_model in (Environment, DependencyEdge):
+for _catalog_model in (
+    AIApplication,
+    Environment,
+    SystemComponent,
+    DependencyEdge,
+):
     event.listen(_catalog_model, "before_update", _immutable_write_forbidden)
     event.listen(_catalog_model, "before_delete", _immutable_write_forbidden)
-
-# Application/component current rows advance as projections when a new
-# immutable lifecycle revision is appended.  They remain non-deletable, while
-# the authoritative history itself is fully append-only.
-for _lifecycle_projection_model in (AIApplication, SystemComponent):
-    event.listen(
-        _lifecycle_projection_model, "before_delete", _immutable_write_forbidden
-    )
-
-for _lifecycle_history_model in (
-    AIApplicationLifecycleRevision,
-    SystemComponentLifecycleRevision,
-):
-    event.listen(_lifecycle_history_model, "before_update", _immutable_write_forbidden)
-    event.listen(_lifecycle_history_model, "before_delete", _immutable_write_forbidden)
 
 # V5-1B immutable records: no update path.  ``SystemAssignment`` is an aggregate
 # with legitimate CAS transitions in later slices, so it is intentionally not
@@ -1097,7 +1009,6 @@ for _case_model in (
 
 __all__ = [
     "AIApplication",
-    "AIApplicationLifecycleRevision",
     "ASSIGNMENT_EXPOSURE_VALUES",
     "ASSIGNMENT_LIFECYCLE_STATE_VALUES",
     "ASSIGNMENT_TRANSITION_KIND_VALUES",
@@ -1125,7 +1036,6 @@ __all__ = [
     "RISK_CLASSIFICATION_VALUES",
     "SystemAssignment",
     "SystemComponent",
-    "SystemComponentLifecycleRevision",
     "SystemVersionSet",
     "TopologyRevision",
 ]
