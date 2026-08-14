@@ -26,13 +26,22 @@ def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def _normalize(text: str) -> str:
+    """与仓库权威探针判定（probe_judge.normalize_text）对齐：去全部空白。
+
+    模型常写「7天无理由」而规则是「7 天无理由」——空白归一化后按连续子串判定，
+    避免良基答案被机器误杀。"""
+    return "".join(text.split())
+
+
 def _judge(output: str, probe: dict) -> bool:
     rules = probe.get("judge", {})
     must = rules.get("must_include")
     must_not = rules.get("must_not_include")
-    if must and must not in output:
+    norm = _normalize(output)
+    if must and _normalize(str(must)) not in norm:
         return False
-    if must_not and must_not in output:
+    if must_not and _normalize(str(must_not)) in norm:
         return False
     if not must and not must_not:
         return bool(output.strip())
