@@ -18,7 +18,7 @@ eval-harness/
 │   ├── probe_judge.py     # 探针判定（must_include 连续/子序列、must_not_include、JSON、长度）
 │   ├── stats.py           # Wilson 双侧区间 + Newcombe hybrid 差值 95%CI
 │   ├── rate_limit.py      # 令牌桶限速（8 RPM）+ 429 指数退避
-│   ├── llm.py             # StepFun 直连（temperature=0，记录模型 digest）
+│   ├── llm.py             # StepFun 直连（temperature=0，记录模型 digest；api_key/base_url/provider 可覆盖供裁判独立 endpoint）
 │   ├── client.py          # Quality API 只读客户端（精确 VersionSet /chat + 版本读取）
 │   ├── adjudicate.py      # R1–R5 三态裁决（确定性代码）
 │   ├── experiment.py      # 5-cell 对照实验执行器 + 报告构建
@@ -52,7 +52,8 @@ cp .env.example .env                     # 按需修改；密钥不入库
 ```
 
 live 集成依赖：demo-app 运行于 `CASELOOP_QUALITY_API_BASE_URL`（默认 `http://127.0.0.1:8080`）、
-`STEPFUN_API_KEY`（主控约定读 `~/Documents/kimi/workspace/ACL-team/.env`）。
+`STEPFUN_API_KEY`（由当前 checkout 的 `eval-harness/.env` 或进程环境显式提供；不要依赖
+相邻私有仓库的 `.env`）。
 
 ## 跑 live B1 对照实验（只读精确 VersionSet）
 
@@ -76,6 +77,12 @@ live 集成依赖：demo-app 运行于 `CASELOOP_QUALITY_API_BASE_URL`（默认 
 命令只调用 Quality API 读接口，并始终执行指定 VersionSet；不会追随 `active` 指针，
 也不会由评测进程注入或复位故障。contract/replay、候选响应和 live-provider 结果分别落证据；
 任何轨道为 failed/error/skipped 时都会以非零退出码 fail closed。
+
+裁判轨默认沿用运动员的 StepFun 链路。需要第二个 OpenAI 兼容 provider 时（如 `JUDGE_MODEL=glm-5.2`
+走独立 gateway），同时设置 `JUDGE_API_KEY` + `JUDGE_BASE_URL`，并用 `JUDGE_PROVIDER` 指定
+digest 提供方标签（如 `openagents`）；三者语义见 `.env.example`。裁判打分参数固定
+`{"temperature": 0.0, "max_tokens": 1024}`（reasoning 模型思考链也消耗 completion token，
+256 会烧满导致 content 为空按 0 分）。运动员 origin 钉死与 T6 硬校验不受此开关影响。
 
 ## 关键设计（与契约对齐）
 

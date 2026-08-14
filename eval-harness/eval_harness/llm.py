@@ -35,14 +35,25 @@ class LLMClient:
     """StepFun 直连客户端（供裁判轨 / 变异巡检等 eval-harness 自有 LLM 调用）。
 
     与 demo-app 的 /chat 不同：这里直接构造 system+user 消息调用 LLM，不走 RAG。
+    api_key/base_url/provider 可覆盖（裁判轨独立 OpenAI 兼容 endpoint）；
+    缺省全部沿用 StepFun 运动员配置，provider 标签进入 model_digest。
     """
 
-    def __init__(self, settings: Settings, limiter: RateLimiter | None = None):
+    def __init__(
+        self,
+        settings: Settings,
+        limiter: RateLimiter | None = None,
+        *,
+        api_key: str | None = None,
+        base_url: str | None = None,
+        provider: str | None = None,
+    ):
         self.settings = settings
         self.limiter = limiter or RateLimiter(settings.llm_rpm_limit)
+        self.provider = provider or "stepfun"
         self._client = OpenAI(
-            api_key=settings.stepfun_api_key,
-            base_url=settings.stepfun_base_url,
+            api_key=api_key or settings.stepfun_api_key,
+            base_url=base_url or settings.stepfun_base_url,
             timeout=settings.provider_timeout_seconds,
             max_retries=0,
         )
@@ -50,7 +61,7 @@ class LLMClient:
     def model_digest_for(self, model: str | None = None, params: dict | None = None) -> str:
         m = model or self.settings.stepfun_model
         p = dict(params or {"temperature": 0.0, "max_tokens": 1024})
-        return sha256_digest({"provider": "stepfun", "model": m, "params": p})
+        return sha256_digest({"provider": self.provider, "model": m, "params": p})
 
     def chat(
         self,

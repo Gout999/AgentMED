@@ -18,7 +18,7 @@ control-plane/
     workers/       Phase 1 固定单 outbox dispatcher（非动态扩缩容）
     quality/       Quality API v2 客户端（写面唯一入口，按 contracts/quality-api/openapi.yaml）
     utils/         JCS(SHA-256) / ULID id / PII 脱敏
-  alembic/         001 initial + 002 gate binding + 003 outbox/Trust
+  alembic/         001 initial through current head 012 (V5 event envelope)
   tests/           unit（SQLite 内存） + integration（compose PG 真跑）
 ```
 
@@ -27,7 +27,9 @@ control-plane/
 ### 1) 起 Postgres
 
 ```bash
-docker compose -f ../deploy/compose.yaml up -d postgres
+cp ../deploy/.env.example ../deploy/.env
+# Fill every required value in ../deploy/.env before starting the stack.
+docker compose --env-file ../deploy/.env -f ../deploy/compose.yaml up -d postgres
 ```
 
 ### 2) 建 venv 并装依赖
@@ -37,14 +39,15 @@ python3.11 -m venv .venv
 .venv/bin/pip install -r requirements.txt
 ```
 
-### 3) 初始化数据库（二选一）
+### 3) 初始化数据库
+
+> 迁移 012 对已经存在的旧 V5 authority/event history 会 fail closed；它不会把旧事件重标
+> 为 V5 major-2。未接受的 disposable 开发库应按明确的 rebuild-only 路径重建；需要保留
+> 的历史必须先 export、验证并通过受审计的 replay/recovery 迁移。不要在未知 populated
+> V5 数据上直接把 `upgrade head` 当作无风险操作。
 
 ```bash
-# 方式 A：alembic 迁移
 .venv/bin/alembic upgrade head
-
-# 方式 B：应用启动时建表（仅开发）
-# create_app(create_tables=True)
 ```
 
 ### 4) 起服务
@@ -68,14 +71,14 @@ python3.11 -m venv .venv
 
 ```bash
 # 在仓库根目录；仅起 control-plane（自动拉 postgres 依赖 + 构建镜像）
-docker compose -f deploy/compose.yaml up -d --build control-plane
+docker compose --env-file deploy/.env -f deploy/compose.yaml up -d --build control-plane
 
 # 宿主 8090 被其他服务占用，compose 映射到 18090
 curl http://127.0.0.1:18090/healthz     # {"status":"ok",...}
 curl http://127.0.0.1:18090/v1/cases    # {"items":[],...}
 
 # 重启（alembic 幂等：已在 head 时 upgrade 为 no-op）
-docker compose -f deploy/compose.yaml restart control-plane
+docker compose --env-file deploy/.env -f deploy/compose.yaml restart control-plane
 ```
 
 容器入口先 `alembic upgrade head` 再起 uvicorn；`DATABASE_URL` 由 compose
@@ -83,6 +86,10 @@ docker compose -f deploy/compose.yaml restart control-plane
 指向 `demo-app:8080`。镜像构建见 `Dockerfile`，非 root 运行。
 
 配置全部走环境变量，模板见 `.env.example`（复制为 `.env` 后填写；`.env` 不入库）。
+
+V5-1A/B/C 的本地 First System Case 使用独立的三阶段管理入口，不通过 public HTTP
+签发或轮换凭证；可执行步骤、凭证切换点与人工保管边界见
+[`V5_FIRST_CASE_LOCAL.md`](V5_FIRST_CASE_LOCAL.md)。
 
 ### 5) 跑测试
 
@@ -98,6 +105,27 @@ docker compose -f deploy/compose.yaml restart control-plane
 ```
 
 ## REST 接口清单
+
+### V5-1 current overlay（`/api/v2`，显式 major）
+
+这些 route 只覆盖当前 V5-1A/B/C worktree overlay，不表示 stage 已 DONE。调用者必须使用
+V2 public credential、workspace header 和对应 scope；凭证签发/轮换不属于 public HTTP。
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/v2/capabilities` | 按当前 principal/scope 过滤的 V5 allowlist |
+| POST/GET | `/api/v2/applications` · `/applications/{id}` | Application 注册/读取 |
+| POST/GET | `/api/v2/environments` · `/environments/{id}` | Environment 注册/读取 |
+| POST/GET | `/api/v2/system-components` · `/system-components/{id}` | Component 注册/读取 |
+| POST/GET | `/api/v2/dependency-edges` · `/dependency-edges/{id}` | Edge 记录/读取 |
+| POST | `/api/v2/system-manifests:import` | trusted one-shot atomic bootstrap |
+| GET | `/api/v2/system-versions/{id}` · `/system-versions:diff` | exact VersionSet 读取/比较 |
+| POST/GET | `/api/v2/cases/{id}:bind-application` · `/cases/{id}/application-binding` | Case/Application exact binding |
+| POST/GET | `/api/v2/cases/{id}:propose-acceptance-criteria` · `/cases/{id}/acceptance-criteria` | Acceptance proposal/read |
+| POST | `/api/v2/acceptance-criteria/{id}:confirm` | fresh human reauth confirmation；仍非 V5-4 executable |
+
+Standalone `system-versions.record`、V5-2+、Public MCP/A2A/SDK、approval/release 仍未实现，
+不得从内部 V1 release route 或本地 bootstrap 推导为 V5 public capability。
 
 ### Case Controller（`/v1`）
 

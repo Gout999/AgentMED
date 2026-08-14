@@ -42,6 +42,16 @@ class Settings:
 
     # 裁判模型（必须 ≠ 运动员模型；缺省空 → 裁判轨 live 标 UNAVAILABLE）
     judge_model: str = field(default_factory=lambda: _env("JUDGE_MODEL"))
+    # 裁判 provider 覆盖：JUDGE_BASE_URL + JUDGE_API_KEY 同时设置时裁判走独立
+    # OpenAI 兼容 endpoint（如 glm-5.2 走 https://api-gateway.openagents.org/v1）；
+    # 缺省空 → 沿用 StepFun（行为与旧版一致）。judge_provider 为 digest 提供方标签。
+    judge_api_key: str = field(default_factory=lambda: _env("JUDGE_API_KEY"))
+    judge_base_url: str = field(default_factory=lambda: _env("JUDGE_BASE_URL"))
+    judge_provider: str = field(default_factory=lambda: _env("JUDGE_PROVIDER", "stepfun"))
+
+    @property
+    def has_judge_provider_override(self) -> bool:
+        return bool(self.judge_api_key and self.judge_base_url)
 
     # 集中限速（D-001：默认 8 RPM，留 2 余量给 AgentTeams worker）
     llm_rpm_limit: int = field(default_factory=lambda: int(_env("LLM_RPM_LIMIT", "8")))

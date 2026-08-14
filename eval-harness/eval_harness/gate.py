@@ -126,6 +126,11 @@ class SuiteResult:
 class LLMJudge:
     """裁判轨 LLM 裁判：按 rubric 打分，输出结构化 JSON。"""
 
+    # 裁判打分参数（model_digest property 与 score() 必须共用同一组）。
+    # max_tokens=1024：reasoning 模型（如 glm-5.2）思考链也消耗 completion
+    # token，256 会烧满导致 content 为空 → 解析失败按 0 分。
+    SCORE_PARAMS = {"temperature": 0.0, "max_tokens": 1024}
+
     def __init__(self, settings: Settings, model: str, *, deadline_monotonic: float | None = None):
         # Keep contract/replay tooling importable without the live-provider SDK.
         # The provider dependency is loaded only when a real LLM judge is used.
@@ -134,12 +139,20 @@ class LLMJudge:
         self.settings = settings
         self.model = model
         self.deadline_monotonic = deadline_monotonic
-        self.llm = LLMClient(settings)
+        if settings.has_judge_provider_override:
+            self.llm = LLMClient(
+                settings,
+                api_key=settings.judge_api_key,
+                base_url=settings.judge_base_url,
+                provider=settings.judge_provider,
+            )
+        else:
+            self.llm = LLMClient(settings)
         self.evidence: list[dict[str, Any]] = []
 
     @property
     def model_digest(self) -> str:
-        return self.llm.model_digest_for(self.model, {"temperature": 0.0, "max_tokens": 256})
+        return self.llm.model_digest_for(self.model, self.SCORE_PARAMS)
 
     def score(self, probe, answer: str) -> dict:
         fmt = "json" if probe.is_format_json else "text"
@@ -155,7 +168,7 @@ class LLMJudge:
             "你是严格的评测裁判，只输出合法 JSON。",
             prompt,
             model=self.model,
-            params={"temperature": 0.0, "max_tokens": 256},
+            params=self.SCORE_PARAMS,
             deadline_monotonic=self.deadline_monotonic,
         )
         parsed = self._parse(resp.content)
