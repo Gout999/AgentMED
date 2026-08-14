@@ -34,12 +34,29 @@ def _normalize(text: str) -> str:
     return "".join(text.split())
 
 
+def _is_subsequence(needle: str, haystack: str) -> bool:
+    """needle 是否为 haystack 的有序子序列（与 probe_judge._is_subsequence 同口径）。"""
+    it = iter(haystack)
+    return all(ch in it for ch in needle)
+
+
+def _contains(phrase: str, normalized_answer: str) -> bool:
+    norm = _normalize(str(phrase))
+    if not norm:
+        return True
+    if norm in normalized_answer:
+        return True
+    return _is_subsequence(norm, normalized_answer)
+
+
 def _judge(output: str, probe: dict) -> bool:
     rules = probe.get("judge", {})
     must = rules.get("must_include")
     must_not = rules.get("must_not_include")
     norm = _normalize(output)
-    if must and _normalize(str(must)) not in norm:
+    # 放行侧（must_include）：连续子串或有序子序列（覆盖「7天内都可以无理由」这类
+    # 自然改写）；严格侧（must_not_include）：只认连续子串，防漏检。
+    if must and not _contains(must, norm):
         return False
     if must_not and _normalize(str(must_not)) in norm:
         return False
