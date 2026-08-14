@@ -27,6 +27,7 @@ spec:
   runtime: copaw
   state: Running
   skills:
+    - coordinate-loop
     - caseloop-b1-loop
   mcpServers:
     - name: mcp-case-admin-quality-officer
@@ -93,6 +94,9 @@ spec:
   runtime: copaw
   state: Running
   skills:
+    - ingest-langfuse
+    - query-langfuse
+    - langfuse
     - caseloop-b1-loop
   mcpServers:
     - name: mcp-case-admin-collector
@@ -153,6 +157,7 @@ spec:
   runtime: copaw
   state: Running
   skills:
+    - independent-verify
     - caseloop-b1-loop
   mcpServers:
     - name: mcp-eval-runner-gatekeeper
@@ -225,6 +230,7 @@ spec:
   runtime: copaw
   state: Running
   skills:
+    - curate-regression-asset
     - caseloop-b1-loop
   mcpServers:
     - name: mcp-casebase-knowledge
@@ -296,6 +302,9 @@ spec:
   runtime: copaw
   state: Running
   skills:
+    - reproduce-badcase
+    - attribute-skip
+    - bind-version-snapshot
     - caseloop-b1-loop
   mcpServers:
     - name: mcp-eval-runner-attributionist
@@ -367,6 +376,9 @@ spec:
   runtime: copaw
   state: Running
   skills:
+    - propose-candidate
+    - draft-pr
+    - git-delegation
     - caseloop-b1-loop
   mcpServers:
     - name: mcp-release-admin-repairer
