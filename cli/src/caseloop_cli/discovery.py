@@ -80,6 +80,7 @@ class GitMetadata:
     tree: str | None
     ref: str | None
     tags: tuple[str, ...] = ()
+    dirty: bool | None = None
 
     @property
     def available(self) -> bool:
@@ -192,7 +193,26 @@ def _git_metadata(root: Path) -> GitMetadata:
     tag_output = _run_git(root, "tag", "--points-at", "HEAD")
     if tag_output:
         tags = tuple(sorted(line.strip() for line in tag_output.splitlines() if line.strip()))
-    return GitMetadata(commit=commit, tree=tree, ref=ref, tags=tags)
+    try:
+        status = subprocess.run(
+            [
+                "git",
+                "-C",
+                str(root),
+                "status",
+                "--porcelain=v1",
+                "--untracked-files=normal",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
+        )
+    except (OSError, subprocess.SubprocessError):
+        dirty: bool | None = None
+    else:
+        dirty = bool(status.stdout) if status.returncode == 0 else None
+    return GitMetadata(commit=commit, tree=tree, ref=ref, tags=tags, dirty=dirty)
 
 
 def _slugify(value: str) -> str:
@@ -240,7 +260,7 @@ def _walk(root: Path) -> list[tuple[Path, str]]:
 
 def _subtree_digest(root: Path, rel_path: str, git: GitMetadata) -> str | None:
     """Deterministic digest of one repository sub-path from git tree metadata."""
-    if git.available:
+    if git.available and git.dirty is False:
         tree_entry = _run_git(root, "rev-parse", f"HEAD:{rel_path}")
         if tree_entry:
             return _canonical_digest({"commit": git.commit, "path": rel_path, "tree": tree_entry})
@@ -268,9 +288,11 @@ def _detect_components(
     rel_entries.sort()
 
     # APPLICATION_CODE is always present for the workload root.
-    git_digest = _canonical_digest(
-        {"commit": git.commit, "tree": git.tree, "ref": git.ref}
-    ) if git.available else None
+    git_digest = (
+        _canonical_digest({"commit": git.commit, "tree": git.tree, "ref": git.ref})
+        if git.available and git.dirty is False
+        else None
+    )
     components.append(
         DiscoveredComponent(
             logical_name=_slugify(root.name),
@@ -281,11 +303,15 @@ def _detect_components(
             unknown_reason=(
                 None
                 if git_digest
-                else "no immutable git digest available for the repository"
+                else (
+                    "worktree has tracked or untracked changes"
+                    if git.dirty is True
+                    else "no immutable git digest available for the repository"
+                )
             ),
             artifact_refs=(
                 [{"kind": "git_commit", "ref": git.commit, "digest": git_digest}]
-                if git.commit
+                if git_digest
                 else []
             ),
             provenance={"git": {"commit": git.commit, "tree": git.tree, "tags": list(git.tags)}},
@@ -293,6 +319,10 @@ def _detect_components(
     )
     if not git.available:
         notes.append("git metadata unavailable; APPLICATION_CODE assurance=UNKNOWN")
+    elif git.dirty is True:
+        notes.append("git worktree is dirty; git-backed components assurance=UNKNOWN")
+    elif git.dirty is None:
+        notes.append("git worktree state unavailable; git-backed components assurance=UNKNOWN")
 
     # Recognizable sub-path patterns -> component kinds.  Only paths that
     # reliably indicate a component are emitted; nothing is fabricated.

@@ -1,7 +1,7 @@
 # CaseLoop CLI
 
 This package is the machine-oriented client for the frozen V4 Stage 1A public
-contract and the explicitly selected R2 V5 overlay.
+contract and the current, explicitly selected V5-1 runtime overlay.
 
 Default/V1 commands:
 
@@ -10,17 +10,12 @@ Default/V1 commands:
 - `case get` and `case timeline`
 - `evidence get`
 
-With `--api-version 2`, capability discovery advertises only the implemented
-R2 public surface: Application register/get/list, Environment, SystemComponent
-and DependencyEdge register/get, plus authenticated one-shot SystemManifest import. Local manifest
-validation performs no HTTP request, needs no credential, is not a server capability, and does not
-prove server acceptance.
-
-Standalone Application/SystemComponent activation, standalone second-version
-recording, system-version read/diff discovery, Case/Acceptance workflows,
-V5-2+, approval and release are not R2 capabilities and are not advertised.
-The R2 CLI exposes only `system-manifest validate` and `system-manifest import`;
-the former `record`, version `get`, and `diff` actions are intentionally absent.
+With `--api-version 2`, the client also exposes the currently allowlisted V5-1
+commands for capability discovery, Application/Environment/SystemComponent/
+DependencyEdge register/get, one-shot system manifest import/get/diff, Case
+application binding, AcceptanceCriteria propose/get/confirm, `init`, and
+`case from-issue`. Standalone second-version `system-versions.record`, V5-2+
+operations, Public MCP/A2A, approval, and release are not implemented.
 
 ## Install and configure
 
@@ -31,6 +26,8 @@ python -m pip install ./cli
 A profile contains identifiers and an endpoint, never a bearer token:
 
 ```yaml
+# Native uvicorn default. The repository Compose profile publishes the same
+# control plane at http://127.0.0.1:18090.
 api_url: http://127.0.0.1:8090
 workspace_id: ws_01J0000000000001
 source_id: src_01J0000000000001
@@ -49,14 +46,16 @@ caseloop --profile .caseloop/config.yaml capabilities get
 
 caseloop --profile .caseloop/config.yaml --api-version 2 capabilities get
 
-caseloop --profile .caseloop/config.yaml --api-version 2 application list \
-  --project-id proj_... --limit 50
-
 caseloop --profile .caseloop/config.yaml signal submit \
   --summary "The agent chose the wrong tool" \
   --body "No trace is available" \
   --privacy INTERNAL
 ```
+
+The local V5 first-case management flow, including credential rotation and
+fresh owner reauthentication, is documented in
+[`control-plane/V5_FIRST_CASE_LOCAL.md`](../control-plane/V5_FIRST_CASE_LOCAL.md).
+Credential issuance is deliberately not a public CLI or HTTP capability.
 
 The first signal slice is deliberately a no-trace maintainer report and permits
 only `PUBLIC` or `INTERNAL` content. When an idempotency key is supplied

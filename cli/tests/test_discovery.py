@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import json
-import os
 import subprocess
 from pathlib import Path
 
@@ -46,6 +45,27 @@ def test_discover_git_metadata_project_and_application_code(repo: Path) -> None:
     assert code.identity_assurance == "IMMUTABLE_DIGEST"
     assert code.content_digest is not None and code.content_digest.startswith("sha256:")
     assert code.artifact_refs and code.artifact_refs[0]["kind"] == "git_commit"
+
+
+@pytest.mark.parametrize("path", ["src/app.py", "untracked.py"])
+def test_discover_dirty_worktree_never_claims_immutable_digest(
+    repo: Path, path: str
+) -> None:
+    target = repo / path
+    target.write_text("# uncommitted\n", encoding="utf-8")
+
+    result = discover(repo)
+
+    code = next(
+        component
+        for component in result.components
+        if component.component_kind == "APPLICATION_CODE"
+    )
+    assert code.identity_assurance == "UNKNOWN"
+    assert code.content_digest is None
+    assert code.artifact_refs == []
+    assert code.unknown_reason == "worktree has tracked or untracked changes"
+    assert any("worktree is dirty" in note for note in result.notes)
 
 
 def test_discover_repeat_scan_is_stable(repo: Path) -> None:

@@ -32,52 +32,29 @@ def _context(request: httpx.Request) -> tuple[str, str]:
 def capabilities(request: httpx.Request) -> dict[str, Any]:
     workspace_id, request_id = _context(request)
     if request.url.path == "/api/v2/capabilities":
-        intents = [
-            ("capabilities.get", "capabilities:read"),
-            ("applications.register", "applications:manage"),
-            ("applications.get", "applications:read"),
-            ("applications.list", "applications:read"),
-            ("environments.register", "applications:manage"),
-            ("environments.get", "applications:read"),
-            ("system-components.register", "applications:manage"),
-            ("system-components.get", "applications:read"),
-            ("dependency-edges.record", "applications:manage"),
-            ("dependency-edges.get", "applications:read"),
-            ("system-manifests.import", "system_manifests:import"),
-        ]
         return {
             "schema_version": "2.0",
             "workspace_id": workspace_id,
             "request_id": request_id,
-            "audit_ref": "audit://aud_01J0000000000001",
+            "audit_ref": "audit://aud_01J0000000000011",
             "data": {
-                "server_version": "0.1.0+v5-r2",
+                "server_version": "5.1c-test",
                 "api_major": 2,
                 "contract_version": "2.0",
                 "principal": {
                     "principal_id": "prn_01J0000000000001",
                     "principal_type": "human",
-                    "scopes": [
-                        "capabilities:read",
-                        "applications:manage",
-                        "applications:read",
-                        "system_manifests:import",
-                    ],
+                    "scopes": ["capabilities:read"],
                     "credential_expires_at": "2026-08-12T10:00:00Z",
                 },
                 "enabled_intents": [
                     {
-                        "name": name,
-                        "scope": scope,
-                        "execution_mode": (
-                            "synchronous_local_transaction"
-                            if name == "system-manifests.import"
-                            else "synchronous"
-                        ),
+                        "name": "capabilities.get",
+                        "scope": "capabilities:read",
+                        "execution_mode": "synchronous",
                         "http": True,
                         "cli": True,
                     }
-                    for name, scope in intents
                 ],
                 "disabled_intents": [],
                 "generated_at": "2026-08-11T10:00:00Z",
@@ -99,62 +76,6 @@ def capabilities(request: httpx.Request) -> dict[str, Any]:
         }
     ]
     return payload
-
-
-def application_list(request: httpx.Request) -> dict[str, Any]:
-    workspace_id, request_id = _context(request)
-    return {
-        "schema_version": "2.0",
-        "workspace_id": workspace_id,
-        "request_id": request_id,
-        "audit_ref": "audit://aud_01J0000000000001",
-        "items": [],
-        "next_cursor": None,
-    }
-
-
-def application_register(request: httpx.Request) -> dict[str, Any]:
-    submission = json.loads(request.content)
-    application_id = "app_01J0000000000001"
-    core = {
-        "schema_version": "2.0",
-        "workspace_id": request.headers["x-caseloop-workspace-id"],
-        "request_id": request.headers["x-request-id"],
-        "audit_ref": "audit://aud_01J0000000000007",
-        "application": {
-            "record_envelope": {
-                "schema_version": "2.0",
-                "workspace_id": request.headers["x-caseloop-workspace-id"],
-                "revision": 1,
-                "recorded_by_principal": "prn_01J000000000000A",
-                "recorded_at": "2026-08-11T10:00:00Z",
-                "immutable": True,
-                "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
-                "record_digest": "sha256:" + "a" * 64,
-                "authority_receipt_id": "arec_01J0000000000001",
-            },
-            "application_id": application_id,
-            "workspace_id": request.headers["x-caseloop-workspace-id"],
-            "project_id": submission["project_id"],
-            "slug": submission["slug"],
-            "display_name": submission["display_name"],
-            "owner_principal_ids": submission["owner_principal_ids"],
-            "criticality": submission["criticality"],
-            "data_classification": submission["data_classification"],
-            "governance_mode": submission["governance_mode"],
-            "lifecycle_state": "REGISTERED",
-            "exact_previous_application_binding_or_null": None,
-        },
-    }
-    receipt = _case_v2_receipt(
-        request,
-        intent="applications.register",
-        resource_kind="ai_application",
-        resource_id=application_id,
-        audit_ref=core["audit_ref"],
-        core=core,
-    )
-    return {**core, "idempotency": {"receipt": receipt, "replayed": False}}
 
 
 def signal(request: httpx.Request) -> dict[str, Any]:
@@ -321,16 +242,18 @@ def success_for(request: httpx.Request) -> dict[str, Any]:
         return capabilities(request)
     if path == "/api/v1/signals":
         return signal(request)
-    if path == "/api/v2/applications" and request.method == "GET":
-        return application_list(request)
-    if path == "/api/v2/applications" and request.method == "POST":
-        return application_register(request)
     if path.endswith("/timeline"):
         return timeline(request, path.split("/")[-2])
     if path.startswith("/api/v1/cases/"):
         return case(request, path.rsplit("/", 1)[-1])
     if path.startswith("/api/v1/evidence/"):
         return evidence(request, path.rsplit("/", 1)[-1])
+    if path.startswith("/api/v2/applications/"):
+        return application_get(request, path.rsplit("/", 1)[-1])
+    if path.startswith("/api/v2/environments/"):
+        return environment_get(request, path.rsplit("/", 1)[-1])
+    if path.startswith("/api/v2/system-versions/"):
+        return system_version_get(request, path.rsplit("/", 1)[-1])
     if path.endswith(":bind-application"):
         return case_bind_application(request)
     if path.endswith("/application-binding"):
@@ -356,6 +279,93 @@ def _v5_core(
         "workspace_id": request.headers["x-caseloop-workspace-id"],
         "request_id": request.headers["x-request-id"],
         "audit_ref": "audit://aud_01J0000000000007",
+    }
+
+
+def _record_envelope(request: httpx.Request, *, digest_char: str) -> dict[str, Any]:
+    return {
+        "schema_version": "2.0",
+        "workspace_id": request.headers["x-caseloop-workspace-id"],
+        "revision": 1,
+        "recorded_by_principal": "prn_01J0000000000001",
+        "recorded_at": "2026-08-11T10:00:00Z",
+        "immutable": True,
+        "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
+        "record_digest": "sha256:" + digest_char * 64,
+        "authority_receipt_id": "arec_01J0000000000001",
+    }
+
+
+def application_get(request: httpx.Request, application_id: str) -> dict[str, Any]:
+    workspace_id, request_id = _context(request)
+    return {
+        "schema_version": "2.0",
+        "workspace_id": workspace_id,
+        "request_id": request_id,
+        "audit_ref": "audit://aud_01J0000000000008",
+        "application": {
+            "record_envelope": _record_envelope(request, digest_char="a"),
+            "application_id": application_id,
+            "workspace_id": workspace_id,
+            "project_id": "proj_01J0000000000001",
+            "slug": "sample-application",
+            "display_name": "Sample application",
+            "owner_principal_ids": ["prn_01J0000000000001"],
+            "criticality": "P1",
+            "data_classification": "INTERNAL",
+            "governance_mode": "MANAGED",
+            "lifecycle_state": "ACTIVE",
+        },
+    }
+
+
+def system_version_get(
+    request: httpx.Request, system_version_set_id: str
+) -> dict[str, Any]:
+    workspace_id, request_id = _context(request)
+    return {
+        "schema_version": "2.0",
+        "workspace_id": workspace_id,
+        "request_id": request_id,
+        "audit_ref": "audit://aud_01J0000000000009",
+        "system_version_set": {
+            "record_envelope": _record_envelope(request, digest_char="d"),
+            "system_version_set_id": system_version_set_id,
+            "workspace_id": workspace_id,
+            "application_id": "app_01J0000000000001",
+            "declared_environment_id": "env_01J0000000000001",
+            "exact_component_revision_bindings": [],
+            "exact_topology_revision_binding": {
+                "kind": "TOPOLOGY_REVISION",
+                "id": "tpr_01J0000000000001",
+                "revision": 1,
+                "digest": "sha256:" + "b" * 64,
+            },
+            "identity_assurance_summary": {},
+            "provenance_receipt_ids": [],
+            "version_set_digest": "sha256:" + "c" * 64,
+            "manifest_digest": None,
+            "manifest": None,
+        },
+    }
+
+
+def environment_get(request: httpx.Request, environment_id: str) -> dict[str, Any]:
+    workspace_id, request_id = _context(request)
+    return {
+        "schema_version": "2.0",
+        "workspace_id": workspace_id,
+        "request_id": request_id,
+        "audit_ref": "audit://aud_01J0000000000010",
+        "environment": {
+            "record_envelope": _record_envelope(request, digest_char="f"),
+            "environment_id": environment_id,
+            "workspace_id": workspace_id,
+            "application_id": "app_01J0000000000001",
+            "logical_name": "local-shadow",
+            "risk_classification": "LOW",
+            "lifecycle_state": "ACTIVE",
+        },
     }
 
 
@@ -398,6 +408,12 @@ def _case_v2_receipt(
 
 def _binding_envelope(request: httpx.Request, binding_id: str) -> dict[str, Any]:
     case_digest = request.url.params.get("case_digest", "sha256:" + "c" * 64)
+    declared_binding: dict[str, Any] = {"kind": "UNKNOWN", "reason": "NOT_DECLARED"}
+    if request.content:
+        submission = json.loads(request.content)
+        candidate = submission.get("declared_system_version_set_binding_or_unknown")
+        if isinstance(candidate, dict):
+            declared_binding = candidate
     return {
         "application_case_binding_id": binding_id,
         "workspace_id": request.headers["x-caseloop-workspace-id"],
@@ -408,7 +424,7 @@ def _binding_envelope(request: httpx.Request, binding_id: str) -> dict[str, Any]
         },
         "application_id": "app_01J0000000000001",
         "environment_id": "env_01J0000000000001",
-        "declared_system_version_set_binding_or_unknown": None,
+        "declared_system_version_set_binding_or_unknown": declared_binding,
         "binding_digest": "sha256:" + "d" * 64,
         "record_envelope": {
             "schema_version": "2.0",
@@ -447,34 +463,62 @@ def case_bind_application(request: httpx.Request) -> dict[str, Any]:
 
 def case_application_binding_get(request: httpx.Request) -> dict[str, Any]:
     binding_id = "acb_01J0000000000001"
+    envelope = _binding_envelope(request, binding_id)
+    envelope["exact_case_binding"]["case_id"] = request.url.path.split("/")[-2]
     return {
         **_v5_core(request, resource_kind="application_case_binding", resource_field="application_case_binding"),
-        "application_case_binding": _binding_envelope(request, binding_id),
+        "application_case_binding": envelope,
     }
 
 
-def _revision_envelope(request: httpx.Request, revision_id: str) -> dict[str, Any]:
-    case_digest = "sha256:" + "c" * 64
+def _revision_envelope(
+    request: httpx.Request,
+    revision_id: str,
+    *,
+    exact_case_binding: dict[str, Any] | None = None,
+    confirmed_from: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    exact_case_binding = exact_case_binding or {
+        "case_id": "case_01J0000000000001",
+        "case_revision": 1,
+        "case_digest": "sha256:" + "c" * 64,
+    }
+    confirmed = confirmed_from is not None
     return {
         "acceptance_criteria_revision_id": revision_id,
         "workspace_id": request.headers["x-caseloop-workspace-id"],
-        "exact_case_binding": {
-            "case_id": "case_01J0000000000001",
-            "case_revision": 1,
-            "case_digest": case_digest,
+        "exact_case_binding": copy.deepcopy(exact_case_binding),
+        "resolution_contract_binding_status": {
+            "status": "PENDING_MATERIALIZATION",
+            "owner": "resolution-contract-controller",
+            "materialization_stage": "V5-4",
+            "exact_case_binding": copy.deepcopy(exact_case_binding),
         },
-        "exact_resolution_contract_binding": {
-            "kind": "RESOLUTION_CONTRACT",
-            "revision": None,
-            "digest": None,
-            "materialization": "DECLARED_BY_CASE",
-        },
-        "confirmation_status": "PROPOSED",
+        "confirmation_status": "CONFIRMED" if confirmed else "PROPOSED",
         "proposer_principal": "prn_01J0000000000001",
         "proposed_at": "2026-08-11T10:00:00Z",
-        "confirmer_principal": None,
-        "confirmed_at": None,
-        "exact_previous_proposed_revision_binding": None,
+        "confirmer_principal": "prn_01J0000000000002" if confirmed else None,
+        "confirmed_at": "2026-08-11T10:05:00Z" if confirmed else None,
+        "exact_previous_proposed_revision_binding": (
+            {
+                **confirmed_from,
+            }
+            if confirmed
+            else None
+        ),
+        "reauthentication_credential_binding": (
+            {
+                "kind": "PUBLIC_CREDENTIAL",
+                "credential_id": "cred_01J0000000000002",
+                "principal_id": "prn_01J0000000000002",
+                "jti_digest": "sha256:" + "8" * 64,
+                "claims_digest": "sha256:" + "9" * 64,
+                "issued_at": "2026-08-11T10:04:00Z",
+                "binding_digest": "sha256:" + "7" * 64,
+            }
+            if confirmed
+            else None
+        ),
         "acceptance_source": {"kind": "github_issue", "repo": "simonw/llm", "number": 1466},
         "reproducer_input": {"kind": "code"},
         "reproducer_environment": None,
@@ -482,7 +526,7 @@ def _revision_envelope(request: httpx.Request, revision_id: str) -> dict[str, An
         "oracle_or_evaluator": None,
         "applicable_workload_profile": {"name": "cli-once"},
         "applicable_deployment_profile": {"name": "local-shadow"},
-        "acceptance_digest": "sha256:" + "f" * 64,
+        "acceptance_digest": "sha256:" + ("6" if confirmed else "f") * 64,
         "record_envelope": {
             "schema_version": "2.0",
             "workspace_id": request.headers["x-caseloop-workspace-id"],
@@ -491,7 +535,7 @@ def _revision_envelope(request: httpx.Request, revision_id: str) -> dict[str, An
             "recorded_at": "2026-08-11T10:00:00Z",
             "immutable": True,
             "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
-            "record_digest": "sha256:" + "e" * 64,
+            "record_digest": "sha256:" + ("6" if confirmed else "e") * 64,
             "authority_receipt_id": "arec_01J0000000000001",
         },
     }
@@ -499,9 +543,17 @@ def _revision_envelope(request: httpx.Request, revision_id: str) -> dict[str, An
 
 def acceptance_propose(request: httpx.Request) -> dict[str, Any]:
     revision_id = "acr_01J0000000000001"
+    submission = json.loads(request.content)
+    exact_case_binding = {
+        "case_id": submission["case_id"],
+        "case_revision": submission["case_revision"],
+        "case_digest": submission["case_digest"],
+    }
     core = {
         **_v5_core(request, resource_kind="acceptance_criteria_revision", resource_field="acceptance_criteria_revision"),
-        "acceptance_criteria_revision": _revision_envelope(request, revision_id),
+        "acceptance_criteria_revision": _revision_envelope(
+            request, revision_id, exact_case_binding=exact_case_binding
+        ),
     }
     core["audit_ref"] = "audit://aud_01J0000000000007"
     receipt = _case_v2_receipt(
@@ -516,15 +568,22 @@ def acceptance_propose(request: httpx.Request) -> dict[str, Any]:
 
 
 def acceptance_get(request: httpx.Request) -> dict[str, Any]:
+    exact_case_binding = {
+        "case_id": request.url.path.split("/")[-2],
+        "case_revision": int(request.url.params.get("case_revision", "1")),
+        "case_digest": "sha256:" + "c" * 64,
+    }
     return {
         **_v5_core(request, resource_kind="acceptance_criteria_revision", resource_field="x"),
-        "exact_case_binding": {
-            "case_id": "case_01J0000000000001",
-            "case_revision": 1,
-            "case_digest": "sha256:" + "c" * 64,
-        },
+        "exact_case_binding": exact_case_binding,
         "case_readiness": "NEEDS_ACCEPTANCE_CRITERIA",
-        "revisions": [_revision_envelope(request, "acr_01J0000000000001")],
+        "revisions": [
+            _revision_envelope(
+                request,
+                "acr_01J0000000000001",
+                exact_case_binding=exact_case_binding,
+            )
+        ],
         "next_action": {
             "code": "CONFIRM_ACCEPTANCE_CRITERIA",
             "command": "case acceptance-criteria confirm",
@@ -533,10 +592,16 @@ def acceptance_get(request: httpx.Request) -> dict[str, Any]:
 
 
 def acceptance_confirm(request: httpx.Request) -> dict[str, Any]:
-    revision_id = request.url.path.split("/")[-1][: -len(":confirm")]
+    proposed_revision_id = request.url.path.split("/")[-1][: -len(":confirm")]
+    submission = json.loads(request.content)
+    proposed_binding = submission["exact_proposed_revision_binding"]
+    assert proposed_binding["id"] == proposed_revision_id
+    revision_id = "acr_01J0000000000002"
     core = {
         **_v5_core(request, resource_kind="acceptance_criteria_revision", resource_field="acceptance_criteria_revision"),
-        "acceptance_criteria_revision": _revision_envelope(request, revision_id),
+        "acceptance_criteria_revision": _revision_envelope(
+            request, revision_id, confirmed_from=proposed_binding
+        ),
     }
     core["audit_ref"] = "audit://aud_01J0000000000007"
     receipt = _case_v2_receipt(

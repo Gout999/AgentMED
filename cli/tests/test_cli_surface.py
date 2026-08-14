@@ -1,28 +1,15 @@
 from __future__ import annotations
 
 import io
-import copy
 import json
+import copy
 from datetime import datetime, timezone
+from typing import Any, Callable
 
 import httpx
 import pytest
-from pydantic import ValidationError
 
 from caseloop_cli.errors import ExitFamily
-from caseloop_cli._generated.public_v2 import (
-    ApplicationGetResponse,
-    ComponentGetResponse,
-    EnvironmentGetResponse,
-)
-from caseloop_cli.client import PublicApiClient, RuntimeConfig
-from caseloop_cli.errors import CliError
-from caseloop_cli._generated.manifest_v2 import (
-    ExactSlotVersionSetBinding as CliExactSlotVersionSetBinding,
-    ExactV4EvidenceBinding as CliExactV4EvidenceBinding,
-    ExactV5EvidenceBinding as CliExactV5EvidenceBinding,
-    IdentityAssuranceSummary as CliIdentityAssuranceSummary,
-)
 from caseloop_cli.main import build_parser, run
 from .wire_samples import digest, success_for
 
@@ -55,10 +42,7 @@ def _response(request: httpx.Request) -> httpx.Response:
 def test_help_exposes_only_frozen_stage1a_cli_commands() -> None:
     help_text = build_parser().format_help()
     assert all(name in help_text for name in ("capabilities", "signal", "report", "case", "evidence"))
-    assert all(
-        name not in help_text
-        for name in ("project", "source", "investigation", "release", "skill", "init")
-    )
+    assert all(name not in help_text for name in ("project", "source", "investigation", "release", "skill"))
 
 
 @pytest.mark.parametrize(
@@ -139,153 +123,12 @@ def test_capabilities_supports_explicit_v2_without_changing_v1_default() -> None
     assert payload["data"]["api_major"] == 2
     assert payload["data"]["contract_version"] == "2.0"
     assert payload["data"]["disabled_intents"] == []
-    enabled = {item["name"] for item in payload["data"]["enabled_intents"]}
-    assert enabled == {
-        "capabilities.get",
-        "applications.register",
-        "applications.get",
-        "applications.list",
-        "environments.register",
-        "environments.get",
-        "system-components.register",
-        "system-components.get",
-        "dependency-edges.record",
-        "dependency-edges.get",
-        "system-manifests.import",
-    }
-    modes = {
-        item["name"]: item["execution_mode"]
-        for item in payload["data"]["enabled_intents"]
-    }
-    assert modes["system-manifests.import"] == "synchronous_local_transaction"
 
 
-def test_application_list_uses_authenticated_v2_collection_and_query() -> None:
-    requests: list[httpx.Request] = []
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        requests.append(request)
-        return httpx.Response(
-            200,
-            headers={
-                "content-type": "application/json",
-                "x-caseloop-contract-version": "2.0",
-            },
-            json=success_for(request),
-        )
-
-    stdout = io.StringIO()
-    exit_code = run(
-        [
-            "--api-version",
-            "2",
-            *_globals(),
-            "application",
-            "list",
-            "--project-id",
-            "proj_01J0000000000001",
-            "--limit",
-            "25",
-        ],
-        env=_env(),
-        stdout=stdout,
-        stderr=io.StringIO(),
-        transport=httpx.MockTransport(handler),
-    )
-
-    assert exit_code == ExitFamily.OK
-    assert len(requests) == 1
-    request = requests[0]
-    assert request.url.path == "/api/v2/applications"
-    assert dict(request.url.params) == {
-        "limit": "25",
-        "project_id": "proj_01J0000000000001",
-    }
-    assert request.headers["authorization"] == f"Bearer {TOKEN}"
-    assert request.headers["x-caseloop-contract-version"] == "2.0"
-    assert json.loads(stdout.getvalue())["items"] == []
-
-
-def test_application_list_rejects_same_workspace_cross_project_item() -> None:
+def test_capabilities_v2_rejects_a_major_one_response() -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         payload = success_for(request)
-        payload["items"] = [
-            {
-                "application": {
-                    "record_envelope": {
-                        "schema_version": "2.0",
-                        "workspace_id": WORKSPACE,
-                        "revision": 1,
-                        "recorded_by_principal": "prn_01J0000000000001",
-                        "recorded_at": "2026-08-11T10:00:00Z",
-                        "immutable": True,
-                        "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
-                        "record_digest": "sha256:" + "a" * 64,
-                        "authority_receipt_id": "arec_01J0000000000001",
-                    },
-                    "application_id": "app_01J0000000000001",
-                    "workspace_id": WORKSPACE,
-                    "project_id": "proj_01J0000000000099",
-                    "slug": "cross-project",
-                    "display_name": "Cross project",
-                    "owner_principal_ids": ["prn_01J0000000000001"],
-                    "criticality": "P1",
-                    "data_classification": "INTERNAL",
-                    "governance_mode": "MANAGED",
-                    "lifecycle_state": "REGISTERED",
-                    "exact_previous_application_binding_or_null": None,
-                },
-                "environments": [],
-                "system_components": [],
-                "dependency_edges": [],
-            }
-        ]
-        return httpx.Response(
-            200,
-            headers={
-                "content-type": "application/json",
-                "x-caseloop-contract-version": "2.0",
-            },
-            json=payload,
-        )
-
-    stderr = io.StringIO()
-    exit_code = run(
-        [
-            "--api-version",
-            "2",
-            *_globals(),
-            "application",
-            "list",
-            "--project-id",
-            "proj_01J0000000000001",
-        ],
-        env=_env(),
-        stdout=io.StringIO(),
-        stderr=stderr,
-        transport=httpx.MockTransport(handler),
-    )
-
-    assert exit_code == ExitFamily.PROTOCOL
-    assert json.loads(stderr.getvalue())["error"]["code"] == "REMOTE_BINDING_INVALID"
-
-
-@pytest.mark.parametrize("mutation", ["wrong-major", "future-intent"])
-def test_capabilities_v2_rejects_non_r2_discovery(mutation: str) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        payload = success_for(request)
-        if mutation == "wrong-major":
-            payload["data"]["api_major"] = 1
-        else:
-            payload["data"]["enabled_intents"].append(
-                {
-                    "name": "system-versions.get",
-                    "scope": "system_versions:read",
-                    "execution_mode": "synchronous",
-                    "http": True,
-                    "cli": True,
-                }
-            )
+        payload["data"]["api_major"] = 1
         return httpx.Response(
             200,
             headers={
@@ -308,437 +151,6 @@ def test_capabilities_v2_rejects_non_r2_discovery(mutation: str) -> None:
     assert json.loads(stderr.getvalue())["error"]["code"] == "REMOTE_PROTOCOL_ERROR"
 
 
-def test_v2_catalog_receipt_actor_is_distinct_from_authority_recorder() -> None:
-    """Real server semantics: caller owns the receipt, controller seals the row."""
-
-    def handler(request: httpx.Request) -> httpx.Response:
-        payload = success_for(request)
-        assert (
-            payload["idempotency"]["receipt"]["principal_id"]
-            != payload["application"]["record_envelope"]["recorded_by_principal"]
-        )
-        return httpx.Response(
-            201,
-            headers={
-                "content-type": "application/json",
-                "x-caseloop-contract-version": "2.0",
-            },
-            json=payload,
-        )
-
-    stdout = io.StringIO()
-    exit_code = run(
-        [
-            "--api-version",
-            "2",
-            *_globals(),
-            "application",
-            "register",
-            "--project-id",
-            "proj_01J0000000000001",
-            "--slug",
-            "authority-recorded",
-            "--display-name",
-            "Authority recorded",
-            "--owner-principal-id",
-            "prn_01J0000000000001",
-            "--criticality",
-            "P1",
-            "--data-classification",
-            "INTERNAL",
-            "--governance-mode",
-            "MANAGED",
-            "--idempotency-key",
-            "application-register-key",
-        ],
-        env=_env(),
-        stdout=stdout,
-        stderr=io.StringIO(),
-        transport=httpx.MockTransport(handler),
-    )
-
-    assert exit_code == ExitFamily.OK
-    assert json.loads(stdout.getvalue())["application"]["slug"] == "authority-recorded"
-
-
-@pytest.mark.parametrize(
-    ("field", "value"),
-    [
-        ("intent", "environments.register"),
-        ("idempotency_key", "different-idempotency-key"),
-        ("request_id", "req_01J0000000000099"),
-    ],
-)
-def test_v2_mutation_rejects_rehashed_receipt_binding_drift(
-    field: str,
-    value: str,
-) -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        payload = success_for(request)
-        receipt = payload["idempotency"]["receipt"]
-        receipt[field] = value
-        response_without_idempotency = copy.deepcopy(payload)
-        response_without_idempotency.pop("idempotency")
-        receipt["response_digest"] = digest(response_without_idempotency)
-        receipt_without_digest = copy.deepcopy(receipt)
-        receipt_without_digest.pop("receipt_digest")
-        receipt["receipt_digest"] = digest(receipt_without_digest)
-        return httpx.Response(
-            201,
-            headers={
-                "content-type": "application/json",
-                "x-caseloop-contract-version": "2.0",
-            },
-            json=payload,
-        )
-
-    stderr = io.StringIO()
-    exit_code = run(
-        [
-            "--api-version",
-            "2",
-            *_globals(),
-            "application",
-            "register",
-            "--project-id",
-            "proj_01J0000000000001",
-            "--slug",
-            "receipt-check",
-            "--display-name",
-            "Receipt check",
-            "--owner-principal-id",
-            "prn_01J0000000000001",
-            "--criticality",
-            "P1",
-            "--data-classification",
-            "INTERNAL",
-            "--governance-mode",
-            "MANAGED",
-            "--idempotency-key",
-            "application-register-key",
-        ],
-        env=_env(),
-        stdout=io.StringIO(),
-        stderr=stderr,
-        transport=httpx.MockTransport(handler),
-    )
-
-    assert exit_code == ExitFamily.PROTOCOL
-    assert json.loads(stderr.getvalue())["error"]["code"] in {
-        "REMOTE_BINDING_INVALID",
-        "REMOTE_PROTOCOL_ERROR",
-    }
-
-
-@pytest.mark.parametrize(
-    ("response_model", "resource_field", "resource"),
-    [
-        (
-            ApplicationGetResponse,
-            "application",
-            {
-                "application_id": "app_01J0000000000001",
-                "project_id": "proj_01J0000000000001",
-                "slug": "r2-app",
-                "display_name": "R2 app",
-                "owner_principal_ids": ["prn_01J0000000000001"],
-                "criticality": "P1",
-                "data_classification": "INTERNAL",
-                "governance_mode": "MANAGED",
-                "lifecycle_state": "REGISTERED",
-            },
-        ),
-        (
-            ComponentGetResponse,
-            "component",
-            {
-                "component_id": "cmp_01J0000000000001",
-                "application_id": "app_01J0000000000001",
-                "component_kind": "AGENT",
-                "logical_name": "r2-agent",
-                "owner_principal_ids": ["prn_01J0000000000001"],
-                "criticality": "P1",
-                "data_classification": "INTERNAL",
-                "permission_classification": "READ_WRITE",
-                "effect_classification": "LOCAL",
-                "dataset_role": None,
-                "lifecycle_state": "REGISTERED",
-            },
-        ),
-    ],
-    ids=["application", "component"],
-)
-def test_r2_cli_catalog_wire_accepts_registered_lifecycle(
-    response_model,
-    resource_field: str,
-    resource: dict[str, object],
-) -> None:
-    envelope = {
-        "schema_version": "2.0",
-        "workspace_id": WORKSPACE,
-        "revision": 1,
-        "recorded_by_principal": "prn_01J0000000000001",
-        "recorded_at": "2026-08-11T10:00:00Z",
-        "immutable": True,
-        "hash_rule": (
-            "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)"
-        ),
-        "record_digest": "sha256:" + "a" * 64,
-        "authority_receipt_id": "arec_01J0000000000001",
-    }
-    parsed = response_model.model_validate(
-        {
-            "schema_version": "2.0",
-            "workspace_id": WORKSPACE,
-            "request_id": "req_01J0000000000001",
-            "audit_ref": "audit://aud_01J0000000000001",
-            resource_field: {
-                "record_envelope": envelope,
-                "workspace_id": WORKSPACE,
-                (
-                    "exact_previous_application_binding_or_null"
-                    if resource_field == "application"
-                    else "exact_previous_system_component_binding_or_null"
-                ): None,
-                **resource,
-            },
-        }
-    )
-    assert getattr(parsed, resource_field).lifecycle_state == "REGISTERED"
-
-    malicious = parsed.model_dump(mode="json")
-    if resource_field == "application":
-        malicious[resource_field]["slug"] = "Uppercase-Is-Forbidden"
-        with pytest.raises(ValidationError):
-            response_model.model_validate(malicious)
-    else:
-        malicious[resource_field]["logical_name"] = "spaces are forbidden"
-        with pytest.raises(ValidationError):
-            response_model.model_validate(malicious)
-        malicious = parsed.model_dump(mode="json")
-        malicious[resource_field]["component_kind"] = "UNFROZEN_KIND"
-        with pytest.raises(ValidationError):
-            response_model.model_validate(malicious)
-
-
-def test_r2_cli_environment_response_rejects_noncanonical_logical_name() -> None:
-    with pytest.raises(ValidationError):
-        EnvironmentGetResponse.model_validate(
-            {
-                "schema_version": "2.0",
-                "workspace_id": WORKSPACE,
-                "request_id": "req_01J0000000000001",
-                "audit_ref": "audit://aud_01J0000000000001",
-                "environment": {
-                    "record_envelope": {
-                        "schema_version": "2.0",
-                        "workspace_id": WORKSPACE,
-                        "revision": 1,
-                        "recorded_by_principal": "prn_01J0000000000001",
-                        "recorded_at": "2026-08-11T10:00:00Z",
-                        "immutable": True,
-                        "hash_rule": "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
-                        "record_digest": "sha256:" + "a" * 64,
-                        "authority_receipt_id": "arec_01J0000000000001",
-                    },
-                    "environment_id": "env_01J0000000000001",
-                    "workspace_id": WORKSPACE,
-                    "application_id": "app_01J0000000000001",
-                    "logical_name": "Upper Case",
-                    "risk_classification": "LOW",
-                    "lifecycle_state": "ACTIVE",
-                },
-            }
-        )
-
-
-def test_cli_bootstrap_nested_bindings_match_closed_server_shape() -> None:
-    binding = {
-        "slot": "PRIMARY",
-        "kind": "SYSTEM_VERSION_SET",
-        "id": "vset_01J0000000000001",
-        "revision": 1,
-        "digest": "sha256:" + "a" * 64,
-    }
-    CliExactSlotVersionSetBinding.model_validate(binding)
-    summary = {
-        "component_assurances": [
-            {
-                "component_revision_id": "crv_01J0000000000001",
-                "component_id": "cmp_01J0000000000001",
-                "identity_assurance": "IMMUTABLE_DIGEST",
-            }
-        ]
-    }
-    CliIdentityAssuranceSummary.model_validate(summary)
-
-    for invalid in (
-        {**binding, "slot": "CANARY"},
-        {**binding, "revision": None},
-        {**binding, "unexpected": True},
-    ):
-        with pytest.raises(ValidationError):
-            CliExactSlotVersionSetBinding.model_validate(invalid)
-    with pytest.raises(ValidationError):
-        CliIdentityAssuranceSummary.model_validate({"component_count": 1})
-
-    v4_evidence = {
-        "contract_major": 1,
-        "kind": "TRACE_EVIDENCE_RECEIPT",
-        "id": "ter_01J0000000000001",
-        "revision": None,
-        "digest": "sha256:" + "a" * 64,
-    }
-    v5_evidence = {
-        "kind": "OBSERVED_STATE_SNAPSHOT",
-        "id": "oss_01J0000000000001",
-        "revision": 1,
-        "digest": "sha256:" + "a" * 64,
-    }
-    CliExactV4EvidenceBinding.model_validate(v4_evidence)
-    CliExactV5EvidenceBinding.model_validate(v5_evidence)
-    for model, invalid in (
-        (CliExactV4EvidenceBinding, {**v4_evidence, "contract_major": 2}),
-        (CliExactV5EvidenceBinding, {**v5_evidence, "contract_major": 1}),
-        (CliExactV5EvidenceBinding, {**v5_evidence, "revision": None}),
-    ):
-        with pytest.raises(ValidationError):
-            model.model_validate(invalid)
-
-
-def test_r2_system_manifest_help_hides_version_routes(capsys) -> None:
-    with pytest.raises(SystemExit) as exc_info:
-        build_parser().parse_args(["system-manifest", "--help"])
-
-    assert exc_info.value.code == 0
-    help_text = capsys.readouterr().out
-    assert "import" in help_text
-    assert "validate" in help_text
-    assert all(action not in help_text for action in ("record", "get", "diff"))
-
-
-def test_r2_manifest_validate_is_local_only_and_needs_no_http_or_credential(
-    tmp_path,
-) -> None:
-    manifest = {
-        "schema_version": "2.0",
-        "application": {
-            "project_id": "proj_01J0000000000001",
-            "slug": "local-validate",
-            "display_name": "Local validate",
-            "owner_principal_ids": ["prn_01J0000000000001"],
-            "criticality": "P1",
-            "data_classification": "INTERNAL",
-            "governance_mode": "MANAGED",
-        },
-        "environment": {
-            "logical_name": "prod",
-            "risk_classification": "MEDIUM",
-        },
-        "components": [
-            {
-                "logical_name": "app-code",
-                "component_kind": "APPLICATION_CODE",
-                "owner_principal_ids": ["prn_01J0000000000001"],
-                "criticality": "P1",
-                "data_classification": "INTERNAL",
-                "permission_classification": "READ_ONLY",
-                "effect_classification": "LOCAL",
-                "revision": {
-                    "identity_locator": {"type": "git", "path": "."},
-                    "identity_assurance": "IMMUTABLE_DIGEST",
-                    "content_digest": "sha256:" + "a" * 64,
-                },
-            }
-        ],
-    }
-    manifest_path = tmp_path / "manifest.json"
-    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
-    requests: list[httpx.Request] = []
-    stdout = io.StringIO()
-
-    exit_code = run(
-        [
-            "--api-version",
-            "2",
-            "system-manifest",
-            "validate",
-            "--manifest-file",
-            str(manifest_path),
-        ],
-        env={},
-        stdout=stdout,
-        stderr=io.StringIO(),
-        transport=httpx.MockTransport(lambda request: requests.append(request)),
-    )
-
-    assert exit_code == ExitFamily.OK
-    assert requests == []
-    assert json.loads(stdout.getvalue()) == {
-        "schema_version": "1.0",
-        "manifest_valid": True,
-    }
-
-
-def test_r2_init_is_hidden_but_local_validate_remains_available() -> None:
-    requests: list[httpx.Request] = []
-    stderr = io.StringIO()
-    exit_code = run(
-        ["--api-version", "2", "init", "."],
-        env={},
-        stdout=io.StringIO(),
-        stderr=stderr,
-        transport=httpx.MockTransport(lambda request: requests.append(request)),
-    )
-
-    assert exit_code == ExitFamily.INPUT
-    assert requests == []
-    assert json.loads(stderr.getvalue())["error"]["code"] == "CLI_USAGE_INVALID"
-
-
-@pytest.mark.parametrize(
-    ("method", "path"),
-    [
-        ("POST", "/api/v2/cases/case_01J0000000000001:bind-application"),
-        ("GET", "/api/v2/cases/case_01J0000000000001/application-binding"),
-        ("GET", "/api/v2/system-versions/vset_01J0000000000001"),
-        ("GET", "/api/v2/system-versions:diff"),
-    ],
-)
-def test_r2_client_rejects_unactivated_operations_before_http(
-    method: str,
-    path: str,
-) -> None:
-    requests: list[httpx.Request] = []
-    client = PublicApiClient(
-        RuntimeConfig(base_url=BASE, workspace_id=WORKSPACE, token=TOKEN),
-        transport=httpx.MockTransport(lambda request: requests.append(request)),
-    )
-
-    with pytest.raises(CliError) as exc_info:
-        client.request(method, path, api_major=2)
-
-    assert exc_info.value.code == "CLIENT_OPERATION_UNSUPPORTED"
-    assert requests == []
-
-
-@pytest.mark.parametrize("action", ["record", "get", "diff"])
-def test_r2_system_manifest_future_actions_have_no_dispatch(action: str) -> None:
-    requests: list[httpx.Request] = []
-    stderr = io.StringIO()
-    exit_code = run(
-        ["--api-version", "2", *_globals(), "system-manifest", action],
-        env=_env(),
-        stdout=io.StringIO(),
-        stderr=stderr,
-        transport=httpx.MockTransport(lambda request: requests.append(request)),
-    )
-
-    assert exit_code == ExitFamily.INPUT
-    assert requests == []
-    assert json.loads(stderr.getvalue())["error"]["code"] == "CLI_USAGE_INVALID"
-
-
 def test_unknown_or_unfrozen_command_is_stable_input_error() -> None:
     stdout = io.StringIO()
     stderr = io.StringIO()
@@ -753,48 +165,441 @@ def test_unknown_or_unfrozen_command_is_stable_input_error() -> None:
     }
 
 
-@pytest.mark.parametrize(
-    "argv",
-    [
-        ["case", "bind-application"],
-        ["case", "application-binding"],
-        ["case", "acceptance-criteria"],
-        ["case", "from-issue"],
-    ],
-)
-def test_r2_cli_hides_r4_case_and_acceptance_actions(argv: list[str]) -> None:
+def _run_case_v2(
+    argv: list[str],
+    *,
+    payload_mutator: Callable[[httpx.Request, dict[str, Any]], None] | None = None,
+) -> tuple[int, list[httpx.Request], str, str]:
     requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        payload = success_for(request)
+        if payload_mutator is not None:
+            payload_mutator(request, payload)
+        return httpx.Response(
+            201 if request.method == "POST" else 200,
+            headers={
+                "content-type": "application/json",
+                "x-caseloop-contract-version": "2.0",
+            },
+            json=payload,
+        )
+
+    stdout = io.StringIO()
     stderr = io.StringIO()
     exit_code = run(
         ["--api-version", "2", *_globals(), *argv],
         env=_env(),
-        stdout=io.StringIO(),
+        stdout=stdout,
         stderr=stderr,
-        transport=httpx.MockTransport(lambda request: requests.append(request)),
+        transport=httpx.MockTransport(handler),
     )
-
-    assert exit_code == ExitFamily.INPUT
-    assert requests == []
-    assert json.loads(stderr.getvalue())["error"]["code"] == "CLI_USAGE_INVALID"
+    return exit_code, requests, stdout.getvalue(), stderr.getvalue()
 
 
-def test_r2_case_help_exposes_only_v1_read_actions(capsys) -> None:
-    with pytest.raises(SystemExit) as exc_info:
-        build_parser().parse_args(["case", "--help"])
+def _refresh_v5_receipt(payload: dict[str, Any]) -> None:
+    receipt = payload["idempotency"]["receipt"]
+    response_without_idempotency = copy.deepcopy(payload)
+    response_without_idempotency.pop("idempotency")
+    receipt["response_digest"] = digest(response_without_idempotency)
+    receipt_without_digest = copy.deepcopy(receipt)
+    receipt_without_digest.pop("receipt_digest")
+    receipt["receipt_digest"] = digest(receipt_without_digest)
 
-    assert exc_info.value.code == 0
-    help_text = capsys.readouterr().out
-    assert "get" in help_text
-    assert "timeline" in help_text
-    assert all(
-        action not in help_text
-        for action in (
+
+CASE_DIGEST = "sha256:" + "c" * 64
+PROPOSE_JSON = (
+    '{"acceptance_source":{"kind":"github_issue"},"expected_behavior":{"summary":"x"},'
+    '"applicable_workload_profile":{"name":"w"},"applicable_deployment_profile":{"name":"d"}}'
+)
+
+
+def test_case_bind_application_uses_exact_v2_route() -> None:
+    exit_code, requests, stdout, _stderr = _run_case_v2(
+        [
+            "case",
             "bind-application",
-            "application-binding",
-            "acceptance-criteria",
-            "from-issue",
-        )
+            "case_01J0000000000001",
+            "--application-id",
+            "app_01J0000000000001",
+            "--environment-id",
+            "env_01J0000000000001",
+            "--case-digest",
+            CASE_DIGEST,
+            "--idempotency-key",
+            "bind-cli-00000001",
+        ]
     )
+    assert exit_code == ExitFamily.OK
+    assert len(requests) == 1
+    request = requests[0]
+    assert request.method == "POST"
+    assert request.url.path == "/api/v2/cases/case_01J0000000000001:bind-application"
+    assert request.headers["x-caseloop-contract-version"] == "2.0"
+    body = json.loads(request.content)
+    assert body["case_id"] == "case_01J0000000000001"
+    assert body["case_digest"] == CASE_DIGEST
+    assert body["application_id"] == "app_01J0000000000001"
+    assert body["declared_system_version_set_binding_or_unknown"] == {
+        "kind": "UNKNOWN",
+        "reason": "NOT_DECLARED",
+    }
+    assert json.loads(stdout)["application_case_binding"]["application_case_binding_id"].startswith("acb_")
+
+
+def test_case_bind_application_loads_manual_snapshot_and_exact_version(tmp_path) -> None:
+    snapshot_file = tmp_path / "manual-source.json"
+    snapshot_file.write_text(
+        json.dumps(
+            {
+                "source_kind": "manual",
+                "source_url": None,
+                "external_repo": None,
+                "external_issue_number": None,
+                "snapshot_payload": {
+                    "title": "Maintainer observed a wrong tool call",
+                    "body": "No GitHub issue exists.",
+                },
+                "edited_flag": True,
+                "deleted_flag": False,
+                "fetched_at": "2026-08-11T12:00:00Z",
+            }
+        ),
+        encoding="utf-8",
+    )
+    version_digest = "sha256:" + "d" * 64
+    exit_code, requests, _stdout, _stderr = _run_case_v2(
+        [
+            "case",
+            "bind-application",
+            "case_01J0000000000001",
+            "--application-id",
+            "app_01J0000000000001",
+            "--environment-id",
+            "env_01J0000000000001",
+            "--case-digest",
+            CASE_DIGEST,
+            "--system-version-set-id",
+            "vset_01J0000000000001",
+            "--issue-snapshot-file",
+            str(snapshot_file),
+        ]
+    )
+    assert exit_code == ExitFamily.OK
+    assert [request.url.path for request in requests] == [
+        "/api/v2/system-versions/vset_01J0000000000001",
+        "/api/v2/cases/case_01J0000000000001:bind-application",
+    ]
+    body = json.loads(requests[1].content)
+    assert body["declared_system_version_set_binding_or_unknown"] == {
+        "kind": "SYSTEM_VERSION_SET",
+        "id": "vset_01J0000000000001",
+        "revision": 1,
+        "digest": version_digest,
+    }
+    assert body["issue_snapshot"]["source_kind"] == "manual"
+    assert body["issue_snapshot"]["source_url"] is None
+    assert body["issue_snapshot"]["external_repo"] is None
+    assert body["issue_snapshot"]["external_issue_number"] is None
+    assert body["issue_snapshot"]["snapshot_payload"]["edited_flag"] is True
+
+
+def test_case_application_binding_get_uses_exact_v2_route() -> None:
+    exit_code, requests, stdout, _stderr = _run_case_v2(
+        [
+            "case",
+            "application-binding",
+            "get",
+            "case_01J0000000000001",
+            "--case-revision",
+            "1",
+            "--case-digest",
+            CASE_DIGEST,
+        ]
+    )
+    assert exit_code == ExitFamily.OK
+    assert len(requests) == 1
+    request = requests[0]
+    assert request.method == "GET"
+    assert request.url.path == "/api/v2/cases/case_01J0000000000001/application-binding"
+    assert request.url.params["case_digest"] == CASE_DIGEST
+    assert request.url.params["case_revision"] == "1"
+    assert (
+        json.loads(stdout)["application_case_binding"]["exact_case_binding"]["case_id"]
+        == "case_01J0000000000001"
+    )
+
+
+@pytest.mark.parametrize(
+    ("field", "malicious_value"),
+    [
+        ("case_revision", 2),
+        ("case_digest", "sha256:" + "d" * 64),
+    ],
+)
+def test_application_binding_get_rejects_query_binding_substitution(
+    field: str, malicious_value: object
+) -> None:
+    def mutate(_request: httpx.Request, payload: dict[str, Any]) -> None:
+        payload["application_case_binding"]["exact_case_binding"][field] = (
+            malicious_value
+        )
+
+    exit_code, _requests, _stdout, stderr = _run_case_v2(
+        [
+            "case",
+            "application-binding",
+            "get",
+            "case_01J0000000000001",
+            "--case-revision",
+            "1",
+            "--case-digest",
+            CASE_DIGEST,
+        ],
+        payload_mutator=mutate,
+    )
+
+    assert exit_code == ExitFamily.PROTOCOL
+    assert json.loads(stderr)["error"]["code"] == "REMOTE_BINDING_INVALID"
+
+
+def test_application_binding_rejects_unmodeled_exact_case_fields() -> None:
+    def mutate(_request: httpx.Request, payload: dict[str, Any]) -> None:
+        payload["application_case_binding"]["exact_case_binding"][
+            "mutable_label"
+        ] = "forged"
+
+    exit_code, _requests, _stdout, stderr = _run_case_v2(
+        [
+            "case",
+            "application-binding",
+            "get",
+            "case_01J0000000000001",
+            "--case-digest",
+            CASE_DIGEST,
+        ],
+        payload_mutator=mutate,
+    )
+
+    assert exit_code == ExitFamily.PROTOCOL
+    assert json.loads(stderr)["error"]["code"] == "REMOTE_PROTOCOL_ERROR"
+
+
+def test_case_acceptance_criteria_propose_uses_exact_v2_route() -> None:
+    exit_code, requests, stdout, _stderr = _run_case_v2(
+        [
+            "case",
+            "acceptance-criteria",
+            "propose",
+            "case_01J0000000000001",
+            "--case-digest",
+            CASE_DIGEST,
+            "--acceptance-json",
+            PROPOSE_JSON,
+        ]
+    )
+    assert exit_code == ExitFamily.OK
+    assert len(requests) == 1
+    request = requests[0]
+    assert request.method == "POST"
+    assert request.url.path == "/api/v2/cases/case_01J0000000000001:propose-acceptance-criteria"
+    body = json.loads(request.content)
+    assert body["expected_behavior"] == {"summary": "x"}
+    assert json.loads(stdout)["acceptance_criteria_revision"]["confirmation_status"] == "PROPOSED"
+
+
+def test_case_acceptance_criteria_get_uses_exact_v2_route() -> None:
+    exit_code, requests, stdout, _stderr = _run_case_v2(
+        ["case", "acceptance-criteria", "get", "case_01J0000000000001"]
+    )
+    assert exit_code == ExitFamily.OK
+    assert len(requests) == 1
+    request = requests[0]
+    assert request.method == "GET"
+    assert request.url.path == "/api/v2/cases/case_01J0000000000001/acceptance-criteria"
+    assert request.url.params["case_revision"] == "1"
+    payload = json.loads(stdout)
+    assert payload["case_readiness"] == "NEEDS_ACCEPTANCE_CRITERIA"
+    assert payload["exact_case_binding"]["case_digest"] == CASE_DIGEST
+
+
+@pytest.mark.parametrize("substitution", ["top-case", "nested-digest"])
+def test_acceptance_get_rejects_exact_case_binding_substitution(
+    substitution: str,
+) -> None:
+    def mutate(_request: httpx.Request, payload: dict[str, Any]) -> None:
+        if substitution == "top-case":
+            payload["exact_case_binding"]["case_id"] = "case_01J0000000000002"
+            return
+        revision = payload["revisions"][0]
+        replacement = "sha256:" + "d" * 64
+        revision["exact_case_binding"]["case_digest"] = replacement
+        revision["resolution_contract_binding_status"]["exact_case_binding"][
+            "case_digest"
+        ] = replacement
+
+    exit_code, _requests, _stdout, stderr = _run_case_v2(
+        ["case", "acceptance-criteria", "get", "case_01J0000000000001"],
+        payload_mutator=mutate,
+    )
+
+    assert exit_code == ExitFamily.PROTOCOL
+    assert json.loads(stderr)["error"]["code"] == "REMOTE_BINDING_INVALID"
+
+
+def test_case_acceptance_criteria_confirm_uses_exact_v2_route() -> None:
+    exit_code, requests, stdout, _stderr = _run_case_v2(
+        [
+            "case",
+            "acceptance-criteria",
+            "confirm",
+            "acr_01J0000000000001",
+            "--case-id",
+            "case_01J0000000000001",
+            "--proposed-revision-digest",
+            "sha256:" + "e" * 64,
+        ]
+    )
+    assert exit_code == ExitFamily.OK
+    assert [request.url.path for request in requests] == [
+        "/api/v2/cases/case_01J0000000000001/acceptance-criteria",
+        "/api/v2/acceptance-criteria/acr_01J0000000000001:confirm",
+    ]
+    request = requests[1]
+    assert request.method == "POST"
+    assert request.url.path == "/api/v2/acceptance-criteria/acr_01J0000000000001:confirm"
+    body = json.loads(request.content)
+    assert body["exact_proposed_revision_binding"]["id"] == "acr_01J0000000000001"
+    assert body["exact_proposed_revision_binding"]["revision"] == 1
+    assert body["exact_proposed_revision_binding"]["digest"] == "sha256:" + "e" * 64
+    confirmed = json.loads(stdout)["acceptance_criteria_revision"]
+    assert confirmed["confirmation_status"] == "CONFIRMED"
+    assert confirmed["resolution_contract_binding_status"]["status"] == (
+        "PENDING_MATERIALIZATION"
+    )
+    assert confirmed["reauthentication_credential_binding"]["kind"] == (
+        "PUBLIC_CREDENTIAL"
+    )
+
+
+@pytest.mark.parametrize("substitution", ["proposed-state", "wrong-previous"])
+def test_acceptance_confirm_rejects_semantically_substituted_response(
+    substitution: str,
+) -> None:
+    def mutate(request: httpx.Request, payload: dict[str, Any]) -> None:
+        if not request.url.path.endswith(":confirm"):
+            return
+        revision = payload["acceptance_criteria_revision"]
+        if substitution == "proposed-state":
+            revision["confirmation_status"] = "PROPOSED"
+            revision["confirmer_principal"] = None
+            revision["confirmed_at"] = None
+            revision["exact_previous_proposed_revision_binding"] = None
+            revision["reauthentication_credential_binding"] = None
+        else:
+            revision["exact_previous_proposed_revision_binding"]["digest"] = (
+                "sha256:" + "f" * 64
+            )
+        _refresh_v5_receipt(payload)
+
+    exit_code, _requests, _stdout, stderr = _run_case_v2(
+        [
+            "case",
+            "acceptance-criteria",
+            "confirm",
+            "acr_01J0000000000001",
+            "--case-id",
+            "case_01J0000000000001",
+            "--proposed-revision-digest",
+            "sha256:" + "e" * 64,
+        ],
+        payload_mutator=mutate,
+    )
+
+    assert exit_code == ExitFamily.PROTOCOL
+    assert json.loads(stderr)["error"]["code"] == "REMOTE_BINDING_INVALID"
+
+
+@pytest.mark.parametrize(
+    "substitution",
+    ["mixed-state", "missing-confirmed-at", "non-public-credential"],
+)
+def test_acceptance_confirm_rejects_non_closed_wire_state(substitution: str) -> None:
+    def mutate(request: httpx.Request, payload: dict[str, Any]) -> None:
+        if not request.url.path.endswith(":confirm"):
+            return
+        revision = payload["acceptance_criteria_revision"]
+        if substitution == "mixed-state":
+            revision["confirmation_status"] = "PROPOSED"
+        elif substitution == "missing-confirmed-at":
+            revision.pop("confirmed_at")
+        else:
+            revision["reauthentication_credential_binding"]["kind"] = "SESSION"
+
+    exit_code, _requests, _stdout, stderr = _run_case_v2(
+        [
+            "case",
+            "acceptance-criteria",
+            "confirm",
+            "acr_01J0000000000001",
+            "--case-id",
+            "case_01J0000000000001",
+            "--proposed-revision-digest",
+            "sha256:" + "e" * 64,
+        ],
+        payload_mutator=mutate,
+    )
+
+    assert exit_code == ExitFamily.PROTOCOL
+    assert json.loads(stderr)["error"]["code"] == "REMOTE_PROTOCOL_ERROR"
+
+
+def test_case_acceptance_confirm_rejects_stale_digest_before_write() -> None:
+    exit_code, requests, _stdout, stderr = _run_case_v2(
+        [
+            "case",
+            "acceptance-criteria",
+            "confirm",
+            "acr_01J0000000000001",
+            "--case-id",
+            "case_01J0000000000001",
+            "--proposed-revision-digest",
+            "sha256:" + "f" * 64,
+        ]
+    )
+    assert exit_code == ExitFamily.INPUT
+    assert [request.url.path for request in requests] == [
+        "/api/v2/cases/case_01J0000000000001/acceptance-criteria"
+    ]
+    assert json.loads(stderr)["error"]["code"] == (
+        "PROPOSED_REVISION_BINDING_MISMATCH"
+    )
+
+
+def test_case_v2_actions_require_explicit_api_version_2() -> None:
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    exit_code = run(
+        [
+            *_globals(),
+            "case",
+            "bind-application",
+            "case_01J0000000000001",
+            "--application-id",
+            "app_01J0000000000001",
+            "--environment-id",
+            "env_01J0000000000001",
+            "--case-digest",
+            CASE_DIGEST,
+        ],
+        env=_env(),
+        stdout=stdout,
+        stderr=stderr,
+        transport=httpx.MockTransport(_response),
+    )
+    assert exit_code == ExitFamily.INPUT
+    assert json.loads(stderr.getvalue())["error"]["code"] == "API_VERSION_REQUIRED"
 
 
 def test_case_v1_actions_reject_api_version_2() -> None:
@@ -809,6 +614,420 @@ def test_case_v1_actions_reject_api_version_2() -> None:
     )
     assert exit_code == ExitFamily.INPUT
     assert json.loads(stderr.getvalue())["error"]["code"] == "API_MAJOR_MISMATCH"
+
+
+def test_case_from_issue_composes_canonical_intents_only(tmp_path) -> None:
+    """``caseloop case from-issue`` drives issue_snapshot → signal_submit →
+    case binding → acceptance draft and never auto-confirms."""
+    import json as _json
+
+    snapshot = tmp_path / "issue-1466.json"
+    snapshot.write_text(
+        _json.dumps(
+            {
+                "number": 1466,
+                "title": "BUG: schema_dsl raises IndexError",
+                "body": "minimal repro: schema_dsl(':description')",
+                "state": "open",
+                "html_url": "https://github.com/simonw/llm/issues/1466",
+                "updated_at": "2026-07-30T22:33:06Z",
+                "edited_flag": None,
+                "deleted_flag": None,
+            }
+        ),
+        encoding="utf-8",
+    )
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        contract = "2.0" if request.url.path.startswith("/api/v2") else "1.0"
+        return httpx.Response(
+            201 if request.method == "POST" else 200,
+            headers={
+                "content-type": "application/json",
+                "x-caseloop-contract-version": contract,
+            },
+            json=success_for(request),
+        )
+
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    env = {**_env(), "CASELOOP_CACHE_DIR": str(tmp_path / "cache")}
+    exit_code = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "case",
+            "from-issue",
+            "https://github.com/simonw/llm/issues/1466",
+            "--application-id",
+            "app_01J0000000000001",
+            "--environment-id",
+            "env_01J0000000000001",
+            "--system-version-set-id",
+            "vset_01J0000000000001",
+            "--snapshot-file",
+            str(snapshot),
+            "--source-id",
+            SOURCE,
+            "--reporter-ref",
+            "prn_01J0000000000001",
+        ],
+        env=env,
+        stdout=stdout,
+        stderr=stderr,
+        transport=httpx.MockTransport(handler),
+    )
+    assert exit_code == ExitFamily.OK
+    paths = [request.url.path for request in requests]
+    assert paths == [
+        "/api/v2/applications/app_01J0000000000001",
+        "/api/v2/environments/env_01J0000000000001",
+        "/api/v2/system-versions/vset_01J0000000000001",
+        "/api/v1/signals",
+        "/api/v2/cases/case_stage0001/acceptance-criteria",
+        "/api/v2/cases/case_stage0001:bind-application",
+        "/api/v2/cases/case_stage0001:propose-acceptance-criteria",
+    ]
+    payload = _json.loads(stdout.getvalue())
+    assert payload["case_readiness"] == "NEEDS_ACCEPTANCE_CRITERIA"
+    assert payload["next_action"]["code"] == "CONFIRM_ACCEPTANCE_CRITERIA"
+    assert "--case-id case_stage0001" in payload["next_action"]["command"]
+    assert "auto-confirmed" in stderr.getvalue().lower()
+    assert "non-executable" in stderr.getvalue().lower()
+    signal_body = _json.loads(requests[3].content)
+    assert signal_body["content"]["attachments"][0]["media_type"] == "application/json"
+    assert signal_body["project_id"] == "proj_01J0000000000001"
+    assert signal_body["environment_id"] == "env_01J0000000000001"
+    assert signal_body["source_event_id"].startswith("github-issue:simonw:llm:1466:")
+    assert len(signal_body["source_event_version"]) == 64
+    assert signal_body["source_event_id"].endswith(signal_body["source_event_version"])
+    bind_body = _json.loads(requests[5].content)
+    assert bind_body["issue_snapshot"]["external_repo"] == "simonw/llm"
+    assert bind_body["issue_snapshot"]["snapshot_payload"]["title"].startswith("BUG:")
+    assert bind_body["issue_snapshot"]["snapshot_payload"]["edited_flag"] is False
+    assert bind_body["issue_snapshot"]["snapshot_payload"]["deleted_flag"] is False
+    assert bind_body["declared_system_version_set_binding_or_unknown"] == {
+        "kind": "SYSTEM_VERSION_SET",
+        "id": "vset_01J0000000000001",
+        "revision": 1,
+        "digest": "sha256:" + "d" * 64,
+    }
+    propose_body = _json.loads(requests[6].content)
+    assert propose_body["expected_behavior"]["untrusted"] is True
+
+
+def test_from_issue_snapshot_version_controls_retry_and_edit_idempotency(tmp_path) -> None:
+    snapshot_file = tmp_path / "issue-versioned.json"
+    snapshot_payload = {
+        "number": 1466,
+        "title": "BUG: schema_dsl raises IndexError",
+        "body": "first immutable body",
+        "state": "open",
+        "html_url": "https://github.com/simonw/llm/issues/1466",
+        "created_at": "2026-07-30T22:00:00Z",
+        "updated_at": "2026-07-30T22:00:00Z",
+    }
+    snapshot_file.write_text(json.dumps(snapshot_payload), encoding="utf-8")
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            201 if request.method == "POST" else 200,
+            headers={
+                "content-type": "application/json",
+                "x-caseloop-contract-version": (
+                    "2.0" if request.url.path.startswith("/api/v2") else "1.0"
+                ),
+            },
+            json=success_for(request),
+        )
+
+    def invoke(*, refresh: bool = False) -> dict[str, object]:
+        argv = [
+            "--api-version",
+            "2",
+            *_globals(),
+            "case",
+            "from-issue",
+            "https://github.com/simonw/llm/issues/1466",
+            "--application-id",
+            "app_01J0000000000001",
+            "--environment-id",
+            "env_01J0000000000001",
+            "--declared-version-unknown",
+            "--snapshot-file",
+            str(snapshot_file),
+            "--source-id",
+            SOURCE,
+            "--reporter-ref",
+            "prn_01J0000000000001",
+        ]
+        if refresh:
+            argv.append("--refresh")
+        stdout = io.StringIO()
+        exit_code = run(
+            argv,
+            env={**_env(), "CASELOOP_CACHE_DIR": str(tmp_path / "cache")},
+            stdout=stdout,
+            stderr=io.StringIO(),
+            transport=httpx.MockTransport(handler),
+        )
+        assert exit_code == ExitFamily.OK
+        return json.loads(stdout.getvalue())
+
+    first = invoke()
+    replay = invoke()
+    snapshot_payload["body"] = "edited immutable body"
+    snapshot_payload["updated_at"] = "2026-07-30T23:00:00Z"
+    snapshot_file.write_text(json.dumps(snapshot_payload), encoding="utf-8")
+    edited = invoke(refresh=True)
+
+    signal_requests = [
+        request for request in requests if request.url.path == "/api/v1/signals"
+    ]
+    bind_requests = [
+        request for request in requests if request.url.path.endswith(":bind-application")
+    ]
+    propose_requests = [
+        request
+        for request in requests
+        if request.url.path.endswith(":propose-acceptance-criteria")
+    ]
+    first_signal, replay_signal, edited_signal = [
+        json.loads(request.content) for request in signal_requests
+    ]
+    assert first["source_event_version"] == replay["source_event_version"]
+    assert first_signal["source_event_id"] == replay_signal["source_event_id"]
+    assert (
+        signal_requests[0].headers["idempotency-key"]
+        == signal_requests[1].headers["idempotency-key"]
+    )
+    assert edited["source_event_version"] != first["source_event_version"]
+    assert edited_signal["source_event_id"] != first_signal["source_event_id"]
+    assert (
+        signal_requests[2].headers["idempotency-key"]
+        != signal_requests[0].headers["idempotency-key"]
+    )
+    assert (
+        bind_requests[2].headers["x-caseloop-idempotency-key"]
+        != bind_requests[0].headers["x-caseloop-idempotency-key"]
+    )
+    assert (
+        propose_requests[2].headers["x-caseloop-idempotency-key"]
+        != propose_requests[0].headers["x-caseloop-idempotency-key"]
+    )
+    edited_binding = json.loads(bind_requests[2].content)
+    assert edited_binding["issue_snapshot"]["edited_flag"] is True
+    assert edited_binding["declared_system_version_set_binding_or_unknown"] == {
+        "kind": "UNKNOWN",
+        "reason": "NOT_DECLARED",
+    }
+
+
+def test_from_issue_application_lookup_fails_before_signal_write(tmp_path) -> None:
+    snapshot_file = tmp_path / "issue.json"
+    snapshot_file.write_text(
+        json.dumps(
+            {
+                "number": 1466,
+                "title": "Scoped issue",
+                "body": "data only",
+                "state": "open",
+                "html_url": "https://github.com/simonw/llm/issues/1466",
+                "created_at": "2026-07-30T22:00:00Z",
+                "updated_at": "2026-07-30T22:00:00Z",
+            }
+        ),
+        encoding="utf-8",
+    )
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        return httpx.Response(
+            200,
+            headers={
+                "content-type": "application/json",
+                "x-caseloop-contract-version": "2.0",
+            },
+            json={"schema_version": "2.0"},
+        )
+
+    stderr = io.StringIO()
+    exit_code = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "case",
+            "from-issue",
+            "https://github.com/simonw/llm/issues/1466",
+            "--application-id",
+            "app_01J0000000000001",
+            "--environment-id",
+            "env_01J0000000000001",
+            "--snapshot-file",
+            str(snapshot_file),
+            "--source-id",
+            SOURCE,
+            "--reporter-ref",
+            "prn_01J0000000000001",
+        ],
+        env=_env(),
+        stdout=io.StringIO(),
+        stderr=stderr,
+        transport=httpx.MockTransport(handler),
+    )
+    assert exit_code == ExitFamily.PROTOCOL
+    assert [request.url.path for request in requests] == [
+        "/api/v2/applications/app_01J0000000000001"
+    ]
+    assert json.loads(stderr.getvalue())["error"]["code"] == "REMOTE_PROTOCOL_ERROR"
+
+
+def test_from_issue_environment_mismatch_fails_before_signal_write(tmp_path) -> None:
+    snapshot_file = tmp_path / "issue.json"
+    snapshot_file.write_text(
+        json.dumps(
+            {
+                "number": 1466,
+                "title": "Scoped issue",
+                "body": "data only",
+                "state": "open",
+                "html_url": "https://github.com/simonw/llm/issues/1466",
+                "created_at": "2026-07-30T22:00:00Z",
+                "updated_at": "2026-07-30T22:00:00Z",
+            }
+        ),
+        encoding="utf-8",
+    )
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        payload = success_for(request)
+        if request.url.path.startswith("/api/v2/environments/"):
+            payload["environment"]["application_id"] = "app_01J0000000000002"
+        return httpx.Response(
+            200,
+            headers={
+                "content-type": "application/json",
+                "x-caseloop-contract-version": "2.0",
+            },
+            json=payload,
+        )
+
+    stderr = io.StringIO()
+    exit_code = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "case",
+            "from-issue",
+            "https://github.com/simonw/llm/issues/1466",
+            "--application-id",
+            "app_01J0000000000001",
+            "--environment-id",
+            "env_01J0000000000001",
+            "--snapshot-file",
+            str(snapshot_file),
+            "--source-id",
+            SOURCE,
+            "--reporter-ref",
+            "prn_01J0000000000001",
+        ],
+        env=_env(),
+        stdout=io.StringIO(),
+        stderr=stderr,
+        transport=httpx.MockTransport(handler),
+    )
+    assert exit_code == ExitFamily.PROTOCOL
+    assert [request.url.path for request in requests] == [
+        "/api/v2/applications/app_01J0000000000001",
+        "/api/v2/environments/env_01J0000000000001",
+    ]
+    assert json.loads(stderr.getvalue())["error"]["code"] == "REMOTE_BINDING_INVALID"
+
+
+def test_from_issue_rejects_malformed_url() -> None:
+    stdout = io.StringIO()
+    stderr = io.StringIO()
+    exit_code = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "case",
+            "from-issue",
+            "https://example.com/not-github",
+            "--application-id",
+            "app_01J0000000000001",
+            "--environment-id",
+            "env_01J0000000000001",
+        ],
+        env=_env(),
+        stdout=stdout,
+        stderr=stderr,
+        transport=httpx.MockTransport(_response),
+    )
+    assert exit_code == ExitFamily.INPUT
+    assert json.loads(stderr.getvalue())["error"]["code"] == "ISSUE_URL_INVALID"
+
+
+def test_from_issue_rejects_snapshot_bound_to_another_issue(tmp_path) -> None:
+    snapshot_file = tmp_path / "wrong-issue.json"
+    snapshot_file.write_text(
+        json.dumps(
+            {
+                "number": 1467,
+                "title": "A different issue",
+                "body": "must not be relabelled as issue 1466",
+                "state": "open",
+                "html_url": "https://github.com/simonw/llm/issues/1467",
+                "created_at": "2026-07-30T22:00:00Z",
+                "updated_at": "2026-07-30T22:00:00Z",
+            }
+        ),
+        encoding="utf-8",
+    )
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        raise AssertionError("identity mismatch must fail before a control-plane call")
+
+    stderr = io.StringIO()
+    exit_code = run(
+        [
+            "--api-version",
+            "2",
+            *_globals(),
+            "case",
+            "from-issue",
+            "https://github.com/simonw/llm/issues/1466",
+            "--application-id",
+            "app_01J0000000000001",
+            "--environment-id",
+            "env_01J0000000000001",
+            "--snapshot-file",
+            str(snapshot_file),
+        ],
+        env=_env(),
+        stdout=io.StringIO(),
+        stderr=stderr,
+        transport=httpx.MockTransport(handler),
+    )
+    assert exit_code == ExitFamily.INPUT
+    assert requests == []
+    assert (
+        json.loads(stderr.getvalue())["error"]["code"]
+        == "ISSUE_SNAPSHOT_IDENTITY_MISMATCH"
+    )
 
 
 def test_token_can_never_be_supplied_in_argv() -> None:

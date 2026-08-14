@@ -17,8 +17,6 @@ from pydantic import (
     Field,
     StrictBool,
     StrictInt,
-    field_validator,
-    model_serializer,
     model_validator,
 )
 
@@ -41,39 +39,6 @@ Digest = Annotated[str, Field(pattern=r"^sha256:[0-9a-f]{64}$")]
 IdempotencyReceiptId = Annotated[str, Field(pattern=r"^idemr_[0-9A-Za-z]{8,64}$")]
 AuthorityReceiptId = Annotated[str, Field(pattern=r"^arec_[0-9A-Za-z]{8,64}$")]
 OperationId = Annotated[str, Field(pattern=r"^op_[0-9A-Za-z]{8,64}$")]
-Slug = Annotated[
-    str,
-    Field(
-        pattern=r"^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$",
-        min_length=1,
-        max_length=64,
-    ),
-]
-LogicalName = Annotated[
-    str,
-    Field(
-        pattern=r"^[a-z0-9](?:[a-z0-9_-]{0,127})$",
-        min_length=1,
-        max_length=128,
-    ),
-]
-ComponentKind = Literal[
-    "APPLICATION_CODE",
-    "AGENT",
-    "MODEL_BINDING",
-    "PROMPT",
-    "DATASET",
-    "INDEX",
-    "EMBEDDING",
-    "RETRIEVER",
-    "SKILL",
-    "MCP_SERVER",
-    "TOOL_SCHEMA",
-    "POLICY",
-    "MEMORY_POLICY",
-    "RUNTIME_PROFILE",
-    "CONNECTOR",
-]
 
 
 class RecordEnvelope(WireModel):
@@ -94,67 +59,18 @@ class RecordEnvelope(WireModel):
         return self
 
 
-class ExactApplicationBinding(WireModel):
-    kind: Literal["AI_APPLICATION"]
-    id: ApplicationId
-    revision: Annotated[StrictInt, Field(ge=1)]
-    digest: Digest
-
-    def __getitem__(self, key: str):
-        return getattr(self, key)
-
-
-class ExactSystemComponentBinding(WireModel):
-    kind: Literal["SYSTEM_COMPONENT"]
-    id: ComponentId
-    revision: Annotated[StrictInt, Field(ge=1)]
-    digest: Digest
-
-    def __getitem__(self, key: str):
-        return getattr(self, key)
-
-
 class ApplicationRecord(WireModel):
     record_envelope: RecordEnvelope
     application_id: ApplicationId
     workspace_id: WorkspaceId
     project_id: ProjectId
-    slug: Slug
+    slug: Annotated[str, Field(min_length=1, max_length=64)]
     display_name: Annotated[str, Field(min_length=1, max_length=256)]
     owner_principal_ids: Annotated[list[PrincipalId], Field(min_length=1, max_length=32)]
     criticality: Literal["P0", "P1", "P2", "P3"]
     data_classification: Literal["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"]
     governance_mode: Literal["MANAGED", "OBSERVED"]
-    lifecycle_state: Literal["REGISTERED", "ACTIVE", "ARCHIVED"]
-    exact_previous_application_binding_or_null: None = None
-    exact_previous_application_binding: ExactApplicationBinding | None = None
-
-    @model_validator(mode="after")
-    def previous_binding_matches_revision(self) -> "ApplicationRecord":
-        fields = self.model_fields_set
-        if self.record_envelope.revision == 1:
-            if (
-                self.lifecycle_state != "REGISTERED"
-                or "exact_previous_application_binding_or_null" not in fields
-                or "exact_previous_application_binding" in fields
-            ):
-                raise ValueError("registered application requires the null previous binding")
-        elif (
-            "exact_previous_application_binding" not in fields
-            or self.exact_previous_application_binding is None
-            or "exact_previous_application_binding_or_null" in fields
-        ):
-            raise ValueError("application transition requires an exact previous binding")
-        return self
-
-    @model_serializer(mode="wrap")
-    def serialize_revision_shape(self, handler):
-        payload = handler(self)
-        if self.record_envelope.revision == 1:
-            payload.pop("exact_previous_application_binding", None)
-        else:
-            payload.pop("exact_previous_application_binding_or_null", None)
-        return payload
+    lifecycle_state: Literal["ACTIVE", "ARCHIVED"]
 
 
 class EnvironmentRecord(WireModel):
@@ -162,7 +78,7 @@ class EnvironmentRecord(WireModel):
     environment_id: CatalogEnvironmentId
     workspace_id: WorkspaceId
     application_id: ApplicationId
-    logical_name: LogicalName
+    logical_name: Annotated[str, Field(min_length=1, max_length=128)]
     risk_classification: Literal["LOW", "MEDIUM", "HIGH", "CRITICAL"]
     lifecycle_state: Literal["ACTIVE", "RETIRED"]
 
@@ -172,44 +88,15 @@ class ComponentRecord(WireModel):
     component_id: ComponentId
     workspace_id: WorkspaceId
     application_id: ApplicationId
-    component_kind: ComponentKind
-    logical_name: LogicalName
+    component_kind: str
+    logical_name: Annotated[str, Field(min_length=1, max_length=128)]
     owner_principal_ids: Annotated[list[PrincipalId], Field(min_length=1, max_length=32)]
     criticality: Literal["P0", "P1", "P2", "P3"]
     data_classification: Literal["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"]
     permission_classification: Literal["READ_ONLY", "READ_WRITE", "ELEVATED"]
     effect_classification: Literal["NONE", "LOCAL", "EXTERNAL"]
     dataset_role: Literal["RUNTIME_DATA", "EVALUATION_DATA", "SEALED_HOLDOUT"] | None
-    lifecycle_state: Literal["REGISTERED", "ACTIVE", "DEPRECATED", "RETIRED"]
-    exact_previous_system_component_binding_or_null: None = None
-    exact_previous_system_component_binding: ExactSystemComponentBinding | None = None
-
-    @model_validator(mode="after")
-    def previous_binding_matches_revision(self) -> "ComponentRecord":
-        fields = self.model_fields_set
-        if self.record_envelope.revision == 1:
-            if (
-                self.lifecycle_state != "REGISTERED"
-                or "exact_previous_system_component_binding_or_null" not in fields
-                or "exact_previous_system_component_binding" in fields
-            ):
-                raise ValueError("registered component requires the null previous binding")
-        elif (
-            "exact_previous_system_component_binding" not in fields
-            or self.exact_previous_system_component_binding is None
-            or "exact_previous_system_component_binding_or_null" in fields
-        ):
-            raise ValueError("component transition requires an exact previous binding")
-        return self
-
-    @model_serializer(mode="wrap")
-    def serialize_revision_shape(self, handler):
-        payload = handler(self)
-        if self.record_envelope.revision == 1:
-            payload.pop("exact_previous_system_component_binding", None)
-        else:
-            payload.pop("exact_previous_system_component_binding_or_null", None)
-        return payload
+    lifecycle_state: Literal["ACTIVE", "DEPRECATED", "RETIRED"]
 
 
 class DependencyEdgeRecord(WireModel):
@@ -222,154 +109,6 @@ class DependencyEdgeRecord(WireModel):
     relation: Literal["DEPENDS_ON", "INVOKES", "DATA_FLOW", "CONTAINS", "REFERENCES"]
     required: StrictBool
     edge_digest: Digest
-
-
-ApplicationListCursor = Annotated[
-    str,
-    Field(pattern=r"^cur_[0-9A-Za-z_-]{8,512}$"),
-]
-
-
-class ApplicationListItem(WireModel):
-    application: ApplicationRecord
-    environments: list[EnvironmentRecord]
-    system_components: list[ComponentRecord]
-    dependency_edges: list[DependencyEdgeRecord]
-
-    @model_validator(mode="after")
-    def graph_bindings_match_application(self) -> "ApplicationListItem":
-        application = self.application
-        component_ids = {item.component_id for item in self.system_components}
-        children = [
-            *self.environments,
-            *self.system_components,
-            *self.dependency_edges,
-        ]
-        if any(
-            item.workspace_id != application.workspace_id
-            or item.application_id != application.application_id
-            for item in children
-        ):
-            raise ValueError("application list graph child binding mismatch")
-        if any(
-            edge.from_component_id not in component_ids
-            or edge.to_component_id not in component_ids
-            for edge in self.dependency_edges
-        ):
-            raise ValueError("application list edge endpoint is not in the graph")
-        return self
-
-
-class ApplicationListResponse(WireModel):
-    schema_version: SchemaVersion
-    workspace_id: WorkspaceId
-    request_id: RequestId
-    audit_ref: AuditRef
-    items: list[ApplicationListItem]
-    next_cursor: ApplicationListCursor | None
-
-    @model_validator(mode="after")
-    def items_match_workspace_and_are_unique(self) -> "ApplicationListResponse":
-        ids = [item.application.application_id for item in self.items]
-        if any(
-            item.application.workspace_id != self.workspace_id for item in self.items
-        ) or len(ids) != len(set(ids)):
-            raise ValueError("application list item binding mismatch")
-        return self
-
-
-V5PublicIntentName = Literal[
-    "capabilities.get",
-    "applications.register",
-    "applications.get",
-    "applications.list",
-    "environments.register",
-    "environments.get",
-    "system-components.register",
-    "system-components.get",
-    "dependency-edges.record",
-    "dependency-edges.get",
-    "system-manifests.import",
-]
-
-
-class V5CapabilityPrincipal(WireModel):
-    principal_id: PrincipalId
-    principal_type: Literal["human", "external_agent", "service", "connector"]
-    scopes: list[Annotated[str, Field(min_length=1, max_length=128)]]
-    credential_expires_at: AwareDatetime
-
-    @field_validator("scopes")
-    @classmethod
-    def scopes_are_unique(cls, value: list[str]) -> list[str]:
-        if len(value) != len(set(value)):
-            raise ValueError("scopes must be unique")
-        return value
-
-
-class V5EnabledIntent(WireModel):
-    name: V5PublicIntentName
-    scope: Annotated[str, Field(min_length=1, max_length=128)]
-    execution_mode: Literal["synchronous", "synchronous_local_transaction"]
-    http: StrictBool
-    cli: StrictBool
-
-    @model_validator(mode="after")
-    def transports_are_real(self) -> "V5EnabledIntent":
-        if self.http is not True or self.cli is not True:
-            raise ValueError("advertised V5 intents require http=true and cli=true")
-        expected_mode = (
-            "synchronous_local_transaction"
-            if self.name == "system-manifests.import"
-            else "synchronous"
-        )
-        if self.execution_mode != expected_mode:
-            raise ValueError("advertised V5 intent execution_mode mismatch")
-        return self
-
-
-class V5ServerCapabilitiesData(WireModel):
-    server_version: Annotated[str, Field(min_length=1, max_length=128)]
-    api_major: StrictInt
-    contract_version: Literal["2.0"]
-    principal: V5CapabilityPrincipal
-    enabled_intents: list[V5EnabledIntent]
-    disabled_intents: list[V5PublicIntentName]
-    generated_at: AwareDatetime
-
-    @field_validator("api_major")
-    @classmethod
-    def major_is_two(cls, value: int) -> int:
-        if value != 2:
-            raise ValueError("api_major must be 2")
-        return value
-
-    @field_validator("disabled_intents")
-    @classmethod
-    def skeletons_remain_undiscoverable(
-        cls, value: list[V5PublicIntentName]
-    ) -> list[V5PublicIntentName]:
-        if value:
-            raise ValueError("unimplemented V5 skeletons must remain undiscoverable")
-        return value
-
-    @field_validator("enabled_intents")
-    @classmethod
-    def enabled_intents_are_unique(
-        cls, value: list[V5EnabledIntent]
-    ) -> list[V5EnabledIntent]:
-        names = [item.name for item in value]
-        if len(names) != len(set(names)):
-            raise ValueError("enabled_intents must be unique")
-        return value
-
-
-class V5ServerCapabilitiesResponse(WireModel):
-    schema_version: Literal["2.0"]
-    workspace_id: WorkspaceId
-    request_id: RequestId
-    audit_ref: AuditRef
-    data: V5ServerCapabilitiesData
 
 
 V5IdempotencyIntent = Literal[
@@ -508,9 +247,6 @@ class DependencyEdgeGetResponse(WireModel):
 __all__ = [
     "ApplicationGetResponse",
     "ApplicationId",
-    "ApplicationListCursor",
-    "ApplicationListItem",
-    "ApplicationListResponse",
     "ApplicationRecord",
     "ApplicationRegisterResponse",
     "CatalogEnvironmentId",
@@ -525,16 +261,9 @@ __all__ = [
     "EnvironmentGetResponse",
     "EnvironmentRecord",
     "EnvironmentRegisterResponse",
-    "ExactApplicationBinding",
-    "ExactSystemComponentBinding",
     "RecordEnvelope",
     "SchemaVersion",
     "V5IdempotencyDelivery",
     "V5IdempotencyReceipt",
-    "V5CapabilityPrincipal",
-    "V5EnabledIntent",
-    "V5PublicIntentName",
-    "V5ServerCapabilitiesData",
-    "V5ServerCapabilitiesResponse",
     "WireModel",
 ]
