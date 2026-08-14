@@ -1,5 +1,14 @@
 # V5-1C First System Case — Verification Evidence
 
+> **SUPERSEDED / REJECTED AS CLOSURE EVIDENCE (2026-08-11 review).** This file's
+> original Exit claim (`confirm => READY`) and placeholder
+> `exact_resolution_contract_binding` are false under the accepted dependency
+> order: V5-1C confirmation remains non-executable until V5-4 materializes an
+> exact ResolutionContract. The run also predates server-derived trust roles,
+> fresh durable reauthentication, project/environment authorization, exact
+> event bindings and the 011/012 migrations. Preserve the raw logs as
+> historical output only; do not use this bundle to mark V5-1C `DONE`.
+
 - Stage: V5-1C（ApplicationCaseBinding + Manual/GitHub Issue 只读 SourceConnection +
   `caseloop case from-issue` + acceptance propose/get/confirm + CaseReadiness +
   Console Case 页增强）

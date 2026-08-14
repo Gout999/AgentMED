@@ -1,5 +1,12 @@
 # V5-1B Acceptance Record（独立 DS 验收）
 
+> **ACCEPTANCE WITHDRAWN BY 2026-08-11 PROJECT REVIEW.** The 12/12 result below
+> is a preserved historical record for commits `94870a5`/`65a93b5`, not current
+> closure authority. Later review found exact-binding, authorization,
+> provenance, dataset, diff-integrity and concurrency defects. The repaired
+> worktree later passed a focused ephemeral PostgreSQL race check, but remains
+> uncommitted and has no post-commit stage verifier.
+
 - Stage: V5-1B（ComponentRevision / SystemVersionSet / SystemAssignment /
   trusted manifest import / `caseloop init`）
 - Run: `run-20260811-v5-1b`（本目录已有单元/集成/CLI/conformance/console 证据与

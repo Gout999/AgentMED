@@ -1,5 +1,13 @@
 # V5-1B System manifest / VersionSet / 原子导入 — Verification Evidence
 
+> **SUPERSEDED / NOT VALID CLOSURE EVIDENCE (2026-08-11 review).** The original
+> run predates the exact revision/record-digest corrections, project/trust-role
+> authorization, GET/diff integrity replay, topology provenance correction,
+> dataset-role restrictions and PostgreSQL workspace import lock. Raw logs are
+> retained only as historical output. The repair worktree's focused ephemeral
+> PostgreSQL race check passed, but there is no V5-1B subject commit,
+> digest-bearing stage manifest or post-commit verifier.
+
 - Stage: V5-1B (ComponentRevision / SystemVersionSet / SystemAssignment /
   trusted manifest import / `caseloop init` discovery)
 - Run ID: `run-20260811-v5-1b`

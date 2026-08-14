@@ -1,5 +1,13 @@
 # V5-1A Application Catalog — Verification Evidence
 
+> **SUPERSEDED / NOT VALID CLOSURE EVIDENCE (2026-08-11 review).** The original
+> run predates the V5 major-2 event envelope, server-derived trust-role checks,
+> exact revision/digest replay validation and durable audited mutation denials.
+> Its raw logs are retained as historical output, but this bundle must not be
+> used to mark V5-1A `DONE`. The later repair worktree passed focused ephemeral
+> PostgreSQL review, but still has no V5-1A subject commit, digest-bearing stage
+> manifest or post-commit verifier.
+
 - Stage: V5-1A (AIApplication / Environment / SystemComponent / DependencyEdge)
 - Run ID: `run-20260811-v5-1a`
 - Commit: `feat(v5): add ai application catalog`

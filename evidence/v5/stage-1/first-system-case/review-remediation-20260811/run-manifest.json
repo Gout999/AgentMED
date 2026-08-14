@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "run_id": "review-remediation-20260811",
+  "status": "IN_PROGRESS_NO_GO_FOR_STAGE_DONE",
+  "base_commit": "4a0a421cc669bf98d9b882d149d5d3df4c8dc36e",
+  "subject_commit": null,
+  "working_tree_dirty": true,
+  "manifest_digest": null,
+  "postgresql_integration": "PASS_FOCUSED_EPHEMERAL_LOOPBACK_5_OF_5",
+  "postgresql_temporary_container_cleanup": "PASS_REMOVED",
+  "independent_verifier": "PASS_REVIEW_REMEDIATION_WORKTREE_ONLY",
+  "verifier_report": "verifier-report.md",
+  "facets": {
+    "contract": "PASS",
+    "replay": "PASS_FOCUSED_ONLY",
+    "domain-provider-live": "NOT_RUN",
+    "agentteams-native": "NOT_RUN",
+    "claude-runtime-live": "NOT_RUN",
+    "agent-causal": "NOT_RUN",
+    "repo-sandbox": "NOT_RUN",
+    "human-authorized-external": "NOT_RUN",
+    "production-canary": "NOT_RUN"
+  },
+  "closure_blockers": [
+    "APPLICATION_COMPONENT_LIFECYCLE_CONTRACT_MISMATCH",
+    "STANDALONE_SYSTEM_VERSIONS_RECORD_NOT_IMPLEMENTED",
+    "D013_UNTRACKED_CLEAN_CHECKOUT_LINK_BROKEN",
+    "PER_STAGE_POST_COMMIT_VERIFIER_ABSENT",
+    "SUBJECT_COMMIT_AND_DIGEST_MANIFEST_ABSENT"
+  ]
+}
