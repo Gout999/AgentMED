@@ -6,14 +6,11 @@
 
 ## 2026-08-11 V5 documentation recovery and execution-plan handoff (current)
 
-- `closure_status`: **R0 + D1 DONE (D1 contract-only) / NO-GO for V5-1 stage DONE**。R0 semantic subject
+- `closure_status`: **R0 DONE / NO-GO for V5-1 stage DONE**。R0 semantic subject
   `4d15c1c81180386fa4852a53f8b8847e74cda050` 已在 detached clean checkout 通过独立
   verifier（P0=0/P1=0），digest-bearing evidence 位于
   `evidence/v5/stage-0/documentation-authority/r0docs_20260811T104032Z_4d15c1c/`。R0 的九个
-  runtime facets 全为 `NOT_RUN`。D1 semantic subject `798531a`（前置 decision commit
-  `66052a1`）也通过 independent verifier（P0=0/P1=0），evidence 位于
-  `evidence/v5/decision-gates/d1-application-component-lifecycle/d1lifecycle_20260811T123512Z_798531a/`；
-  仅 `contract=PASS`，其他 8 facets `NOT_RUN`。V5 repair 仍是独立未提交 WIP，未 push。
+  runtime facets 全为 `NOT_RUN`；V5 repair 仍是独立未提交 WIP，未 push。
 - `authority_and_integrity_repair`: V5 major-2 event、exact binding、AuthorityReceipt、
   project/environment grant、server trust role、denial audit、fresh human reauth、并发确认、
   manifest locking、provenance/dataset/diff 和 dirty-discovery 已在 worktree 修复并通过聚焦验证。
@@ -33,15 +30,15 @@
   construction context、累计 handoff 和冲突编号的 executor-routing 决定已保留为历史快照，
   原入口使用 redirect 避免断链。Master Plan 独立静态执行验收已 PASS；它不关闭 R0 或
   任一 runtime stage。
-- `known_blockers`: (1) D1 已裁决 `REGISTERED→ACTIVE`，但 R1/R2 尚未实现 lifecycle
-  history/migration/authority，runtime direct ACTIVE 仍不合约；(2) second VersionSet 用户价值需要先冻结并激活 standalone
+- `known_blockers`: (1) AIApplication/SystemComponent frozen `REGISTERED→ACTIVE` 与 runtime
+  direct ACTIVE 冲突；(2) second VersionSet 用户价值需要先冻结并激活 standalone
   `system-versions.record` 以及产生第二 component/topology revision 的真实 wire；(3) R1–R4
   digest-bearing manifest、completion commit/verifier 尚未产生；(4) V5 outbox
   属于 V5-2，ResolutionContract 属于 V5-4。
-- `next_action`: D1 已关闭 contract gate。先按已设计的线性 migration 顺序构造 R1 authority/
-  event foundation（`010 → 011 lifecycle/authority → 012 event envelope`），在 clean subject 上
-  完成 migration/replay/fail-closed verifier 与 evidence 后，再进入 R2；R4 hardening 后移到
-  `013`。不得先启动 V5-2，也不得把现有混合 WIP 当作 R1 closure。
+- `next_action`: 由 product owner 记录并裁决 D1；当前推荐保留 frozen
+  `REGISTERED→ACTIVE`，并以独立 ADR/semantic subject/verifier 定义 append-only lifecycle
+  revision history、owner/CAS activation 和 ComponentRevision→ACTIVE component exact binding。
+  D1 关闭后再按 R1→R4 分 stage 施工。不得先启动 V5-2。
 - `authorization_boundary`: 当前用户目标授权按 Master Plan 进行本地施工、精确 staging 和
   semantic/evidence commits。push、PR、付费 provider、live、human approval、production 或
   其他 external write 仍需单独授权。

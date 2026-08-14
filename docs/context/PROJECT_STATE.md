@@ -2,10 +2,8 @@
 
 - `r0_documentation_subject`: `4d15c1c81180386fa4852a53f8b8847e74cda050` (independent detached-checkout PASS; P0=0/P1=0)
 - `r0_evidence`: `evidence/v5/stage-0/documentation-authority/r0docs_20260811T104032Z_4d15c1c/`
-- `d1_lifecycle_subject`: `798531af539cd37e797723f2985d55c70fa1046e` (semantic series starts at `66052a1`; independent detached-checkout PASS; P0=0/P1=0)
-- `d1_lifecycle_evidence`: `evidence/v5/decision-gates/d1-application-component-lifecycle/d1lifecycle_20260811T123512Z_798531a/` (`contract=PASS`; other 8 facets `NOT_RUN`)
 - `pre_r0_baseline`: `4a0a421cc669bf98d9b882d149d5d3df4c8dc36e`
-- `last_independently_verified_evidence_subject_commit`: `798531af539cd37e797723f2985d55c70fa1046e` (V5-D1, contract-only; other 8 canonical facets `NOT_RUN`)
+- `last_independently_verified_evidence_subject_commit`: `b3727d72e9251bbf4d92047c02512d38eb976cf5` (V5-0C, contract-only freeze; V5 runtime facets NOT_RUN)
 - `stage0_documentation_commit`: `b7889a7e200f76bd5985188ff6fb7e9e1860fd28`
 - `previous_v3_evidence_commit`: `cef1598b4ac1d42fdd4f206c5747eb89a06f24fc`
 - `active_branch`: `codex/v4-foundation`
@@ -41,11 +39,10 @@
 - Current transport discovery advertises only the implemented 1A/1B/1C allowlist. Standalone
   `system-versions.record`, V5-2 durable work/V5 outbox delivery, V5-4 ResolutionContract and all
   later Agent/MCP/A2A/release stages remain `NOT_IMPLEMENTED`.
-- D1 lifecycle decision is closed contract-only. The owner selected Option A: immutable revision 1
-  `REGISTERED` followed by manifest-only revision 2 `ACTIVE`, with exact CAS, dual initiator/controller
-  authority and current-authoritative-ACTIVE ComponentRevision binding. Current register/import
-  runtime still writes `ACTIVE` directly, so the runtime mismatch remains open work for R1/R2; D1
-  evidence does not prove migration or runtime implementation.
+- Known unresolved 1A contract mismatch: frozen AIApplication/SystemComponent state machines create
+  `REGISTERED` then activate, while current register/import runtime writes `ACTIVE` directly. This
+  is recorded in the V5 runtime overlay and must be resolved explicitly; the review did not silently
+  rewrite the frozen target.
 - Current verification is focused/local only. Five V5 PostgreSQL repair journeys now pass in a
   dedicated ephemeral loopback container, including the installed-CLI First System Case and the
   concurrent first-import race; the container was removed afterward. An independent verifier passed

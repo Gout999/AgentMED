@@ -85,7 +85,6 @@ migration、tests、evidence、rollback、commit 和 verifier。
 |---|---|---|
 | V5-0A clean-checkout closure | `DONE` | subject `4d15c1c81180386fa4852a53f8b8847e74cda050`；R0 evidence/verifier PASS |
 | V5-0B/0C | `DONE (contract-only)` | 历史 freeze，不重开 |
-| D1 lifecycle decision | `DONE (contract-only)` | subject `798531a`；evidence/verifier PASS；仅解锁 R1 施工，不证明 runtime |
 | V5-1A | `IN_PROGRESS` | D1 + R1/R2 PASS |
 | V5-1B | `IN_PROGRESS` | R3 PASS |
 | V5-1C | `IN_PROGRESS` | R4 PASS |
@@ -243,39 +242,27 @@ flowchart TD
 冻结合同要求 creation=`REGISTERED`，随后独立 `*.activated` 事件进入 `ACTIVE`；当前 runtime
 在 register/import 时直接写 `ACTIVE`。
 
-**Owner decision（2026-08-11）**：产品 owner 已选择方案 A，保留冻结生命周期。D-014、
-semantic series `66052a1` + `798531a`、digest-bearing evidence 与 independent verifier
-已经关闭 D1 contract gate（P0=0/P1=0）。这只解锁 R1 施工，不证明 lifecycle migration、
-runtime、route 或 capability 已实现。
-
-**选择的方案 A**：创建 append-only revision/history，使 register 产生
+**推荐方案 A**：保留冻结生命周期。创建 append-only revision/history，使 register 产生
 revision 1 `REGISTERED`，可信 manifest workflow 在同一受控事务内调用 activate 产生
 revision 2 `ACTIVE`；下游 ComponentRevision 在记录时 exact 绑定 active SystemComponent
-的当时 current authoritative lifecycle revision；initial manifest 是 revision 2，后续
-deprecate/reactivate 后可为 revision 4 或更高，旧的 historical ACTIVE revision 不可复用。
-VersionSet 再绑定该 ComponentRevision。该方案必须修改 migration
+revision 2，VersionSet 再绑定该 ComponentRevision。该方案必须修改 migration
 008 之后的 lifecycle constraints（当前 application 不允许 REGISTERED、component 不允许
 REGISTERED），新增 history/constraint migration，并把 `system-components.activate` 纳入
 trusted manifest workflow；不能只补 `applications.activate`。Public standalone activate
 可继续 deferred，但 internal command、event、authority receipt 必须真实存在。
 
-**拒绝的方案 B**：通过新 ADR/contract migration 把初态改为 `ACTIVE`。该方案实现更小，
-但丢失显式 activation authority，产品 owner 已明确拒绝。
+**备选方案 B**：通过新 ADR/contract migration 把初态改为 `ACTIVE`。该方案实现更小，
+但丢失显式 activation authority，只有产品 owner 明确选择时采用。
 
-**Decision gate**：`DONE (contract-only)`；evidence 位于
-`evidence/v5/decision-gates/d1-application-component-lifecycle/d1lifecycle_20260811T123512Z_798531a/`。
-R1 已解锁施工，但在自身 migration/runtime/replay evidence PASS 前不得进入 R2；不得只改
-测试或 overlay 掩盖 frozen/runtime 差异。
+**Decision gate**：未完成产品/owner/迁移影响复核前不得实现；不得只改测试或 overlay
+掩盖 frozen/runtime 差异。
 
 ### R1 · V5 authority/event foundation
 
 **依赖**：R0 + D1。
 
-**Scope**：生命周期 revision storage/CAS、major-2 generic event envelope、exact subject/binding
-resolver、AuthorityReceipt generic replay、migration head、read/replay integrity。R1 只实现
-registration revision 1 event，以及 revision 1→2 storage/CAS 的显式 non-production harness；
-它不实现可由 production caller 调用的 `*.activated` event route、direct revision-2 append
-入口或 manifest composition。
+**Scope**：生命周期 revision、major-2 event envelope、exact subject/dependent bindings、
+AuthorityReceipt、migration head、read/replay integrity。
 
 **Migration**：当前 WIP head 为 012。若 D1 需要新表/列，使用实际 next head；Master Plan
 不预占硬编码编号。012 本身会拒绝任何已有 V5 authority history；因此对未接受的 disposable
@@ -283,76 +270,22 @@ registration revision 1 event，以及 revision 1→2 storage/CAS 的显式 non-
 方案。不能把旧事件重标为 V5 major-2，也不能泛称 populated 010/011→012 upgrade PASS。
 后续 migration 还需覆盖 populated 012 数据的 upgrade/recovery。
 
-**Verification**：状态机 reachability、registration event、通过显式 non-production harness
-验证 revision 1→2 storage/CAS 与 PostgreSQL concurrent exactly-one、generic envelope/receipt
-replay、tampered row/envelope/scalar、fresh/populated migration。R1 evidence 必须把 revision-2
-harness 标为 storage primitive，不能把它表述为 authenticated business activation replay。
+**Verification**：状态机 reachability、creation/activation event、receipt replay、tampered
+row/envelope/scalar、fresh/populated migration、PostgreSQL concurrent activation。
 
-**Exit / unlock R2**：R1 可在上述 foundation scope 内取得 `contract=PASS` 与 `replay=PASS`，
-但所有 production activated-event route 与 direct revision-2 append 必须 deny-all/disabled；
-D-014 的真实 manifest-only dual-authority activation 仍是 R2 的必过 Exit，不因 R1 primitive
-PASS 而降级或视为已实现。
-
-**Stop gate**：历史 ACTIVE row 无法确定性 backfill；任何 production 或通用 internal caller
-可以发出 `*.activated` event 或直接 append revision 2；non-production harness 被导出为 capability/
-route/service 或 evidence 把它表述为 business activation；read path 不能重建 revision/digest。
+**Stop gate**：历史 ACTIVE row 无法确定性 backfill；activation 可被非 owner 调用；
+read path 不能重建 revision/digest。
 
 ### R2 · V5-1A Application Catalog closure
 
-**Current runtime candidate**：上述 11-intent R2 + workspace-initial one-shot R3-bootstrap slice
-为 `IMPLEMENTED_PENDING_POST_COMMIT_VERIFIER`；这不是 `DONE/PASS`，也不改变 R3-full、R4 或
-standalone `system-versions.record/get/diff` 的 `NOT_IMPLEMENTED`/disabled 状态。
-CLI `system-manifest validate` 只是本地文件验证 utility，不是 public intent、transport 或
-capability；`init`/repository discovery 归 R3-full，R2 CLI 与 capability discovery 必须隐藏。
-
 **User outcome**：维护者可在授权 workspace/project 下注册、激活并读取一个 AIApplication、
-Environment、SystemComponent 和 DependencyEdge，并完成一个 initial declared VersionSet 与
-generation-1 desired assignment；系统不宣称第二 VersionSet、diff、observed runtime 或 external
-effect。
+Environment、SystemComponent 和 DependencyEdge；系统不宣称 runtime/version/observed。
 
 **Scope**：Application Catalog service、HTTP/CLI、capabilities、Console Applications read
-model、audit/idempotency/outbox，以及对应 contract overlay。为使“激活”在 standalone activation
-全 transport forbidden 的前提下真实可达，R2 与 R3-bootstrap 显式耦合并只激活 11 个 public
-intents：`capabilities.get`，Application/Environment/SystemComponent/DependencyEdge 各自的
-register-or-record + get 共 8 个，scope-filtered `applications.list`，以及 bootstrap-only
-`system-manifests.import`。R2 必须实现
-真实 manifest activation coordinator/gate：从 exact authenticated `system-manifests.import` 建立不可伪造、
-transaction-bound 的 authority context，校验 active `application-catalog-controller` 与 exact
-initiating human-or-service principal，并在同一 PostgreSQL UoW 内完成 lifecycle revision、
-activated event、outbox、controller audit、initiating-principal audit、closed AuthorityReceipt 与
-idempotency terminal result；缺失、错绑或任一写入失败必须整事务 rollback。Standalone public
-activation route 仍 disabled。Bootstrap import 可完成既有 first-bootstrap graph：catalog、
-ComponentRevision、TopologyRevision、恰好一个 initial SystemVersionSet、BootstrapAttestation 与
-generation-1 desired SystemAssignment；这只证明首次 declared bootstrap，不证明 R3-full、第二
-VersionSet、semantic diff、observed runtime 或 release。
-
-这里采用完整 one-shot R3-bootstrap producer compatibility：每个 ComponentRevision 必须精确绑定
-同事务中从 append-only lifecycle history 锁定并解析出的当前 ACTIVE SystemComponent revision 2，
-TopologyRevision、initial SystemVersionSet、BootstrapAttestation 与 generation-1 SystemAssignment
-全部进入同一原子 response/idempotency replay。这里的 replay 严格限定为同一 idempotency key 与
-同一 canonical request body，返回相同 terminal atomic response 且不创建任何新事实；不同 key
-即使 body 或 manifest digest 相同，也因 workspace-initial one-shot 已消费而稳定返回 CONFLICT，
-且不创建任何新事实。R3-full 仍独占 standalone `system-versions.record`、
-第二 VersionSet、`system-versions.get/diff`；不得另造 catalog-only public manifest 子意图。
+model、audit/idempotency/outbox，以及对应 contract overlay。
 
 **Verification**：duplicate identity、cycle/fan-out、cross-tenant、role/scope、audit rollback、
-same-key conflict、concurrent register/activate、Console loading/empty/error/partial/UNKNOWN；另须
-证明 direct lifecycle/event call、syntactic manifest context、仅格式正确的 audit URI、伪 permit、
-cross-session/transaction、missing controller/initiating audit/receipt/outbox 均 fail closed 且零
-partial row，same-key retry 不产生第二 activation revision。
-
-**R3-bootstrap coupling gate**：`capabilities.get` 只能公布上述 11 intents；bootstrap import 是
-workspace-initial one-shot，只有所有 authoritative V5 domain tables 为空时才可创建或幂等回放
-完整首图与一个 initial VersionSet。任何先行 standalone catalog REGISTERED row 都会关闭该
-one-shot；后续多 Application/Environment/version 组合属于 R3-full。任何 standalone
-`system-versions.record`、第二 VersionSet、diff claim、隐式 observed/effect 或绕开 manifest
-coordinator 的 graph writer 均 fail closed。满足本 gate 只关闭 R2 + R3-bootstrap，不关闭
-R3-full。
-
-**Console/read gate**：Console Applications read model 只能调用 authenticated public
-`applications.list/get`；不得依赖无鉴权 internal `/v1/applications`。`applications.list` 必须在
-workspace/scope/object visibility 过滤后分页，使用 server-issued opaque cursor 与 closed response；
-Console credential 仅由 UI 内存态提供，不进入 bundle、静态配置、日志或持久化状态。
+same-key conflict、concurrent register/activate、Console loading/empty/error/partial/UNKNOWN。
 
 **Evidence**：`evidence/v5/stage-1/application-catalog/<run-id>/`。
 
@@ -362,11 +295,6 @@ Console credential 仅由 UI 内存态提供，不进入 bundle、静态配置�
 
 当前 product/JTBD 需要第二个 VersionSet 才能产生真实 diff，但 frozen/current contract 仍把
 standalone `system-versions.record` 标为未授权、未冻结 wire。R3 开工前必须：
-
-R2 的 bootstrap-only `system-manifests.import` 是唯一前置例外：它只可在 authoritative V5
-domain 全空的 workspace 创建或幂等回放第一个完整 declared graph 和 initial VersionSet，不激活
-standalone `system-versions.record`，也不构成第二 VersionSet 或 diff evidence。D2 与 R3-full
-仍负责下面的 standalone wire 和第二 graph 能力。
 
 - 冻结 request/response、scope/principal、idempotency、error、HTTP/CLI/capability mapping；
 - 明确它只引用既有 catalog/revision/topology，不复用 first-import bootstrap authority；
@@ -800,8 +728,8 @@ Evidence commit 只记录对前一个 immutable subject commit 的验证结果�
 
 ## 17. 下一执行队列
 
-1. 重排未提交 migration 链，按 `010 → 011 lifecycle/authority foundation → 012 event envelope → 013 V5-1C hardening` 保持 R1 先于 R4；
-2. 实施并关闭 R1 authority/event foundation，完成 clean migration/replay evidence 和 independent verifier 后才进入 R2；
-3. 按 R2→R4 逐包实施、提交、验证；
+1. 由 product owner 记录并裁决 D1；当前推荐保留 `REGISTERED → ACTIVE`，以独立 ADR/semantic subject/verifier 关闭 decision gate；
+2. 重排未提交 migration 链，确保 R1 authority/event foundation 先于 R4 hardening；
+3. 按 R1→R4 逐包实施、提交、验证；
 4. D2 冻结完整 version-graph recording bundle，而非只增加一个无法产生第二 graph 的 VersionSet endpoint；
 5. 只有 R4 post-commit verifier PASS 后，重写并冻结 V5-2A 施工 brief。

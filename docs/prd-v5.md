@@ -480,8 +480,9 @@ immutable revision，禁止原位改写。CLI `init`/`case from-issue` 只是按
 canonical intents 的便利 workflow；它们不拥有新的生命周期，也不把 Issue 内容提升为
 系统指令、验收真相或权限。
 
-`applications.register` 只允许 Integrator/Catalog Admin；`system-versions.record` 只允许
-可信 builder/attestor。外部 Agent 可以请求调查、提交不可信 Candidate、启动独立测评
+`applications.register` 只允许 Integrator/Catalog Admin；当前 manifest import 允许
+Integrator/Catalog Admin/Trusted Builder，版本记录允许 Integrator/Trusted Builder。外部
+Agent 可以请求调查、提交不可信 Candidate、启动独立测评
 和申请动作，但不能自报 application owner、declared deployed version、observed state
 或 external effect。
 
