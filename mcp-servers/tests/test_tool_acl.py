@@ -40,7 +40,7 @@ def _names(projected) -> set[str]:
         (
             eval_runner._profiled_mcp,
             "gatekeeper",
-            {"gate.run", "gate.run_verification", "gate.report"},
+            {"gate.run", "gate.run_verification", "gate.report", "sandbox.verify"},
         ),
         (
             eval_runner._profiled_mcp,

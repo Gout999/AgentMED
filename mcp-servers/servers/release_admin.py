@@ -699,6 +699,8 @@ def main() -> None:
             _profiled_mcp(s.mcp_tool_profile),
             expected_consumer=s.mcp_expected_consumer,
             gateway_backend_token=s.mcp_gateway_backend_token,
+            trust_consumer=s.trust_gateway_consumer,
+            host=s.host,
         ),
         host=s.host,
         port=s.release_admin_port,

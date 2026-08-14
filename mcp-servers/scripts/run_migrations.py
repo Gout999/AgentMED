@@ -25,9 +25,19 @@ def run() -> None:
     if engine.dialect.name == "postgresql":
         migration_dir = Path(__file__).resolve().parent.parent / "migrations"
         paths = sorted(migration_dir.glob("*.sql"))
-        with engine.begin() as conn:
-            for sql_path in paths:
-                conn.execute(__import__("sqlalchemy").text(sql_path.read_text(encoding="utf-8")))
+        for sql_path in paths:
+            sql = sql_path.read_text(encoding="utf-8")
+            with engine.begin() as conn:
+                try:
+                    conn.execute(__import__("sqlalchemy").text(sql))
+                except Exception as exc:  # noqa: BLE001 - demo-tolerant vector skip
+                    if sql_path.name == "002_casebase_vector.sql":
+                        print(
+                            "[migrate] warn: casebase vector skipped "
+                            f"(pgvector extension unavailable): {exc}"
+                        )
+                        continue
+                    raise
         print(f"[migrate] PG schema applied ({len(paths)} files from {migration_dir})")
     else:
         create_all(url)

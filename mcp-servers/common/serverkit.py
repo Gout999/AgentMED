@@ -57,16 +57,30 @@ class PathRewrite:
 
 
 class TrustedGatewayOnly:
-    """Reject direct MCP backend access and cross-consumer projection reuse."""
+    """Reject direct MCP backend access and cross-consumer projection reuse.
 
-    def __init__(self, app, *, expected_consumer: str, backend_token: str):
+    Strict mode (default) requires the exact gateway backend token AND the
+    consumer header. Demo mode (MCP_TRUST_GATEWAY_CONSUMER=true) accepts the
+    gateway-injected consumer header alone — valid only when the projection
+    binds to loopback (MCP_HOST=127.0.0.1), because Higress key-auth injects
+    x-mse-consumer and the header cannot be forged through the gateway; a
+    loopback bind removes the direct-forgery path.
+    """
+
+    def __init__(self, app, *, expected_consumer: str, backend_token: str,
+                 trust_consumer: bool = False, host: str = "0.0.0.0"):
         if not expected_consumer or not backend_token:
             raise RuntimeError(
                 "MCP_EXPECTED_CONSUMER and MCP_GATEWAY_BACKEND_TOKEN are required"
             )
+        if trust_consumer and host not in ("127.0.0.1", "localhost"):
+            raise RuntimeError(
+                "MCP_TRUST_GATEWAY_CONSUMER requires MCP_HOST=127.0.0.1/localhost"
+            )
         self.app = app
         self.expected_consumer = expected_consumer
         self.backend_token = backend_token
+        self.trust_consumer = trust_consumer
 
     @staticmethod
     def _header_values(scope: dict[str, Any], name: bytes) -> list[str]:
@@ -84,12 +98,15 @@ class TrustedGatewayOnly:
         if scope.get("type") == "http" and path != "/healthz":
             tokens = self._header_values(scope, b"x-caseloop-gateway-token")
             consumers = self._header_values(scope, b"x-mse-consumer")
-            authorized = (
+            token_ok = (
                 len(tokens) == 1
-                and len(consumers) == 1
                 and secrets.compare_digest(tokens[0], self.backend_token)
+            )
+            consumer_ok = (
+                len(consumers) == 1
                 and secrets.compare_digest(consumers[0], self.expected_consumer)
             )
+            authorized = consumer_ok and (token_ok or self.trust_consumer)
             if not authorized:
                 response = JSONResponse(
                     {
@@ -111,6 +128,8 @@ def build_server_app(
     gateway_backend_token: str,
     extra_routes: Optional[list] = None,
     extra_middleware: Optional[list] = None,
+    trust_consumer: bool = False,
+    host: str = "0.0.0.0",
 ):
     """组合 ASGI app：FastMCP /mcp 路由 + 附加 REST 路由。
 
@@ -126,6 +145,8 @@ def build_server_app(
         PathRewrite(app),
         expected_consumer=expected_consumer,
         backend_token=gateway_backend_token,
+        trust_consumer=trust_consumer,
+        host=host,
     )
 
 

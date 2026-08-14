@@ -10,6 +10,7 @@ import base64
 import hashlib
 import json
 import re
+import subprocess
 import sys
 import threading
 import time
@@ -1086,12 +1087,84 @@ def _report_hash(report: dict[str, Any]) -> str:
     return sha256_hex(data)
 
 
+SANDBOX_ROOT = Path(__file__).resolve().parents[2] / "var" / "sandbox"
+
+
+@mcp.tool(name="sandbox.verify")
+def sandbox_verify(
+    workorder_id: str, probe_path: str, prompt_before_path: str, prompt_after_path: str
+) -> dict[str, Any]:
+    """沙箱验证（ACL：守门员）：隔离容器回放坏例，修前/修后对照。
+
+    三个文件路径必须在 var/sandbox/ 白名单目录内；结果为 fail-closed 证据：
+    verdict=PASS 仅当修前 fail 且修后 pass。证据落 mcp_eval_runs（suite=sandbox-v1）。"""
+
+    def _resolve(raw: str) -> Path:
+        p = Path(raw).expanduser().resolve()
+        root = SANDBOX_ROOT.resolve()
+        if not str(p).startswith(str(root)):
+            raise forbidden(f"path outside sandbox root: {raw}")
+        if not p.is_file():
+            raise not_found(f"file not found: {raw}")
+        return p
+
+    with session_scope() as session:
+        draft = session.get(WorkOrderDraft, workorder_id)
+        if draft is None:
+            raise not_found(f"workorder {workorder_id} not found")
+    probe = _resolve(probe_path)
+    before = _resolve(prompt_before_path)
+    after = _resolve(prompt_after_path)
+    out = SANDBOX_ROOT / f"{workorder_id}-sandbox-evidence.json"
+    runner = Path(__file__).resolve().parents[2] / "scripts" / "sandbox" / "runner.py"
+    proc = subprocess.run(
+        [
+            sys.executable, str(runner),
+            "--probe", str(probe),
+            "--prompt-before", str(before),
+            "--prompt-after", str(after),
+            "--out", str(out),
+        ],
+        capture_output=True, text=True, timeout=600,
+    )
+    if not out.exists():
+        raise dependency_unavailable(
+            "sandbox runner produced no evidence: " + (proc.stderr or proc.stdout or "")[:300]
+        )
+    evidence = json.loads(out.read_text())
+    eval_id = new_eval_id()
+    with session_scope() as session:
+        session.add(
+            EvalRun(
+                eval_id=eval_id,
+                workorder_id=workorder_id,
+                suite_digest="sandbox-v1",
+                status="completed",
+                report=evidence,
+                report_hash=sha256_hex(
+                    json.dumps(evidence, sort_keys=True, ensure_ascii=False).encode("utf-8")
+                ),
+                evidence_digest=sha256_hex(out.read_bytes()),
+            )
+        )
+        AuditService(session).record(
+            actor="gatekeeper",
+            action="sandbox.verify",
+            target=eval_id,
+            params={"workorder_id": workorder_id},
+            result="success",
+            evidence_refs={"evidence_path": str(out)},
+        )
+    return {"eval_id": eval_id, "verdict": evidence.get("verdict"), "report": evidence}
+
+
 def _profiled_mcp(profile: str) -> FastMCP:
     profiles = {
         "gatekeeper": {
             "gate.run": gate_run,
             "gate.run_verification": gate_run_verification,
             "gate.report": gate_report,
+            "sandbox.verify": sandbox_verify,
         },
         "attributionist": {
             "versionset.list": versionset_list,
@@ -1121,6 +1194,8 @@ def main() -> None:
             _profiled_mcp(s.mcp_tool_profile),
             expected_consumer=s.mcp_expected_consumer,
             gateway_backend_token=s.mcp_gateway_backend_token,
+            trust_consumer=s.trust_gateway_consumer,
+            host=s.host,
         ),
         host=s.host,
         port=s.eval_runner_port,

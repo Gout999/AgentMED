@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     # private upstream credential and the authenticated consumer identity.
     mcp_expected_consumer: str = Field(default="", alias="MCP_EXPECTED_CONSUMER")
     mcp_gateway_backend_token: str = Field(default="", alias="MCP_GATEWAY_BACKEND_TOKEN")
+    # Demo mode: trust the gateway-injected consumer header alone (loopback bind only).
+    trust_gateway_consumer: bool = Field(default=False, alias="MCP_TRUST_GATEWAY_CONSUMER")
     # Canonical deterministic identity used on lease-bound controller writes.
     # Tool callers may not select another worker identity.
     mcp_worker_id: str = Field(default="", alias="MCP_WORKER_ID")

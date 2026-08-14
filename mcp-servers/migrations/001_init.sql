@@ -121,7 +121,3 @@ CREATE TABLE IF NOT EXISTS mcp_approval_requests (
 );
 CREATE INDEX IF NOT EXISTS ix_mcp_appr_req_workorder_id ON mcp_approval_requests (workorder_id);
 
--- 案例库向量列预留（Phase 2；D-001 #12：Phase 1 用全文+元数据过滤）
-CREATE EXTENSION IF NOT EXISTS vector;
-ALTER TABLE mcp_casebase ADD COLUMN IF NOT EXISTS embedding vector(1024);
-CREATE INDEX IF NOT EXISTS ix_mcp_casebase_embedding ON mcp_casebase USING ivfflat (embedding vector_cosine_ops);

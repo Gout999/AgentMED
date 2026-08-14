@@ -2,10 +2,15 @@
 from __future__ import annotations
 
 import hashlib
+import json
 
 import pytest
+from sqlalchemy import func, select
 
+from common.config import Settings
+from common.db import create_all, session_scope
 from common.errors import McpError
+from common.tables import AuditRow, NotificationMessage
 from servers import notification
 
 
@@ -79,3 +84,47 @@ def test_reply_origin_legacy_external_ref_without_digest_fails_closed(monkeypatc
         )
 
     assert cp.posts == []
+
+
+class _MessagesRequest:
+    query_params: dict[str, str] = {}
+
+
+def _count(url: str, model: type) -> int:
+    with session_scope(url) as session:
+        return int(session.scalar(select(func.count()).select_from(model)) or 0)
+
+
+def test_notification_send_and_list_use_resolved_notification_database(
+    monkeypatch, tmp_path
+):
+    primary_url = f"sqlite:///{tmp_path / 'primary.db'}"
+    notification_url = f"sqlite:///{tmp_path / 'notification.db'}"
+    create_all(primary_url)
+    create_all(notification_url)
+    settings = Settings(
+        database_url=primary_url,
+        notification_log_url=notification_url,
+        audit_jsonl_path=str(tmp_path / "notification-audit.jsonl"),
+        _env_file=None,
+    )
+    monkeypatch.setattr(notification, "_settings", lambda: settings)
+
+    sent = notification._send(
+        channel="matrix",
+        room="ops",
+        text="notification database isolation",
+        outbox_id="obx_notification_database_isolation",
+        actor="quality-officer",
+    )
+    listed = notification._api_messages(_MessagesRequest())
+    payload = json.loads(listed.body)
+
+    assert sent["status"] == "delivered"
+    assert [item["message_id"] for item in payload["items"]] == [
+        sent["message_id"]
+    ]
+    assert _count(primary_url, NotificationMessage) == 0
+    assert _count(primary_url, AuditRow) == 0
+    assert _count(notification_url, NotificationMessage) == 1
+    assert _count(notification_url, AuditRow) == 1

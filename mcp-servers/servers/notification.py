@@ -67,7 +67,8 @@ def _send(
     """落 NotificationMessage + 审计（幂等：同 outbox_id 返回既有消息）。"""
     message_id = new_message_id()
     msg_ref = new_msg_ref()
-    with session_scope() as session:
+    settings = _settings()
+    with session_scope(settings.resolved_notification_url) as session:
         if outbox_id:
             existing = session.scalar(
                 select(NotificationMessage).where(NotificationMessage.outbox_id == outbox_id)
@@ -91,7 +92,7 @@ def _send(
             status="delivered",
         )
         session.add(row)
-        audit = AuditService(session)
+        audit = AuditService(session, settings)
         audit.record(
             actor=actor,
             action=f"notification.{channel}.sent",
@@ -240,7 +241,7 @@ def _api_messages(request) -> Any:
     channel = request.query_params.get("channel")
     room = request.query_params.get("room")
     limit = min(int(request.query_params.get("limit", "50")), 200)
-    with session_scope() as session:
+    with session_scope(_settings().resolved_notification_url) as session:
         q = select(NotificationMessage).order_by(NotificationMessage.created_at.desc())
         if channel:
             q = q.where(NotificationMessage.channel == channel)
@@ -300,6 +301,8 @@ def main() -> None:
         _profiled_mcp(s.mcp_tool_profile),
         expected_consumer=s.mcp_expected_consumer,
         gateway_backend_token=s.mcp_gateway_backend_token,
+        trust_consumer=s.trust_gateway_consumer,
+        host=s.host,
         extra_routes=[
             Route("/api/messages", _api_messages, methods=["GET"]),
             Route("/healthz", _api_health, methods=["GET"]),
