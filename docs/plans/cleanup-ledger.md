@@ -9,7 +9,7 @@
 |---|---|---|---|
 | A1 | demo-app（小智客服）+ Quality API 路径：compose demo-app 服务、demo-app/ 应用、mcp case_admin 的 app.logs/app.feedback、eval-harness QualityAPIClient | 被治理对象已换 Agent Station（D-015）；二轮取证中 app.logs/app.feedback 实测 DEPENDENCY_UNAVAILABLE（Quality API 不在） | 删除（compose/代码/tool） |
 | A2 | feishu 通知链路：mcp notification feishu.reply_origin/weekly_report、control-plane notifications/adapters.py feishu 分支、case_admin feishu inbound routes | 审批/通知已走 Matrix 原生通道（D-015）；feishu 是 mock 且未配置 | 删除（保留 Matrix 通道） |
-| A3 | B1 live 脚本组：scripts/run_b1_live.py(3.5K)、validate_b1_run.py(2.7K)、run_b1_replay.py(1.6K)、b1_live/ | 手工模拟团队闭环的老演示脚本；团队已在真实跑（flow-first） | 删除 |
+| A3 | B1 live 脚本组：scripts/run_b1_live.py(3.5K)、validate_b1_run.py(2.7K)、run_b1_replay.py(1.6K)、b1_live/ | 手工模拟团队闭环的老演示脚本；团队已在真实跑（flow-first） | ✅ 已删（fe21652 + 94269d5：脚本+harness 测试，-1.5K 测试行；CP unit 787 绿） |
 | A4 | mcp-servers/trust_ledger/（legacy contract/replay 库） | README 自认「非生产权威写路径」；Wilson 契约在生产路径不复用 | 删除 |
 | A5 | casebase 向量列/ivfflat 索引（002_casebase_vector.sql） | Phase 2 预留，未启用（检索走全文+元数据）；plain PG 无扩展 | 删除（保留纯文本检索） |
 | A6 | agent-station deploy-langfuse-skill.sh + runtime/copaw/skills/langfuse-inspect | S0 harness 兜底；caseloop 团队走平台 skill_pool 分发 | 归档（S0 证据链引用保留） |
@@ -43,4 +43,5 @@
 
 ## 状态
 
-- [ ] 全部待执行（等环路落定）
+- [x] A3 已执行（环路运行中完成，不影响演示）
+- [ ] 其余待环路落定
