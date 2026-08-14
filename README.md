@@ -62,10 +62,13 @@ v3 contracts/migrations/tests 继续约束尚未迁移的实现面。
 
 ```bash
 # 业务栈：演示应用 + 控制面 + 固定 outbox-dispatcher + 控制台 + Postgres
-cd deploy && docker compose up -d
+cp deploy/.env.example deploy/.env
+# 填写 deploy/.env 中全部必填项，且各 secret 不得复用
+docker compose --env-file deploy/.env -f deploy/compose.yaml config --quiet
+docker compose --env-file deploy/.env -f deploy/compose.yaml up -d --build
 
 # 控制台：http://127.0.0.1:8088 （案例、实验、审批、账本可视化）
-# 控制面 API：:18090 ｜ 演示应用：:8080
+# 控制面 API：http://127.0.0.1:18090 ｜ 演示应用：http://127.0.0.1:8080
 ```
 
 这条 Compose 命令不会启动或证明 AgentTeams 六个 Worker 活跃，也不会证明 Langfuse、Claude Code 或 coding Team 已接通。
@@ -84,7 +87,7 @@ cd deploy && docker compose up -d
 | `eval-harness/` | 回归评测集、双轨跑分、对照实验执行器 |
 | `mcp-servers/` | agent 工具面：5 个 MCP Server + 信任账本 |
 | `agents/` | Phase 1 固定六角色 warm pool 与角色 SOUL；未声称动态扩缩容 |
-| `contracts/` | Quality API 契约、事件/状态定义、conformance 套件 |
+| `contracts/` | v3 实施契约、v4 target contracts、V5 历史 freeze + 当前部分 runtime overlay 与 conformance 套件 |
 | `console/` | 治理控制台前端 |
 | `evidence/` | 历史 Phase 1 材料与当前 P0 replay/live 分离证据；是否完成以各 manifest 验证结果为准 |
 | `docs/` | 产品原则、v3/v4 实施与兼容资料、V5 PRD/plan/施工上下文、研究与比赛历史材料 |
