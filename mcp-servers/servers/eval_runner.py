@@ -946,6 +946,16 @@ def _execute_gate(
         provider_origins: dict[str, str] = {}
         response_evidence: list[dict[str, Any]] = []
         athlete_digests: set[str] = set()
+        target_content = target.get("content") or {}
+        reference_blocks = [
+            str((target_content.get("prompt") or {}).get("content") or "").strip()
+        ]
+        for entry in (target_content.get("kb_manifest") or {}).get("entries") or []:
+            title = str(entry.get("title") or entry.get("entry_id") or "").strip()
+            body = str(entry.get("content") or "").strip()
+            if title and body:
+                reference_blocks.append("### " + title + chr(10) + body)
+        judge_reference = chr(10).join(block for block in reference_blocks if block)
         for probe in probe_set.probes:
             result = client.evaluate_versionset(
                 context["target_versionset_id"],
@@ -1033,10 +1043,8 @@ def _execute_gate(
                 provider_origins=provider_origins,
                 athlete_model_digest=next(iter(athlete_digests)),
                 source="live",
-                # 逐字引用类探针（cs-011）的裁判核验基准 = 候选 prompt 原文
-                policy_reference=str(
-                    (target_content.get("prompt") or {}).get("content") or ""
-                ),
+                # 裁判核验基准 = 候选 prompt 原文 + 知识库资料（逐字引用/事实核验）
+                policy_reference=judge_reference,
             ),
             contract_result=contract.result,
             replay_result=replay.result,

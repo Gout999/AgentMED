@@ -34,7 +34,7 @@ JUDGE_RUBRIC = """你是 CaseLoop 评测裁判。请对"客服回复是否满足
 - 必须包含：{must_include}
 - 不得包含：{must_not_include}
 - 格式要求：{fmt}
-- 政策原文参考（逐字引用类探针以此为唯一核验基准；为空则忽略）：
+- 参考材料（政策原文 + 知识库条目；逐字引用与事实核验以此为唯一基准；为空则忽略）：
 {policy_reference}
 
 用户问题：{input}
