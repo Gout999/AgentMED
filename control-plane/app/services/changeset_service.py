@@ -145,7 +145,7 @@ class ChangeSetService:
             self.gates.validate_for_workorder(workorder)
         except GateServiceError as exc:
             raise ChangeSetServiceError(exc.code, exc.message, **exc.extra) from exc
-        self.store.append_event(
+        requested = self.store.append_event(
             aggregate_type="changeset",
             aggregate_id=changeset_id,
             event_type="changeset.approval_requested",
@@ -165,6 +165,10 @@ class ChangeSetService:
                 "expiry": workorder.payload["expiry"],
             },
         )
+        self._project_case_if_attributed(
+            workorder, changeset_id, requested.event_id, "changeset.approval_requested",
+            {"workorder_hash": workorder.hash},
+        )
         self.audit.record(
             actor="controller:changeset",
             action="changeset.approval_requested",
@@ -173,6 +177,35 @@ class ChangeSetService:
             result="success",
         )
         return self._view(self._require(changeset_id))
+
+    def _project_case_if_attributed(
+        self,
+        workorder: WorkOrder,
+        changeset_id: str,
+        source_event_id: str,
+        event_type: str,
+        payload: dict[str, Any],
+    ) -> None:
+        """归因案例必须随 changeset 事件同步推进（与 release_service 同口径）。"""
+        from app.services.case_service import CaseService, CaseServiceError
+
+        bound_case = self.store.get_aggregate("case", workorder.case_id)
+        if (
+            bound_case is None
+            or (bound_case.payload or {}).get("attribution_verdict") != "ATTRIBUTED"
+            or not (bound_case.payload or {}).get("attribution_report_digest")
+        ):
+            return
+        try:
+            CaseService(self.session, self.settings).project_changeset_event(
+                case_id=workorder.case_id,
+                changeset_id=changeset_id,
+                source_event_id=source_event_id,
+                event_type=event_type,
+                payload=payload,
+            )
+        except CaseServiceError as exc:
+            raise ChangeSetServiceError(exc.code, exc.message, **exc.extra) from exc
 
     def approve(self, changeset_id: str, *, approval_id: str, approver: str, workorder_hash: str) -> dict[str, Any]:
         agg = self._require(changeset_id)
@@ -183,7 +216,7 @@ class ChangeSetService:
             decision="approved",
             declared_workorder_hash=workorder_hash,
         )
-        self.store.append_event(
+        approved = self.store.append_event(
             aggregate_type="changeset",
             aggregate_id=changeset_id,
             event_type="changeset.approved",
@@ -195,6 +228,12 @@ class ChangeSetService:
             machine="changeset",
             merge_payload={"approval_id": approval_id, "approved": True},
         )
+        workorder = self.session.get(WorkOrder, (agg.payload or {}).get("workorder_ref"))
+        if workorder is not None:
+            self._project_case_if_attributed(
+                workorder, changeset_id, approved.event_id, "changeset.approved",
+                {"approval_id": approval_id, "workorder_hash": workorder_hash},
+            )
         self.audit.record(
             actor=approver,
             action="changeset.approved",
@@ -212,7 +251,7 @@ class ChangeSetService:
             approver=approver,
             decision="rejected",
         )
-        self.store.append_event(
+        rejected = self.store.append_event(
             aggregate_type="changeset",
             aggregate_id=changeset_id,
             event_type="changeset.rejected",
@@ -224,6 +263,12 @@ class ChangeSetService:
             machine="changeset",
             merge_payload={"rejected": True, "reason": reason},
         )
+        workorder = self.session.get(WorkOrder, (agg.payload or {}).get("workorder_ref"))
+        if workorder is not None:
+            self._project_case_if_attributed(
+                workorder, changeset_id, rejected.event_id, "changeset.rejected",
+                {"reason": reason},
+            )
         self.audit.record(
             actor=approver,
             action="changeset.rejected",

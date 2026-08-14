@@ -1,0 +1,31 @@
+{
+  "answer": "您好，请问您的蓝牙耳机是否已经激活了呢？\n\n根据售后政策，**已激活商品不支持退货**。如果商品未激活，您可以申请退货，但需要经过人工审核。\n\n建议您通过订单详情页联系人工客服，提交退货申请并确认审核结果。",
+  "arm": "C",
+  "case_id": "case_01M00JDK8JHWQ5MMDN1JTE5MZR",
+  "experiment_id": "exp_01M0159WMBWA8S0FPQF74SYDXS",
+  "kb_manifest_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+  "model_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+  "probe_id": "cs-001",
+  "prompt_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+  "provider_origin": null,
+  "raw": {
+    "answer": "您好，请问您的蓝牙耳机是否已经激活了呢？\n\n根据售后政策，**已激活商品不支持退货**。如果商品未激活，您可以申请退货，但需要经过人工审核。\n\n建议您通过订单详情页联系人工客服，提交退货申请并确认审核结果。",
+    "kb_manifest_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+    "model_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+    "prompt_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+    "request_id": "req_2a80bea6085146689edea611",
+    "retrieval": [],
+    "status": "ok",
+    "trace_id": "tr_2b9d0b5f4a9d46a09dccb1b3",
+    "versionset_id": "vset_cell_C"
+  },
+  "recovered": false,
+  "repetition": 3,
+  "request_id": "req_2a80bea6085146689edea611",
+  "retrieval": [],
+  "status": "ok",
+  "trace_id": "tr_2b9d0b5f4a9d46a09dccb1b3",
+  "versionset_digest": "sha256:26f97c233b50ec8590584e60e14a712315fa2daaa811869c9e8a0a1a08738c39",
+  "versionset_id": "vset_cell_C",
+  "versionset_revision": 1
+}

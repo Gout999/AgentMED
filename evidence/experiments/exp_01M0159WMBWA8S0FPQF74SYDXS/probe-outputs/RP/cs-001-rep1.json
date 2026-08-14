@@ -1,0 +1,31 @@
+{
+  "answer": "可以退的！您在签收后 7 天内（自签收次日起算）不想要了，支持无理由退货。即使已经激活或拆封试用也不影响退货，运费由我们承担。\n\n退货前请保持商品及配件完整，您可以在订单详情页发起退货申请，审核通过后按指引寄回即可。仓库签收后 48 小时内会处理退款。",
+  "arm": "RP",
+  "case_id": "case_01M00JDK8JHWQ5MMDN1JTE5MZR",
+  "experiment_id": "exp_01M0159WMBWA8S0FPQF74SYDXS",
+  "kb_manifest_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+  "model_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+  "probe_id": "cs-001",
+  "prompt_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+  "provider_origin": null,
+  "raw": {
+    "answer": "可以退的！您在签收后 7 天内（自签收次日起算）不想要了，支持无理由退货。即使已经激活或拆封试用也不影响退货，运费由我们承担。\n\n退货前请保持商品及配件完整，您可以在订单详情页发起退货申请，审核通过后按指引寄回即可。仓库签收后 48 小时内会处理退款。",
+    "kb_manifest_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+    "model_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+    "prompt_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+    "request_id": "req_c640d49f528542a09326fb2f",
+    "retrieval": [],
+    "status": "ok",
+    "trace_id": "tr_2370e9187c574bb4a65ff234",
+    "versionset_id": "vset_cell_RP"
+  },
+  "recovered": true,
+  "repetition": 1,
+  "request_id": "req_c640d49f528542a09326fb2f",
+  "retrieval": [],
+  "status": "ok",
+  "trace_id": "tr_2370e9187c574bb4a65ff234",
+  "versionset_digest": "sha256:2ca80927e0984c4b69420034e5789c65e05b45987f2a3b206ff8c449ce21f9e7",
+  "versionset_id": "vset_cell_RP",
+  "versionset_revision": 1
+}

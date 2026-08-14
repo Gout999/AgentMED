@@ -1,0 +1,31 @@
+{
+  "answer": "根据售后政策，**已激活商品不支持退货**。\n\n手机拆开包装试用后通常已激活（开机设置即视为激活），因此**无法退货**。\n\n如果您的手机**未激活**（仅拆封未开机），可以申请退货，但需要经过人工审核。建议您通过订单详情页联系人工客服确认具体状态。",
+  "arm": "RK",
+  "case_id": "case_01M00JDK8JHWQ5MMDN1JTE5MZR",
+  "experiment_id": "exp_01M0159WMBWA8S0FPQF74SYDXS",
+  "kb_manifest_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+  "model_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+  "probe_id": "cs-004",
+  "prompt_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+  "provider_origin": null,
+  "raw": {
+    "answer": "根据售后政策，**已激活商品不支持退货**。\n\n手机拆开包装试用后通常已激活（开机设置即视为激活），因此**无法退货**。\n\n如果您的手机**未激活**（仅拆封未开机），可以申请退货，但需要经过人工审核。建议您通过订单详情页联系人工客服确认具体状态。",
+    "kb_manifest_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+    "model_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+    "prompt_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+    "request_id": "req_7b87186e98354225b21d6b5d",
+    "retrieval": [],
+    "status": "ok",
+    "trace_id": "tr_9d012713a9c7457f9f74b25e",
+    "versionset_id": "vset_cell_RK"
+  },
+  "recovered": false,
+  "repetition": 1,
+  "request_id": "req_7b87186e98354225b21d6b5d",
+  "retrieval": [],
+  "status": "ok",
+  "trace_id": "tr_9d012713a9c7457f9f74b25e",
+  "versionset_digest": "sha256:94ca13da0a20b72db488d542310504dbe29854fb76b88f674baffa8e072edb58",
+  "versionset_id": "vset_cell_RK",
+  "versionset_revision": 1
+}

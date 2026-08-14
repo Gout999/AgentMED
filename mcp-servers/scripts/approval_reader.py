@@ -123,11 +123,54 @@ def process(approval_id: str, workorder_id: str, nonce: str, decision: str, reas
             return f"nonce mismatch for {approval_id}"
     changeset_id = "cs_" + workorder_id
     action = "approve" if decision == "approved" else "reject"
-    body = {"approval_id": approval_id, "approver": "caseloop-approver", "workorder_hash": workorder_hash}
-    if action == "reject":
-        body = {"approval_id": approval_id, "approver": "caseloop-approver", "reason": reason or "rejected by approver"}
+    decision_value = "approved" if decision == "approved" else "rejected"
+
+    # 1) 登记 ApprovalGrant（决策适配层：Matrix 决策 → 控制面不可变授权记录）。
+    #    approve 校验要求 WorkOrder + ApprovalGrant 同 nonce 绑定。
+    with eng.connect() as c:
+        wo_row = c.execute(sa.text(
+            "SELECT payload FROM workorders WHERE workorder_id = :wid"
+        ), {"wid": workorder_id}).fetchone()
+    if wo_row is None:
+        return f"workorder {workorder_id} not registered in control plane"
+    wo_payload = wo_row[0] if isinstance(wo_row[0], dict) else json.loads(wo_row[0])
+    grant = {
+        "schema_version": "0.1.0",
+        "approval_id": approval_id,
+        "workorder_hash": workorder_hash,
+        "workorder_id": workorder_id,
+        "nonce": wo_payload.get("nonce"),
+        "expiry": wo_payload.get("expiry"),
+        "approver": {"type": "human", "identity": "caseloop-approver"},
+        "decision": decision_value,
+        "decided_at": datetime.now(timezone.utc).isoformat(),
+        "nonce_consumed": False,
+    }
+    grant_req = urllib.request.Request(
+        f"{CONTROL_PLANE}/v1/approvals",
+        data=json.dumps(grant).encode(),
+        headers={"Authorization": "Bearer " + _approval_token(), "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(grant_req, timeout=30) as resp:
+            resp.read()
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode()[:200]
+        if "nonce_replay" not in detail:
+            return f"grant registration failed: {exc.code} {detail}"
+
+    # approved 路径：grant_approval（release_service）已在同事务内推进 changeset
+    # APPROVED + case RELEASING——无需再调 changeset approve（会撞 APPROVED 终态）。
+    if action == "approve":
+        with eng.begin() as c:
+            c.execute(sa.text(
+                "UPDATE mcp_approval_requests SET status = 'approved' WHERE approval_id = :aid"
+            ), {"aid": approval_id})
+        return f"approved ok (grant advanced changeset {changeset_id})"
+    body = {"approval_id": approval_id, "approver": "caseloop-approver", "reason": reason or "rejected by approver"}
     req = urllib.request.Request(
-        f"{CONTROL_PLANE}/v1/changesets/{changeset_id}/{action}",
+        f"{CONTROL_PLANE}/v1/changesets/{changeset_id}/reject",
         data=json.dumps(body).encode(),
         headers={"Authorization": "Bearer " + _approval_token(), "Content-Type": "application/json"},
         method="POST",
@@ -136,7 +179,7 @@ def process(approval_id: str, workorder_id: str, nonce: str, decision: str, reas
         with urllib.request.urlopen(req, timeout=30) as resp:
             result = resp.read().decode()[:300]
     except urllib.error.HTTPError as exc:
-        return f"control-plane {action} failed: {exc.code} {exc.read().decode()[:200]}"
+        return f"control-plane reject failed: {exc.code} {exc.read().decode()[:200]}"
     with eng.begin() as c:
         c.execute(sa.text(
             "UPDATE mcp_approval_requests SET status = :st, evidence_summary = evidence_summary || :reason "

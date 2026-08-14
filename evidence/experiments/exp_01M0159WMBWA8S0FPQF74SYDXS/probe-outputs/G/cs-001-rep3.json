@@ -1,0 +1,31 @@
+{
+  "answer": "您好，可以退的哦。我们的7天无理由退货是从签收次日开始算7天内都可以申请，即使您已经激活使用过也可以退。退货的运费由我们承担。您可以在订单详情页发起退货申请，审核通过后按指引寄回即可。仓库签收后48小时内会处理退款。",
+  "arm": "G",
+  "case_id": "case_01M00JDK8JHWQ5MMDN1JTE5MZR",
+  "experiment_id": "exp_01M0159WMBWA8S0FPQF74SYDXS",
+  "kb_manifest_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+  "model_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+  "probe_id": "cs-001",
+  "prompt_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+  "provider_origin": null,
+  "raw": {
+    "answer": "您好，可以退的哦。我们的7天无理由退货是从签收次日开始算7天内都可以申请，即使您已经激活使用过也可以退。退货的运费由我们承担。您可以在订单详情页发起退货申请，审核通过后按指引寄回即可。仓库签收后48小时内会处理退款。",
+    "kb_manifest_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+    "model_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+    "prompt_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+    "request_id": "req_d69625776295422d8de41adf",
+    "retrieval": [],
+    "status": "ok",
+    "trace_id": "tr_0e36507ebac6497babfd3323",
+    "versionset_id": "vset_cell_G"
+  },
+  "recovered": true,
+  "repetition": 3,
+  "request_id": "req_d69625776295422d8de41adf",
+  "retrieval": [],
+  "status": "ok",
+  "trace_id": "tr_0e36507ebac6497babfd3323",
+  "versionset_digest": "sha256:9a8d33c9c4378e557eb9203a1c827d37362f7a838892bf77fe96297e85982f1a",
+  "versionset_id": "vset_cell_G",
+  "versionset_revision": 1
+}

@@ -1,0 +1,31 @@
+{
+  "answer": "我们和顺丰、京东物流合作配送，部分地区还支持当日达/次日达哦。",
+  "arm": "RK",
+  "case_id": "case_01M00JDK8JHWQ5MMDN1JTE5MZR",
+  "experiment_id": "exp_01M0159WMBWA8S0FPQF74SYDXS",
+  "kb_manifest_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+  "model_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+  "probe_id": "cs-014",
+  "prompt_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+  "provider_origin": null,
+  "raw": {
+    "answer": "我们和顺丰、京东物流合作配送，部分地区还支持当日达/次日达哦。",
+    "kb_manifest_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+    "model_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+    "prompt_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+    "request_id": "req_c0ff5ff7373448dbaf4d69af",
+    "retrieval": [],
+    "status": "ok",
+    "trace_id": "tr_165b5ff864c74f7a9678417c",
+    "versionset_id": "vset_cell_RK"
+  },
+  "recovered": true,
+  "repetition": 2,
+  "request_id": "req_c0ff5ff7373448dbaf4d69af",
+  "retrieval": [],
+  "status": "ok",
+  "trace_id": "tr_165b5ff864c74f7a9678417c",
+  "versionset_digest": "sha256:94ca13da0a20b72db488d542310504dbe29854fb76b88f674baffa8e072edb58",
+  "versionset_id": "vset_cell_RK",
+  "versionset_revision": 1
+}

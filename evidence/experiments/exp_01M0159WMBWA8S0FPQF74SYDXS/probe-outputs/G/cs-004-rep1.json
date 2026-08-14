@@ -1,0 +1,31 @@
+{
+  "answer": "可以退的。拆开包装试用不影响 7 天无理由退货，只要您是在签收次日起 7 天内申请，并且保留好商品、配件及外包装完整，运费由我们承担。您可以在订单详情页发起退货申请。",
+  "arm": "G",
+  "case_id": "case_01M00JDK8JHWQ5MMDN1JTE5MZR",
+  "experiment_id": "exp_01M0159WMBWA8S0FPQF74SYDXS",
+  "kb_manifest_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+  "model_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+  "probe_id": "cs-004",
+  "prompt_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+  "provider_origin": null,
+  "raw": {
+    "answer": "可以退的。拆开包装试用不影响 7 天无理由退货，只要您是在签收次日起 7 天内申请，并且保留好商品、配件及外包装完整，运费由我们承担。您可以在订单详情页发起退货申请。",
+    "kb_manifest_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+    "model_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+    "prompt_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+    "request_id": "req_8129c3d53f7240efaa0cb32d",
+    "retrieval": [],
+    "status": "ok",
+    "trace_id": "tr_73eaae7cd953447cb3f214ce",
+    "versionset_id": "vset_cell_G"
+  },
+  "recovered": true,
+  "repetition": 1,
+  "request_id": "req_8129c3d53f7240efaa0cb32d",
+  "retrieval": [],
+  "status": "ok",
+  "trace_id": "tr_73eaae7cd953447cb3f214ce",
+  "versionset_digest": "sha256:9a8d33c9c4378e557eb9203a1c827d37362f7a838892bf77fe96297e85982f1a",
+  "versionset_id": "vset_cell_G",
+  "versionset_revision": 1
+}

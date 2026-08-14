@@ -1307,10 +1307,19 @@ class ReleaseService:
             raise ReleaseServiceError("validation_failed", "ApprovalGrant schema_version must be 0.1.0")
         if payload["nonce_consumed"] is not False:
             raise ReleaseServiceError("nonce_replay", "new ApprovalGrant must have nonce_consumed=false")
-        try:
-            UUID(str(payload["nonce"]))
-        except (TypeError, ValueError, AttributeError) as exc:
-            raise ReleaseServiceError("validation_failed", "ApprovalGrant nonce must be a UUID") from exc
+        nonce = payload["nonce"]
+        # 防重放靠 DB 唯一约束 + WorkOrder.nonce 绑定；nonce 格式兼容 ULID 与 UUID
+        # （WorkOrder nonce 由 MCP 侧 new_nonce() 生成，为 26 位 ULID）。
+        if (
+            not isinstance(nonce, str)
+            or not nonce
+            or len(nonce) > 128
+            or any(ch.isspace() for ch in nonce)
+        ):
+            raise ReleaseServiceError(
+                "validation_failed",
+                "ApprovalGrant nonce must be a non-empty nonce string (ULID or UUID)",
+            )
 
         approver = payload["approver"]
         if (

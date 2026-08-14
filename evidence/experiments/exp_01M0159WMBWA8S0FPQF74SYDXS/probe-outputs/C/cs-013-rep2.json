@@ -1,0 +1,31 @@
+{
+  "answer": "现货商品下单后 **48 小时内**发货，预售商品以页面标注时间为准。我们与顺丰、京东物流合作配送，发货后可在订单详情页查看物流单号。",
+  "arm": "C",
+  "case_id": "case_01M00JDK8JHWQ5MMDN1JTE5MZR",
+  "experiment_id": "exp_01M0159WMBWA8S0FPQF74SYDXS",
+  "kb_manifest_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+  "model_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+  "probe_id": "cs-013",
+  "prompt_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+  "provider_origin": null,
+  "raw": {
+    "answer": "现货商品下单后 **48 小时内**发货，预售商品以页面标注时间为准。我们与顺丰、京东物流合作配送，发货后可在订单详情页查看物流单号。",
+    "kb_manifest_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+    "model_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+    "prompt_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+    "request_id": "req_11e3c86e4ccc476993626e44",
+    "retrieval": [],
+    "status": "ok",
+    "trace_id": "tr_1ec3cdde2b6f49238362e653",
+    "versionset_id": "vset_cell_C"
+  },
+  "recovered": true,
+  "repetition": 2,
+  "request_id": "req_11e3c86e4ccc476993626e44",
+  "retrieval": [],
+  "status": "ok",
+  "trace_id": "tr_1ec3cdde2b6f49238362e653",
+  "versionset_digest": "sha256:26f97c233b50ec8590584e60e14a712315fa2daaa811869c9e8a0a1a08738c39",
+  "versionset_id": "vset_cell_C",
+  "versionset_revision": 1
+}

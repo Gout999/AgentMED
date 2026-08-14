@@ -1,0 +1,31 @@
+{
+  "answer": "根据售后政策，**已激活商品不支持退货**。手机拆开包装试用后通常已激活，建议您通过订单详情页联系人工客服（服务时间 9:00-21:00）确认具体情况。",
+  "arm": "RM",
+  "case_id": "case_01M00JDK8JHWQ5MMDN1JTE5MZR",
+  "experiment_id": "exp_01M0159WMBWA8S0FPQF74SYDXS",
+  "kb_manifest_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+  "model_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+  "probe_id": "cs-004",
+  "prompt_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+  "provider_origin": null,
+  "raw": {
+    "answer": "根据售后政策，**已激活商品不支持退货**。手机拆开包装试用后通常已激活，建议您通过订单详情页联系人工客服（服务时间 9:00-21:00）确认具体情况。",
+    "kb_manifest_digest": "sha256:258a5e4f0d50fbb4728b82d63f45f45412589a992ca2f2bf553ab7466f0503c7",
+    "model_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+    "prompt_digest": "sha256:4dd5481cc1db92293181c38125df39536809155e11ec43f3f002c1373ac45a67",
+    "request_id": "req_75b2be333f9b4bbfad0ea32f",
+    "retrieval": [],
+    "status": "ok",
+    "trace_id": "tr_8cfd150d96f743168aecd00a",
+    "versionset_id": "vset_cell_RM"
+  },
+  "recovered": false,
+  "repetition": 3,
+  "request_id": "req_75b2be333f9b4bbfad0ea32f",
+  "retrieval": [],
+  "status": "ok",
+  "trace_id": "tr_8cfd150d96f743168aecd00a",
+  "versionset_digest": "sha256:4227e085cc805d0905fbbb0aab963d5702513b207e14d022ecd0d03e69d1f3f8",
+  "versionset_id": "vset_cell_RM",
+  "versionset_revision": 1
+}
