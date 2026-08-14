@@ -106,7 +106,42 @@ def test_provider_label_enters_model_digest():
 
 # ------------------------------------------------------------------ LLMJudge
 def test_judge_score_params_carry_reasoning_budget():
-    assert LLMJudge.SCORE_PARAMS == {"temperature": 0.0, "max_tokens": 1024}
+    assert LLMJudge.SCORE_PARAMS == {"temperature": 0.0, "max_tokens": 2048}
+
+
+def test_chat_retries_empty_content(monkeypatch):
+    """reasoning 模型烧满 token 预算返回空 content = 可重试，不算有效回答。"""
+    from types import SimpleNamespace
+
+    calls = []
+
+    class FakeCompletions:
+        def create(self, **kwargs):
+            calls.append(dict(kwargs))
+            if len(calls) < 2:
+                return SimpleNamespace(
+                    id="resp-empty",
+                    choices=[SimpleNamespace(message=SimpleNamespace(content=""))],
+                    usage=None,
+                )
+            return SimpleNamespace(
+                id="resp-ok",
+                choices=[SimpleNamespace(message=SimpleNamespace(content='{"pass": true, "score": 1.0}'))],
+                usage=None,
+            )
+
+    class FakeClient:
+        def __init__(self):
+            self.chat = SimpleNamespace(completions=FakeCompletions())
+
+        def with_options(self, **kwargs):
+            return self
+
+    client = LLMClient(_settings())
+    monkeypatch.setattr(client, "_client", FakeClient())
+    resp = client.chat("sys", "user", model="step-3.5-flash")
+    assert resp.content == '{"pass": true, "score": 1.0}'
+    assert len(calls) == 2
 
 
 def test_judge_falls_back_to_stepfun_without_override():

@@ -127,9 +127,10 @@ class LLMJudge:
     """裁判轨 LLM 裁判：按 rubric 打分，输出结构化 JSON。"""
 
     # 裁判打分参数（model_digest property 与 score() 必须共用同一组）。
-    # max_tokens=1024：reasoning 模型（如 glm-5.2）思考链也消耗 completion
-    # token，256 会烧满导致 content 为空 → 解析失败按 0 分。
-    SCORE_PARAMS = {"temperature": 0.0, "max_tokens": 1024}
+    # max_tokens=2048：reasoning 模型（glm-5.2 / step-3.x-flash）思考链也消耗
+    # completion token，1024 会烧满导致 content 为空 → 解析失败按 0 分
+    # （实测 cs-011 裁判空回复误杀）。
+    SCORE_PARAMS = {"temperature": 0.0, "max_tokens": 2048}
 
     def __init__(self, settings: Settings, model: str, *, deadline_monotonic: float | None = None):
         # Keep contract/replay tooling importable without the live-provider SDK.

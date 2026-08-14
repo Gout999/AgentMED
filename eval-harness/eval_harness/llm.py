@@ -101,6 +101,14 @@ class LLMClient:
                 )
                 resp = client.chat.completions.create(**kwargs)
                 content = resp.choices[0].message.content or ""
+                if not content:
+                    # reasoning 模型可能烧满 token 预算返回空 content
+                    # （finish=length）；空内容 = 可重试的提供者响应缺陷，
+                    # 不算一次有效回答。
+                    last_exc = RuntimeError("judge provider returned empty content")
+                    backoff = min(BACKOFF_BASE_S * (2**attempt), BACKOFF_MAX_S)
+                    time.sleep(min(backoff, self._remaining(deadline_monotonic)))
+                    continue
                 request_id = str(getattr(resp, "id", "") or "")
                 if not request_id:
                     raise RuntimeError("judge provider response omitted its request id")
