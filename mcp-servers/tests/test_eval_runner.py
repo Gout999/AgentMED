@@ -183,19 +183,31 @@ def test_experiment_execute_tool_registered():
     assert "versionset.get" in names
 
 
-def test_versionset_tools_use_quality_read_surface(monkeypatch):
-    quality = FakeQA()
-    monkeypatch.setattr(eval_runner, "_qa", lambda: quality)
+def test_versionset_tools_use_control_plane_read_surface(monkeypatch):
+    class PathAwareCP:
+        def __init__(self):
+            self.gets = []
+            self.posts = []
+        def get(self, path, params=None):
+            self.gets.append((path, params))
+            if path == "/v1/system-versions":
+                return {"items": [{"versionset_id": "vs_active"}]}
+            return {"versionset_id": "vs_active"}
+        def post(self, path, json_body=None):
+            self.posts.append((path, json_body))
+            return {}
+    cp = PathAwareCP()
+    monkeypatch.setattr(eval_runner, "_cp", lambda: cp)
 
     listed = eval_runner.versionset_list(status="active", limit=999)
     exact = eval_runner.versionset_get("vs_active")
 
     assert listed["items"][0]["versionset_id"] == "vs_active"
-    assert exact["revision"] == 7
-    assert exact["content"] == {"prompt": {}, "kb_manifest": {}, "model": {}}
-    assert quality.gets == [
-        ("/v2/versionsets", {"limit": 200, "status": "active"}),
-        ("/v2/versionsets/vs_active", None),
+    assert exact["versionset_id"] == "vs_active"
+    assert cp.posts == []
+    assert cp.gets == [
+        ("/v1/system-versions", {"limit": 200, "status": "active"}),
+        ("/v1/system-versions/vs_active", None),
     ]
 
 

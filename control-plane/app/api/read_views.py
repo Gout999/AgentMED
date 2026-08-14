@@ -5,6 +5,7 @@ import time
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from sqlalchemy import text as sa_text
 from sqlalchemy.orm import Session
 
 from app.api.deps import get_db_session, get_quality_client
@@ -95,3 +96,63 @@ def get_case_v5_readiness(
     if result.get("case_id") is None:
         raise HTTPException(status_code=404, detail={"code": "not_found", "message": f"case {case_id} not found"})
     return result
+
+
+@router.get("/v1/system-versions")
+def get_system_versions(
+    session: Session = Depends(get_db_session),
+    limit: int = Query(default=50, ge=1, le=200),
+) -> dict[str, Any]:
+    """只读版本集列表（内部：MCP versionset.list 数据源）。"""
+    rows = session.execute(
+        sa_text(
+            "SELECT system_version_set_id, version_set_digest, manifest_digest, "
+            "application_id, declared_environment_id, recorded_by_principal, created_at "
+            "FROM system_version_sets ORDER BY created_at DESC LIMIT :limit"
+        ),
+        {"limit": limit},
+    ).fetchall()
+    return {
+        "items": [
+            {
+                "versionset_id": r[0],
+                "digest": r[1],
+                "manifest_digest": r[2],
+                "application_id": r[3],
+                "environment_id": r[4],
+                "recorded_by": r[5],
+                "created_at": str(r[6]),
+            }
+            for r in rows
+        ]
+    }
+
+
+@router.get("/v1/system-versions/{versionset_id}")
+def get_system_version(versionset_id: str, session: Session = Depends(get_db_session)) -> dict[str, Any]:
+    """只读版本集详情（内部：MCP versionset.get 数据源）。"""
+    row = session.execute(
+        sa_text(
+            "SELECT system_version_set_id, workspace_id, application_id, declared_environment_id, "
+            "version_set_digest, manifest_digest, record_digest, authority_receipt_id, "
+            "exact_component_revision_bindings, identity_assurance_summary, recorded_by_principal, created_at "
+            "FROM system_version_sets WHERE system_version_set_id = :vid"
+        ),
+        {"vid": versionset_id},
+    ).fetchone()
+    if row is None:
+        raise HTTPException(status_code=404, detail={"code": "not_found", "message": f"versionset {versionset_id} not found"})
+    return {
+        "versionset_id": row[0],
+        "workspace_id": row[1],
+        "application_id": row[2],
+        "environment_id": row[3],
+        "digest": row[4],
+        "manifest_digest": row[5],
+        "record_digest": row[6],
+        "authority_receipt_id": row[7],
+        "component_bindings": row[8],
+        "identity_assurance_summary": row[9],
+        "recorded_by": row[10],
+        "created_at": str(row[11]),
+    }

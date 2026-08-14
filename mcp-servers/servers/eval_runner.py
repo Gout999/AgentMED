@@ -100,11 +100,11 @@ def versionset_list(status: str | None = None, limit: int = 50) -> dict[str, Any
     if status:
         params["status"] = status
     try:
-        return _qa().get("/v2/versionsets", params=params)
+        return _cp().get("/v1/system-versions", params=params)
     except McpError as exc:
         raise exc
     except Exception as exc:  # noqa: BLE001
-        raise dependency_unavailable(f"Quality VersionSet list unavailable: {exc}") from exc
+        raise dependency_unavailable(f"control-plane system-versions unavailable: {exc}") from exc
 
 
 @mcp.tool(name="versionset.get")
@@ -114,7 +114,7 @@ def versionset_get(versionset_id: str) -> dict[str, Any]:
     if not isinstance(versionset_id, str) or not versionset_id.strip():
         raise validation("versionset_id must be non-empty")
     try:
-        return _qa().get(f"/v2/versionsets/{versionset_id}")
+        return _cp().get(f"/v1/system-versions/{versionset_id}")
     except McpError as exc:
         raise exc
     except Exception as exc:  # noqa: BLE001
