@@ -34,6 +34,8 @@ JUDGE_RUBRIC = """你是 CaseLoop 评测裁判。请对"客服回复是否满足
 - 必须包含：{must_include}
 - 不得包含：{must_not_include}
 - 格式要求：{fmt}
+- 政策原文参考（逐字引用类探针以此为唯一核验基准；为空则忽略）：
+{policy_reference}
 
 用户问题：{input}
 
@@ -65,6 +67,7 @@ class GateCandidate:
     provider_origins: dict[str, str] = field(default_factory=dict) # probe_id -> authoritative origin
     athlete_model_digest: str = ""
     source: str = "live"                                            # live | replay
+    policy_reference: str = ""                                      # 逐字引用类探针的原文核验基准
 
     def validate(self) -> list[str]:
         errs = []
@@ -135,7 +138,14 @@ class LLMJudge:
     # （实测 cs-011 裁判空回复误杀）。
     SCORE_PARAMS = {"temperature": 0.0, "max_tokens": 2048}
 
-    def __init__(self, settings: Settings, model: str, *, deadline_monotonic: float | None = None):
+    def __init__(
+        self,
+        settings: Settings,
+        model: str,
+        *,
+        deadline_monotonic: float | None = None,
+        policy_reference: str = "",
+    ):
         # Keep contract/replay tooling importable without the live-provider SDK.
         # The provider dependency is loaded only when a real LLM judge is used.
         from .llm import LLMClient
@@ -143,6 +153,7 @@ class LLMJudge:
         self.settings = settings
         self.model = model
         self.deadline_monotonic = deadline_monotonic
+        self.policy_reference = policy_reference
         if settings.has_judge_provider_override:
             self.llm = LLMClient(
                 settings,
@@ -158,13 +169,14 @@ class LLMJudge:
     def model_digest(self) -> str:
         return self.llm.model_digest_for(self.model, self.SCORE_PARAMS)
 
-    def score(self, probe, answer: str) -> dict:
+    def score(self, probe, answer: str, *, policy_reference: str = "") -> dict:
         fmt = "json" if probe.is_format_json else "text"
         prompt = JUDGE_RUBRIC.format(
             description=probe.description or "(无)",
             must_include="、".join(probe.must_include) or "(无)",
             must_not_include="、".join(probe.must_not_include) or "(无)",
             fmt=fmt,
+            policy_reference=policy_reference or self.policy_reference or "(无)",
             input=probe.input,
             answer=answer,
         )
@@ -469,7 +481,7 @@ class GateRunner:
             if probe is None:
                 continue
             try:
-                result = self.judge.score(probe, ans)
+                result = self.judge.score(probe, ans, policy_reference=candidate.policy_reference)
             except Exception as exc:  # noqa: BLE001 -- provider timeout/error must persist as ERROR
                 return {
                     "status": "error",

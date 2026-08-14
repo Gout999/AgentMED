@@ -20,7 +20,7 @@ class FakeJudge:
     def model_digest(self) -> str:
         return self._digest
 
-    def score(self, probe, answer: str) -> dict:
+    def score(self, probe, answer: str, **kwargs) -> dict:
         if probe.id in self.score_map:
             return self.score_map[probe.id]
         return {"score": 0.95, "pass": True, "rationale": "mock ok"}

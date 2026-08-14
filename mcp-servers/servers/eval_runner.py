@@ -1033,6 +1033,10 @@ def _execute_gate(
                 provider_origins=provider_origins,
                 athlete_model_digest=next(iter(athlete_digests)),
                 source="live",
+                # 逐字引用类探针（cs-011）的裁判核验基准 = 候选 prompt 原文
+                policy_reference=str(
+                    (target_content.get("prompt") or {}).get("content") or ""
+                ),
             ),
             contract_result=contract.result,
             replay_result=replay.result,
