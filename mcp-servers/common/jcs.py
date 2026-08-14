@@ -1,7 +1,8 @@
-"""JCS (RFC 8785) ASCII 子集 + SHA-256（与 control-plane/app/utils/jcs.py 同实现）。
+"""JCS (RFC 8785) 子集 + SHA-256（与 control-plane/app/utils/jcs.py 同实现）。
 
 WorkOrder hash 契约：除 hash 外全部字段做 JCS 规范序列化 → SHA-256 → 小写 hex。
-含换行/非 ASCII 的 diff 请用 content_ref（spec §5.1 注释）。
+字符串按 RFC 8785 转义（非 ASCII → \\uXXXX，换行/控制字符同理），因此内联
+中文 unified_diff 可直接进 hash；浮点数仍拒绝（子集约束）。
 """
 from __future__ import annotations
 
@@ -22,8 +23,9 @@ def jcs_subset(value: Any) -> bytes:
     if isinstance(value, float):
         raise ValueError("subset JCS 不支持浮点数")
     if isinstance(value, str):
-        if any(ord(c) > 0x7E or ord(c) < 0x20 for c in value):
-            raise ValueError(f"subset JCS 仅支持 ASCII 可打印字符: {value!r}")
+        # RFC 8785 §3.2.2.2：非 ASCII/控制字符一律 \uXXXX 转义（ensure_ascii=True
+        # 已实现），任意 UTF-8 字符串都可规范序列化——此前对非 ASCII 直接拒绝与
+        # RFC 8785 不符，并堵死了 B1 内联中文 unified_diff。
         return json.dumps(value, ensure_ascii=True).encode("ascii")
     if isinstance(value, list):
         return b"[" + b",".join(jcs_subset(v) for v in value) + b"]"

@@ -21,13 +21,12 @@ def test_jcs_ordered_keys():
     assert a == b == b'{"a":2,"b":1}'
 
 
-def test_jcs_rejects_float_and_non_ascii():
+def test_jcs_rejects_float_but_escapes_utf8():
     with pytest.raises(ValueError):
         jcs_subset(1.5)
-    with pytest.raises(ValueError):
-        jcs_subset("中文")
-    with pytest.raises(ValueError):
-        jcs_subset("has\nnewline")
+    # RFC 8785 3.2.2.2: non-ASCII/control chars escaped as \uXXXX
+    assert jcs_subset("中文") == '"\\u4e2d\\u6587"'.encode("ascii")
+    assert jcs_subset("has\nnewline") == '"has\\nnewline"'.encode("ascii")
 
 
 def test_workorder_hash_deterministic():

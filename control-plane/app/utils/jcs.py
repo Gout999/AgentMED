@@ -1,5 +1,7 @@
-"""JCS (RFC 8785) ASCII/整数/布尔子集 + SHA-256。
+"""JCS (RFC 8785) 子集 + SHA-256。
 
+字符串按 RFC 8785 §3.2.2.2 转义（非 ASCII/控制字符 → \\uXXXX），因此内联
+中文 unified_diff 可直接进 WorkOrder hash；浮点仍拒绝（子集约束）。
 与 contracts/conformance/test_schemas.py 保持一致，保证 WorkOrder hash 可复核。
 """
 from __future__ import annotations
@@ -10,7 +12,7 @@ from typing import Any
 
 
 def jcs_subset(value: Any) -> bytes:
-    """JCS 子集：无浮点、无非 ASCII、无控制字符时与 RFC 8785 等价。"""
+    """JCS 子集：无浮点；字符串按 RFC 8785 转义（任意 UTF-8 可序列化）。"""
     if value is None:
         return b"null"
     if value is True:
@@ -22,8 +24,6 @@ def jcs_subset(value: Any) -> bytes:
     if isinstance(value, float):
         raise ValueError("subset JCS 不支持浮点数")
     if isinstance(value, str):
-        if any(ord(c) > 0x7E or ord(c) < 0x20 for c in value):
-            raise ValueError(f"subset JCS 仅支持 ASCII 可打印字符: {value!r}")
         return json.dumps(value, ensure_ascii=True).encode("ascii")
     if isinstance(value, list):
         return b"[" + b",".join(jcs_subset(v) for v in value) + b"]"
