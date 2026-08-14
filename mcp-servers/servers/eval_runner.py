@@ -651,7 +651,11 @@ def _build_execution_context(experiment_id: str, payload: dict[str, Any]):
     探针定义取自 contracts/fixtures/probes-customer-service.yaml；实验只读取协议中冻结的
     精确 VersionSet。ExperimentRunner 捕获的响应 digest 必须与这些冻结引用一致。
     """
-    eh_settings = EvalHarnessSettings()
+    mcp_settings = _settings()
+    eh_settings = EvalHarnessSettings(
+        quality_api_base_url=mcp_settings.quality_api_base_url,
+        read_token=mcp_settings.quality_read_token,
+    )
     probe_set = load_probe_set(eh_settings.repo_root)
     plan = ExperimentPlan(
         experiment_id=experiment_id,

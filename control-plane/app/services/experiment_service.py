@@ -128,11 +128,26 @@ class ExperimentService:
             raise ExperimentServiceError(
                 "hash_mismatch", f"versionset {versionset_id} has incomplete component bindings"
             )
-        app_digest = bindings[0].get("digest") if isinstance(bindings[0], dict) else None
-        model_digest = bindings[1].get("digest") if isinstance(bindings[1], dict) else None
+        by_role: dict[str, str] = {}
+        for index, binding in enumerate(bindings):
+            if not isinstance(binding, dict):
+                continue
+            digest = binding.get("digest")
+            if not digest:
+                continue
+            role = binding.get("role")
+            if role in ("prompt", "kb_manifest", "model"):
+                by_role[role] = digest
+            elif index == 0:
+                by_role.setdefault("prompt", digest)
+            elif index == 1:
+                by_role.setdefault("model", digest)
+        prompt_digest = by_role.get("prompt")
+        model_digest = by_role.get("model")
+        kb_digest = by_role.get("kb_manifest", prompt_digest)
         content = {
-            "prompt": {"digest": app_digest},
-            "kb_manifest": {"manifest_digest": app_digest},
+            "prompt": {"digest": prompt_digest},
+            "kb_manifest": {"manifest_digest": kb_digest},
             "model": {"digest": model_digest},
         }
         return {

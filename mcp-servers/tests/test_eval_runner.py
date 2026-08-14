@@ -211,6 +211,30 @@ def test_versionset_tools_use_control_plane_read_surface(monkeypatch):
     ]
 
 
+def test_build_execution_context_uses_projection_quality_surface(monkeypatch):
+    """5-cell 执行客户端必须走投影配置的 Quality 面（受治理应用模型路径），
+    而不是 eval-harness 的进程级默认（dead demo-app 8080）。"""
+    from eval_harness.config import Settings as EvalHarnessSettings
+    from eval_harness.probe_loader import frozen_digest, load_probe_set
+
+    class StubSettings:
+        quality_api_base_url = "http://127.0.0.1:8088"
+        quality_read_token = "proj-read-token"
+
+    monkeypatch.setattr(eval_runner, "_settings", lambda: StubSettings())
+    probe_digest = frozen_digest(load_probe_set(EvalHarnessSettings().repo_root))
+    payload = _frozen_payload(probe_set_digest=probe_digest, random_seed_ref="seed://exp_x/1")
+
+    plan, probe_set, eh_settings = eval_runner._build_execution_context("exp_x", payload)
+
+    assert eh_settings.quality_api_base_url == "http://127.0.0.1:8088"
+    assert eh_settings.read_token == "proj-read-token"
+    assert plan.probe_set_digest == probe_digest
+    # subset() 返回按计划序的元组（存在性校验）；runner 按 plan 的 discovery/
+    # hidden_confirmation/unaffected_controls 取探针，probe_set 本体不变。
+    assert [p.id for p in probe_set.subset(plan.discovery[:2])] == ["cs-001", "cs-002"]
+
+
 def test_execute_rejects_state_not_running(monkeypatch):
     fake = FakeCP({"state": "REQUESTED", "payload": _frozen_payload()})
     monkeypatch.setattr(eval_runner, "_cp", lambda: fake)
