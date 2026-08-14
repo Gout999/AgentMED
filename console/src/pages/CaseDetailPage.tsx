@@ -59,6 +59,11 @@ function CaseDetailBody({
   return (
     <>
       <Card>
+        {data.payload.integrity_status === "integrity_error" ? (
+          <p className="mb-4 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+            QualityCase 未通过完整性重验：{String(data.payload.integrity_error ?? "UNKNOWN")}。状态与正文均按 UNKNOWN 展示。
+          </p>
+        ) : null}
         <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
@@ -213,7 +218,13 @@ function CaseV5GovernanceCard({
 }) {
   const readiness = governance.data?.case_readiness;
   const binding = governance.data?.application_binding;
-  const untrusted = governance.data?.binding_integrity_status !== "verified";
+  const hasIntegrityError = governance.data
+    ? governance.data.case_integrity_status === "integrity_error"
+      || governance.data.binding_integrity_status === "integrity_error"
+      || governance.data.acceptance_integrity_status === "integrity_error"
+      || governance.data.issue_snapshot_integrity_status === "integrity_error"
+    : false;
+  const bindingUntrusted = governance.data?.binding_integrity_status !== "verified";
   return (
     <Card title="V5 治理 · 系统绑定 / acceptance readiness" bodyClassName="p-4">
       <AsyncBoundary
@@ -225,9 +236,13 @@ function CaseV5GovernanceCard({
         staleError={governance.refreshError}
       >
         <div className="space-y-4">
-          {untrusted ? (
-            <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              binding 记录未通过 envelope 完整性重验，已标记 integrity_error，未作为可信数据展示。
+          {hasIntegrityError ? (
+            <p className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-800">
+              治理投影存在 integrity_error；相关记录已隐藏，readiness 强制为 UNKNOWN。
+              {governance.data?.case_integrity_error ? ` case: ${governance.data.case_integrity_error}` : ""}
+              {governance.data?.binding_integrity_error ? ` binding: ${governance.data.binding_integrity_error}` : ""}
+              {governance.data?.acceptance_integrity_error ? ` acceptance: ${governance.data.acceptance_integrity_error}` : ""}
+              {governance.data?.issue_snapshot_integrity_error ? ` issue: ${governance.data.issue_snapshot_integrity_error}` : ""}
             </p>
           ) : null}
 
@@ -235,17 +250,19 @@ function CaseV5GovernanceCard({
             <span className="text-xs font-medium text-gray-400">acceptance readiness</span>
             <StatusChip
               label={readiness === "READY" ? "READY" : readiness === "NEEDS_ACCEPTANCE_CRITERIA" ? "NEEDS_ACCEPTANCE_CRITERIA" : "UNKNOWN"}
-              tone={readiness === "READY" ? "green" : readiness === "NEEDS_ACCEPTANCE_CRITERIA" ? "amber" : "gray"}
+              tone={readiness === "READY" && !hasIntegrityError ? "green" : readiness === "NEEDS_ACCEPTANCE_CRITERIA" ? "amber" : "red"}
             />
             {governance.data ? (
               <span className="text-xs tabular-nums text-gray-400">
-                {governance.data.acceptance_proposal_count} 个草稿 · {governance.data.confirmed_acceptance_count} 个已确认
+                {governance.data.acceptance_proposal_count} 个可信草稿 · {governance.data.confirmed_acceptance_count} 个可信已确认 · {governance.data.executable_acceptance_count} 个可执行
               </span>
             ) : null}
           </div>
-          {readiness === "NEEDS_ACCEPTANCE_CRITERIA" && governance.data?.issue_snapshot === null ? (
+          {readiness === "NEEDS_ACCEPTANCE_CRITERIA" ? (
             <p className="text-xs text-gray-500">
-              该 Case 尚无已确认验收标准；在 acceptance-criteria 确认前 Gate 不可启动。
+              {(governance.data?.confirmed_acceptance_count ?? 0) === 0
+                ? "该 Case 尚无可信的已确认验收标准；确认前 Gate 不可启动。"
+                : "验收标准已确认，但 ResolutionContract 仍待 V5-4 materialization（或验收字段仍不完整），因此尚不可执行，Gate 不可启动。"}
             </p>
           ) : null}
 
@@ -257,17 +274,19 @@ function CaseV5GovernanceCard({
                   <span className="font-mono">{binding.application_id}</span>
                   <span className="text-gray-400">/</span>
                   <span className="font-mono">{binding.environment_id}</span>
-                  <StatusChip label={untrusted ? "integrity_error" : "verified"} tone={untrusted ? "red" : "green"} />
+                  <StatusChip label={bindingUntrusted ? governance.data?.binding_integrity_status ?? "UNKNOWN" : "verified"} tone={bindingUntrusted ? "red" : "green"} />
                 </li>
                 <li className="break-all font-mono text-[10px] text-gray-400">
                   exact case · rev {binding.exact_case_binding.case_revision} · {binding.exact_case_binding.case_digest}
                 </li>
                 <li className="text-[10px] text-gray-400">
-                  声明版本：{binding.declared_system_version_set_binding_or_unknown === null ? "UNKNOWN" : JSON.stringify(binding.declared_system_version_set_binding_or_unknown)}
+                  声明版本：{JSON.stringify(binding.declared_system_version_set_binding_or_unknown)}
                 </li>
               </ul>
             ) : (
-              <p className="text-xs text-gray-400">UNKNOWN · 尚未绑定到 AI 应用</p>
+              <p className="text-xs text-gray-400">
+                {governance.data?.binding_integrity_status === "integrity_error" ? "integrity_error · binding 已隐藏" : "UNKNOWN · 尚未绑定到 AI 应用"}
+              </p>
             )}
           </div>
 
@@ -276,9 +295,15 @@ function CaseV5GovernanceCard({
               <p className="mb-1 text-xs font-medium text-gray-400">issue 快照（只读 data）</p>
               <ul className="space-y-1 text-xs text-gray-700">
                 <li className="truncate">
-                  <a className="text-brand-600 hover:underline" href={governance.data.issue_snapshot.source_url} target="_blank" rel="noreferrer">
-                    {governance.data.issue_snapshot.external_repo}#{governance.data.issue_snapshot.external_issue_number}
-                  </a>
+                  {governance.data.issue_snapshot.source_url ? (
+                    <a className="text-brand-600 hover:underline" href={governance.data.issue_snapshot.source_url} target="_blank" rel="noreferrer">
+                      {governance.data.issue_snapshot.external_repo
+                        ? `${governance.data.issue_snapshot.external_repo}#${governance.data.issue_snapshot.external_issue_number}`
+                        : governance.data.issue_snapshot.source_url}
+                    </a>
+                  ) : (
+                    <span>manual source</span>
+                  )}
                   {" · "}{governance.data.issue_snapshot.title ?? "UNTITLED"}
                 </li>
                 <li className="flex flex-wrap gap-2 text-[10px] text-gray-400">
@@ -290,6 +315,8 @@ function CaseV5GovernanceCard({
                 </li>
               </ul>
             </div>
+          ) : governance.data?.issue_snapshot_integrity_status === "integrity_error" ? (
+            <p className="text-xs text-red-700">issue 快照 integrity_error，未作为可信数据展示。</p>
           ) : null}
 
           <div>

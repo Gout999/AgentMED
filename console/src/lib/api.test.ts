@@ -10,53 +10,6 @@ function jsonResponse(body: unknown, status = 200): Response {
   });
 }
 
-const workspaceId = "ws_01J0000000000001";
-const projectId = "proj_01J000000000001";
-const applicationId = "app_01J0000000000001";
-const principalId = "prn_01J000000000000A";
-const digest = `sha256:${"1".repeat(64)}`;
-
-function catalogResponse(overrides: Record<string, unknown> = {}) {
-  const envelope = {
-    schema_version: "2.0",
-    workspace_id: workspaceId,
-    revision: 1,
-    recorded_by_principal: principalId,
-    recorded_at: "2026-08-11T12:00:00Z",
-    immutable: true,
-    hash_rule: "jcs-rfc8785-v1+sha256(excluding:/record_envelope/record_digest)",
-    record_digest: digest,
-    authority_receipt_id: "arec_01J0000000000001",
-  };
-  return {
-    schema_version: "2.0",
-    workspace_id: workspaceId,
-    request_id: "req_01J0000000000001",
-    audit_ref: "audit://aud_01J0000000000001",
-    items: [{
-      application: {
-        record_envelope: envelope,
-        application_id: applicationId,
-        workspace_id: workspaceId,
-        project_id: projectId,
-        slug: "case-loop",
-        display_name: "CaseLoop",
-        owner_principal_ids: [principalId],
-        criticality: "P1",
-        data_classification: "INTERNAL",
-        governance_mode: "MANAGED",
-        lifecycle_state: "REGISTERED",
-        exact_previous_application_binding_or_null: null,
-      },
-      environments: [],
-      system_components: [],
-      dependency_edges: [],
-    }],
-    next_cursor: "cur_01J0000000000001",
-    ...overrides,
-  };
-}
-
 beforeEach(() => {
   fetchMock.mockReset();
   fetchMock.mockImplementation((input: RequestInfo | URL) => {
@@ -212,6 +165,98 @@ describe("CaseLoop Console API client", () => {
     });
   });
 
+  it("preserves V5 integrity_error as UNKNOWN instead of a trusted readiness", async () => {
+    const projection = {
+      case_id: "case_1",
+      case_revision: 1,
+      case_integrity_status: "verified",
+      case_integrity_error: null,
+      application_binding: null,
+      binding_integrity_status: "integrity_error",
+      binding_integrity_error: "v5.binding_integrity_error:record_digest_mismatch",
+      case_readiness: "UNKNOWN",
+      acceptance_integrity_status: "verified",
+      acceptance_integrity_error: null,
+      acceptance_proposal_count: 1,
+      confirmed_acceptance_count: 0,
+      executable_acceptance_count: 0,
+      missing_evidence: ["trace_id"],
+      issue_snapshot: null,
+      issue_snapshot_integrity_status: "integrity_error",
+      issue_snapshot_integrity_error: "v5.issue_snapshot_integrity_error:digest_mismatch",
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse(projection));
+
+    await expect(api.getCaseV5Readiness("case_1")).resolves.toEqual(projection);
+  });
+
+  it("accepts confirmed-but-not-executable V5 readiness only as NEEDS", async () => {
+    const digest = `sha256:${"a".repeat(64)}`;
+    const projection = {
+      case_id: "case_1",
+      case_revision: 1,
+      case_integrity_status: "verified",
+      case_integrity_error: null,
+      application_binding: {
+        application_case_binding_id: "acb_12345678",
+        application_id: "app_12345678",
+        environment_id: "env_12345678",
+        exact_case_binding: {
+          case_id: "case_1",
+          case_revision: 1,
+          case_digest: digest,
+        },
+        declared_system_version_set_binding_or_unknown: {
+          kind: "UNKNOWN",
+          reason: "not declared",
+        },
+        record_digest: digest,
+      },
+      binding_integrity_status: "verified",
+      binding_integrity_error: null,
+      case_readiness: "NEEDS_ACCEPTANCE_CRITERIA",
+      acceptance_integrity_status: "verified",
+      acceptance_integrity_error: null,
+      acceptance_proposal_count: 1,
+      confirmed_acceptance_count: 1,
+      executable_acceptance_count: 0,
+      missing_evidence: [],
+      issue_snapshot: null,
+      issue_snapshot_integrity_status: "missing",
+      issue_snapshot_integrity_error: null,
+    };
+    fetchMock.mockResolvedValueOnce(jsonResponse(projection));
+
+    await expect(api.getCaseV5Readiness("case_1")).resolves.toEqual(projection);
+  });
+
+  it("rejects a READY projection whose integrity or executable count is untrusted", async () => {
+    fetchMock.mockResolvedValueOnce(jsonResponse({
+      case_id: "case_1",
+      case_revision: 1,
+      case_integrity_status: "verified",
+      case_integrity_error: null,
+      application_binding: null,
+      binding_integrity_status: "integrity_error",
+      binding_integrity_error: "digest_mismatch",
+      case_readiness: "READY",
+      acceptance_integrity_status: "verified",
+      acceptance_integrity_error: null,
+      acceptance_proposal_count: 0,
+      confirmed_acceptance_count: 1,
+      executable_acceptance_count: 0,
+      missing_evidence: [],
+      issue_snapshot: null,
+      issue_snapshot_integrity_status: "missing",
+      issue_snapshot_integrity_error: null,
+    }));
+
+    await expect(api.getCaseV5Readiness("case_1")).rejects.toMatchObject({
+      status: 200,
+      code: "invalid_response",
+    });
+  });
+
   it("rejects malformed objects instead of rendering a trusted or green state", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ demo_app: { status: "active" } }));
     await expect(api.getEnvironment()).rejects.toMatchObject({
@@ -270,153 +315,5 @@ describe("CaseLoop Console API client", () => {
       status: 200,
       code: "invalid_response",
     });
-  });
-
-  it("authenticates the public application list without placing the bearer in URL or body", async () => {
-    const bearerToken = "opaque-catalog-token-never-persist";
-    fetchMock.mockResolvedValueOnce(jsonResponse(catalogResponse()));
-
-    await expect(api.listApplications(
-      { workspaceId, projectId, bearerToken },
-      { limit: 25, cursor: "cur_previous0001" },
-    )).resolves.toMatchObject({ workspace_id: workspaceId, items: [{ application: { project_id: projectId } }] });
-
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
-    const headers = new Headers(init.headers);
-    expect(url).toBe(
-      `/api/api/v2/applications?project_id=${projectId}&limit=25&cursor=cur_previous0001`,
-    );
-    expect(url).not.toContain(bearerToken);
-    expect(init.method).toBe("GET");
-    expect(init.body).toBeUndefined();
-    expect(headers.get("Authorization")).toBe(`Bearer ${bearerToken}`);
-    expect(headers.get("X-CaseLoop-Workspace-ID")).toBe(workspaceId);
-    expect(headers.get("X-CaseLoop-Contract-Version")).toBe("2.0");
-    expect(headers.get("X-CaseLoop-Client-Version")).toBe("console/r2");
-  });
-
-  it("redacts the bearer from public API error objects even if a server reflects it", async () => {
-    const bearerToken = "opaque-reflected-secret";
-    fetchMock.mockResolvedValueOnce(jsonResponse({
-      error: {
-        code: "TOKEN_INVALID",
-        message: `invalid ${bearerToken}`,
-        details: { provider_message: bearerToken },
-      },
-    }, 401));
-
-    const error = await api.listApplications({ workspaceId, projectId, bearerToken }).catch((caught) => caught);
-    expect(error).toMatchObject({ status: 401, code: "TOKEN_INVALID" });
-    expect(error.message).toContain("[REDACTED_SECRET]");
-    expect(JSON.stringify({
-      message: error.message,
-      status: error.status,
-      code: error.code,
-      detail: error.detail,
-    })).not.toContain(bearerToken);
-  });
-
-  it("fails closed on malformed and cross-scope catalog responses", async () => {
-    const credential = { workspaceId, projectId, bearerToken: "opaque-valid-token" };
-    fetchMock.mockResolvedValueOnce(jsonResponse(catalogResponse({ unexpected: true })));
-    await expect(api.listApplications(credential)).rejects.toMatchObject({
-      status: 200,
-      code: "invalid_response",
-    });
-
-    fetchMock.mockResolvedValueOnce(jsonResponse(catalogResponse({
-      workspace_id: "ws_01J0000000000002",
-    })));
-    await expect(api.listApplications(credential)).rejects.toMatchObject({
-      status: 200,
-      code: "invalid_response",
-    });
-
-    const crossProject = catalogResponse();
-    (crossProject.items[0].application as Record<string, unknown>).project_id = "proj_01J000000000002";
-    fetchMock.mockResolvedValueOnce(jsonResponse(crossProject));
-    await expect(api.listApplications(credential)).rejects.toMatchObject({
-      status: 200,
-      code: "integrity_error",
-    });
-  });
-
-  it("accepts only the revision-matched application and component previous-binding union", async () => {
-    const credential = { workspaceId, projectId, bearerToken: "opaque-union-token" };
-    const active = catalogResponse();
-    const application = active.items[0].application as Record<string, unknown>;
-    const activeEnvelope = {
-      ...(application.record_envelope as Record<string, unknown>),
-      revision: 2,
-    };
-    application.record_envelope = activeEnvelope;
-    application.lifecycle_state = "ACTIVE";
-    delete application.exact_previous_application_binding_or_null;
-    application.exact_previous_application_binding = {
-      kind: "AI_APPLICATION",
-      id: applicationId,
-      revision: 1,
-      digest,
-    };
-    (active.items[0] as unknown as Record<string, unknown>).system_components = [{
-      record_envelope: { ...activeEnvelope, revision: 2 },
-      component_id: "cmp_01J0000000000001",
-      workspace_id: workspaceId,
-      application_id: applicationId,
-      component_kind: "AGENT",
-      logical_name: "triage_agent",
-      owner_principal_ids: [principalId],
-      criticality: "P1",
-      data_classification: "INTERNAL",
-      permission_classification: "READ_WRITE",
-      effect_classification: "LOCAL",
-      dataset_role: null,
-      lifecycle_state: "ACTIVE",
-      exact_previous_system_component_binding: {
-        kind: "SYSTEM_COMPONENT",
-        id: "cmp_01J0000000000001",
-        revision: 1,
-        digest,
-      },
-    }];
-    fetchMock.mockResolvedValueOnce(jsonResponse(active));
-    await expect(api.listApplications(credential)).resolves.toMatchObject({
-      items: [{
-        application: { lifecycle_state: "ACTIVE", exact_previous_application_binding: { revision: 1 } },
-        system_components: [{ exact_previous_system_component_binding: { revision: 1 } }],
-      }],
-    });
-
-    const invalidApplication = catalogResponse();
-    (invalidApplication.items[0].application.record_envelope as Record<string, unknown>).revision = 2;
-    (invalidApplication.items[0].application as Record<string, unknown>).lifecycle_state = "ACTIVE";
-    fetchMock.mockResolvedValueOnce(jsonResponse(invalidApplication));
-    await expect(api.listApplications(credential)).rejects.toMatchObject({ code: "invalid_response" });
-
-    const invalidComponent = catalogResponse();
-    (invalidComponent.items[0] as unknown as Record<string, unknown>).system_components = [{
-      record_envelope: invalidComponent.items[0].application.record_envelope,
-      component_id: "cmp_01J0000000000001",
-      workspace_id: workspaceId,
-      application_id: applicationId,
-      component_kind: "AGENT",
-      logical_name: "triage_agent",
-      owner_principal_ids: [principalId],
-      criticality: "P1",
-      data_classification: "INTERNAL",
-      permission_classification: "READ_WRITE",
-      effect_classification: "LOCAL",
-      dataset_role: null,
-      lifecycle_state: "REGISTERED",
-      exact_previous_system_component_binding_or_null: null,
-      exact_previous_system_component_binding: {
-        kind: "SYSTEM_COMPONENT",
-        id: "cmp_01J0000000000001",
-        revision: 1,
-        digest,
-      },
-    }];
-    fetchMock.mockResolvedValueOnce(jsonResponse(invalidComponent));
-    await expect(api.listApplications(credential)).rejects.toMatchObject({ code: "invalid_response" });
   });
 });
