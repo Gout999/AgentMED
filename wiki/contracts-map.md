@@ -2,7 +2,10 @@
 
 [返回 Wiki 索引](INDEX.md)
 
-> 状态：Phase 0B 的 v3 契约是客服参考纵切的实施基线。`contracts/v4/` 已通过 Stage 0 与 Stage 1 Entry contract-only verifier。S1A 的 migration、HTTP/CLI 和 no-trace runtime 已在 `22c23f8` 完成并通过独立 verifier/evidence；这只是本地 runtime，不是 provider/Agent/live 证明。S1B 尚未实现，provider-live 还受凭证轮换、单独授权和 V5 scope review 阻塞。
+> 状态：Phase 0B 的 v3 契约是客服参考纵切的实施基线。`contracts/v4/` 已通过 Stage 0 与
+> Stage 1 Entry contract-only verifier，S1A 本地 runtime 已在 `22c23f8` 完成。
+> `contracts/v5/` 保留 V5-0 historical freeze，并包含当前 V5-1 partial runtime overlay；
+> 其测试转绿只证明声明一致，不证明 provider、Agent、external 或 production。
 
 施工顺序：先确定变更涉及哪份契约，再精读文件和对应 conformance test。本页只做导航，不能覆盖原契约。
 
@@ -39,6 +42,19 @@
 | S1A · authenticated maintainer report without trace | `DONE (LOCAL RUNTIME)`：`007`、本地 bootstrap、5 个 HTTP/CLI intent，以及同事务 Signal/Case link/`UNKNOWN` receipt/event/audit/outbox/idempotency 路径 | provider、Agent、外部与 production facets 均为 `NOT_RUN`；evidence 见 `evidence/v4/stage-1/maintainer-intake/` |
 | S1B · Langfuse read + CaseLoop OTel write/readback | `FROZEN` wire contract only；connector、cursor/DLQ、真实 Langfuse 读取与独立 sink 回读均未实现 | 008、runtime、测试，以及轮换后的隔离凭证和单独 live 授权；当前 provider-live 为 `BLOCKED` |
 
+## V5 accepted contracts and current runtime overlay
+
+| 资产 | 当前定义 | 明确不证明 |
+|---|---|---|
+| [v5/README.md](../contracts/v5/README.md) | accepted freeze、schema-major 路由、current allowlist 与 deferred intents | stage 已完成或 live |
+| [v5/domain-model.yaml](../contracts/v5/domain-model.yaml) | AIApplication、common authority envelope、组件/拓扑/版本、Desired/Observed/Effect、Episode view/snapshot 与 release 顺序 | 表、migration 或 runtime 存在 |
+| [v5/schema-profiles.yaml](../contracts/v5/schema-profiles.yaml) | V5 exact binding/AuthorityReceipt 与 Candidate/Eval/Gate/WorkOrder/Approval/Operation schema-major-2 profile | exact JSON field schema 已冻结或可路由 |
+| [v5/events.yaml](../contracts/v5/events.yaml) | pre-Gate ReleasePlan、root operation receipt 回流、成功/UNKNOWN/rollback guard | ExternalOperation runtime 已实现 |
+| [v5/aggregate-ownership.yaml](../contracts/v5/aggregate-ownership.yaml) | 新资源唯一 owner；system profiles 保留 V4 logical owner 与已有 lifecycle，V5 补齐缺失的人类 Approval lifecycle | Controller 已实现 |
+| [v5/state-machines.yaml](../contracts/v5/state-machines.yaml) | 新 mutable catalog/assignment 状态机与 V4 ExternalOperation 的 system success guard profile | 外部动作可执行 |
+| [v5/intent-registry.yaml](../contracts/v5/intent-registry.yaml) | historical all-disabled freeze + current V5-1 HTTP/CLI/capability allowlist；standalone record/V5-2+ deferred | MCP/A2A/SDK 或 release 已上线 |
+| [v5/compatibility.yaml](../contracts/v5/compatibility.yaml) | `/api/v1` 不改义、current migration/runtime overlay、no dual authority | stage completion evidence |
+
 ## Fixtures 与样例
 
 | 路径 | 用途 | 状态边界 |
@@ -58,6 +74,8 @@
 - [conformance/test_schemas.py](../contracts/conformance/test_schemas.py)：Schema、样例、反例、hash 与事件资产自洽。
 - [conformance/test_wilson.py](../contracts/conformance/test_wilson.py)：统计口径。
 - `conformance/test_v4_*.py`：v4 schema、owner、intent/OpenAPI、state/recovery 与 v3→v4 cutover target contract。
+- `conformance/test_v5_*.py`：V5 historical freeze、runtime overlay、owner、exact binding、
+  current/deferred transport 和 adversarial compatibility；仅为 contract evidence。
 - [conformance/LAST-RUN.md](../contracts/conformance/LAST-RUN.md)：2026-08-08 Phase 0B 历史实跑快照；当前测试状态以 [PROJECT_STATE](../docs/context/PROJECT_STATE.md) 为准。
 - [OPEN-QUESTIONS.md](../contracts/OPEN-QUESTIONS.md)：当前 v3 契约中仍需显式裁决的歧义；不得由实现悄悄决定。
 
@@ -80,9 +98,11 @@
 | `Signal Adapter` | 来源身份、去重、原始 Agent Run / trace 引用、隐私与 severity |
 | `TraceSource` | provider/project、查询窗口与水位、分页去重、root trace、输入/输出/模型/工具、fetch receipt |
 | `Trace Completeness` | 采样、脱敏、缺失 span、留存、权限、时间覆盖与 `UNKNOWN` 语义 |
-| `Agent VersionSet` | 仍需在后续 additive contract 冻结 prompt、model、tool、skill、memory/knowledge、harness、policy、environment 的最小可重放集合 |
+| `SystemVersionSet` | V5 定义 AI 应用 code、Agent、model、prompt、runtime data/RAG、tool、policy 与 runtime component 的 declared composition；当前 first-import runtime 处于 closure repair，standalone second-version record 未冻结；不包含 EvaluationBundle，也不证明 observed runtime |
 | `Proposal Causation` | Agent 输入快照、原生 Worker/model/tool receipts、pre-action proposal 与后续权威事件的因果绑定 |
 | `Closure / Release Adapter` | 不同 Agent runtime 的发布、回滚、停止、告警和结果回传语义 |
 | CaseLoop 自身 trace 出站 | 标准传播、service/tenant 标识、脱敏、采样与 Langfuse adapter 配置 |
 
-表中 Signal 的 S1A no-trace 子集已完成本地 runtime、verifier、evidence 与 commit；TraceSource、带 locator 的 Trace Completeness、Connector、完整分布式 trace、Closure/Release Adapter 和 CaseLoop 自身 trace 出站仍待 S1B、后续 Stage 或 V5 scope 裁决。target contract 只能证明我们已明确语义，不能证明尚未实现的真实调用路径或 live。
+表中 Signal 的 S1A no-trace 子集已完成本地 runtime、verifier、evidence 与 commit；其余能力
+按 V5 Master Plan 分阶段施工。target/contract 只能证明语义已明确，不能证明尚未关闭的
+runtime 调用路径或 live。
