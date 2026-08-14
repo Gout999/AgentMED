@@ -17,7 +17,7 @@ from app.quality.client import FakeQualityClient, QualityAPIClient, QualityClien
 
 _ROLE_WRITE_RULES: dict[str, tuple[tuple[str, str], ...]] = {
     "quality-officer": (
-        ("POST", r"^/v1/cases/[^/]+/(?:claim|heartbeat|lease-check|suggestions|transitions)$"),
+        ("POST", r"^/v1/cases/[^/]+/(?:claim|heartbeat|lease-check|suggestions|transitions|reopen)$"),
     ),
     "collector": (),
     "case-officer": (

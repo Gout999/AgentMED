@@ -45,6 +45,7 @@ machines:
       - { from: NOTIFYING,          on: case.closed,                  to: CLOSED,             note: "仅在 outbox dispatcher 验证 provider receipt 后归档" }
       - { from: NOTIFYING,          on: notification.dead_lettered,  to: ESCALATED }
       - { from: "*",                on: case.escalated,              to: ESCALATED,          note: "人工接管是全局迁移" }
+      - { from: ESCALATED,          on: case.reopened,                to: OPEN,               note: "人工结论落库：quality-officer 复核后重开重派（重跑归因）" }
     failure_semantics:
       duplicate_and_merge: "inbox dedup_key 命中 → DUPLICATE_DISMISSED（同一条重复投递）或 MERGED（同人同事不同渠道）；合并后原 case 事件全部指向 canonical_case_id"
       worker_lost: "DISPATCHED 状态 lease 到期未续 → case.worker_lost → 回到 OPEN 重派；fencing_token 单调递增，旧 Worker 迟到的写一律拒绝"

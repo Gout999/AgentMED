@@ -83,6 +83,10 @@ class TransitionIn(BaseModel):
     guard: Optional[str] = None
 
 
+class ReopenIn(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=2000)
+
+
 def _feishu_live_adapter(request: Request, settings: Settings) -> FeishuLiveAdapter:
     adapter = getattr(request.app.state, "notification_adapter", None)
     if adapter is None:
@@ -458,6 +462,29 @@ def reclaim_case(
     if result is None:
         raise HTTPException(status_code=409, detail={"code": "not_expired", "message": "lease not expired or not dispatched"})
     return result
+
+
+@router.post("/v1/cases/{case_id}/reopen")
+def reopen_case(
+    case_id: str,
+    body: ReopenIn,
+    session: Session = Depends(get_db_session),
+    settings: Settings = Depends(get_app_settings),
+    _authority: str = Depends(require_internal_write),
+) -> dict[str, Any]:
+    """人工结论落库：quality-officer 复核 escalated 案例后重开重派。
+
+    重开只把案例送回 OPEN（清除 escalation 投影），派单仍走 claim
+    （新 lease + 新 fencing token），不在此处隐式派单。
+    """
+    svc = CaseService(session, settings)
+    try:
+        return svc.reopen(case_id, reason=body.reason, actor=_authority)
+    except AuditWriteError as exc:
+        raise HTTPException(status_code=503, detail={"code": "audit_unavailable", "message": str(exc)}) from exc
+    except CaseServiceError as exc:
+        _raise(exc)
+    return {}
 
 
 @router.post("/v1/cases/{case_id}/transitions")

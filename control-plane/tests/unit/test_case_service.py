@@ -548,3 +548,40 @@ def test_worker_lost_requeues(sqlite_session):
     result = svc.reclaim_if_expired(case_id)
     assert result is not None
     assert result["state"] == "OPEN"
+
+
+def test_escalated_case_reopen_by_quality_officer(sqlite_session):
+    svc = CaseService(sqlite_session, _settings())
+    case_id = svc.ingest_complaint(source="webhook", text="x", external_id="m7")["case_id"]
+    svc.transition(case_id, "case.escalated", payload={"escalation_reason": "runner failed"})
+    agg = svc.store.get_aggregate("case", case_id)
+    assert agg.state == "ESCALATED"
+    assert (agg.payload or {}).get("escalation_reason") == "runner failed"
+
+    result = svc.reopen(case_id, reason="复核结论：修复执行机后重跑归因", actor="mcp:quality-officer")
+    assert result["state"] == "OPEN"
+    payload = result["payload"]
+    assert payload["reopen_reason"].startswith("复核结论")
+    assert payload["reopen_count"] == 1
+    assert payload["reopened_by"] == "mcp:quality-officer"
+    assert payload.get("escalation_reason") is None
+    assert payload.get("escalated_experiment_id") is None
+
+    # 重开后可以正常派单（新 lease / 新 fencing token）
+    claim = svc.claim(case_id, "quality-officer")
+    assert claim["state"] == "DISPATCHED"
+    assert claim["fencing_token"] > 0
+
+    # 非 ESCALATED 状态拒绝 reopen
+    with pytest.raises(CaseServiceError) as exc:
+        svc.reopen(case_id, reason="again")
+    assert "only an ESCALATED case can be reopened" in str(exc.value)
+
+
+def test_reopen_requires_reason(sqlite_session):
+    svc = CaseService(sqlite_session, _settings())
+    case_id = svc.ingest_complaint(source="webhook", text="x", external_id="m8")["case_id"]
+    svc.transition(case_id, "case.escalated", payload={})
+    with pytest.raises(CaseServiceError) as exc:
+        svc.reopen(case_id, reason="   ")
+    assert "reason is required" in str(exc.value)

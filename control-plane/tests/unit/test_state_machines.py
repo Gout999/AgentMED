@@ -58,6 +58,13 @@ def test_case_worker_lost():
     assert next_state("case", "DISPATCHED", "case.worker_lost") == "OPEN"
 
 
+def test_case_reopen_from_escalated():
+    # 人工结论落库：ESCALATED → OPEN，回到可派单状态
+    assert next_state("case", "ESCALATED", "case.reopened") == "OPEN"
+    with pytest.raises(IllegalTransition):
+        next_state("case", "CLOSED", "case.reopened")
+
+
 def test_illegal_transition():
     with pytest.raises(IllegalTransition):
         next_state("case", "OPEN", "case.attribution_completed")

@@ -66,6 +66,8 @@ CASE_TRANSITIONS: list[Transition] = [
     Transition("NOTIFYING", "notification.dead_lettered", "ESCALATED"),
     # 全局人工接管
     Transition("*", "case.escalated", "ESCALATED"),
+    # 人工结论落库后重新派单（quality-officer 复核决定重跑归因）
+    Transition("ESCALATED", "case.reopened", "OPEN"),
 ]
 
 # ---------- Experiment ----------

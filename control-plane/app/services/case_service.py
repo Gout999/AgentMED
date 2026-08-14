@@ -893,6 +893,70 @@ class CaseService:
             "payload": agg.payload if agg else {},
         }
 
+    def reopen(self, case_id: str, *, reason: str, actor: str = "quality-officer") -> dict[str, Any]:
+        """人工结论落库：quality-officer 复核 escalated 案例后重开重派。
+
+        ESCALATED → OPEN（case.reopened）。清除 escalation 投影字段，记录复核结论；
+        重开不隐式派单——新的归因尝试仍走 claim（新 lease + 新 fencing token）。
+        """
+        if not isinstance(reason, str) or not reason.strip():
+            raise CaseServiceError("validation_failed", "reopen reason is required")
+        agg = self.store.get_aggregate_for_update("case", case_id)
+        if agg is None:
+            raise CaseServiceError("not_found", f"case {case_id} not found")
+        if agg.state != "ESCALATED":
+            raise CaseServiceError(
+                "illegal_transition",
+                f"only an ESCALATED case can be reopened; got {agg.state}",
+                current_state=agg.state,
+            )
+        previous = agg.payload or {}
+        reopen_count = int(previous.get("reopen_count") or 0) + 1
+        try:
+            self.store.append_event(
+                aggregate_type="case",
+                aggregate_id=case_id,
+                event_type="case.reopened",
+                payload={
+                    "reason": reason,
+                    "escalation_reason": previous.get("escalation_reason"),
+                    "escalated_experiment_id": previous.get("escalated_experiment_id"),
+                },
+                causation_id="human-review",
+                correlation_id=case_id,
+                actor=actor,
+                expected_revision=agg.revision,
+                machine="case",
+                merge_payload={
+                    "reopen_reason": reason,
+                    "reopened_by": actor,
+                    "reopen_count": reopen_count,
+                    "escalation_reason": None,
+                    "escalated_experiment_id": None,
+                },
+            )
+        except IllegalTransition as exc:
+            raise CaseServiceError(
+                "illegal_transition",
+                str(exc),
+                current_state=agg.state,
+                event="case.reopened",
+            ) from exc
+        self.audit.record(
+            actor=actor,
+            action="case.reopened",
+            target=case_id,
+            params={"reason": reason, "reopen_count": reopen_count},
+            result="success",
+        )
+        agg = self.store.get_aggregate("case", case_id)
+        return {
+            "case_id": case_id,
+            "state": agg.state if agg else None,
+            "revision": agg.revision if agg else None,
+            "payload": agg.payload if agg else {},
+        }
+
     def project_changeset_event(
         self,
         *,
