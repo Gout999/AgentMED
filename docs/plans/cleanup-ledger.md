@@ -12,7 +12,7 @@
 | A3 | B1 live 脚本组：scripts/run_b1_live.py(3.5K)、validate_b1_run.py(2.7K)、run_b1_replay.py(1.6K)、b1_live/ | 手工模拟团队闭环的老演示脚本；团队已在真实跑（flow-first） | ✅ 已删（fe21652 + 94269d5：脚本+harness 测试，-1.5K 测试行；CP unit 787 绿） |
 | A4 | mcp-servers/trust_ledger/（legacy contract/replay 库） | README 自认「非生产权威写路径」；Wilson 契约在生产路径不复用 | ✅ 已删（库+表+trust_demo+2 测试；mcp tests 105 绿） |
 | A5 | casebase 向量列/ivfflat 索引（002_casebase_vector.sql） | Phase 2 预留，未启用（检索走全文+元数据）；plain PG 无扩展 | ✅ 已删（迁移文件 + run_migrations 容错代码；mcp tests 105 绿） |
-| A6 | agent-station deploy-langfuse-skill.sh + runtime/copaw/skills/langfuse-inspect | S0 harness 兜底；caseloop 团队走平台 skill_pool 分发 | 归档（S0 证据链引用保留） |
+| A6 | agent-station deploy-langfuse-skill.sh + runtime/copaw/skills/langfuse-inspect | 复核：s0-revision-team 正在使用该 skill（skill_pool 实测含 langfuse-inspect）；S0 证据链引用它 | 保留（撤回删除，s0 团队在用的活资产）；脚本已 fail-closed 化 |
 
 ## B. 重复代码（合并删除候选）
 
