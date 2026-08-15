@@ -402,7 +402,7 @@ def _public_claims_digest(
             "issuer": "https://auth.agentmed.dev",
             "subject": PUBLIC_SUBJECT,
             "principal_type": principal_type,
-            "audiences": ["agentmed-public-api"] if audiences is None else audiences,
+            "audiences": ["caseloop-public-api"] if audiences is None else audiences,
             "workspace_id": workspace_id,
             "project_ids": (
                 [PUBLIC_PROJECT_ID] if project_ids is None else project_ids
@@ -438,7 +438,7 @@ def _seed_real_public_identity(
     )
     granted_scopes = PUBLIC_SCOPES if scopes is None else scopes
     granted_audiences = (
-        ["agentmed-public-api"] if audiences is None else audiences
+        ["caseloop-public-api"] if audiences is None else audiences
     )
     stored_claims_digest = claims_digest or _public_claims_digest(
         workspace_id=workspace_id,

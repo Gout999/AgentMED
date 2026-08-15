@@ -67,7 +67,7 @@ CATALOG_REGISTRATION_ID = "creg_01J00000000000G1"
 VERSION_REGISTRATION_ID = "creg_01J00000000000G2"
 CREDENTIAL_ID = "cred_01J00000000000G1"
 AUTH_SUBJECT = "v5-1b-e2e-admin"
-AUDIENCES = ["agentmed-public-api"]
+AUDIENCES = ["caseloop-public-api"]
 ISSUER = "https://auth.agentmed.dev"
 IMPORT_SCOPES = ["system_manifests:import", "system_versions:read"]
 

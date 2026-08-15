@@ -51,7 +51,7 @@ def _claims_digest(
             "issuer": "https://auth.agentmed.dev",
             "subject": "maintainer-01J0000000000001",
             "principal_type": principal_type,
-            "audiences": ["agentmed-public-api"] if audiences is None else audiences,
+            "audiences": ["caseloop-public-api"] if audiences is None else audiences,
             "workspace_id": workspace_id,
             "project_ids": [PROJECT_ID] if project_ids is None else project_ids,
             "environment_ids": (
@@ -89,7 +89,7 @@ def _seed_credential(
     claims_digest: str | None = None,
 ) -> None:
     granted_scopes = BASE_SCOPES if scopes is None else scopes
-    granted_audiences = ["agentmed-public-api"] if audiences is None else audiences
+    granted_audiences = ["caseloop-public-api"] if audiences is None else audiences
     granted_projects = [PROJECT_ID] if project_ids is None else project_ids
     granted_environments = (
         [ENVIRONMENT_ID] if environment_ids is None else environment_ids
@@ -268,7 +268,7 @@ def test_unknown_bearer_is_a_secret_safe_token_invalid_error(sqlite_session) -> 
     ("field", "drifted_value"),
     [
         ("claims_digest", "sha256:" + "9" * 64),
-        ("audiences", ["agentmed-public-api", "drifted-audience"]),
+        ("audiences", ["caseloop-public-api", "drifted-audience"]),
         ("project_ids", []),
         ("environment_ids", []),
         ("scopes", ["cases:read"]),
@@ -327,7 +327,7 @@ def test_credential_and_principal_grant_drift_fails_closed(
         ),
         (
             {
-                "audiences": ["agentmed-public-api", "admin-control-plane"],
+                "audiences": ["caseloop-public-api", "admin-control-plane"],
                 "claims_digest": BASE_CLAIMS_DIGEST,
             },
             {},

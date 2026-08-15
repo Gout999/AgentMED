@@ -80,7 +80,7 @@ CONFIRMER_ENV_CREDENTIAL_ID = "cred_01J0000000000G04"
 CONFIRMER_FRESH_CREDENTIAL_ID = "cred_01J0000000000G05"
 AUTH_SUBJECT = "v5-1c-e2e-operator"
 ISSUER = "https://auth.agentmed.dev"
-AUDIENCES = ["agentmed-public-api"]
+AUDIENCES = ["caseloop-public-api"]
 BINDER_SCOPES = [
     "signals:write",
     "cases:read",

@@ -21,7 +21,7 @@ from app.utils.v4_integrity import V4IntegrityError, canonical_digest
 
 
 _HASH_ALGORITHM = "hmac-sha256-v1"
-_PUBLIC_AUDIENCE = "agentmed-public-api"
+_PUBLIC_AUDIENCE = "caseloop-public-api"
 _DUMMY_CREDENTIAL_HASH = "sha256:" + "0" * 64
 
 

@@ -147,8 +147,8 @@ class AcceptedPrincipalContext(WireModel):
 
     @model_validator(mode="after")
     def accepted_context_is_bound(self) -> "AcceptedPrincipalContext":
-        if "agentmed-public-api" not in self.audiences:
-            raise ValueError("accepted principal audience does not include agentmed-public-api")
+        if "caseloop-public-api" not in self.audiences:
+            raise ValueError("accepted principal audience does not include caseloop-public-api")
         if not (self.not_before <= self.evaluated_at < self.expires_at):
             raise ValueError("accepted principal is outside not-before/expiry bounds")
         requested = self.requested_context
