@@ -70,7 +70,8 @@ PYTHONPATH=src .venv/bin/python .venv/bin/uvicorn agentmed.api:app --host 0.0.0.
 ### 1.6 Makefile 目标（本仓库根目录）
 
 ```
-make test              # 三套测试：control-plane 790 + mcp 106 + eval-harness 81（+ conformance 24）
+make test              # 三套单测 + 契约套件：control-plane 790 + mcp 106(+1 live 跳过) + eval-harness 81
+                       #   + conformance 离线口径 525 passed / 15 live deselected / 4 xfailed（评审口径见 reviewer-runbook.md）
 make control-plane     # 起控制面（后台）
 make projections       # 起 12 个 MCP 角色投影（后台）
 make sandbox-verify    # 隔离容器修前/修后对照（段5 样例）
