@@ -3,6 +3,10 @@
 > 与 [`agentteams-package.md`](agentteams-package.md) 配套；每条证据都给出可独立核验的
 > 定位（控制面 PG / 仓库证据目录 / Langfuse / Matrix），结论均直接来自这些记录。
 > 时间均为 UTC。
+>
+> **命名说明**：本次运行发生在产品改名（CaseLoop → AgentMED，2026-08-15）**之前**，
+> 因此下文的团队名/审批人/Langfuse 标签沿用当时的 caseloop-* 名称——与原始证据
+> （DB、Matrix 事件、Langfuse 观测）逐字一致，不是笔误。
 
 ## 证据总览
 
@@ -13,7 +17,7 @@
 | 段3 归因 | 实验 | `exp_01M0159WMBWA8S0FPQF74SYDXS` → **VERDICT_COMPUTED / ATTRIBUTED / prompt**，Δ=(1.0, 0.0, 0.0)，135/135 trial |
 | 段4 修复 | 候选+工单 | `vs_78f1312790086845`（draft）+ 工单 `wo_01M01A4AZ1C88D5EBVN6Z7GDC4` FROZEN，hash `79d8c218…` |
 | 段5 验证 | 门禁+沙箱 | gate `eval_01M01A4BEV9QN9EBTJAAEM3320` passed（三轨+裁判 16/16）；sandbox `eval_01M01AFWDE2HMTHRZSQ5TVB1MX` PASS |
-| 段6 审批 | Matrix+grant | 决策事件 `$GelnQ7gB-mFw_c-Bw6Us8VN7bXKAoGrYu_wcuL3YizY`（@agentmed-approver，演示代批）→ changeset APPROVED → case RELEASING |
+| 段6 审批 | Matrix+grant | 决策事件 `$GelnQ7gB-mFw_c-Bw6Us8VN7bXKAoGrYu_wcuL3YizY`（@caseloop-approver，演示代批）→ changeset APPROVED → case RELEASING |
 | 出口 2 | 发布 | **releases 表 0 条** → VerifiedCandidate / NOT DEPLOYED |
 
 ## 1. 段3 归因实验（控制面 PG + `evidence/experiments/exp_01M0159WMBWA8S0FPQF74SYDXS/`）
@@ -42,7 +46,7 @@
 的 request_id/trace_id/versionset_id/组件 digest/answer_digest 必须与冻结协议逐项一致；
 135 份探针产物在证据目录 probe-outputs/ 下（每份含 request_id/trace_id/answer/组件 digest）。
 运动员轨真实模型路径：AgentMED(8088) → StepFun `step-3.7-flash`，Langfuse 逐条留痕
-（role=agentmed-eval，tag=versionset_id）。
+（role=caseloop-eval，tag=versionset_id）。
 
 ## 2. 段4 修复（AgentMED 写面 + 控制面）
 
@@ -72,7 +76,7 @@
 
 - 审批请求：`appr_01M01AFWSW7JYSYTE29REJ890S`（channel=matrix，nonce `01M01AC9QMAERZGYYH57CPD2NR`）。
 - Matrix 决策：团队房间（`!NzWy15gwm3QU6cTfuP:matrix-local.agentteams.io:18080`）事件
-  `$GelnQ7gB-mFw_c-Bw6Us8VN7bXKAoGrYu_wcuL3YizY`（2026-08-14T23:44:37Z），以 @agentmed-approver 身份发送，
+  `$GelnQ7gB-mFw_c-Bw6Us8VN7bXKAoGrYu_wcuL3YizY`（2026-08-14T23:44:37Z），以 @caseloop-approver 身份发送，
   reason 明标「演示代批」（owner 授权）。
 - reader 核验：nonce 匹配 → 登记 ApprovalGrant → changeset `cs_wo_01M01A4AZ1C88D5EBVN6Z7GDC4`
   **APPROVED**、案例 **RELEASING**（2026-08-14T23:50:57Z）。
