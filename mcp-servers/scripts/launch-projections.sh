@@ -33,7 +33,7 @@ start_p() {
     CONTROL_PLANE_BASE_URL="$CONTROL_PLANE_BASE_URL" \
     QUALITY_API_BASE_URL="$QUALITY_API_BASE_URL" \
     QUALITY_READ_TOKEN="$QUALITY_READ_TOKEN" \
-    CASELOOP_QUALITY_API_TIMEOUT_SECONDS="$CASELOOP_QUALITY_API_TIMEOUT_SECONDS" \
+    AGENTMED_QUALITY_API_TIMEOUT_SECONDS="$AGENTMED_QUALITY_API_TIMEOUT_SECONDS" \
     STEPFUN_API_KEY="$STEPFUN_API_KEY" \
     JUDGE_MODEL="$JUDGE_MODEL" \
     GATE_EVALUATION_TIMEOUT_SECONDS="$GATE_EVALUATION_TIMEOUT_SECONDS" \
@@ -48,16 +48,16 @@ start_p() {
 }
 
 # 依次启动（按 smoke.sh 投影表）
-start_p mcp-case-admin-quality-officer case_admin quality-officer CASE_ADMIN_PORT 8101 quality-officer yes no
-start_p mcp-case-admin-collector case_admin collector CASE_ADMIN_PORT 8201 collector no no
-start_p mcp-case-admin-case-officer case_admin case-officer CASE_ADMIN_PORT 8301 case-officer no no
-start_p mcp-case-admin-attributionist case_admin attributionist CASE_ADMIN_PORT 8401 eval-runner yes no
-start_p mcp-case-admin-repairer case_admin repairer CASE_ADMIN_PORT 8501 repairer yes no
-start_p mcp-release-admin-gatekeeper release_admin gatekeeper RELEASE_ADMIN_PORT 8102 gatekeeper yes no
-start_p mcp-release-admin-repairer release_admin repairer RELEASE_ADMIN_PORT 8202 repairer yes no
-start_p mcp-eval-runner-gatekeeper eval_runner gatekeeper EVAL_RUNNER_PORT 8103 gatekeeper yes yes
-start_p mcp-eval-runner-attributionist eval_runner attributionist EVAL_RUNNER_PORT 8203 eval-runner yes no
-start_p mcp-notification-quality-officer notification quality-officer NOTIFICATION_PORT 8104 quality-officer no no
-start_p mcp-notification-case-officer notification case-officer NOTIFICATION_PORT 8204 case-officer yes no
-start_p mcp-casebase-knowledge casebase_knowledge case-officer CASEBASE_PORT 8005 case-officer no no
+start_p mcp-agentmed-admin-quality-officer case_admin quality-officer CASE_ADMIN_PORT 8101 quality-officer yes no
+start_p mcp-agentmed-admin-collector case_admin collector CASE_ADMIN_PORT 8201 collector no no
+start_p mcp-agentmed-admin-case-officer case_admin case-officer CASE_ADMIN_PORT 8301 case-officer no no
+start_p mcp-agentmed-admin-attributionist case_admin attributionist CASE_ADMIN_PORT 8401 eval-runner yes no
+start_p mcp-agentmed-admin-repairer case_admin repairer CASE_ADMIN_PORT 8501 repairer yes no
+start_p mcp-agentmed-release-gatekeeper release_admin gatekeeper RELEASE_ADMIN_PORT 8102 gatekeeper yes no
+start_p mcp-agentmed-release-repairer release_admin repairer RELEASE_ADMIN_PORT 8202 repairer yes no
+start_p mcp-agentmed-eval-gatekeeper eval_runner gatekeeper EVAL_RUNNER_PORT 8103 gatekeeper yes yes
+start_p mcp-agentmed-eval-attributionist eval_runner attributionist EVAL_RUNNER_PORT 8203 eval-runner yes no
+start_p mcp-agentmed-notify-quality-officer notification quality-officer NOTIFICATION_PORT 8104 quality-officer no no
+start_p mcp-agentmed-notify-case-officer notification case-officer NOTIFICATION_PORT 8204 case-officer yes no
+start_p mcp-agentmed-casebase-knowledge casebase_knowledge case-officer CASEBASE_PORT 8005 case-officer no no
 echo "12 projections launched"

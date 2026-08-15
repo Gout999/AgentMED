@@ -1,4 +1,4 @@
-"""mcp-notification：控制面通知命令 + 对内留痕。
+"""mcp-agentmed-notify：控制面通知命令 + 对内留痕。
 
 - feishu.reply_origin 只向控制面排队（release closure-context）；dispatcher 才能接收
   provider 回执并归档 Case。工具名保留历史命名，通道本身 channel-agnostic。
@@ -41,7 +41,7 @@ from common.tables import NotificationMessage  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-mcp = ToolDefinitionRegistry("mcp-notification")
+mcp = ToolDefinitionRegistry("mcp-agentmed-notify")
 
 _DEFAULT_ROOM = "demo"
 
@@ -243,7 +243,7 @@ def _api_messages(request) -> Any:
 
 
 def _api_health(request) -> Any:
-    return json_response(200, {"status": "ok", "service": "mcp-notification"})
+    return json_response(200, {"status": "ok", "service": "mcp-agentmed-notify"})
 
 
 def _profiled_mcp(profile: str) -> FastMCP:
@@ -254,7 +254,7 @@ def _profiled_mcp(profile: str) -> FastMCP:
             "matrix.log": matrix_log,
         },
     }
-    return build_tool_projection("mcp-notification", profile, profiles)
+    return build_tool_projection("mcp-agentmed-notify", profile, profiles)
 
 
 def main() -> None:

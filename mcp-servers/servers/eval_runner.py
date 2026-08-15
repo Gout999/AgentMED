@@ -1,4 +1,4 @@
-"""mcp-eval-runner：门禁评测触发/报告 + 归因实验（spec §9.5）。
+"""mcp-agentmed-eval：门禁评测触发/报告 + 归因实验（spec §9.5）。
 
 - gate.run/report：确定性门禁（规则轨+裁判轨分开报告；live 轨不可达标 UNAVAILABLE/skipped）。
 - experiment.*：包装 control-plane /v1/experiments。
@@ -55,7 +55,7 @@ from eval_harness.probe_loader import frozen_digest, load_probe_set  # noqa: E40
 
 logger = logging.getLogger(__name__)
 
-mcp = ToolDefinitionRegistry("mcp-eval-runner")
+mcp = ToolDefinitionRegistry("mcp-agentmed-eval")
 _execution_threads: dict[str, threading.Thread] = {}
 _execution_threads_lock = threading.Lock()
 
@@ -1192,7 +1192,7 @@ def _profiled_mcp(profile: str) -> FastMCP:
             "probe.freeze": probe_freeze,
         },
     }
-    return build_tool_projection("mcp-eval-runner", profile, profiles)
+    return build_tool_projection("mcp-agentmed-eval", profile, profiles)
 
 
 def main() -> None:

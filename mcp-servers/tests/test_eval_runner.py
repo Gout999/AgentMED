@@ -1,4 +1,4 @@
-"""mcp-eval-runner：probe.freeze 结构校验 + experiment.execute 异步执行链路（S0-006）。
+"""mcp-agentmed-eval：probe.freeze 结构校验 + experiment.execute 异步执行链路（S0-006）。
 
 - experiment.execute：工具注册、RUNNING/lease 前置校验、冻结协议与精确 VersionSet 绑定、
   后台线程回流 cells/完整 artifacts、异常回流 cancel。执行机用桩替换，不真跑 LLM。
@@ -589,12 +589,12 @@ def test_plan_signature_drops_version_refs():
 def test_execute_live_smoke_real_control_plane():
     """真机冒烟（默认跳过）：连真实 control-plane，execute 对不存在实验抛 McpError。
 
-    前置：CASELOOP_LIVE_TESTS=1 且 control-plane 可达。零污染（不创建实验）。
+    前置：AGENTMED_LIVE_TESTS=1 且 control-plane 可达。零污染（不创建实验）。
     说明：control-plane 的 FastAPI 错误走 {"detail": {...}} 信封，common.http._map_error
     提取 code 失败时降级为 VALIDATION_FAILED，故此处只断言「抛 McpError」，不绑定具体码
     （该 detail 兼容局限为既有行为，非本任务引入）。
     """
-    if os.environ.get("CASELOOP_LIVE_TESTS") != "1":
-        pytest.skip("CASELOOP_LIVE_TESTS != 1：默认跳过真机冒烟")
+    if os.environ.get("AGENTMED_LIVE_TESTS") != "1":
+        pytest.skip("AGENTMED_LIVE_TESTS != 1：默认跳过真机冒烟")
     with pytest.raises(eval_runner.McpError):
         eval_runner.experiment_execute("exp_live_smoke_does_not_exist")

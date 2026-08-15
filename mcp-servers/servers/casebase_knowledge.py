@@ -1,4 +1,4 @@
-"""mcp-casebase-knowledge：案例入库/检索（spec §9.7 + T4 任务）。
+"""mcp-agentmed-casebase-knowledge：案例入库/检索（spec §9.7 + T4 任务）。
 
 - kb.search/get/upsert：全文+元数据过滤（Phase 1，D-001 #12）；向量接口预留，degraded=fulltext_only。
 - kb.badcase_search：badcase 相似案例查询（doc_type=case 且 metadata.fault_layer 标注）。
@@ -31,7 +31,7 @@ from common.tables import CasebaseDoc  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-mcp = ToolDefinitionRegistry("mcp-casebase-knowledge")
+mcp = ToolDefinitionRegistry("mcp-agentmed-casebase-knowledge")
 
 
 def _settings() -> Settings:
@@ -219,7 +219,7 @@ def kb_holdout_get(holdout_name: str) -> dict[str, Any]:
 
 def _profiled_mcp(profile: str) -> FastMCP:
     return build_tool_projection(
-        "mcp-casebase-knowledge",
+        "mcp-agentmed-casebase-knowledge",
         profile,
         {
             "case-officer": {

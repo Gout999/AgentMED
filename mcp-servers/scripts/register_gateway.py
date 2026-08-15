@@ -1,4 +1,4 @@
-"""Register the 12 caseloop MCP projections on the Higress gateway
+"""Register the 12 agentmed MCP projections on the Higress gateway
 via the console API (platform-native mcp-proxy mechanism)."""
 import json
 import pathlib
@@ -9,18 +9,18 @@ CONSOLE = "http://127.0.0.1:18001"
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 SERVERS = [
-    ("mcp-case-admin-quality-officer", 8101, ["worker-quality-officer"]),
-    ("mcp-case-admin-collector", 8201, ["worker-collector"]),
-    ("mcp-case-admin-case-officer", 8301, ["worker-case-officer"]),
-    ("mcp-case-admin-attributionist", 8401, ["worker-attributionist"]),
-    ("mcp-case-admin-repairer", 8501, ["worker-repairer"]),
-    ("mcp-release-admin-gatekeeper", 8102, ["worker-gatekeeper"]),
-    ("mcp-release-admin-repairer", 8202, ["worker-repairer"]),
-    ("mcp-eval-runner-gatekeeper", 8103, ["worker-gatekeeper"]),
-    ("mcp-eval-runner-attributionist", 8203, ["worker-attributionist"]),
-    ("mcp-notification-quality-officer", 8104, ["worker-quality-officer"]),
-    ("mcp-notification-case-officer", 8204, ["worker-case-officer"]),
-    ("mcp-casebase-knowledge", 8005, ["worker-case-officer"]),
+    ("mcp-agentmed-admin-quality-officer", 8101, ["worker-quality-officer"]),
+    ("mcp-agentmed-admin-collector", 8201, ["worker-collector"]),
+    ("mcp-agentmed-admin-case-officer", 8301, ["worker-case-officer"]),
+    ("mcp-agentmed-admin-attributionist", 8401, ["worker-attributionist"]),
+    ("mcp-agentmed-admin-repairer", 8501, ["worker-repairer"]),
+    ("mcp-agentmed-release-gatekeeper", 8102, ["worker-gatekeeper"]),
+    ("mcp-agentmed-release-repairer", 8202, ["worker-repairer"]),
+    ("mcp-agentmed-eval-gatekeeper", 8103, ["worker-gatekeeper"]),
+    ("mcp-agentmed-eval-attributionist", 8203, ["worker-attributionist"]),
+    ("mcp-agentmed-notify-quality-officer", 8104, ["worker-quality-officer"]),
+    ("mcp-agentmed-notify-case-officer", 8204, ["worker-case-officer"]),
+    ("mcp-agentmed-casebase-knowledge", 8005, ["worker-case-officer"]),
 ]
 
 
@@ -41,7 +41,7 @@ def main():
     jar = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
     status, body = call(opener, "POST", "/session/login",
-                        {"username": "admin", "password": "CaseloopAdmin2026"})
+                        {"username": "admin", "password": "AgentMEDAdmin2026"})
     print("login:", status)
 
     for name, port, consumers in SERVERS:
@@ -64,7 +64,7 @@ def main():
             "  - id: UpstreamAuth0\n"
             "    type: apiKey\n"
             "    in: header\n"
-            "    name: X-CaseLoop-Gateway-Token\n"
+            "    name: X-AgentMED-Gateway-Token\n"
             "    defaultCredential: \"" + token + "\"\n"
             "  defaultUpstreamSecurity:\n"
             "    id: UpstreamAuth0\n"

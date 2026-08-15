@@ -12,7 +12,7 @@ import sys
 from pathlib import Path
 
 os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
-os.environ.setdefault("AUDIT_JSONL_PATH", "/tmp/caseloop-mcp-test-audit.jsonl")
+os.environ.setdefault("AUDIT_JSONL_PATH", "/tmp/agentmed-mcp-test-audit.jsonl")
 os.environ.setdefault("AUDIT_FORCE_FAIL", "false")
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
@@ -52,4 +52,4 @@ def session(sqlite_engine):
 
 @pytest.fixture()
 def settings():
-    return Settings(database_url=TEST_SQLITE_URL, audit_jsonl_path="/tmp/caseloop-mcp-test-audit.jsonl")
+    return Settings(database_url=TEST_SQLITE_URL, audit_jsonl_path="/tmp/agentmed-mcp-test-audit.jsonl")

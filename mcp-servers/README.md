@@ -1,4 +1,4 @@
-# CaseLoop mcp-servers（T4）
+# AgentMED mcp-servers（T4）
 
 5 个实现模块以 12 个物理角色 projection 运行，另含 trust-ledger contract/replay
 模块与 common 安全件。一个进程只暴露一个角色的固定工具集合。
@@ -31,11 +31,11 @@ mcp-servers/
     ledger.py            record_outcome/get_state/evaluate_promotion/
                          request_promotion/suspend/reinstate
   servers/               5 个实现模块；生产按角色拆成 12 个 FastMCP 进程
-    case_admin.py        mcp-case-admin  :8001
-    release_admin.py     mcp-release-admin :8002
-    eval_runner.py       mcp-eval-runner  :8003
-    notification.py      mcp-notification（feishu-mock） :8004
-    casebase_knowledge.py mcp-casebase-knowledge :8005
+    case_admin.py        mcp-agentmed-admin  :8001
+    release_admin.py     mcp-agentmed-release :8002
+    eval_runner.py       mcp-agentmed-eval  :8003
+    notification.py      mcp-agentmed-notify（feishu-mock） :8004
+    casebase_knowledge.py mcp-agentmed-casebase-knowledge :8005
   scripts/
     run_migrations.py    幂等建表（PG migrations/001_init.sql / SQLite create_all）
     smoke.sh             起 12 个 projection，验证启动、后端拒绝及精确工具面
@@ -60,7 +60,7 @@ python3.11 -m venv .venv
 
 | 变量 | 默认 | 说明 |
 |------|------|------|
-| `DATABASE_URL` | `postgresql+psycopg://caseloop:caseloop@127.0.0.1:5432/control_plane` | mcp_* 表所在库 |
+| `DATABASE_URL` | `postgresql+psycopg://agentmed:agentmed@127.0.0.1:5432/control_plane` | mcp_* 表所在库 |
 | `CONTROL_PLANE_BASE_URL` | `http://127.0.0.1:8090` | case/release 包装的上游 |
 | `CONTROL_PLANE_ROLE_TOKEN` | 空 | 当前 projection 的最小权限控制面 token；只读 projection 必须为空 |
 | `QUALITY_API_BASE_URL` | `http://127.0.0.1:8080` | demo-app Quality API |

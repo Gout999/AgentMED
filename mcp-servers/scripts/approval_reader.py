@@ -1,7 +1,7 @@
 """审批 reader（段6 确定性件）：读 Matrix 审批事件 → 验 nonce → 控制面核发。
 
 D-015：系统只认 Matrix 事件 + nonce 验证。本 reader：
-  1. 以 @caseloop-approver 身份（appservice 模拟）轮询团队房间消息；
+  1. 以 @agentmed-approver 身份（appservice 模拟）轮询团队房间消息；
   2. 解析 APPROVAL_DECISION approval=.. workorder=.. nonce=.. decision=.. reason=..；
   3. 验 DB 审批请求行（nonce 匹配 + pending）；
   4. 调控制面 /v1/changesets/{cs}/approve|reject（APPROVAL_AUTHORITY_TOKEN）；
@@ -29,10 +29,10 @@ import sqlalchemy as sa
 ROOT = Path(__file__).resolve().parent.parent
 STATE = ROOT / "var" / "approval-reader-state.json"
 
-DB_URL = os.environ.get("CASELOOP_DB_URL", "")
-MATRIX_BASE = os.environ.get("CASELOOP_MATRIX_BASE", "http://127.0.0.1:18080")
+DB_URL = os.environ.get("AGENTMED_DB_URL", "")
+MATRIX_BASE = os.environ.get("AGENTMED_MATRIX_BASE", "http://127.0.0.1:18080")
 TEAM_ROOM = os.environ.get(
-    "CASELOOP_TEAM_ROOM", "!NzWy15gwm3QU6cTfuP:matrix-local.agentteams.io:18080"
+    "AGENTMED_TEAM_ROOM", "!NzWy15gwm3QU6cTfuP:matrix-local.agentteams.io:18080"
 )
 CONTROL_PLANE = os.environ.get("CONTROL_PLANE_BASE_URL", "http://127.0.0.1:18090")
 
@@ -67,7 +67,7 @@ def _approval_token() -> str:
 
 
 def _as_token() -> str:
-    path = Path(os.environ.get("CASELOOP_MATRIX_AS_TOKEN_FILE", "/tmp/caseloop-as-token"))
+    path = Path(os.environ.get("AGENTMED_MATRIX_AS_TOKEN_FILE", "/tmp/agentmed-as-token"))
     if path.exists():
         return path.read_text().strip()
     raise SystemExit("AS token file missing")
@@ -76,7 +76,7 @@ def _as_token() -> str:
 def fetch_decisions() -> list[tuple[str, dict]]:
     """返回 [(event_id, parsed_fields)]。"""
     room_enc = urllib.parse.quote(TEAM_ROOM, safe="")
-    user_enc = urllib.parse.quote("@caseloop-approver:matrix-local.agentteams.io:18080", safe="")
+    user_enc = urllib.parse.quote("@agentmed-approver:matrix-local.agentteams.io:18080", safe="")
     url = (
         f"{MATRIX_BASE}/_matrix/client/r0/rooms/{room_enc}/messages?dir=b&limit=50"
         f"&user_id={user_enc}"
@@ -88,7 +88,7 @@ def fetch_decisions() -> list[tuple[str, dict]]:
     for event in data.get("chunk", []):
         body = (event.get("content") or {}).get("body") or ""
         m = DECISION_RE.match(body)
-        if m and event.get("sender", "").startswith("@caseloop-approver"):
+        if m and event.get("sender", "").startswith("@agentmed-approver"):
             out.append((
                 event["event_id"],
                 {
@@ -141,7 +141,7 @@ def process(approval_id: str, workorder_id: str, nonce: str, decision: str, reas
         "workorder_id": workorder_id,
         "nonce": wo_payload.get("nonce"),
         "expiry": wo_payload.get("expiry"),
-        "approver": {"type": "human", "identity": "caseloop-approver"},
+        "approver": {"type": "human", "identity": "agentmed-approver"},
         "decision": decision_value,
         "decided_at": datetime.now(timezone.utc).isoformat(),
         "nonce_consumed": False,
@@ -168,7 +168,7 @@ def process(approval_id: str, workorder_id: str, nonce: str, decision: str, reas
                 "UPDATE mcp_approval_requests SET status = 'approved' WHERE approval_id = :aid"
             ), {"aid": approval_id})
         return f"approved ok (grant advanced changeset {changeset_id})"
-    body = {"approval_id": approval_id, "approver": "caseloop-approver", "reason": reason or "rejected by approver"}
+    body = {"approval_id": approval_id, "approver": "agentmed-approver", "reason": reason or "rejected by approver"}
     req = urllib.request.Request(
         f"{CONTROL_PLANE}/v1/changesets/{changeset_id}/reject",
         data=json.dumps(body).encode(),

@@ -14,11 +14,11 @@ def test_quality_write_token_environment_is_ignored(monkeypatch):
 
 def test_notification_log_url_resolves_independently_from_primary_database():
     settings = Settings(
-        database_url="sqlite:////tmp/caseloop-primary.db",
-        notification_log_url="sqlite:////tmp/caseloop-notification.db",
+        database_url="sqlite:////tmp/agentmed-primary.db",
+        notification_log_url="sqlite:////tmp/agentmed-notification.db",
         _env_file=None,
     )
 
     assert settings.resolved_notification_url == (
-        "sqlite:////tmp/caseloop-notification.db"
+        "sqlite:////tmp/agentmed-notification.db"
     )

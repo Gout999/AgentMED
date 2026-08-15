@@ -1,4 +1,4 @@
-"""caseloop approval CLI — 审批通道的 CLI 封装（D-015：通道=team 原生 Matrix，CLI/MCP 只是皮）。
+"""agentmed approval CLI — 审批通道的 CLI 封装（D-015：通道=team 原生 Matrix，CLI/MCP 只是皮）。
 
 list   列出待批审批请求（读控制面 mcp_approval_requests）。
 decide <approval_id> --approve|--reject [--reason ...]
@@ -19,10 +19,10 @@ import sqlalchemy as sa
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 
-DB_URL = os.environ.get("CASELOOP_DB_URL", "")
-MATRIX_BASE = os.environ.get("CASELOOP_MATRIX_BASE", "http://127.0.0.1:18080")
+DB_URL = os.environ.get("AGENTMED_DB_URL", "")
+MATRIX_BASE = os.environ.get("AGENTMED_MATRIX_BASE", "http://127.0.0.1:18080")
 TEAM_ROOM = os.environ.get(
-    "CASELOOP_TEAM_ROOM",
+    "AGENTMED_TEAM_ROOM",
     "!cKeYZ5mBFWuV6ECUKa:matrix-local.agentteams.io:18080",
 )
 
@@ -43,14 +43,14 @@ def _db_url() -> str:
 
 
 def _matrix_token() -> str:
-    path = Path(os.environ.get("CASELOOP_MATRIX_TOKEN_FILE", "/tmp/admin-token"))
+    path = Path(os.environ.get("AGENTMED_MATRIX_TOKEN_FILE", "/tmp/admin-token"))
     if path.exists():
         return path.read_text().strip()
     raise SystemExit("matrix token file missing: " + str(path))
 
 
 def _as_token() -> str:
-    path = Path(os.environ.get("CASELOOP_MATRIX_AS_TOKEN_FILE", "/tmp/caseloop-as-token"))
+    path = Path(os.environ.get("AGENTMED_MATRIX_AS_TOKEN_FILE", "/tmp/agentmed-as-token"))
     if path.exists():
         return path.read_text().strip()
     return ""
@@ -58,8 +58,8 @@ def _as_token() -> str:
 
 def _approver_user() -> str:
     return os.environ.get(
-        "CASELOOP_APPROVER_MATRIX_ID",
-        "@caseloop-approver:matrix-local.agentteams.io:18080",
+        "AGENTMED_APPROVER_MATRIX_ID",
+        "@agentmed-approver:matrix-local.agentteams.io:18080",
     )
 
 
@@ -104,7 +104,7 @@ def decide(approval_id: str, approve: bool, reason: str) -> int:
     room_enc = urllib.parse.quote(TEAM_ROOM, safe="")
     as_token = _as_token()
     if as_token:
-        # 以 Human CR caseloop-approver 身份发（appservice 模拟）——D-015 语义：审批人回复。
+        # 以 Human CR agentmed-approver 身份发（appservice 模拟）——D-015 语义：审批人回复。
         url = (
             MATRIX_BASE + "/_matrix/client/r0/rooms/" + room_enc
             + "/send/m.room.message/" + approval_id + "-decision"
@@ -135,7 +135,7 @@ def decide(approval_id: str, approve: bool, reason: str) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(prog="caseloop-approval")
+    parser = argparse.ArgumentParser(prog="agentmed-approval")
     sub = parser.add_subparsers(dest="cmd", required=True)
     sub.add_parser("list", help="list pending approval requests")
     dec = sub.add_parser("decide", help="send a structured Matrix decision")

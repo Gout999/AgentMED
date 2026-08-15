@@ -34,13 +34,13 @@ def _app():
     [
         {},
         {"x-mse-consumer": "worker-repairer"},
-        {"x-caseloop-gateway-token": "private-backend-token"},
+        {"x-agentmed-gateway-token": "private-backend-token"},
         {
-            "x-caseloop-gateway-token": "wrong",
+            "x-agentmed-gateway-token": "wrong",
             "x-mse-consumer": "worker-repairer",
         },
         {
-            "x-caseloop-gateway-token": "private-backend-token",
+            "x-agentmed-gateway-token": "private-backend-token",
             "x-mse-consumer": "worker-gatekeeper",
         },
     ],
@@ -59,8 +59,8 @@ def test_mcp_backend_rejects_duplicate_security_headers():
     response = TestClient(_app()).get(
         "/mcp",
         headers=[
-            ("x-caseloop-gateway-token", "private-backend-token"),
-            ("x-caseloop-gateway-token", "private-backend-token"),
+            ("x-agentmed-gateway-token", "private-backend-token"),
+            ("x-agentmed-gateway-token", "private-backend-token"),
             ("x-mse-consumer", "worker-repairer"),
         ],
     )
@@ -72,7 +72,7 @@ def test_mcp_backend_accepts_exact_gateway_projection_and_keeps_health_readable(
     response = client.get(
         "/mcp",
         headers={
-            "x-caseloop-gateway-token": "private-backend-token",
+            "x-agentmed-gateway-token": "private-backend-token",
             "x-mse-consumer": "worker-repairer",
         },
     )
@@ -86,7 +86,7 @@ def test_non_mcp_domain_data_route_is_not_a_direct_backend_bypass():
     assert client.get(
         "/api/messages",
         headers={
-            "x-caseloop-gateway-token": "private-backend-token",
+            "x-agentmed-gateway-token": "private-backend-token",
             "x-mse-consumer": "worker-repairer",
         },
     ).status_code == 200

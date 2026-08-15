@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 注册 12 个 caseloop MCP 投影到 Higress 网关（平台原生 mcp-proxy 机制）。
+# 注册 12 个 agentmed MCP 投影到 Higress 网关（平台原生 mcp-proxy 机制）。
 # 控制台: http://127.0.0.1:18001（会话登录 /session/login）。
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -9,7 +9,7 @@ COOKIE="/tmp/higress-cookie"
 # 登录（复用已有会话则跳过）
 if ! curl -s -o /dev/null -w '%{http_code}' "$CONSOLE/v1/service-sources" -b "$COOKIE" | grep -q 200; then
   curl -s -c "$COOKIE" -X POST "$CONSOLE/session/login" -H 'Content-Type: application/json' \
-    -d '{"username":"admin","password":"CaseloopAdmin2026"}' > /dev/null
+    -d '{"username":"admin","password":"AgentMEDAdmin2026"}' > /dev/null
   echo "logged in"
 fi
 
@@ -37,7 +37,7 @@ server:
   - id: UpstreamAuth0
     type: apiKey
     in: header
-    name: X-CaseLoop-Gateway-Token
+    name: X-AgentMED-Gateway-Token
     defaultCredential: \"$token\"
   defaultUpstreamSecurity:
     id: UpstreamAuth0
@@ -69,16 +69,16 @@ print(json.dumps({
   echo " <- $name"
 }
 
-register mcp-case-admin-quality-officer 8101 worker-quality-officer
-register mcp-case-admin-collector 8201 worker-collector
-register mcp-case-admin-case-officer 8301 worker-case-officer
-register mcp-case-admin-attributionist 8401 worker-attributionist
-register mcp-case-admin-repairer 8501 worker-repairer
-register mcp-release-admin-gatekeeper 8102 worker-gatekeeper
-register mcp-release-admin-repairer 8202 worker-repairer
-register mcp-eval-runner-gatekeeper 8103 worker-gatekeeper
-register mcp-eval-runner-attributionist 8203 worker-attributionist
-register mcp-notification-quality-officer 8104 worker-quality-officer
-register mcp-notification-case-officer 8204 worker-case-officer
-register mcp-casebase-knowledge 8005 worker-case-officer
+register mcp-agentmed-admin-quality-officer 8101 worker-quality-officer
+register mcp-agentmed-admin-collector 8201 worker-collector
+register mcp-agentmed-admin-case-officer 8301 worker-case-officer
+register mcp-agentmed-admin-attributionist 8401 worker-attributionist
+register mcp-agentmed-admin-repairer 8501 worker-repairer
+register mcp-agentmed-release-gatekeeper 8102 worker-gatekeeper
+register mcp-agentmed-release-repairer 8202 worker-repairer
+register mcp-agentmed-eval-gatekeeper 8103 worker-gatekeeper
+register mcp-agentmed-eval-attributionist 8203 worker-attributionist
+register mcp-agentmed-notify-quality-officer 8104 worker-quality-officer
+register mcp-agentmed-notify-case-officer 8204 worker-case-officer
+register mcp-agentmed-casebase-knowledge 8005 worker-case-officer
 echo "12 servers registered"

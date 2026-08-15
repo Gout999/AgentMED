@@ -1,4 +1,4 @@
--- CaseLoop mcp-servers 自有表（mcp_* 前缀，与 control-plane 公共 schema 无冲突）
+-- AgentMED mcp-servers 自有表（mcp_* 前缀，与 control-plane 公共 schema 无冲突）
 -- 幂等：全部 IF NOT EXISTS；由 scripts/run_migrations.py 执行。
 
 CREATE TABLE IF NOT EXISTS mcp_approval_grants (

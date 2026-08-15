@@ -96,7 +96,7 @@ class TrustedGatewayOnly:
         # Every other HTTP route, including notification mock inspection, is a
         # backend surface and requires the exact trusted gateway hop.
         if scope.get("type") == "http" and path != "/healthz":
-            tokens = self._header_values(scope, b"x-caseloop-gateway-token")
+            tokens = self._header_values(scope, b"x-agentmed-gateway-token")
             consumers = self._header_values(scope, b"x-mse-consumer")
             token_ok = (
                 len(tokens) == 1

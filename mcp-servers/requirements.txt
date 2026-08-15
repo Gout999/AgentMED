@@ -1,4 +1,4 @@
-# CaseLoop mcp-servers — 钉版本依赖（Python 3.11+）
+# AgentMED mcp-servers — 钉版本依赖（Python 3.11+）
 # 传输层：MCP 1.x（fastmcp 在 mcp 包内；2.x 移除了 fastmcp，故钉 1.12.4）
 mcp==1.12.4
 uvicorn[standard]==0.32.1

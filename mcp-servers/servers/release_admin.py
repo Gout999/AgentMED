@@ -1,4 +1,4 @@
-"""mcp-release-admin：WorkOrder 登记/门禁/审批/灰度申请（spec §9.4 + T4 任务）。
+"""mcp-agentmed-release：WorkOrder 登记/门禁/审批/灰度申请（spec §9.4 + T4 任务）。
 
 边界（硬约束）：
 - 本 server 不暴露 Quality API 写面；发布执行权在 Release Controller。
@@ -34,7 +34,7 @@ from common.tables import ApprovalRequest, EvalRun, WorkOrderDraft  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-mcp = ToolDefinitionRegistry("mcp-release-admin")
+mcp = ToolDefinitionRegistry("mcp-agentmed-release")
 
 _LAYER_TO_CHANNEL = {"prompt": "prompt", "kb": "kb", "model": "model_params", "model_params": "model_params"}
 
@@ -682,7 +682,7 @@ def _profiled_mcp(profile: str) -> FastMCP:
             "release.get": release_get,
         },
     }
-    return build_tool_projection("mcp-release-admin", profile, profiles)
+    return build_tool_projection("mcp-agentmed-release", profile, profiles)
 
 
 def main() -> None:

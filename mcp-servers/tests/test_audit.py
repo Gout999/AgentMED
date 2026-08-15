@@ -27,7 +27,7 @@ def test_audit_write_failure_raises_not_passthrough(session):
     failing = Settings(
         database_url="sqlite:///:memory:",
         AUDIT_FORCE_FAIL=True,
-        audit_jsonl_path="/tmp/caseloop-mcp-test-audit.jsonl",
+        audit_jsonl_path="/tmp/agentmed-mcp-test-audit.jsonl",
     )
     svc = AuditService(session, failing)
     with pytest.raises(AuditWriteError):
@@ -48,7 +48,7 @@ def test_audit_write_failure_rejects_business_write(session):
     failing = Settings(
         database_url="sqlite:///:memory:",
         AUDIT_FORCE_FAIL=True,
-        audit_jsonl_path="/tmp/caseloop-mcp-test-audit.jsonl",
+        audit_jsonl_path="/tmp/agentmed-mcp-test-audit.jsonl",
     )
     svc = AuditService(session, failing)
     # 模拟一个"业务写 + 审计"的原子事务：审计失败 → 业务不提交

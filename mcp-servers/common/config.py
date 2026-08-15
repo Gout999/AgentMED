@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     )
 
     database_url: str = Field(
-        default="postgresql+psycopg://caseloop:caseloop@127.0.0.1:5432/control_plane",
+        default="postgresql+psycopg://agentmed:agentmed@127.0.0.1:5432/control_plane",
         alias="DATABASE_URL",
     )
     casebase_database_url: str = Field(

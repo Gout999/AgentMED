@@ -24,7 +24,7 @@ def _trusted_backend_headers() -> dict[str, str]:
             "MCP_GATEWAY_BACKEND_TOKEN and MCP_EXPECTED_CONSUMER are required for direct-backend smoke"
         )
     return {
-        "X-CaseLoop-Gateway-Token": token,
+        "X-AgentMED-Gateway-Token": token,
         "X-Mse-Consumer": consumer,
     }
 

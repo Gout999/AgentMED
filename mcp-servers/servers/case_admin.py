@@ -1,4 +1,4 @@
-"""mcp-case-admin：案件查询/领单/建议/取证（spec §9.3）。
+"""mcp-agentmed-admin：案件查询/领单/建议/取证（spec §9.3）。
 
 - 只读开放（case.list/get/timeline、app.logs/feedback 代理，已脱敏）。
 - 写类工具（case.claim/submit_suggestion/escalate）必须带 lease fencing token 透传。
@@ -28,7 +28,7 @@ from common.serverkit import (  # noqa: E402
 
 logger = logging.getLogger(__name__)
 
-mcp = ToolDefinitionRegistry("mcp-case-admin")
+mcp = ToolDefinitionRegistry("mcp-agentmed-admin")
 
 # kind → 建议事件类型（§10.2 事件目录；控制面据此裁决）
 _SUGGESTION_EVENT_TYPE = {
@@ -287,7 +287,7 @@ def _profiled_mcp(profile: str) -> FastMCP:
             "case.claim": case_claim,
         },
     }
-    return build_tool_projection("mcp-case-admin", profile, profiles)
+    return build_tool_projection("mcp-agentmed-admin", profile, profiles)
 
 
 def main() -> None:
