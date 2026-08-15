@@ -1,11 +1,11 @@
-"""mcp-notification：控制面通知命令 + 明确隔离的辅助 mock 能力。
+"""mcp-notification：控制面通知命令 + 对内留痕。
 
-- feishu.reply_origin 只向控制面排队；dispatcher 才能接收 provider 回执并归档 Case。
-- weekly_report 是当前明确标注的 feishu-mock 辅助适配器。
+- feishu.reply_origin 只向控制面排队（release closure-context）；dispatcher 才能接收
+  provider 回执并归档 Case。工具名保留历史命名，通道本身 channel-agnostic。
 - matrix.log：对内留痕。
-- thread_ref 格式（D-001 Q5）：feishu-mock:<room>:<msg_ref>；真飞书 feishu:<chat_id>:<message_id>，其中 message_id 是原投诉消息/reply 目标。
-- REST 查询端点：GET /api/messages（mock 群消息日志，接口签名与真飞书一致）。
+- REST 查询端点：GET /api/messages（消息日志）。
 - 幂等：outbox_id 唯一；同键同参返回首次结果（§9.2）。
+- 清理 A2：feishu.weekly_report（feishu-mock 辅助适配器）已删除。
 """
 import base64
 import binascii
@@ -127,17 +127,6 @@ def _send(
     }
 
 
-def _parse_feishu_mock_ref(ref: str) -> Optional[tuple[str, str]]:
-    """从 `feishu-mock:<room>:<msg_ref>` 解析 (room, parent_msg_ref)。"""
-    if ref.startswith("feishu-mock:"):
-        parts = ref.split(":")
-        if len(parts) >= 3:
-            return parts[1], parts[2]
-        if len(parts) == 2:
-            return parts[1], ""
-    return None
-
-
 def _legacy_inline_body_digest(body_ref: str) -> str:
     """Derive the v0.1 reply digest only from an immutable, self-contained data URI."""
 
@@ -202,22 +191,6 @@ def feishu_reply_origin(
         raise dependency_unavailable(f"notification controller unreachable: {exc}") from exc
 
 
-@mcp.tool(name="feishu.weekly_report")
-def feishu_weekly_report(report: dict[str, Any], room: str = "weekly") -> dict[str, Any]:
-    """发质量周报（ACL：案例官）。report 为 §10.4 结构。返回 {message_id}。"""
-    import json
-
-    text = json.dumps(report, ensure_ascii=False)
-    return _send(
-        channel="feishu-mock",
-        room=room,
-        text=text,
-        outbox_id=f"weekly:{report.get('week', 'unknown')}",
-        thread_ref=f"feishu-mock:{room}:",
-        actor="case-officer",
-    )
-
-
 @mcp.tool(name="matrix.log")
 def matrix_log(room: str, text: str) -> dict[str, Any]:
     """对内留痕消息（ACL：全员）。返回 {event_id}（=message_id）。"""
@@ -278,7 +251,6 @@ def _profiled_mcp(profile: str) -> FastMCP:
         "quality-officer": {"matrix.log": matrix_log},
         "case-officer": {
             "feishu.reply_origin": feishu_reply_origin,
-            "feishu.weekly_report": feishu_weekly_report,
             "matrix.log": matrix_log,
         },
     }

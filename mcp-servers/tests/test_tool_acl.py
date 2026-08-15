@@ -95,7 +95,7 @@ def _names(projected) -> set[str]:
         (
             notification._profiled_mcp,
             "case-officer",
-            {"feishu.reply_origin", "feishu.weekly_report", "matrix.log"},
+            {"feishu.reply_origin", "matrix.log"},
         ),
         (
             casebase_knowledge._profiled_mcp,
