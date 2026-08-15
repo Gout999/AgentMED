@@ -1,7 +1,10 @@
 """Quality API v2 写面契约测试（对 contracts/quality-api/openapi.yaml）。
 
 纪律：本文件对「空实现」必须全红（连接错误即失败）——不允许为了跑绿而放水；
-只有真实实现了契约的 demo-app 才能让本文件转绿。
+只有真实实现了契约的 Quality API 目标才能让本文件转绿。demo-app 已随清理 A1
+移除（治理内核现为 AgentMED0，实现评估面而非本 v2 写面契约），因此本文件默认
+标记 live：离线跑 `pytest -m "not live"`；有真实目标时用
+CASELOOP_QUALITY_API_BASE_URL 指向它，并去掉该 marker 运行本文件。
 """
 import time
 import uuid
@@ -9,6 +12,8 @@ import uuid
 import pytest
 
 from conftest import BASE_URL
+
+pytestmark = pytest.mark.live
 
 TIMEOUT = 10
 

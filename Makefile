@@ -3,6 +3,7 @@
         control-plane projections gateway-register sandbox-verify approval-reader signal-source
 
 PYTHON ?= python3
+CONTRACTS_VENV ?= /tmp/caseloop-contracts-venv
 
 # ---- 测试（三套 + 一致性契约）----
 test: test-control-plane test-mcp test-harness conformance
@@ -17,7 +18,11 @@ test-harness:
 	cd mcp-servers && .venv/bin/python -m pytest ../eval-harness/tests/unit -q
 
 conformance:
-	cd mcp-servers && .venv/bin/python -m pytest ../contracts/conformance/test_schemas.py -q
+	@test -x $(CONTRACTS_VENV)/bin/pytest || { \
+	  python3 -m venv $(CONTRACTS_VENV) && \
+	  $(CONTRACTS_VENV)/bin/pip install -r contracts/conformance/requirements.txt; \
+	}
+	$(CONTRACTS_VENV)/bin/pytest contracts/conformance -q -m "not live"
 
 # ---- 运行入口 ----
 control-plane:

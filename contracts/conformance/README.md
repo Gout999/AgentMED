@@ -14,7 +14,15 @@ Quality API live conformance 的出口判据仍是：**本套件可对空实现�
 python3 -m venv /tmp/caseloop-contracts-venv
 /tmp/caseloop-contracts-venv/bin/pip install -r contracts/conformance/requirements.txt
 cd /path/to/caseloop
-/tmp/caseloop-contracts-venv/bin/pytest contracts/conformance -x -q
+/tmp/caseloop-contracts-venv/bin/pytest contracts/conformance -q -m "not live"
+```
+
+`-m "not live"` 是仓库默认口径：`test_quality_api.py` 全文件带 `live` marker（需要真实
+Quality API 目标；demo-app 已随清理 A1 移除），离线一律不跑。对真实目标验证时：
+
+```bash
+CASELOOP_QUALITY_API_BASE_URL=http://<target> \
+  /tmp/caseloop-contracts-venv/bin/pytest contracts/conformance/test_quality_api.py -q
 ```
 
 环境变量：
@@ -66,8 +74,12 @@ cd /path/to/caseloop/contracts
 
 ## 空实现下的预期结果
 
-- `test_quality_api.py`：**全红**（`requests.exceptions.ConnectionError`）。
-  这就是「对空实现跑红」的出口判据——转绿只能靠真实现，不能靠改测试。
+- `test_quality_api.py`：默认 **deselected**（`live` marker，见上）。手动对空实现跑时
+  **全红**（`requests.exceptions.ConnectionError`）——这就是「对空实现跑红」的出口判据，
+  转绿只能靠真实现，不能靠改测试。
+- `test_v5_lifecycle_decision.py`：4 条 stale 测试 **xfailed**（3b7e511 关闭 1A/1B/1C
+  契约时移除了 D-014 的 `application_component_activation_lifecycle` 段；owner 待决：
+  恢复 D-014 段落，或按 3b7e511 重写取代这 4 条）。文件内 NOTE 与 xfail reason 同口径。
 - `test_schemas.py` / `test_wilson.py` / `test_v4_*.py` / `test_v5_*.py`：预期全绿
   （纯契约资产自洽验证；V4/V5 绿不升级为 runtime/live 证明）。
 
