@@ -70,7 +70,7 @@ class CaseClosureService:
             )
 
         notification_id = "notif_" + hashlib.sha256(
-            f"caseloop-release-notification:{release_id}".encode("utf-8")
+            f"agentmed-release-notification:{release_id}".encode("utf-8")
         ).hexdigest()[:24]
         try:
             resolved = CaseService(self.session, self.settings).resolve_from_release(

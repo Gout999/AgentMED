@@ -1,4 +1,4 @@
-"""RFC 8785 integrity helpers for immutable CaseLoop V5 records.
+"""RFC 8785 integrity helpers for immutable AgentMED V5 records.
 
 V5 records carry a nested ``record_envelope`` (schema-major-2).  The canonical
 record digest covers the full record — envelope and payload — excluding exactly

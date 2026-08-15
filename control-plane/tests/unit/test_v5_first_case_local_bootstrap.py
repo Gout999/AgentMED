@@ -137,7 +137,7 @@ def _payload() -> dict[str, object]:
                 "principal_id": "prn_01J0000000000HC6",
             },
         },
-        "secret_storage_ref": f"keyring://caseloop/local/{WORKSPACE}",
+        "secret_storage_ref": f"keyring://agentmed/local/{WORKSPACE}",
     }
 
 
@@ -310,7 +310,7 @@ def _rotation_payload(imported) -> dict[str, object]:
             "digest": imported.environment.record_envelope.record_digest,
         },
         "secret_storage_ref": (
-            f"keyring://caseloop/local/{WORKSPACE}/operator-environment"
+            f"keyring://agentmed/local/{WORKSPACE}/operator-environment"
         ),
     }
 
@@ -503,7 +503,7 @@ def _reauth_payload(
             "revision": 1,
             "digest": proposal_digest,
         },
-        "secret_storage_ref": f"keyring://caseloop/local/{WORKSPACE}/owner-reauth",
+        "secret_storage_ref": f"keyring://agentmed/local/{WORKSPACE}/owner-reauth",
     }
 
 

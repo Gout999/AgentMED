@@ -21,7 +21,7 @@ class Settings(BaseSettings):
     # BaseSettings resolves DATABASE_URL case-insensitively from this field
     # name. Avoid an explicit alias here: Pydantic otherwise lets the env alias
     # overwrite a programmatic database_url used to isolate replay/test stores.
-    database_url: str = "postgresql+psycopg://caseloop:caseloop@127.0.0.1:5432/control_plane"
+    database_url: str = "postgresql+psycopg://agentmed:agentmed@127.0.0.1:5432/control_plane"
 
     quality_api_base_url: str = Field(default="http://127.0.0.1:8088", alias="QUALITY_API_BASE_URL")
     quality_api_token: str = Field(default="", alias="QUALITY_API_TOKEN")

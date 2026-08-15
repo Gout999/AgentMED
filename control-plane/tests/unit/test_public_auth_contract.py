@@ -73,7 +73,7 @@ def test_public_request_headers_parse_opaque_bearer_without_echoing_it() -> None
             "X-CaseLoop-Contract-Version": "1.0",
             "Idempotency-Key": "signal-submit-0001",
             "X-Request-ID": "req_01J0000000000002",
-            "X-CaseLoop-Client-Version": "caseloop-cli/1.0.0",
+            "X-CaseLoop-Client-Version": "agentmed-cli/1.0.0",
         },
         mutation=True,
     )

@@ -272,7 +272,7 @@ def _seed_case_controller(session) -> None:
                     "owner": "case-controller",
                     "controller_principal": CASE_CONTROLLER_PRINCIPAL,
                     "principal_type": "CONTROLLER_SERVICE",
-                    "service": "caseloop-control-plane",
+                    "service": "agentmed-control-plane",
                 }
             ),
         },
@@ -301,7 +301,7 @@ def _seed_case_controller(session) -> None:
                 "owner": "case-controller",
                 "controller_principal": CASE_CONTROLLER_PRINCIPAL,
                 "principal_type": "CONTROLLER_SERVICE",
-                "service": "caseloop-control-plane",
+                "service": "agentmed-control-plane",
             }
         ),
         registered_by_human_principal=OWNER,
@@ -319,7 +319,7 @@ def _seed_case_controller(session) -> None:
             "owner": V5_CATALOG_OWNER,
             "controller_principal": CATALOG_CONTROLLER_PRINCIPAL,
             "principal_type": "CONTROLLER_SERVICE",
-            "service": "caseloop-control-plane",
+            "service": "agentmed-control-plane",
         }
     )
     catalog_audit = audit.record(

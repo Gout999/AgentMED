@@ -313,7 +313,7 @@ def test_isolated_replay_gate_requires_explicit_sqlite_controller(sqlite_session
         sqlite_session,
         quality,
         Settings(
-            database_url="postgresql+psycopg://controller.example/caseloop",
+            database_url="postgresql+psycopg://controller.example/agentmed",
             gate_policy_profile="isolated-replay",
             allow_isolated_replay_gate=True,
         ),

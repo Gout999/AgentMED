@@ -18,7 +18,7 @@ from app.notifications.adapters import (
 from app.services.outbox_relay import notification_adapter_from_settings
 
 
-def _payload(tmp_path, text: str = "CaseLoop 已修复并完成验证。", *, data_uri: bool = False):
+def _payload(tmp_path, text: str = "AgentMED 已修复并完成验证。", *, data_uri: bool = False):
     path = tmp_path / "reply.txt"
     path.write_text(text, encoding="utf-8")
     digest = "sha256:" + hashlib.sha256(path.read_bytes()).hexdigest()
@@ -54,8 +54,8 @@ def test_feishu_live_reply_uses_original_message_and_stable_idempotency(tmp_path
         assert request.headers["Authorization"] == "Bearer tenant-token"
         body = json.loads(request.content)
         assert body["msg_type"] == "text"
-        assert json.loads(body["content"])["text"] == "CaseLoop 已修复并完成验证。"
-        assert body["uuid"].startswith("caseloop-")
+        assert json.loads(body["content"])["text"] == "AgentMED 已修复并完成验证。"
+        assert body["uuid"].startswith("agentmed-")
         assert len(body["uuid"]) <= 50
         return httpx.Response(200, json={"code": 0, "data": {"message_id": "om_reply_001"}})
 

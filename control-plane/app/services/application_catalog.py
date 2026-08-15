@@ -1026,7 +1026,7 @@ class ApplicationCatalogService:
             text("SELECT pg_advisory_xact_lock(hashtextextended(:lock_key, 0))"),
             {
                 "lock_key": (
-                    f"caseloop:v5:dependency-graph:{workspace_id}:{application_id}"
+                    f"agentmed:v5:dependency-graph:{workspace_id}:{application_id}"
                 )
             },
         )

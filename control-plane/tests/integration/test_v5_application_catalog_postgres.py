@@ -132,7 +132,7 @@ def _bootstrap_payload(
                 "principal_id": "prn_01J00000000000FG",
             },
         },
-        "secret_storage_ref": f"keyring://caseloop/test/{WORKSPACE_ID}",
+        "secret_storage_ref": f"keyring://agentmed/test/{WORKSPACE_ID}",
     }
 
 
@@ -254,7 +254,7 @@ def _operator_rotation_payload(
             "digest": environment["record_envelope"]["record_digest"],
         },
         "secret_storage_ref": (
-            f"keyring://caseloop/test/{WORKSPACE_ID}/operator-environment"
+            f"keyring://agentmed/test/{WORKSPACE_ID}/operator-environment"
         ),
     }
 
@@ -291,7 +291,7 @@ def _owner_reauthentication_payload(
             "digest": proposed["record_envelope"]["record_digest"],
         },
         "secret_storage_ref": (
-            f"keyring://caseloop/test/{WORKSPACE_ID}/owner-reauthentication"
+            f"keyring://agentmed/test/{WORKSPACE_ID}/owner-reauthentication"
         ),
     }
 
@@ -353,7 +353,7 @@ def test_v5_first_case_installed_cli_real_postgres_loopback(
     configured_database = sa.engine.make_url(TEST_DATABASE_URL).database
     if configured_database != "control_plane_test":
         raise UnsafeIntegrationDatabaseError(
-            "caseloop.integration_reset.refused.v5_exact_database_required"
+            "agentmed.integration_reset.refused.v5_exact_database_required"
         )
 
     initial_bearer = secrets.token_urlsafe(48)
@@ -445,9 +445,9 @@ def test_v5_first_case_installed_cli_real_postgres_loopback(
             ]
 
             cli_env = {
-                "CASELOOP_API_URL": base_url,
-                "CASELOOP_WORKSPACE_ID": WORKSPACE_ID,
-                "CASELOOP_PUBLIC_TOKEN": initial_bearer,
+                "AGENTMED_API_URL": base_url,
+                "AGENTMED_WORKSPACE_ID": WORKSPACE_ID,
+                "AGENTMED_PUBLIC_TOKEN": initial_bearer,
             }
             manifest_file = tmp_path / "v5-first-case-manifest.json"
             manifest_file.write_text(
@@ -514,7 +514,7 @@ def test_v5_first_case_installed_cli_real_postgres_loopback(
                 rotation_replay["rotation_binding_digest"]
                 == rotation["rotation_binding_digest"]
             )
-            cli_env["CASELOOP_PUBLIC_TOKEN"] = rotated_bearer
+            cli_env["AGENTMED_PUBLIC_TOKEN"] = rotated_bearer
 
             signal = _run_cli(
                 cli,
@@ -671,7 +671,7 @@ def test_v5_first_case_installed_cli_real_postgres_loopback(
             assert owner_reauthentication["credential"]["credential_id"] == (
                 OWNER_CREDENTIAL_ID
             )
-            cli_env["CASELOOP_PUBLIC_TOKEN"] = owner_bearer
+            cli_env["AGENTMED_PUBLIC_TOKEN"] = owner_bearer
 
             confirmed_response = _run_cli(
                 cli,

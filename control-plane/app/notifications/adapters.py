@@ -246,7 +246,7 @@ class FeishuLiveAdapter:
                 "body_invalid_utf8", "notification body must be UTF-8 text", retryable=False
             ) from exc
         token = self._tenant_access_token()
-        dedup_uuid = "caseloop-" + hashlib.sha256(outbox_id.encode("utf-8")).hexdigest()[:32]
+        dedup_uuid = "agentmed-" + hashlib.sha256(outbox_id.encode("utf-8")).hexdigest()[:32]
         try:
             response = self.client.post(
                 f"{self.base_url}/open-apis/im/v1/messages/{message_id}/reply",

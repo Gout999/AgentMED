@@ -2,7 +2,7 @@
 
 Run serially against exactly ``control_plane_test``.  Setup and final cleanup
 use the shared destructive-reset guard, which additionally requires the caller
-to set ``CASELOOP_ALLOW_INTEGRATION_RESET=true`` and verifies
+to set ``AGENTMED_ALLOW_INTEGRATION_RESET=true`` and verifies
 ``current_database()`` before touching the schema.
 """
 from __future__ import annotations
@@ -133,7 +133,7 @@ def _bootstrap_request() -> Stage1ALocalBootstrapRequest:
                     "principal_id": "prn_01J00000000001C3",
                 },
             },
-            "secret_storage_ref": f"keyring://caseloop/test/{WORKSPACE_ID}",
+            "secret_storage_ref": f"keyring://agentmed/test/{WORKSPACE_ID}",
         }
     )
 
@@ -285,7 +285,7 @@ def test_stage1a_signal_concurrency_real_postgres(
     configured_database = sa.engine.make_url(TEST_DATABASE_URL).database
     if configured_database != "control_plane_test":
         raise UnsafeIntegrationDatabaseError(
-            "caseloop.integration_reset.refused.stage1a_exact_database_required"
+            "agentmed.integration_reset.refused.stage1a_exact_database_required"
         )
     root = Path(__file__).resolve().parents[2]
     engine = _new_pg_engine()

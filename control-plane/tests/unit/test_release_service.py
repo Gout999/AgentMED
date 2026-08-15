@@ -69,7 +69,7 @@ def _full_release(session, svc, quality, case_id, seed: int):
             case_id=case_id,
             channel="feishu-mock:test:",
             thread_ref=f"thread:{seed}",
-            body_ref=f"file:///tmp/caseloop-release-{seed}.txt",
+            body_ref=f"file:///tmp/agentmed-release-{seed}.txt",
             body_digest="sha256:" + "d" * 64,
             status="configured",
         )

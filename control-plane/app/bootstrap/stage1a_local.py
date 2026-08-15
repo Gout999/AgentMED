@@ -382,7 +382,7 @@ def _acquire_workspace_bootstrap_lock(session: Session, workspace_id: str) -> No
         return
     session.execute(
         sa.text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
-        {"lock_key": f"caseloop:stage1a-local:{workspace_id}"},
+        {"lock_key": f"agentmed:stage1a-local:{workspace_id}"},
     )
 
 
@@ -453,7 +453,7 @@ def _service_identity_digest(
             "owner": owner,
             "controller_principal": controller_principal,
             "principal_type": "CONTROLLER_SERVICE",
-            "service": "caseloop-control-plane",
+            "service": "agentmed-control-plane",
         }
     )
 

@@ -1,4 +1,4 @@
-# CaseLoop control-plane 容器镜像
+# AgentMED control-plane 容器镜像
 # 确定性控制面（Case/Release Controller）：alembic 迁移 + uvicorn 服务。
 # 仅供 compose 内网部署（宿主映射 18090 -> 8090）；非 root 运行。
 FROM python:3.11-slim

@@ -74,7 +74,7 @@ def _request_dict() -> dict[str, object]:
                 "principal_id": "prn_01J0000000000013",
             },
         },
-        "secret_storage_ref": "keyring://caseloop/local/ws_01J0000000000001",
+        "secret_storage_ref": "keyring://agentmed/local/ws_01J0000000000001",
     }
 
 

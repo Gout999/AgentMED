@@ -1,4 +1,4 @@
-"""Closed Pydantic models for the frozen CaseLoop v4 public wire contract.
+"""Closed Pydantic models for the frozen AgentMED v4 public wire contract.
 
 These models validate transport data only.  They do not resolve credentials,
 load authoritative state, or perform any database work.

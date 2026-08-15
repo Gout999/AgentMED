@@ -1,7 +1,7 @@
 """V5-1C PostgreSQL integration: First System Case from a real issue snapshot.
 
 Mirrors the Stage-1A / V5-1B integration proofs: disposable PG database, real
-Alembic chain (current script head), real uvicorn server, real installed ``caseloop``
+Alembic chain (current script head), real uvicorn server, real installed ``agentmed``
 CLI speaking /api/v2 with an explicit ``--api-version 2``.  The CLI pulls a
 local snapshot of simonw/llm issue #1466 (stored as a JSON fixture), composes
 signals.submit → cases.bind-application → acceptance-criteria.propose, never
@@ -320,7 +320,7 @@ def _seed_auth_and_controllers(
                         "owner": owner_name,
                         "controller_principal": CONTROLLER_PRINCIPAL_ID,
                         "principal_type": "CONTROLLER_SERVICE",
-                        "service": "caseloop-control-plane",
+                        "service": "agentmed-control-plane",
                     }
                 ),
             },
@@ -345,7 +345,7 @@ def _seed_auth_and_controllers(
                     "owner": owner_name,
                     "controller_principal": CONTROLLER_PRINCIPAL_ID,
                     "principal_type": "CONTROLLER_SERVICE",
-                    "service": "caseloop-control-plane",
+                    "service": "agentmed-control-plane",
                 }
             ),
             registered_by_human_principal=OWNER_PRINCIPAL_ID,
@@ -408,7 +408,7 @@ def _seed_auth_and_controllers(
                         "owner": owner_name,
                         "controller_principal": CONTROLLER_PRINCIPAL_ID,
                         "principal_type": "CONTROLLER_SERVICE",
-                        "service": "caseloop-control-plane",
+                        "service": "agentmed-control-plane",
                     }
                 ),
             },
@@ -433,7 +433,7 @@ def _seed_auth_and_controllers(
                     "owner": owner_name,
                     "controller_principal": CONTROLLER_PRINCIPAL_ID,
                     "principal_type": "CONTROLLER_SERVICE",
-                    "service": "caseloop-control-plane",
+                    "service": "agentmed-control-plane",
                 }
             ),
             registered_by_human_principal=OWNER_PRINCIPAL_ID,
@@ -465,7 +465,7 @@ def _seed_auth_and_controllers(
                 "owner": v4_owner,
                 "controller_principal": v4_controller_principal,
                 "principal_type": "CONTROLLER_SERVICE",
-                "service": "caseloop-control-plane",
+                "service": "agentmed-control-plane",
             }
         )
         v4_recorded = v4_audit.record(
@@ -628,7 +628,7 @@ def test_v5_1c_pg_case_binding_and_acceptance_confirm_end_to_end() -> None:
     control_plane_root = Path(__file__).resolve().parents[2]
     if sa.engine.make_url(TEST_DATABASE_URL).database != "control_plane_test":
         raise UnsafeIntegrationDatabaseError(
-            "caseloop.integration_reset.refused.v5_1c_exact_database_required"
+            "agentmed.integration_reset.refused.v5_1c_exact_database_required"
         )
     engine = _new_pg_engine()
     factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
@@ -1099,7 +1099,7 @@ def test_v5_1c_cli_from_issue_e2e_no_duplicate_on_retry(
     control_plane_root = repo_root / "control-plane"
     if sa.engine.make_url(TEST_DATABASE_URL).database != "control_plane_test":
         raise UnsafeIntegrationDatabaseError(
-            "caseloop.integration_reset.refused.v5_1c_e2e_exact_database_required"
+            "agentmed.integration_reset.refused.v5_1c_e2e_exact_database_required"
         )
 
     raw_bearer = secrets.token_urlsafe(48)
@@ -1182,10 +1182,10 @@ def test_v5_1c_cli_from_issue_e2e_no_duplicate_on_retry(
         cli_env = {
             "PATH": os.environ.get("PATH", ""),
             "PYTHONPATH": pinned_site_packages,
-            "CASELOOP_API_URL": base_url,
-            "CASELOOP_WORKSPACE_ID": WORKSPACE_ID,
-            "CASELOOP_PUBLIC_TOKEN": raw_bearer,
-            "CASELOOP_CACHE_DIR": str(tmp_path / "issue-cache"),
+            "AGENTMED_API_URL": base_url,
+            "AGENTMED_WORKSPACE_ID": WORKSPACE_ID,
+            "AGENTMED_PUBLIC_TOKEN": raw_bearer,
+            "AGENTMED_CACHE_DIR": str(tmp_path / "issue-cache"),
         }
 
         # Register the application + environment through the manifest import
@@ -1260,7 +1260,7 @@ def test_v5_1c_cli_from_issue_e2e_no_duplicate_on_retry(
             rotation_session.commit()
         finally:
             rotation_session.close()
-        cli_env["CASELOOP_PUBLIC_TOKEN"] = binder_env_bearer
+        cli_env["AGENTMED_PUBLIC_TOKEN"] = binder_env_bearer
 
         # First System Case from a local issue snapshot (data only).
         from_issue_args = [
@@ -1350,7 +1350,7 @@ def test_v5_1c_cli_from_issue_e2e_no_duplicate_on_retry(
 
         # The reauthenticated human confirms through the CLI (fresh credential).
         confirmer_env = dict(cli_env)
-        confirmer_env["CASELOOP_PUBLIC_TOKEN"] = fresh_confirmer_bearer
+        confirmer_env["AGENTMED_PUBLIC_TOKEN"] = fresh_confirmer_bearer
         confirmed = _run_cli(
             cli,
             [

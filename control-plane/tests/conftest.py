@@ -33,13 +33,13 @@ from app.utils.jcs import canonical_json_digest
 # pg_engine fixture 会 drop_all——默认值若指 control_plane 活库，一次 pytest 就清库（2026-08-08 实发事故）。
 TEST_DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql+psycopg://caseloop:caseloop@127.0.0.1:5432/control_plane_test",
+    "postgresql+psycopg://agentmed:agentmed@127.0.0.1:5432/control_plane_test",
 )
 TEST_CONTROL_TOKEN = "test-control-plane-token"
 TEST_APPROVAL_TOKEN = "test-approval-authority-token"
 TEST_GATE_TOKEN = "test-gate-authority-token"
 
-_RESET_OPT_IN = "CASELOOP_ALLOW_INTEGRATION_RESET"
+_RESET_OPT_IN = "AGENTMED_ALLOW_INTEGRATION_RESET"
 _DISPOSABLE_DATABASE_TOKEN = {"test", "scratch"}
 _DATABASE_NAME = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,62}$")
 
@@ -49,7 +49,7 @@ class UnsafeIntegrationDatabaseError(RuntimeError):
 
 
 def _refuse_reset(reason: str) -> None:
-    raise UnsafeIntegrationDatabaseError(f"caseloop.integration_reset.refused.{reason}")
+    raise UnsafeIntegrationDatabaseError(f"agentmed.integration_reset.refused.{reason}")
 
 
 def _parse_disposable_postgres_url(database_url: str) -> tuple[sa.engine.URL, str]:
@@ -59,7 +59,7 @@ def _parse_disposable_postgres_url(database_url: str) -> tuple[sa.engine.URL, st
         url = sa.engine.make_url(database_url)
     except Exception:  # SQLAlchemy can raise ArgumentError for malformed input.
         raise UnsafeIntegrationDatabaseError(
-            "caseloop.integration_reset.refused.invalid_database_url"
+            "agentmed.integration_reset.refused.invalid_database_url"
         ) from None
     if url.get_backend_name() != "postgresql":
         _refuse_reset("postgresql_required")
@@ -89,7 +89,7 @@ def _validate_pg_reset_target(
             engine_url = sa.engine.make_url(str(engine_url))
     except Exception:
         raise UnsafeIntegrationDatabaseError(
-            "caseloop.integration_reset.refused.invalid_database_url"
+            "agentmed.integration_reset.refused.invalid_database_url"
         ) from None
 
     try:
@@ -130,7 +130,7 @@ def _verified_pg_reset_connection(
         connection = engine.connect()
     except Exception:
         raise UnsafeIntegrationDatabaseError(
-            "caseloop.integration_reset.refused.database_unreachable"
+            "agentmed.integration_reset.refused.database_unreachable"
         ) from None
 
     transaction = None
@@ -142,7 +142,7 @@ def _verified_pg_reset_connection(
             ).scalar_one()
         except Exception:
             raise UnsafeIntegrationDatabaseError(
-                "caseloop.integration_reset.refused.current_database_unavailable"
+                "agentmed.integration_reset.refused.current_database_unavailable"
             ) from None
         actual_tokens = {
             token.lower()
@@ -612,7 +612,7 @@ def make_action_approval(
         "approval_id": approval_id,
         "workorder_hash": wo["hash"],
         "workorder_id": wo["workorder_id"],
-        "nonce": str(uuid.uuid5(uuid.NAMESPACE_URL, f"caseloop-action-grant:{approval_id}")),
+        "nonce": str(uuid.uuid5(uuid.NAMESPACE_URL, f"agentmed-action-grant:{approval_id}")),
         "expiry": wo["expiry"],
         "approver": {"type": "human", "identity": "human-1"},
         "decision": "approved",

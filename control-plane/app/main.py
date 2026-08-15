@@ -1,4 +1,4 @@
-"""CaseLoop control-plane FastAPI 入口。"""
+"""AgentMED control-plane FastAPI 入口。"""
 from __future__ import annotations
 
 import logging
@@ -126,7 +126,7 @@ def create_app(
         yield
 
     app = FastAPI(
-        title="CaseLoop Control Plane",
+        title="AgentMED Control Plane",
         version=__version__,
         description="确定性控制面：Case/Release Controller（LLM 不是状态与权限权威源）",
         lifespan=lifespan,

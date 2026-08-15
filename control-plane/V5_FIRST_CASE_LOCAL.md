@@ -25,7 +25,7 @@ From `control-plane/`:
 ```
 
 In a second shell, set the non-secret identifiers. Every principal,
-credential, source, and controller ID must be unique and match its CaseLoop ID
+credential, source, and controller ID must be unique and match its AgentMED ID
 pattern.
 
 ```bash
@@ -38,8 +38,8 @@ export CL_OWNER_SUBJECT=local-v5-owner
 export CL_OPERATOR_SUBJECT=local-v5-operator
 export CL_SOURCE_ID=src_01J0000000000L01
 export CL_INITIAL_CREDENTIAL_ID=cred_01J0000000000L01
-export CASELOOP_API_URL=http://127.0.0.1:8090
-export CASELOOP_WORKSPACE_ID="$CL_WORKSPACE_ID"
+export AGENTMED_API_URL=http://127.0.0.1:8090
+export AGENTMED_WORKSPACE_ID="$CL_WORKSPACE_ID"
 ```
 
 The examples use `jq` and an installed `caseloop` CLI. Set
@@ -129,7 +129,7 @@ payload = {
         },
     },
     "secret_storage_ref": (
-        f"keyring://caseloop/local/{os.environ['CL_WORKSPACE_ID']}/operator-initial"
+        f"keyring://agentmed/local/{os.environ['CL_WORKSPACE_ID']}/operator-initial"
     ),
 }
 print(json.dumps(payload, separators=(",", ":")))
@@ -141,7 +141,7 @@ jq -e '.status == "CREATED" or .status == "REUSED"' \
 Use the initial bearer for the one-shot manifest import:
 
 ```bash
-export CASELOOP_PUBLIC_TOKEN="$CL_OPERATOR_TOKEN_0"
+export AGENTMED_PUBLIC_TOKEN="$CL_OPERATOR_TOKEN_0"
 caseloop --api-version 2 system-manifest import \
   --manifest-file "$CL_MANIFEST_FILE" \
   --idempotency-key v5-first-case-import-0001 \
@@ -204,14 +204,14 @@ payload = {
         "digest": os.environ["CL_ENVIRONMENT_DIGEST"],
     },
     "secret_storage_ref": (
-        f"keyring://caseloop/local/{os.environ['CL_WORKSPACE_ID']}/operator-environment"
+        f"keyring://agentmed/local/{os.environ['CL_WORKSPACE_ID']}/operator-environment"
     ),
 }
 print(json.dumps(payload, separators=(",", ":")))
 PY
 jq -e '.status == "CREATED" or .status == "REUSED"' \
   var/v5-first-case-local/operator-rotation.json
-export CASELOOP_PUBLIC_TOKEN="$CL_OPERATOR_TOKEN_1"
+export AGENTMED_PUBLIC_TOKEN="$CL_OPERATOR_TOKEN_1"
 unset CL_OPERATOR_TOKEN_0 CL_OPERATOR_JTI_0
 ```
 
@@ -311,7 +311,7 @@ payload = {
         "digest": os.environ["CL_PROPOSAL_DIGEST"],
     },
     "secret_storage_ref": (
-        f"keyring://caseloop/local/{os.environ['CL_WORKSPACE_ID']}/owner-reauthentication"
+        f"keyring://agentmed/local/{os.environ['CL_WORKSPACE_ID']}/owner-reauthentication"
     ),
 }
 print(json.dumps(payload, separators=(",", ":")))
@@ -319,7 +319,7 @@ PY
 jq -e '.status == "CREATED" or .status == "REUSED"' \
   var/v5-first-case-local/owner-reauthentication.json
 
-export CASELOOP_PUBLIC_TOKEN="$CL_OWNER_TOKEN"
+export AGENTMED_PUBLIC_TOKEN="$CL_OWNER_TOKEN"
 caseloop --api-version 2 case acceptance-criteria confirm "$CL_PROPOSAL_ID" \
   --case-id "$CL_CASE_ID" \
   --case-revision "$CL_CASE_REVISION" \

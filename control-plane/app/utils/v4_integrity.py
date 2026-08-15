@@ -1,4 +1,4 @@
-"""RFC 8785 integrity helpers for immutable CaseLoop v4 records.
+"""RFC 8785 integrity helpers for immutable AgentMED v4 records.
 
 v3 hashes remain untouched.  A v4 self-hash always excludes exactly one
 top-level self-digest field and forbids floats at any depth so all supported

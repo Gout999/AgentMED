@@ -177,7 +177,7 @@ def _seed_v5_controller(session) -> None:
                     "owner": V5_CATALOG_OWNER,
                     "controller_principal": CONTROLLER_PRINCIPAL,
                     "principal_type": "CONTROLLER_SERVICE",
-                    "service": "caseloop-control-plane",
+                    "service": "agentmed-control-plane",
                 }
             ),
         },
@@ -217,7 +217,7 @@ def _seed_v5_controller(session) -> None:
                 "owner": V5_CATALOG_OWNER,
                 "controller_principal": CONTROLLER_PRINCIPAL,
                 "principal_type": "CONTROLLER_SERVICE",
-                "service": "caseloop-control-plane",
+                "service": "agentmed-control-plane",
             }
         ),
         registered_by_human_principal=OWNER,

@@ -1,7 +1,7 @@
 """Real PostgreSQL proof for the local Stage 1A bootstrap.
 
 Run serially against the explicitly disposable test database.  The shared
-reset helper requires ``CASELOOP_ALLOW_INTEGRATION_RESET=true`` and validates
+reset helper requires ``AGENTMED_ALLOW_INTEGRATION_RESET=true`` and validates
 ``current_database()`` before setup and cleanup.
 """
 from __future__ import annotations
@@ -82,7 +82,7 @@ def _request() -> Stage1ALocalBootstrapRequest:
                 },
             },
             "secret_storage_ref": (
-                "keyring://caseloop/local/ws_01J0000000000091"
+                "keyring://agentmed/local/ws_01J0000000000091"
             ),
         }
     )

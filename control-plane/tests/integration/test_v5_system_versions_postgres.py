@@ -206,7 +206,7 @@ def _seed_auth_and_controllers(
                         "owner": owner_name,
                         "controller_principal": CONTROLLER_PRINCIPAL_ID,
                         "principal_type": "CONTROLLER_SERVICE",
-                        "service": "caseloop-control-plane",
+                        "service": "agentmed-control-plane",
                     }
                 ),
             },
@@ -231,7 +231,7 @@ def _seed_auth_and_controllers(
                     "owner": owner_name,
                     "controller_principal": CONTROLLER_PRINCIPAL_ID,
                     "principal_type": "CONTROLLER_SERVICE",
-                    "service": "caseloop-control-plane",
+                    "service": "agentmed-control-plane",
                 }
             ),
             registered_by_human_principal=OWNER_PRINCIPAL_ID,
@@ -298,7 +298,7 @@ def test_v5_1b_pg_import_atomic_rollback_and_replay() -> None:
     control_plane_root = Path(__file__).resolve().parents[2]
     if sa.engine.make_url(TEST_DATABASE_URL).database != "control_plane_test":
         raise UnsafeIntegrationDatabaseError(
-            "caseloop.integration_reset.refused.v5_1b_exact_database_required"
+            "agentmed.integration_reset.refused.v5_1b_exact_database_required"
         )
     engine = _new_pg_engine()
     factory = sessionmaker(bind=engine, autoflush=False, autocommit=False)
@@ -538,7 +538,7 @@ def test_v5_1b_cli_init_and_manifest_import_e2e(    monkeypatch: pytest.MonkeyPa
     control_plane_root = repo_root / "control-plane"
     if sa.engine.make_url(TEST_DATABASE_URL).database != "control_plane_test":
         raise UnsafeIntegrationDatabaseError(
-            "caseloop.integration_reset.refused.v5_1b_e2e_exact_database_required"
+            "agentmed.integration_reset.refused.v5_1b_e2e_exact_database_required"
         )
 
     raw_bearer = secrets.token_urlsafe(48)
@@ -605,9 +605,9 @@ def test_v5_1b_cli_init_and_manifest_import_e2e(    monkeypatch: pytest.MonkeyPa
         cli_env = {
             "PATH": os.environ.get("PATH", ""),
             "PYTHONPATH": pinned_site_packages,
-            "CASELOOP_API_URL": base_url,
-            "CASELOOP_WORKSPACE_ID": WORKSPACE_ID,
-            "CASELOOP_PUBLIC_TOKEN": raw_bearer,
+            "AGENTMED_API_URL": base_url,
+            "AGENTMED_WORKSPACE_ID": WORKSPACE_ID,
+            "AGENTMED_PUBLIC_TOKEN": raw_bearer,
         }
 
         # Build a small real git workload repo for discovery.
@@ -621,7 +621,7 @@ def test_v5_1b_cli_init_and_manifest_import_e2e(    monkeypatch: pytest.MonkeyPa
             timeout=30,
         )
         _safe_process(
-            ["git", "-C", str(workload), "config", "user.email", "test@caseloop.dev"],
+            ["git", "-C", str(workload), "config", "user.email", "test@agentmed.dev"],
             label="git config",
             env={"PATH": os.environ.get("PATH", "")},
             cwd=workload,

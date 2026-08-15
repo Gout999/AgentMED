@@ -475,7 +475,7 @@ class SystemVersionsService:
         if self.session.get_bind().dialect.name == "postgresql":
             self.session.execute(
                 text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
-                {"lock_key": f"caseloop:v5-manifest-import:{workspace_id}"},
+                {"lock_key": f"agentmed:v5-manifest-import:{workspace_id}"},
             )
 
     @staticmethod

@@ -102,18 +102,18 @@ def _assert_refused(
 )
 def test_reset_rejects_database_without_explicit_test_or_scratch_token_before_connect(url: str) -> None:
     engine = _assert_refused(
-        "caseloop.integration_reset.refused.unsafe_database_name",
+        "agentmed.integration_reset.refused.unsafe_database_name",
         url,
-        environ={"CASELOOP_ALLOW_INTEGRATION_RESET": "true"},
+        environ={"AGENTMED_ALLOW_INTEGRATION_RESET": "true"},
     )
     assert engine.connect_calls == 0
 
 
 @pytest.mark.parametrize("value", [None, "", "1", "TRUE", "yes", " true"])
 def test_reset_requires_exact_explicit_opt_in_before_connect(value: str | None) -> None:
-    environ = {} if value is None else {"CASELOOP_ALLOW_INTEGRATION_RESET": value}
+    environ = {} if value is None else {"AGENTMED_ALLOW_INTEGRATION_RESET": value}
     engine = _assert_refused(
-        "caseloop.integration_reset.refused.opt_in_required",
+        "agentmed.integration_reset.refused.opt_in_required",
         "postgresql+psycopg://user:password@127.0.0.1/control_plane_test",
         environ=environ,
     )
@@ -122,21 +122,21 @@ def test_reset_requires_exact_explicit_opt_in_before_connect(value: str | None) 
 
 def test_reset_rejects_non_postgresql_and_malformed_urls_without_connecting() -> None:
     sqlite_engine = _assert_refused(
-        "caseloop.integration_reset.refused.postgresql_required",
+        "agentmed.integration_reset.refused.postgresql_required",
         "sqlite:///control_plane_test",
-        environ={"CASELOOP_ALLOW_INTEGRATION_RESET": "true"},
+        environ={"AGENTMED_ALLOW_INTEGRATION_RESET": "true"},
     )
     assert sqlite_engine.connect_calls == 0
 
     malformed_engine = Mock()
     with pytest.raises(
         fixtures.UnsafeIntegrationDatabaseError,
-        match="^caseloop.integration_reset.refused.invalid_database_url$",
+        match="^agentmed.integration_reset.refused.invalid_database_url$",
     ):
         fixtures._assert_pg_reset_safe(
             "not a database url",
             malformed_engine,
-            environ={"CASELOOP_ALLOW_INTEGRATION_RESET": "true"},
+            environ={"AGENTMED_ALLOW_INTEGRATION_RESET": "true"},
         )
     malformed_engine.connect.assert_not_called()
 
@@ -144,9 +144,9 @@ def test_reset_rejects_non_postgresql_and_malformed_urls_without_connecting() ->
 def test_reset_rejects_engine_target_mismatch_before_connect() -> None:
     engine = _Engine("postgresql+psycopg://user:password@127.0.0.1/other_test")
     _assert_refused(
-        "caseloop.integration_reset.refused.engine_database_mismatch",
+        "agentmed.integration_reset.refused.engine_database_mismatch",
         "postgresql+psycopg://user:password@127.0.0.1/control_plane_test",
-        environ={"CASELOOP_ALLOW_INTEGRATION_RESET": "true"},
+        environ={"AGENTMED_ALLOW_INTEGRATION_RESET": "true"},
         engine=engine,
     )
     assert engine.connect_calls == 0
@@ -156,9 +156,9 @@ def test_reset_rejects_connected_database_mismatch() -> None:
     url = "postgresql+psycopg://user:password@127.0.0.1/control_plane_test"
     engine = _Engine(url, current_database="control_plane")
     _assert_refused(
-        "caseloop.integration_reset.refused.current_database_mismatch",
+        "agentmed.integration_reset.refused.current_database_mismatch",
         url,
-        environ={"CASELOOP_ALLOW_INTEGRATION_RESET": "true"},
+        environ={"AGENTMED_ALLOW_INTEGRATION_RESET": "true"},
         engine=engine,
     )
     assert engine.connect_calls == 1
@@ -170,9 +170,9 @@ def test_reset_connection_failure_is_a_stable_refusal_not_a_skip() -> None:
     url = "postgresql+psycopg://user:password@127.0.0.1/control_plane_test"
     engine = _Engine(url, connect_error=ConnectionError("host unavailable"))
     error = _assert_refused(
-        "caseloop.integration_reset.refused.database_unreachable",
+        "agentmed.integration_reset.refused.database_unreachable",
         url,
-        environ={"CASELOOP_ALLOW_INTEGRATION_RESET": "true"},
+        environ={"AGENTMED_ALLOW_INTEGRATION_RESET": "true"},
         engine=engine,
     )
     assert error.connect_calls == 1
@@ -186,10 +186,10 @@ def test_current_database_query_failure_is_stable_and_suppresses_driver_details(
         fixtures._assert_pg_reset_safe(
             url,
             engine,
-            environ={"CASELOOP_ALLOW_INTEGRATION_RESET": "true"},
+            environ={"AGENTMED_ALLOW_INTEGRATION_RESET": "true"},
         )
     assert str(error.value) == (
-        "caseloop.integration_reset.refused.current_database_unavailable"
+        "agentmed.integration_reset.refused.current_database_unavailable"
     )
     assert error.value.__cause__ is None
     assert password not in str(error.value)
@@ -208,7 +208,7 @@ def test_reset_accepts_explicit_disposable_name_and_validates_current_database(d
         fixtures._assert_pg_reset_safe(
             url,
             engine,
-            environ={"CASELOOP_ALLOW_INTEGRATION_RESET": "true"},
+            environ={"AGENTMED_ALLOW_INTEGRATION_RESET": "true"},
         )
         == database
     )
@@ -227,7 +227,7 @@ def test_refusal_messages_never_echo_credentials() -> None:
         fixtures._assert_pg_reset_safe(
             url,
             engine,
-            environ={"CASELOOP_ALLOW_INTEGRATION_RESET": "true"},
+            environ={"AGENTMED_ALLOW_INTEGRATION_RESET": "true"},
         )
     assert password not in str(error.value)
 
@@ -235,7 +235,7 @@ def test_refusal_messages_never_echo_credentials() -> None:
 def test_metadata_reset_validates_before_each_destructive_operation() -> None:
     url = "postgresql+psycopg://user:password@127.0.0.1/control_plane_test"
     engine = _Engine(url)
-    environ = {"CASELOOP_ALLOW_INTEGRATION_RESET": "true"}
+    environ = {"AGENTMED_ALLOW_INTEGRATION_RESET": "true"}
 
     with (
         patch.object(fixtures.Base.metadata, "drop_all") as drop_all,
@@ -258,7 +258,7 @@ def test_migration_reset_validates_on_same_connection_before_schema_reset() -> N
     fixtures._reset_pg_database_for_migrations(
         engine,
         url,
-        environ={"CASELOOP_ALLOW_INTEGRATION_RESET": "true"},
+        environ={"AGENTMED_ALLOW_INTEGRATION_RESET": "true"},
     )
 
     assert engine.connect_calls == 1
@@ -274,11 +274,11 @@ def test_unsafe_migration_reset_executes_no_schema_statement() -> None:
     engine = _Engine(url)
     with pytest.raises(
         fixtures.UnsafeIntegrationDatabaseError,
-        match="^caseloop.integration_reset.refused.unsafe_database_name$",
+        match="^agentmed.integration_reset.refused.unsafe_database_name$",
     ):
         fixtures._reset_pg_database_for_migrations(
             engine,
             url,
-            environ={"CASELOOP_ALLOW_INTEGRATION_RESET": "true"},
+            environ={"AGENTMED_ALLOW_INTEGRATION_RESET": "true"},
         )
     assert engine.connections == []

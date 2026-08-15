@@ -1,4 +1,4 @@
-# CaseLoop control-plane — 钉版本依赖（Python 3.11+）
+# AgentMED control-plane — 钉版本依赖（Python 3.11+）
 fastapi==0.115.6
 uvicorn[standard]==0.32.1
 sqlalchemy==2.0.36

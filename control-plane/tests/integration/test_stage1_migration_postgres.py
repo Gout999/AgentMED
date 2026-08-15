@@ -1,7 +1,7 @@
 """Real PostgreSQL proof for the Stage 1 additive Alembic path.
 
 Run serially against an explicitly disposable database only.  The shared reset
-guard requires ``CASELOOP_ALLOW_INTEGRATION_RESET=true`` and verifies
+guard requires ``AGENTMED_ALLOW_INTEGRATION_RESET=true`` and verifies
 ``current_database()`` before either setup or cleanup.
 """
 from __future__ import annotations

@@ -209,7 +209,7 @@ def _bootstrap_payload(
                 "principal_id": "prn_01J00000000001E3",
             },
         },
-        "secret_storage_ref": f"keyring://caseloop/test/{WORKSPACE_ID}",
+        "secret_storage_ref": f"keyring://agentmed/test/{WORKSPACE_ID}",
     }
 
 
@@ -291,7 +291,7 @@ def test_stage1a_public_installed_cli_real_postgres_loopback(
     configured_database = sa.engine.make_url(TEST_DATABASE_URL).database
     if configured_database != "control_plane_test":
         raise UnsafeIntegrationDatabaseError(
-            "caseloop.integration_reset.refused.stage1a_exact_database_required"
+            "agentmed.integration_reset.refused.stage1a_exact_database_required"
         )
 
     raw_bearer = secrets.token_urlsafe(48)
@@ -391,13 +391,13 @@ def test_stage1a_public_installed_cli_real_postgres_loopback(
         cli_env = {
             "PATH": os.environ.get("PATH", ""),
             "PYTHONPATH": pinned_site_packages,
-            "CASELOOP_API_URL": base_url,
-            "CASELOOP_WORKSPACE_ID": WORKSPACE_ID,
-            "CASELOOP_PUBLIC_TOKEN": raw_bearer,
-            "CASELOOP_SOURCE_ID": SOURCE_ID,
-            "CASELOOP_PROJECT_ID": PROJECT_ID,
-            "CASELOOP_ENVIRONMENT_ID": ENVIRONMENT_ID,
-            "CASELOOP_REPORTER_REF": REPORTER_SUBJECT,
+            "AGENTMED_API_URL": base_url,
+            "AGENTMED_WORKSPACE_ID": WORKSPACE_ID,
+            "AGENTMED_PUBLIC_TOKEN": raw_bearer,
+            "AGENTMED_SOURCE_ID": SOURCE_ID,
+            "AGENTMED_PROJECT_ID": PROJECT_ID,
+            "AGENTMED_ENVIRONMENT_ID": ENVIRONMENT_ID,
+            "AGENTMED_REPORTER_REF": REPORTER_SUBJECT,
         }
 
         capabilities = _run_cli(
@@ -495,7 +495,7 @@ def test_stage1a_public_installed_cli_real_postgres_loopback(
         assert normalized_replay == submitted
         assert replayed["idempotency"]["receipt"] == submitted["idempotency"]["receipt"]
 
-        wrong_workspace_env = {**cli_env, "CASELOOP_WORKSPACE_ID": WRONG_WORKSPACE_ID}
+        wrong_workspace_env = {**cli_env, "AGENTMED_WORKSPACE_ID": WRONG_WORKSPACE_ID}
         wrong_workspace = _run_cli(
             cli,
             ["capabilities", "get"],
@@ -506,7 +506,7 @@ def test_stage1a_public_installed_cli_real_postgres_loopback(
         )
         assert wrong_workspace["error"]["code"] == "WORKSPACE_ACCESS_DENIED"
 
-        wrong_token_env = {**cli_env, "CASELOOP_PUBLIC_TOKEN": wrong_bearer}
+        wrong_token_env = {**cli_env, "AGENTMED_PUBLIC_TOKEN": wrong_bearer}
         wrong_token = _run_cli(
             cli,
             ["capabilities", "get"],

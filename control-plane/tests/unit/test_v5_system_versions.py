@@ -92,7 +92,7 @@ def _seed_version_controller(session) -> None:
                     "owner": "version-controller",
                     "controller_principal": VERSION_CONTROLLER_PRINCIPAL,
                     "principal_type": "CONTROLLER_SERVICE",
-                    "service": "caseloop-control-plane",
+                    "service": "agentmed-control-plane",
                 }
             ),
         },
@@ -117,7 +117,7 @@ def _seed_version_controller(session) -> None:
                 "owner": "version-controller",
                 "controller_principal": VERSION_CONTROLLER_PRINCIPAL,
                 "principal_type": "CONTROLLER_SERVICE",
-                "service": "caseloop-control-plane",
+                "service": "agentmed-control-plane",
             }
         ),
         registered_by_human_principal=OWNER,
@@ -961,7 +961,7 @@ def test_postgres_import_uses_workspace_transaction_lock() -> None:
     assert len(executed) == 1
     statement, params = executed[0]
     assert "pg_advisory_xact_lock" in str(statement)
-    assert params == {"lock_key": f"caseloop:v5-manifest-import:{WORKSPACE}"}
+    assert params == {"lock_key": f"agentmed:v5-manifest-import:{WORKSPACE}"}
 
 
 # ------------------------------------------------------------------------- diff

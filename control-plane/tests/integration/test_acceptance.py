@@ -465,7 +465,7 @@ def _new_release(
         rel["release_id"],
         channel=complaint.payload["channel"],
         thread_ref=complaint.payload["thread_ref"],
-        body_ref=f"file:///tmp/caseloop-integration-reply-{seed}.txt",
+        body_ref=f"file:///tmp/agentmed-integration-reply-{seed}.txt",
         body_digest="sha256:" + "d" * 64,
     )
     session.commit()

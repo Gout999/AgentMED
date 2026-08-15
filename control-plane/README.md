@@ -1,4 +1,4 @@
-# CaseLoop control-plane
+# AgentMED control-plane
 
 确定性控制面（Case/Release Controller）：**LLM 不是状态与权限的权威源**。状态权威源 = PG
 （aggregates/events/inbox/outbox/leases/audit/trust ledger），事件溯源 + 状态机 + CAS 乐观并发 + lease/fencing。
@@ -201,7 +201,7 @@ Notification 的 SENT/RETRY/DEAD 生命周期只由 outbox dispatcher 根据绑�
 
 | 变量 | 默认 | 说明 |
 |------|------|------|
-| `DATABASE_URL` | `postgresql+psycopg://caseloop:caseloop@127.0.0.1:5432/control_plane` | PG 连接串 |
+| `DATABASE_URL` | `postgresql+psycopg://agentmed:agentmed@127.0.0.1:5432/control_plane` | PG 连接串 |
 | `QUALITY_API_BASE_URL` | `http://127.0.0.1:8080` | 被治理应用 Quality API |
 | `QUALITY_API_TOKEN` | 空 | 写面 Bearer token（不入库） |
 | `CONTROL_PLANE_TOKEN` | 空 | Gate/WorkOrder/ChangeSet/Release 内部写接口；未配置时 fail closed |
@@ -280,16 +280,16 @@ live runner 至少要求以下外部边界；任何一项缺失都只会生成 B
   `STEPFUN_BASE_URL=https://api.stepfun.com/step_plan/v1`；
 - 两个真实、不可变 B1 VersionSet ID、Quality read endpoint/token、Control Plane endpoint，
   以及互不复用的 controller/gate authority token；
-- `CASELOOP_B1_APPROVAL_COMMAND`：由 runner 外部持权，每个动作返回一个新鲜、已持久化的
+- `AGENTMED_B1_APPROVAL_COMMAND`：由 runner 外部持权，每个动作返回一个新鲜、已持久化的
   human ApprovalGrant ID；
-- `CASELOOP_B1_AGENT_TRACE_COMMAND` 与部署钉定的
-  `CASELOOP_B1_AGENT_TRACE_PUBLIC_KEY`：导出真实 AgentTeams v1.2.1/Matrix/skill receipt；
-- `CASELOOP_B1_FEISHU_MESSAGE_COMMAND`：**只在 B1 注入成功后**等待新投诉，并从 stdout
+- `AGENTMED_B1_AGENT_TRACE_COMMAND` 与部署钉定的
+  `AGENTMED_B1_AGENT_TRACE_PUBLIC_KEY`：导出真实 AgentTeams v1.2.1/Matrix/skill receipt；
+- `AGENTMED_B1_FEISHU_MESSAGE_COMMAND`：**只在 B1 注入成功后**等待新投诉，并从 stdout
   返回 `{"schema_version":"0.1.0","provider":"feishu","message_id":"..."}`。
   Runner 不向该命令传 Control Plane、Quality、StepFun 或 Feishu secret；message ID 只是
   locator，Control Plane 会自行抓取原消息，并在建立 Case 前验证仓库 B1 fixture digest 与
   provider `create_time > injected_at`。可用
-  `CASELOOP_B1_FEISHU_MESSAGE_TIMEOUT_SECONDS` 设置 1–3600 秒等待上限。
+  `AGENTMED_B1_FEISHU_MESSAGE_TIMEOUT_SECONDS` 设置 1–3600 秒等待上限。
 
 当前 live 中途失败会安全补偿 Quality fault，但尚未 durable resume/terminalize 已创建的
 Case/Experiment/Release；因此同一投诉跨失败重试仍是明确 P0-4 blocker，不能把 live 命令称为

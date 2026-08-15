@@ -567,7 +567,7 @@ def _service_identity_digest(
             "owner": owner,
             "controller_principal": controller_principal,
             "principal_type": "CONTROLLER_SERVICE",
-            "service": "caseloop-control-plane",
+            "service": "agentmed-control-plane",
         }
     )
 
@@ -839,7 +839,7 @@ def execute_v5_catalog_local_bootstrap(
     if session.get_bind().dialect.name == "postgresql":
         session.execute(
             sa.text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
-            {"lock_key": f"caseloop:v5-catalog-local:{request.workspace_id}"},
+            {"lock_key": f"agentmed:v5-catalog-local:{request.workspace_id}"},
         )
 
     claims = {
@@ -1394,7 +1394,7 @@ def execute_v5_operator_environment_rotation(
             sa.text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
             {
                 "lock_key": (
-                    "caseloop:v5-operator-environment-rotation:"
+                    "agentmed:v5-operator-environment-rotation:"
                     f"{request.workspace_id}:{request.principal.principal_id}"
                 )
             },
@@ -1929,7 +1929,7 @@ def execute_v5_owner_reauthentication(
             sa.text("SELECT pg_advisory_xact_lock(hashtext(:lock_key))"),
             {
                 "lock_key": (
-                    "caseloop:v5-owner-reauth:"
+                    "agentmed:v5-owner-reauth:"
                     f"{request.workspace_id}:{request.owner_principal.principal_id}"
                 )
             },
