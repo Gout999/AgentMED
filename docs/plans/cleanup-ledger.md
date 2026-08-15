@@ -57,3 +57,18 @@
 - [ ] A1/A2 待环路落定（涉及运行面）
 - [ ] B1/B2/B3 diff 证据已出，合并留待专用分支
 - [ ] C1-C5 待环路落定
+
+## 执行记录（2026-08-15 凌晨，环路出口2 达成后）
+
+- **A1 ✅ 已执行**（147ec47）：demo-app 全部删除（-7216 行：应用+prompts+KB+alembic+tests）；
+  compose demo-app 服务移除；postgres init 移除 demo_app 库；compose QUALITY_API_BASE_URL
+  → AgentMED 评估面；变异巡检（mutation patrol，只巡逻 demo-app prompt 且无闭环消费者）删除；
+  三处 Quality API 默认 8080 → 8088。测试证据：cp 790 / mcp 106 / harness 81 / conformance 24 全绿。
+- **A2 ⚠️ 部分执行**（3b8068c）：删除 feishu.weekly_report（明确 feishu-mock 辅助适配器）+
+  死代码 _parse_feishu_mock_ref。保留：feishu.reply_origin（实为 release closure-context 排队，
+  channel-agnostic，工具名保留兼容 worker 技能）；control-plane notifications/adapters.py feishu
+  分支 + case_admin feishu inbound 路由——它们的替代是「Matrix 原生通知」（段7 通知走平台 channels），
+  属 flow-level 决策（D-015 下一迭代口径），非纯删除；留待 owner 醒后确认再动。
+- **B1/B2/B3**：diff 证据已在账本，合并重构需专用分支——维持 defer。
+- **C1**（acceptance.py 冻结面）**C3**（release_service 拆分）**C5**（与 B1 同批）：维持 defer（owner 醒后确认面）。
+- **C2**（Wilson 统计简化）：行为敏感重构，留待专用分支。
