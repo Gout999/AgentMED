@@ -1,6 +1,7 @@
 """Register the 12 agentmed MCP projections on the Higress gateway
 via the console API (platform-native mcp-proxy mechanism)."""
 import json
+import os
 import pathlib
 import urllib.request
 import http.cookiejar
@@ -40,8 +41,11 @@ def call(opener, method, path, body=None):
 def main():
     jar = http.cookiejar.CookieJar()
     opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(jar))
+    console_password = os.environ.get("HIGRESS_CONSOLE_PASSWORD", "")
+    if not console_password:
+        raise SystemExit("缺少 HIGRESS_CONSOLE_PASSWORD（Higress 控制台 admin 口令）")
     status, body = call(opener, "POST", "/session/login",
-                        {"username": "admin", "password": "AgentMEDAdmin2026"})
+                        {"username": "admin", "password": console_password})
     print("login:", status)
 
     for name, port, consumers in SERVERS:

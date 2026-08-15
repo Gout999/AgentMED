@@ -23,10 +23,11 @@ ROOT = Path(__file__).resolve().parent.parent
 STATE = ROOT / "var" / "langfuse-signal-state.json"
 
 LANGFUSE_BASE = os.environ.get("LANGFUSE_BASE_URL", "http://127.0.0.1:3001")
-LANGFUSE_PK = os.environ.get("LANGFUSE_PUBLIC_KEY", "pk-lf-84970690db0784d6520aceac1d74d5c2")
-LANGFUSE_SK = os.environ.get("LANGFUSE_SECRET_KEY", "sk-lf-4539ece94bd23c9be767998bf5fd75370c7fa45d288ed7bf")
+# 凭证不设默认：历史提交曾内置真实 pk/sk，已移除并需在 Langfuse 侧轮换。
+LANGFUSE_PK = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
+LANGFUSE_SK = os.environ.get("LANGFUSE_SECRET_KEY", "")
 CONTROL_PLANE = os.environ.get("CONTROL_PLANE_BASE_URL", "http://127.0.0.1:18090")
-OPERATOR_BEARER = os.environ.get("AGENTMED_OPERATOR_BEARER", "demo-operator-bearer-20260814-flow-first")
+OPERATOR_BEARER = os.environ.get("AGENTMED_OPERATOR_BEARER", "")
 WORKSPACE = os.environ.get("AGENTMED_WORKSPACE_ID", "ws_wsLocalDemoAgentstation001")
 SOURCE_ID = os.environ.get("AGENTMED_SIGNAL_SOURCE_ID", "src_srcLocalDemoManual0000001")
 SCORE_THRESHOLD = float(os.environ.get("LANGFUSE_NEGATIVE_THRESHOLD", "1.0"))
@@ -123,6 +124,10 @@ def _save_state(processed: set[str]) -> None:
 
 
 def main() -> int:
+    if not (LANGFUSE_PK and LANGFUSE_SK and OPERATOR_BEARER):
+        raise SystemExit(
+            "缺少凭证：请设置 LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY / AGENTMED_OPERATOR_BEARER"
+        )
     processed = _load_state()
     opened = 0
 

@@ -21,10 +21,9 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 
 DB_URL = os.environ.get("AGENTMED_DB_URL", "")
 MATRIX_BASE = os.environ.get("AGENTMED_MATRIX_BASE", "http://127.0.0.1:18080")
-TEAM_ROOM = os.environ.get(
-    "AGENTMED_TEAM_ROOM",
-    "!cKeYZ5mBFWuV6ECUKa:matrix-local.agentteams.io:18080",
-)
+# 团队房间 id 随团队重建而变化：不设默认，强制显式传入，避免向历史房间发送决策。
+# 当前房间：!NzWy15gwm3QU6cTfuP:matrix-local.agentteams.io:18080（以 agt get teams 为准）
+TEAM_ROOM = os.environ.get("AGENTMED_TEAM_ROOM", "")
 
 
 def _db_url() -> str:
@@ -92,6 +91,8 @@ def decide(approval_id: str, approve: bool, reason: str) -> int:
     if status != "pending":
         print(f"approval {approval_id} is {status}, not pending")
         return 2
+    if not TEAM_ROOM:
+        raise SystemExit("缺少 AGENTMED_TEAM_ROOM：团队房间随重建变化，必须显式传入（当前房间以 agt get teams 为准）")
     decision = "approved" if approve else "rejected"
     body = (
         "APPROVAL_DECISION approval=" + approval_id
