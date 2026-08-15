@@ -1,4 +1,4 @@
-# CaseLoop 项目信息说明书（终态产品版）
+# AgentMED 项目信息说明书（终态产品版）
 
 > 产品定位、系统形态、能力、架构、场景与运营信息
 >
@@ -10,13 +10,13 @@
 > 全部保持 `NOT_RUN`。当前事实见 [`PROJECT_STATE.md`](../context/PROJECT_STATE.md)，
 > 文档权威顺序见 [`docs/README.md`](../README.md)。
 
-> 配套资料：[《CaseLoop 完整产品叙事》](./CaseLoop-完整产品叙事文档.md)
+> 配套资料：[《AgentMED 完整产品叙事》](./AgentMED-完整产品叙事文档.md)
 
 ---
 
 ## 0. 文档说明
 
-本文是 CaseLoop 完整产品的项目级信息说明书，用于说明项目最终解决什么问题、服务哪些用户、以什么形态交付、具备哪些能力、如何工作，以及如何与现有 AI 工程生态协作。
+本文是 AgentMED 完整产品的项目级信息说明书，用于说明项目最终解决什么问题、服务哪些用户、以什么形态交付、具备哪些能力、如何工作，以及如何与现有 AI 工程生态协作。
 
 本文仅描述项目完整建成后的产品形态、产品语义和用户场景。
 
@@ -24,7 +24,7 @@
 
 | 项目项 | 内容 |
 |---|---|
-| 项目名称 | CaseLoop |
+| 项目名称 | AgentMED |
 | 产品类别 | 面向 AI 应用的 Agent-native 治理运营控制面 |
 | 顶层治理对象 | 完整 `AIApplication`；Agent 是 `SystemComponent` 之一 |
 | 核心目标用户 | 运行一个或少量真实 AI 应用、没有完整平台治理团队的产品/工程团队 |
@@ -40,7 +40,7 @@
 
 ### 1.1 一句话定位
 
-CaseLoop 把 AI 应用的一次坏结果，变成可复现的 Case、可验证的修复，以及在需要部署时经人工授权、可观察、可对账、可恢复的系统变更。
+AgentMED 把 AI 应用的一次坏结果，变成可复现的 Case、可验证的修复，以及在需要部署时经人工授权、可观察、可对账、可恢复的系统变更。
 
 ### 1.2 产品使命
 
@@ -113,9 +113,9 @@ CaseLoop 把 AI 应用的一次坏结果，变成可复现的 Case、可验证�
 
 ## 4. 产品定位与边界
 
-### 4.1 CaseLoop 持有什么
+### 4.1 AgentMED 持有什么
 
-CaseLoop 自身必须权威持有：
+AgentMED 自身必须权威持有：
 
 - AIApplication、Environment、SystemComponent 和系统版本；
 - Signal、QualityCase、Case binding、验收标准、BadcaseSpec、RegressionAsset、Problem 与 KnownError；
@@ -126,9 +126,9 @@ CaseLoop 自身必须权威持有：
 
 CaseReadiness、Audit timeline、Console view、SystemReleaseView 与 A2A Task 由上述权威事实派生，是只读投影，不自行拥有领域成功。
 
-### 4.2 CaseLoop 不替代什么
+### 4.2 AgentMED 不替代什么
 
-CaseLoop 不建设完整的：
+AgentMED 不建设完整的：
 
 - 通用 CMDB；
 - trace/observability 存储；
@@ -137,7 +137,7 @@ CaseLoop 不建设完整的：
 - ITSM、IAM、FinOps 或 GRC；
 - 云账单、供应商市场或法律合规判断引擎。
 
-它通过 Adapter 对接这些系统，并要求这些系统返回可验证 receipt。外部平台可以提供事实或执行动作，但不能拥有 CaseLoop 的领域成功。
+它通过 Adapter 对接这些系统，并要求这些系统返回可验证 receipt。外部平台可以提供事实或执行动作，但不能拥有 AgentMED 的领域成功。
 
 ## 5. 最终产品形态
 
@@ -488,34 +488,34 @@ Rollback 至少包含：
 
 ## 13. 与相邻产品的关系
 
-| 相邻能力 | 它主要回答什么 | CaseLoop 的职责 |
+| 相邻能力 | 它主要回答什么 | AgentMED 的职责 |
 |---|---|---|
 | Langfuse / OTel / Phoenix | 发生了什么，有哪些 trace 与观测 | 固化来源证据，绑定进 Case/Gate，显示完整性与缺失 |
 | Coding Agent / 优化器 | 可以怎么改 | 接收 Candidate，并独立验证 exact Candidate |
 | Eval 框架 | 在某套数据和 evaluator 上表现怎样 | 冻结真实问题、版本、purpose 和硬失败语义 |
 | Agent Runtime | 怎样执行 Agent 与工具 | 作为可替换 Adapter，不拥有治理权威 |
-| CI/CD / Deploy | 怎样构建和部署 | 消费获批操作并返回 receipt；CaseLoop 负责授权、观察和恢复 |
-| CMDB / ITSM / IAM | 资产、工单、身份与通用流程 | 通过 Adapter 互操作；CaseLoop 持有 AI 特有治理事实 |
+| CI/CD / Deploy | 怎样构建和部署 | 消费获批操作并返回 receipt；AgentMED 负责授权、观察和恢复 |
+| CMDB / ITSM / IAM | 资产、工单、身份与通用流程 | 通过 Adapter 互操作；AgentMED 持有 AI 特有治理事实 |
 
-CaseLoop 的差异来自职责边界和可验证治理交易，不来自“市场没人做”或“替代所有工具”。
+AgentMED 的差异来自职责边界和可验证治理交易，不来自“市场没人做”或“替代所有工具”。
 
 ## 14. 完整产品场景
 
 ### 14.1 应用接入与系统建模
 
-团队以自托管或私有化实例建立 Workspace，接入代码仓库、模型与 RAG 配置、可观测来源、Runtime、部署平台和身份系统。`caseloop init` 从仓库只读生成 manifest 草稿，由负责人确认应用、环境、组件、依赖和责任边界。对无法精确固定的依赖，系统保留 assurance 与 `UNKNOWN`，不伪造完整性。
+团队以自托管或私有化实例建立 Workspace，接入代码仓库、模型与 RAG 配置、可观测来源、Runtime、部署平台和身份系统。`agentmed init` 从仓库只读生成 manifest 草稿，由负责人确认应用、环境、组件、依赖和责任边界。对无法精确固定的依赖，系统保留 assurance 与 `UNKNOWN`，不伪造完整性。
 
 接入后，每个环境都有可比较的 SystemVersionSet、desired Assignment 和完整审计时间线。有真实部署面的环境还必须保留独立 observed state；对 library 或 offline workload，Observed 明确为 `N/A` 或 `UNKNOWN`，不伪造运行证明。小团队可以先登记真实 workload 所需的少量组件，再随使用深度增量完善，无需先完成一次大型资产盘点。
 
 ### 14.2 从用户反馈到 First Useful Case
 
-用户反馈、Issue、trace 异常、SLO 事件或外部平台消息进入 Signal Inbox。CaseLoop 保留来源快照，建立 QualityCase，并关联受影响应用、环境、问题发生时的 SystemVersionSet 与 Episode evidence。
+用户反馈、Issue、trace 异常、SLO 事件或外部平台消息进入 Signal Inbox。AgentMED 保留来源快照，建立 QualityCase，并关联受影响应用、环境、问题发生时的 SystemVersionSet 与 Episode evidence。
 
 Agent 根据来源起草验收标准，Maintainer 或 Domain Reviewer 确认“什么才算修好”。信息足够时，Case 形成可执行 badcase；信息不足时，系统给出 `NEEDS_ACCEPTANCE_CRITERIA` 和具体缺口。两种结果都会告诉用户下一项可执行动作。
 
 ### 14.3 从 Agent Candidate 到 VerifiedCandidate
 
-外部 Coding Agent、内部 Worker 或 Maintainer 在受限证据上开展调查，提交原因假设和不可变 Candidate。CaseLoop 冻结 ResolutionContract、base/target VersionSet、EvaluationBundle、blast radius 和恢复要求。
+外部 Coding Agent、内部 Worker 或 Maintainer 在受限证据上开展调查，提交原因假设和不可变 Candidate。AgentMED 冻结 ResolutionContract、base/target VersionSet、EvaluationBundle、blast radius 和恢复要求。
 
 Candidate Verification 在同一 badcase 上要求 base fail、Candidate pass，并执行仓库回归、历史 Case、邻近能力、sealed holdout、anti-overfit 和 sandbox integrity。必需证据缺失、未知或不一致时，Gate 拒绝放行并返回 Next Required Action。通过后系统生成 VerifiedCandidate，但不自动获得部署权。
 
@@ -523,23 +523,23 @@ Candidate Verification 在同一 badcase 上要求 base fail、Candidate pass，
 
 对有真实部署面的应用，Maintainer 显式提出 release request，并在 Gate 前冻结 ReleasePlan、rollout、observed verification、known-good rollback 和 recovery 参数。Release Authorization Gate 通过后创建 exact WorkOrder，由重新认证的人类审批，再交给限时、限目标、限动作的 CapabilityLease 和 Executor。
 
-执行结束后，CaseLoop 从目标 Runtime 独立回读 observed state，对照 desired、observed 与 effect。不一致、局部成功或超时进入 reconcile；需要恢复时，系统通过新的 RecoveryWorkOrder 和紧急人工授权执行 stop exposure、restore known-good、observed verification、capability revoke 与可能的 compensation。
+执行结束后，AgentMED 从目标 Runtime 独立回读 observed state，对照 desired、observed 与 effect。不一致、局部成功或超时进入 reconcile；需要恢复时，系统通过新的 RecoveryWorkOrder 和紧急人工授权执行 stop exposure、restore known-good、observed verification、capability revoke 与可能的 compensation。
 
 ### 14.5 持续质量与运营治理
 
-经显式关闭与审核后的真实 badcase 可沉淀为 RegressionAsset，并在后续相关 Gate 中真正执行。CaseLoop 把 Incident、Problem、KnownError、SLO、Error Budget、版本漂移、供应链变化、Memory 与数据治理、成本预算与供应商退场纳入同一管理视图。
+经显式关闭与审核后的真实 badcase 可沉淀为 RegressionAsset，并在后续相关 Gate 中真正执行。AgentMED 把 Incident、Problem、KnownError、SLO、Error Budget、版本漂移、供应链变化、Memory 与数据治理、成本预算与供应商退场纳入同一管理视图。
 
 Application Owner 查看多应用风险与质量趋势，Reliability/Security Reviewer 跟踪权限扩大、未知外部作用、恢复演练和凭据撤销。低风险自动化可以通过受限 PolicyGrant 运行，高风险发布与恢复始终保留明确的人类控制点。
 
 在运营交易中，多个 Case 可聚合为 Problem 和 KnownError，恢复与事后复盘形成 PIR（Post-Incident Review）；SLO 或 Error Budget 越界可以冻结 rollout。供应链变更会触发影响分析与 revoke，Memory/数据污染进入 lineage 定位、quarantine 和 rebuild/revert，vendor EOL 会形成可跟踪的 migration Case。
 
-CaseLoop 自身也纳入同样的运行纪律：支持 backup/restore、key rotation、N/N-1 协议与版本兼容、自身 SLO 与可观测、单节点恢复以及企业 HA/DR。
+AgentMED 自身也纳入同样的运行纪律：支持 backup/restore、key rotation、N/N-1 协议与版本兼容、自身 SLO 与可观测、单节点恢复以及企业 HA/DR。
 
 ### 14.6 企业生态与合规协作
 
-CaseLoop 通过 MCP、A2A、SDK 和 Adapter 与 CMDB、ITSM、IAM、GRC、FinOps、仓库、评测、观测和部署平台互操作。多租户、跨组织信任、数据驻留、retention、legal hold、HA/DR 和受限网络支持企业部署。
+AgentMED 通过 MCP、A2A、SDK 和 Adapter 与 CMDB、ITSM、IAM、GRC、FinOps、仓库、评测、观测和部署平台互操作。多租户、跨组织信任、数据驻留、retention、legal hold、HA/DR 和受限网络支持企业部署。
 
-系统可以生成按 Case、Gate、Release 和 Recovery 组织的证据包，为内审和合规评估提供有来源、可追溯的材料。CaseLoop 提供证据和控制机制，具体法规适用性仍由组织与专业方独立判断。
+系统可以生成按 Case、Gate、Release 和 Recovery 组织的证据包，为内审和合规评估提供有来源、可追溯的材料。AgentMED 提供证据和控制机制，具体法规适用性仍由组织与专业方独立判断。
 
 ## 15. 最终能力版图
 
@@ -613,8 +613,8 @@ CaseLoop 通过 MCP、A2A、SDK 和 Adapter 与 CMDB、ITSM、IAM、GRC、FinOps
 | “测试通过就证明已经修好并上线” | “Candidate Verification 与 Release Authorization 是两个 exact-bound Gate。” |
 | “设置目标版本就代表部署成功” | “Desired、Observed、Effect 分开；成功需要独立 observed evidence。” |
 | “Rollback 可以撤销一切” | “Rollback 包含 stop、restore、observe、reconcile 和可能的 compensate。” |
-| “CaseLoop 替代所有观测、Agent 和部署平台” | “CaseLoop 是跨平台的治理与授权层，通过 Adapter 复用现有系统。” |
-| “用了这些控制就全面合规” | “CaseLoop 提供证据、权限、审计和恢复机制；具体法规仍需独立评估。” |
+| “AgentMED 替代所有观测、Agent 和部署平台” | “AgentMED 是跨平台的治理与授权层，通过 Adapter 复用现有系统。” |
+| “用了这些控制就全面合规” | “AgentMED 提供证据、权限、审计和恢复机制；具体法规仍需独立评估。” |
 
 ## 18. 术语表
 

@@ -1,4 +1,4 @@
-# CaseLoop 产品需求文档
+# AgentMED 产品需求文档
 
 > 版本：Rebuild Draft 0.1
 >
@@ -10,9 +10,9 @@
 
 ## 0. 执行摘要
 
-CaseLoop 是一套**由专业 Agent Team 驱动的 AI 应用质量改进与安全变更系统**。
+AgentMED 是一套**由专业 Agent Team 驱动的 AI 应用质量改进与安全变更系统**。
 
-当 AI 应用产生错误回答、工具调用失败、回归、低分 trace、用户投诉或维护 Issue 时，CaseLoop 把零散信息转化为一个可追踪的 Case；由职责隔离的 Agent Team 完成取证、调查、候选修复和独立验证；由确定性治理内核掌握状态、权限、审计与执行；由人类对业务预期和高风险动作保留最终权力。
+当 AI 应用产生错误回答、工具调用失败、回归、低分 trace、用户投诉或维护 Issue 时，AgentMED 把零散信息转化为一个可追踪的 Case；由职责隔离的 Agent Team 完成取证、调查、候选修复和独立验证；由确定性治理内核掌握状态、权限、审计与执行；由人类对业务预期和高风险动作保留最终权力。
 
 核心闭环是：
 
@@ -28,17 +28,17 @@ CaseLoop 是一套**由专业 Agent Team 驱动的 AI 应用质量改进与安�
 → 沉淀为下一次自动拦截的回归资产
 ```
 
-CaseLoop 的差异不在于“有更多 Agent”，而在于它把 Agent 的创造性工作置于可复核的分工、证据、门禁和授权之下。
+AgentMED 的差异不在于“有更多 Agent”，而在于它把 Agent 的创造性工作置于可复核的分工、证据、门禁和授权之下。
 
 ## 1. 产品定位
 
 ### 1.1 一句话定义
 
-**CaseLoop 让 AI 应用团队把一次坏结果，转化为一个经过独立验证、可安全采用并能持续防止复发的修复。**
+**AgentMED 让 AI 应用团队把一次坏结果，转化为一个经过独立验证、可安全采用并能持续防止复发的修复。**
 
 ### 1.2 产品类别
 
-CaseLoop 位于 AI 应用、可观测系统、评测工具、Agent runtime、代码仓库和发布系统之上，是面向质量事件的治理与执行闭环。
+AgentMED 位于 AI 应用、可观测系统、评测工具、Agent runtime、代码仓库和发布系统之上，是面向质量事件的治理与执行闭环。
 
 它自身拥有：
 
@@ -53,7 +53,7 @@ CaseLoop 位于 AI 应用、可观测系统、评测工具、Agent runtime、代
 
 ### 1.3 我们不是什么
 
-CaseLoop 不是：
+AgentMED 不是：
 
 - 客服工单或投诉管理系统；
 - 通用 Agent runtime 或多 Agent 聊天框架；
@@ -116,7 +116,7 @@ AI 应用上线后的坏结果通常通过聊天、Issue、低分 trace、告警
 
 ### 4.1 十分产品形态
 
-最终形态下，团队把来自用户、trace、CI、告警或维护者的异常交给 CaseLoop。CaseLoop 自动组织 Agent Team 完成调查、候选生成和验证；对低风险、可逆且已赢得信任的动作按策略执行；对高风险动作请求人类批准；持续观察结果，在异常或不确定时回滚、对账或升级；把每次 Case 变成长期质量资产。
+最终形态下，团队把来自用户、trace、CI、告警或维护者的异常交给 AgentMED。AgentMED 自动组织 Agent Team 完成调查、候选生成和验证；对低风险、可逆且已赢得信任的动作按策略执行；对高风险动作请求人类批准；持续观察结果，在异常或不确定时回滚、对账或升级；把每次 Case 变成长期质量资产。
 
 ### 4.2 First Useful Case
 
@@ -374,13 +374,13 @@ HTTP 是 canonical capability；CLI、SDK、MCP/A2A 和 Console 是薄 Adapter�
 首批命令应围绕用户动作，而非治理对象 CRUD：
 
 ```text
-caseloop case create
-caseloop case show
-caseloop case accept
-caseloop investigate
-caseloop candidate submit
-caseloop verify
-caseloop evidence export
+agentmed case create
+agentmed case show
+agentmed case accept
+agentmed investigate
+agentmed candidate submit
+agentmed verify
+agentmed evidence export
 ```
 
 发布命令在发布阶段单独启用，并且不能暴露给普通 Agent token。
@@ -490,7 +490,7 @@ Agent 通过 typed Task 领取工作，通过 Attempt 提交结构化工件。�
 
 ### 13.1 MVP 假设
 
-如果一个小型 AI 团队可以用 CaseLoop 在明显少于现有人工流程的时间内，把真实坏结果变成可信的 VerifiedCandidate，并且 Gate 能拦截已知坏候选，那么“Agent Team + 独立治理闭环”具有产品价值。
+如果一个小型 AI 团队可以用 AgentMED 在明显少于现有人工流程的时间内，把真实坏结果变成可信的 VerifiedCandidate，并且 Gate 能拦截已知坏候选，那么“Agent Team + 独立治理闭环”具有产品价值。
 
 ### 13.2 MVP 纵切
 
@@ -608,7 +608,7 @@ MVP 不执行远程 push、PR merge 或生产发布，以 `VerifiedCandidate / N
 2. 获得 3 份脱敏的真实 badcase 处理流程；
 3. 找到 2 个愿意运行 Shadow pilot 的团队；
 4. 记录他们当前从反馈到修复的步骤、时间、角色和风险；
-5. 用同一真实 Case 对比原流程与 CaseLoop 流程；
+5. 用同一真实 Case 对比原流程与 AgentMED 流程；
 6. 验证用户是否愿意持续把 RegressionAsset 用于后续 Gate。
 
 如果用户只需要更好的 trace 浏览或 eval runner，而不需要 Agent Team 协作、候选治理和安全变更闭环，应缩小或调整产品定位。
