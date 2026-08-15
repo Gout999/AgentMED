@@ -1,4 +1,4 @@
-# AgentMED v4 contract namespace
+# CaseLoop v4 contract namespace
 
 This directory is the executable contract namespace for the v4 product
 direction. It does not replace the current v3 implementation baseline in
@@ -116,7 +116,7 @@ that later stage is implemented.
 Immutable chain records declare
 `jcs-rfc8785-v1+sha256(excluding:/<self-digest-field>)`. Conformance uses the
 pinned Apache-2.0 `rfc8785==0.1.4` implementation: Unicode is preserved without
-normalization and object names use RFC 8785 UTF-16 ordering. The AgentMED
+normalization and object names use RFC 8785 UTF-16 ordering. The CaseLoop
 profile rejects floating-point values, non-finite values, lone surrogates, and
 unsafe integers; a missing dependency fails closed and has no fallback
 serializer.

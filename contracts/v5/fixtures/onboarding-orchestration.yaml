@@ -3,14 +3,14 @@ status: draft_contract_fixture
 runtime_status: NOT_RUN
 fixture_id: v5-0c-onboarding-workflow-orchestration
 
-# Freeze of the CLI onboarding workflow semantics: `agentmed init <repo>` and
-# `agentmed case from-issue <github-url>` only orchestrate canonical intents.
+# Freeze of the CLI onboarding workflow semantics: `caseloop init <repo>` and
+# `caseloop case from-issue <github-url>` only orchestrate canonical intents.
 # Network disconnects, partial failures, and retries never produce a second
 # owner, a duplicate Case, or an automatically confirmed acceptance.
 
 workflows:
-  agentmed_init:
-    invocation: "agentmed init <repo>"
+  caseloop_init:
+    invocation: "caseloop init <repo>"
     steps:
       - local_read_only_discovery
       - manifest_draft
@@ -24,8 +24,8 @@ workflows:
       - write_discovery_results_as_authority
       - partial_import_leaving_orphan_objects
 
-  agentmed_case_from_issue:
-    invocation: "agentmed case from-issue <github-url>"
+  caseloop_case_from_issue:
+    invocation: "caseloop case from-issue <github-url>"
     steps:
       - issue_snapshot
       - signal_submit
@@ -46,16 +46,16 @@ workflows:
 # CLI implementation is narrower and is recorded additively here.
 runtime_overlay:
   through_delivery_slice: V5-1C
-  agentmed_init:
-    invocation: "agentmed init <repo>"
+  caseloop_init:
+    invocation: "caseloop init <repo>"
     steps: [local_read_only_discovery, manifest_draft]
     writes_server_state: false
     import_is_a_separate_operator_command: true
     next_commands:
       - system-manifest validate
       - system-manifest import
-  agentmed_case_from_issue:
-    invocation: "agentmed case from-issue <github-url>"
+  caseloop_case_from_issue:
+    invocation: "caseloop case from-issue <github-url>"
     steps:
       - issue_snapshot
       - application_read
@@ -88,12 +88,12 @@ retry_safety:
 contract_grounding:
   compatibility:
     onboarding_workflow_orchestration:
-      agentmed_init:
+      caseloop_init:
         steps: [local_read_only_discovery, manifest_draft]
         writes_server_state: false
         import_is_a_separate_operator_command: true
         separate_import_intent: system-manifests.import
-      agentmed_case_from_issue:
+      caseloop_case_from_issue:
         steps: [issue_snapshot, application_read, environment_read, signal_submit_and_case_open, exact_case_read, optional_version_read, application_binding, acceptance_criteria_draft]
         canonical_intents_only: true
         no_auto_confirmation: true

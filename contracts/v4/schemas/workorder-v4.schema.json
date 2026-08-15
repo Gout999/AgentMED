@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agentmed.dev/contracts/v4/schemas/workorder-v4.schema.json",
-  "title": "AgentMED v4 post-Gate WorkOrder",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/workorder-v4.schema.json",
+  "title": "CaseLoop v4 post-Gate WorkOrder",
   "type": "object",
   "required": [
     "schema_version",
@@ -34,44 +34,44 @@
   ],
   "properties": {
     "schema_version": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
     },
     "workorder_id": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workorder_id"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workorder_id"
     },
     "revision": {
       "type": "integer",
       "minimum": 1
     },
     "workspace_id": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
     },
     "case_id": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/case_id"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/case_id"
     },
     "semantic": {
       "const": "V4_POST_GATE_EXECUTION"
     },
     "resolution_contract": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
     },
     "candidate_contract": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
     },
     "candidate_revision": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
     },
     "evaluation_plan": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
     },
     "candidate_id": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/candidate_id"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/candidate_id"
     },
     "candidate_artifact": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
     },
     "gate_report": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
     },
     "gate_status": {
       "const": "PASS"
@@ -95,23 +95,23 @@
           "minLength": 1
         },
         "base_digest": {
-          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
         },
         "target_revision": {
           "type": "string",
           "minLength": 1
         },
         "target_digest": {
-          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
         }
       },
       "additionalProperties": false
     },
     "diff_artifact": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
     },
     "action_scope": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
     },
     "risk_class": {
       "enum": [
@@ -132,13 +132,13 @@
       "pattern": "^nonce_[0-9A-Za-z]{16,96}$"
     },
     "expires_at": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
     },
     "created_by_principal": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
     },
     "created_at": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
     },
     "immutable": {
       "const": true
@@ -147,10 +147,10 @@
       "const": "jcs-rfc8785-v1+sha256(excluding:/workorder_hash)"
     },
     "workorder_hash": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
     },
     "authority_receipt_id": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
     }
   },
   "additionalProperties": false

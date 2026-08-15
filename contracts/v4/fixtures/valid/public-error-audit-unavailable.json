@@ -12,6 +12,6 @@
     "audit_ref": null,
     "audit_status": "UNAVAILABLE",
     "details": {},
-    "help_url": "https://docs.agentmed.dev/errors/AUDIT_UNAVAILABLE"
+    "help_url": "https://docs.caseloop.dev/errors/AUDIT_UNAVAILABLE"
   }
 }

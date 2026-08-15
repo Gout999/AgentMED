@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agentmed.dev/contracts/v4/schemas/idempotency-receipt.schema.json",
-  "title": "AgentMED public command idempotency receipt",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/idempotency-receipt.schema.json",
+  "title": "CaseLoop public command idempotency receipt",
   "type": "object",
   "required": [
     "schema_version",
@@ -24,13 +24,13 @@
   ],
   "properties": {
     "schema_version": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
     },
     "workspace_id": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
     },
     "principal_id": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
     },
     "intent": {
       "enum": [
@@ -49,7 +49,7 @@
     },
     "request_fingerprint": {
       "description": "Digest of canonical request content, not the receipt self-hash.",
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
     },
     "resource": {
       "type": "object",
@@ -78,7 +78,7 @@
     "operation_id": {
       "oneOf": [
         {
-          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/operation_id"
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/operation_id"
         },
         {
           "type": "null"
@@ -86,10 +86,10 @@
       ]
     },
     "request_id": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/request_id"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/request_id"
     },
     "audit_ref": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"
     },
     "status": {
       "type": "string",
@@ -100,13 +100,13 @@
     },
     "response_digest": {
       "description": "Digest of the durable command result payload excluding this delivery receipt, so the response and receipt never form a cyclic hash.",
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
     },
     "created_at": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
     },
     "idempotency_receipt_id": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/idempotency_receipt_id"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/idempotency_receipt_id"
     },
     "immutable": {
       "const": true
@@ -116,7 +116,7 @@
     },
     "receipt_digest": {
       "description": "Whole immutable wire-response self-hash excluding only this field. Every replay returns the original receipt byte-for-byte with the same receipt id and self-hash; per-delivery replay metadata is outside this record. This is not the authoritative PostgreSQL idempotency record.",
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
     }
   },
   "allOf": [
@@ -130,7 +130,7 @@
           "resource": {
             "properties": {
               "kind": {"const": "signal"},
-              "id": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/signal_id"}
+              "id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/signal_id"}
             }
           },
           "operation_id": {"type": "null"},
@@ -148,10 +148,10 @@
           "resource": {
             "properties": {
               "kind": {"const": "source_sync_run"},
-              "id": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/source_sync_run_id"}
+              "id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/source_sync_run_id"}
             }
           },
-          "operation_id": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/operation_id"},
+          "operation_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/operation_id"},
           "status": {"const": "ACCEPTED"}
         }
       }
@@ -168,10 +168,10 @@
           "resource": {
             "properties": {
               "kind": {"const": "automation_request"},
-              "id": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/automation_request_id"}
+              "id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/automation_request_id"}
             }
           },
-          "operation_id": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/operation_id"},
+          "operation_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/operation_id"},
           "status": {"const": "ACCEPTED"}
         }
       }
@@ -186,7 +186,7 @@
           "resource": {
             "properties": {
               "kind": {"const": "approval_grant"},
-              "id": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/approval_id"}
+              "id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/approval_id"}
             }
           },
           "operation_id": {"type": "null"},
@@ -204,10 +204,10 @@
           "resource": {
             "properties": {
               "kind": {"const": "external_operation"},
-              "id": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/external_operation_id"}
+              "id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/external_operation_id"}
             }
           },
-          "operation_id": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/operation_id"},
+          "operation_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/operation_id"},
           "status": {"const": "ACCEPTED"}
         }
       }

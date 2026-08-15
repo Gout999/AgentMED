@@ -355,7 +355,7 @@ external_effect_receipt:
       event_version: "2.0"
       payload_required: [exact_external_effect_receipt_binding, origin_kind, receipt_requirement_id, independent_observer_identity, effect_status, exact_provenance_receipt_bindings]
       origin_union:
-        AGENTMED_EXTERNAL_OPERATION:
+        CASELOOP_EXTERNAL_OPERATION:
           requires: [exact_external_operation_binding, frozen_required_receipt_plan_digest]
           forbids: [exact_system_episode_snapshot_binding, exact_run_or_evidence_binding]
         GOVERNED_SYSTEM_EPISODE:

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json",
-  "title": "AgentMED v4 common definitions",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json",
+  "title": "CaseLoop v4 common definitions",
   "type": "object",
   "$defs": {
     "schema_version": {

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agentmed.dev/contracts/schemas/evidence-bundle.schema.json",
+  "$id": "https://caseloop.dev/contracts/schemas/evidence-bundle.schema.json",
   "title": "EvidenceBundle",
   "description": "归因证据包（plan-v3 §2.3.2 / T4）。对照实验的完整原始记录：5-cell 最小矩阵（C/RP/RK/RM/G）逐探针逐次结果、Δ效应量+95%CI、三态裁决、探针集 digest、全部版本 digest、随机臂序记录、重复次数。证据包是归因结论可机器复核的唯一依据；INCONCLUSIVE→补实验或升级人工，CONFOUNDED→强制 2³ 全因子。",
   "type": "object",

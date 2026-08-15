@@ -26,7 +26,7 @@
     "provider_org": "zhipu-ai",
     "endpoint_origin": "https://open.bigmodel.cn",
     "account_project": {
-      "account_ref": "provider-account://zhipu/agentmed",
+      "account_ref": "provider-account://zhipu/caseloop",
       "project_ref": "provider-project://zhipu/stage0"
     },
     "credential_ref": "credential://zhipu/stage0/replay",
@@ -47,7 +47,7 @@
     "provider_org": "zhipu-ai",
     "endpoint_origin": "https://open.bigmodel.cn",
     "account_project": {
-      "account_ref": "provider-account://zhipu/agentmed",
+      "account_ref": "provider-account://zhipu/caseloop",
       "project_ref": "provider-project://zhipu/stage0"
     },
     "credential_ref": "credential://zhipu/stage0/replay",

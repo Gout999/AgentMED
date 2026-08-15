@@ -26,7 +26,7 @@
     "provider_org": "stepfun-ai",
     "endpoint_origin": "https://api.stepfun.com",
     "account_project": {
-      "account_ref": "provider-account://stepfun/agentmed",
+      "account_ref": "provider-account://stepfun/caseloop",
       "project_ref": "provider-project://stepfun/stage0"
     },
     "credential_ref": "credential://stepfun/stage0/replay",
@@ -47,7 +47,7 @@
     "provider_org": "stepfun-ai",
     "endpoint_origin": "https://api.stepfun.com",
     "account_project": {
-      "account_ref": "provider-account://stepfun/agentmed",
+      "account_ref": "provider-account://stepfun/caseloop",
       "project_ref": "provider-project://stepfun/stage0"
     },
     "credential_ref": "credential://stepfun/stage0/replay",

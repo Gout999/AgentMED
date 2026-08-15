@@ -28,7 +28,7 @@
   "next_action": {
     "code": "CORRELATE_TRACE",
     "command": "case correlate",
-    "href": "https://agentmed.local/api/v1/cases/case_stage0001"
+    "href": "https://caseloop.local/api/v1/cases/case_stage0001"
   },
   "idempotency": {
     "receipt": {

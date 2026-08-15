@@ -1,4 +1,4 @@
-# AgentMED conformance suite（契约级，确定性）
+# CaseLoop conformance suite（契约级，确定性）
 
 本目录同时承载三层互不冒充的契约：v3 Phase 0B 是客服 Quality API 当前实施基线；
 `test_v4_*.py` 检查 V4 target/compatibility contracts；`test_v5_*.py` 同时保留 V5-0
@@ -11,19 +11,19 @@ Quality API live conformance 的出口判据仍是：**本套件可对空实现�
 ## 运行
 
 ```bash
-python3 -m venv /tmp/agentmed-contracts-venv
-/tmp/agentmed-contracts-venv/bin/pip install -r contracts/conformance/requirements.txt
-cd /path/to/agentmed
-/tmp/agentmed-contracts-venv/bin/pytest contracts/conformance -x -q
+python3 -m venv /tmp/caseloop-contracts-venv
+/tmp/caseloop-contracts-venv/bin/pip install -r contracts/conformance/requirements.txt
+cd /path/to/caseloop
+/tmp/caseloop-contracts-venv/bin/pytest contracts/conformance -x -q
 ```
 
 环境变量：
 
 | 变量 | 默认 | 说明 |
 |------|------|------|
-| `AGENTMED_QUALITY_API_BASE_URL` | `http://127.0.0.1:8080` | 被测 Quality API 根地址 |
-| `AGENTMED_READ_TOKEN` | `conformance-read-token` | quality:read scope 令牌 |
-| `AGENTMED_WRITE_TOKEN` | `conformance-write-token` | quality:write scope 令牌（扮演 Release Controller） |
+| `CASELOOP_QUALITY_API_BASE_URL` | `http://127.0.0.1:8080` | 被测 Quality API 根地址 |
+| `CASELOOP_READ_TOKEN` | `conformance-read-token` | quality:read scope 令牌 |
+| `CASELOOP_WRITE_TOKEN` | `conformance-write-token` | quality:write scope 令牌（扮演 Release Controller） |
 
 ## 测试层职责
 
@@ -58,7 +58,7 @@ cd /path/to/agentmed
 仓库固定的纯离线验证命令：
 
 ```bash
-cd /path/to/agentmed/contracts
+cd /path/to/caseloop/contracts
 ../eval-harness/.venv/bin/python -m pytest \
   conformance/test_schemas.py conformance/test_wilson.py \
   conformance/test_v4_*.py conformance/test_v5_*.py -q

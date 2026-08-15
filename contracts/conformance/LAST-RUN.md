@@ -1,15 +1,15 @@
 # LAST-RUN —— conformance suite 最近一次实跑记录
 
 - 时间：2026-08-08（Phase 0B 冻结跑）
-- 环境：macOS，Python 3.14.4，venv `/tmp/agentmed-contracts-venv`
+- 环境：macOS，Python 3.14.4，venv `/tmp/caseloop-contracts-venv`
 - 依赖：按 `requirements.txt` 钉版（pytest 9.1.1 / jsonschema 4.26.0 / PyYAML 6.0.3 / requests 2.34.2）
 - 被测实现：**空实现**（`http://127.0.0.1:8080` 无服务监听）
 
 ## 命令 1（规定动作）
 
 ```
-cd /Users/xiejiachen/agentmed
-/tmp/agentmed-contracts-venv/bin/pytest contracts/conformance -x -q
+cd /Users/xiejiachen/caseloop
+/tmp/caseloop-contracts-venv/bin/pytest contracts/conformance -x -q
 ```
 
 结果：`1 failed in 0.68s` —— 首个用例 `test_quality_api.py::test_create_draft_versionset`
@@ -19,7 +19,7 @@ cd /Users/xiejiachen/agentmed
 ## 命令 2（全量计数）
 
 ```
-/tmp/agentmed-contracts-venv/bin/pytest contracts/conformance -q
+/tmp/caseloop-contracts-venv/bin/pytest contracts/conformance -q
 ```
 
 结果：**15 failed, 24 passed in 0.86s**

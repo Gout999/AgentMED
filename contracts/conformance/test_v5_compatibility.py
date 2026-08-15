@@ -208,8 +208,8 @@ def test_api_major_handshake_fail_closed() -> None:
     assert selection["v2_requires_explicit_selection"] is True
     assert selection["cli"]["flag"] == "--api-version 2"
     assert selection["cli"]["silent_default_change"] == "FORBIDDEN"
-    assert selection["http"]["request_header"] == "X-AgentMED-Contract-Version"
-    assert selection["http"]["response_header"] == "X-AgentMED-Contract-Version"
+    assert selection["http"]["request_header"] == "X-CaseLoop-Contract-Version"
+    assert selection["http"]["response_header"] == "X-CaseLoop-Contract-Version"
     assert selection["http"]["v2_required_request_value"] == "2.0"
     assert selection["http"]["v2_missing_or_other_value_error"] == "REQUEST_INVALID"
     assert selection["http"]["v2_never_falls_back_to_v1"] is True

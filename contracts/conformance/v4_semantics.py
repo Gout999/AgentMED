@@ -1,4 +1,4 @@
-"""Reusable cross-field and cross-document semantics for AgentMED v4 contracts.
+"""Reusable cross-field and cross-document semantics for CaseLoop v4 contracts.
 
 JSON Schema remains responsible for payload shape.  These checks enforce
 relationships that Draft 2020-12 cannot express without non-portable
@@ -234,12 +234,12 @@ def public_principal_context_violations(
                 )
             )
 
-    if "agentmed-public-api" not in context.get("audiences", ()):
+    if "caseloop-public-api" not in context.get("audiences", ()):
         violations.append(
             _violation(
                 "public_principal_context.audience_not_accepted",
                 ("public_principal_context", "audiences"),
-                "accepted context must include the AgentMED public API audience",
+                "accepted context must include the CaseLoop public API audience",
             )
         )
     if context.get("revoked_at") is not None:

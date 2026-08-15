@@ -1,8 +1,8 @@
-"""RFC 8785 integrity and GateReport invariants for AgentMED v4 contracts.
+"""RFC 8785 integrity and GateReport invariants for CaseLoop v4 contracts.
 
 Canonical bytes are produced by the pinned ``rfc8785==0.1.4`` implementation.
 Unicode is preserved exactly (no normalization) and object names are sorted by
-UTF-16 code units as required by JCS.  AgentMED v4 deliberately rejects Python
+UTF-16 code units as required by JCS.  CaseLoop v4 deliberately rejects Python
 ``float`` values, including negative zero and non-finite values, so every
 accepted numeric value is an RFC 8785 safe integer.  Missing the pinned package
 is a hard conformance failure; there is no fallback serializer.
@@ -18,7 +18,7 @@ try:
     import rfc8785
 except ModuleNotFoundError as exc:  # pragma: no cover - dependency failure is fatal
     raise RuntimeError(
-        "AgentMED v4 integrity requires pinned dependency rfc8785==0.1.4"
+        "CaseLoop v4 integrity requires pinned dependency rfc8785==0.1.4"
     ) from exc
 
 
@@ -103,7 +103,7 @@ class IntegrityValidationError(ValueError):
 
 
 class UnsupportedJCSValue(ValueError):
-    """A JSON value lies outside AgentMED's deterministic JCS profile."""
+    """A JSON value lies outside CaseLoop's deterministic JCS profile."""
 
 
 def _reject_floats(value: Any, path: tuple[str | int, ...] = ()) -> None:
@@ -124,7 +124,7 @@ def _reject_floats(value: Any, path: tuple[str | int, ...] = ()) -> None:
 
 
 def canonical_json_bytes(value: Any) -> bytes:
-    """Return RFC 8785 canonical bytes for the AgentMED no-float profile."""
+    """Return RFC 8785 canonical bytes for the CaseLoop no-float profile."""
 
     _reject_floats(value)
     try:

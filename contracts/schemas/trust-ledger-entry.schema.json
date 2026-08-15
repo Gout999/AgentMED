@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agentmed.dev/contracts/schemas/trust-ledger-entry.schema.json",
+  "$id": "https://caseloop.dev/contracts/schemas/trust-ledger-entry.schema.json",
   "title": "TrustLedgerEntry",
   "description": "信任账本条目（plan-v3 §2.3.4 / T8）。risk_class × autonomy_state 二维拆分；evidence epoch 原始整数计数，一次动作=一个样本（一次动作中多条探针只算一个样本）；Wilson 双侧 95% 下界为晋升判据（下界>0.9 才可提请晋升，且仅白名单内 R1 动作可晋升 AUTO_ENABLED；R2 永远逐次审批）。账本追加式，条目落库即不可改。",
   "type": "object",

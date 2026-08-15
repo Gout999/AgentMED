@@ -56,11 +56,11 @@ def test_every_frozen_http_intent_has_one_matching_operation_and_skeletons_have_
         method, path, operation = operations[operation_id]
         assert method == intent["http"]["method"]
         assert path == intent["http"]["path"]
-        assert operation["x-agentmed-intent"] == intent["name"]
-        assert operation["x-agentmed-scope"] == intent["scope"]
-        assert operation["x-agentmed-wire-status"] == "FROZEN"
-        assert operation["x-agentmed-activation-stage"] == intent["activation_stage"]
-        assert operation["x-agentmed-delivery-slice"] == intent["delivery_slice"]
+        assert operation["x-caseloop-intent"] == intent["name"]
+        assert operation["x-caseloop-scope"] == intent["scope"]
+        assert operation["x-caseloop-wire-status"] == "FROZEN"
+        assert operation["x-caseloop-activation-stage"] == intent["activation_stage"]
+        assert operation["x-caseloop-delivery-slice"] == intent["delivery_slice"]
 
 
 def test_every_mutation_requires_idempotency_key_and_a_request_body() -> None:
@@ -116,7 +116,7 @@ def test_every_frozen_operation_requires_workspace_contract_and_auth_context() -
     document = _yaml(OPENAPI_PATH)
     assert document["security"] == [{"BearerAuth": []}]
     assert document["components"]["securitySchemes"]["BearerAuth"][
-        "x-agentmed-accepted-context"
+        "x-caseloop-accepted-context"
     ] == "../schemas/public-principal-context.schema.json"
     required = {
         "#/components/parameters/WorkspaceId",

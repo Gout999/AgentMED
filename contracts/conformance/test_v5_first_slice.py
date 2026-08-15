@@ -442,22 +442,22 @@ def test_onboarding_orchestration_uses_canonical_intents_and_retry_safety() -> N
     fixture = _fixture("onboarding-orchestration")
     compatibility = _load("compatibility.yaml")
 
-    historical_init = fixture["workflows"]["agentmed_init"]
+    historical_init = fixture["workflows"]["caseloop_init"]
     assert historical_init["steps"] == ["local_read_only_discovery", "manifest_draft", "human_confirmation",
                                         "canonical_manifest_import"]
     assert historical_init["canonical_intents"] == ["capabilities.get", "system-manifests.import"]
     assert "bypass_human_confirmation" in historical_init["forbidden"]
 
     runtime = fixture["runtime_overlay"]
-    init = runtime["agentmed_init"]
+    init = runtime["caseloop_init"]
     assert init["steps"] == ["local_read_only_discovery", "manifest_draft"]
     assert init["writes_server_state"] is False
     assert init["import_is_a_separate_operator_command"] is True
-    assert compatibility["onboarding_workflow_orchestration"]["agentmed_init"]["separate_import_intent"] == (
+    assert compatibility["onboarding_workflow_orchestration"]["caseloop_init"]["separate_import_intent"] == (
         "system-manifests.import"
     )
 
-    from_issue = runtime["agentmed_case_from_issue"]
+    from_issue = runtime["caseloop_case_from_issue"]
     assert from_issue["steps"] == [
         "issue_snapshot",
         "application_read",
@@ -468,7 +468,7 @@ def test_onboarding_orchestration_uses_canonical_intents_and_retry_safety() -> N
         "application_binding",
         "acceptance_criteria_draft",
     ]
-    assert compatibility["onboarding_workflow_orchestration"]["agentmed_case_from_issue"]["canonical_intents_only"] is True
+    assert compatibility["onboarding_workflow_orchestration"]["caseloop_case_from_issue"]["canonical_intents_only"] is True
     assert from_issue["auto_confirm_acceptance"] is False
     assert from_issue["readiness_after_draft"] == "NEEDS_ACCEPTANCE_CRITERIA"
 

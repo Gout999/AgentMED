@@ -1,4 +1,4 @@
-# AgentMED 领域事件契约（plan-v3 §2.3.5 七个聚合 + 投诉接入）
+# CaseLoop 领域事件契约（plan-v3 §2.3.5 七个聚合 + 投诉接入）
 # 约定：
 # - 所有事件经控制面 PG event 表持久化（审计权威源=数据库，audit.jsonl 仅导出物）。
 # - 每事件必带：event_id / event_type / aggregate_type / aggregate_id / occurred_at /

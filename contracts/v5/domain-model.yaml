@@ -709,7 +709,7 @@ resources:
     origin_union:
       discriminator: origin_kind
       variants:
-        AGENTMED_EXTERNAL_OPERATION:
+        CASELOOP_EXTERNAL_OPERATION:
           requires: [exact_external_operation_binding, frozen_required_receipt_plan_digest]
           forbids: [exact_system_episode_snapshot_binding, exact_run_or_evidence_binding]
         GOVERNED_SYSTEM_EPISODE:
@@ -728,7 +728,7 @@ resources:
       - governed_episode_origin_snapshot_precedes_receipt
       - governed_episode_origin_snapshot_does_not_contain_this_receipt
       - provenance_graph_has_no_self_or_transitive_cycle
-      - agentmed_operation_origin_exactly_matches_current_operation_and_frozen_receipt_requirement
+      - caseloop_operation_origin_exactly_matches_current_operation_and_frozen_receipt_requirement
       - governed_episode_run_or_evidence_binding_is_a_member_of_origin_snapshot
 
   system_episode_view:

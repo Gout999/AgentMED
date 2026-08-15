@@ -1,6 +1,6 @@
 openapi: 3.1.0
 info:
-  title: AgentMED Public API
+  title: CaseLoop Public API
   version: 1.0.0
   description: >-
     Stage-aware v4 public contract. This document contains only FROZEN S1A/S1B
@@ -11,13 +11,13 @@ servers:
   - url: /
 security:
   - BearerAuth: []
-x-agentmed-intent-registry: ../intent-registry.yaml
-x-agentmed-auth-order:
+x-caseloop-intent-registry: ../intent-registry.yaml
+x-caseloop-auth-order:
   - validate_bearer_without_trusting_workspace_header
   - resolve_principal_and_active_nonrevoked_credential
   - bind_requested_workspace_project_environment
   - authorize_required_scope
-x-agentmed-error-rules:
+x-caseloop-error-rules:
   auth_before_workspace_uses_null_workspace: true
   audit_failure_uses_null_audit_ref_and_rolls_back: true
 
@@ -25,12 +25,12 @@ paths:
   /api/v1/capabilities:
     get:
       operationId: getCapabilities
-      x-agentmed-intent: capabilities.get
-      x-agentmed-scope: capabilities:read
-      x-agentmed-wire-status: FROZEN
-      x-agentmed-delivery-slice: S1A
-      x-agentmed-activation-stage: 1
-      x-agentmed-discovery-filter: FROZEN_AND_IMPLEMENTED_AND_AUTHORIZED
+      x-caseloop-intent: capabilities.get
+      x-caseloop-scope: capabilities:read
+      x-caseloop-wire-status: FROZEN
+      x-caseloop-delivery-slice: S1A
+      x-caseloop-activation-stage: 1
+      x-caseloop-discovery-filter: FROZEN_AND_IMPLEMENTED_AND_AUTHORIZED
       parameters:
         - $ref: '#/components/parameters/WorkspaceId'
         - $ref: '#/components/parameters/ContractVersion'
@@ -40,7 +40,7 @@ paths:
         '200':
           description: Enabled capabilities for this exact principal and workspace; SKELETON intents are excluded.
           headers:
-            X-AgentMED-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
+            X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
           content:
             application/json:
               schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/server_capabilities_response'}
@@ -55,12 +55,12 @@ paths:
   /api/v1/signals:
     post:
       operationId: submitSignal
-      x-agentmed-intent: signals.submit
-      x-agentmed-scope: signals:write
-      x-agentmed-wire-status: FROZEN
-      x-agentmed-delivery-slice: S1A
-      x-agentmed-activation-stage: 1
-      x-agentmed-source-guard: workspace-bound ACTIVE SourceConnection
+      x-caseloop-intent: signals.submit
+      x-caseloop-scope: signals:write
+      x-caseloop-wire-status: FROZEN
+      x-caseloop-delivery-slice: S1A
+      x-caseloop-activation-stage: 1
+      x-caseloop-source-guard: workspace-bound ACTIVE SourceConnection
       parameters:
         - $ref: '#/components/parameters/WorkspaceId'
         - $ref: '#/components/parameters/ContractVersion'
@@ -78,7 +78,7 @@ paths:
             Signal, OPEN Case, link, UNKNOWN/PARTIAL/COMPLETE evidence and immutable
             idempotency receipt committed atomically. NO_LOCATOR never creates an AgentRunRef.
           headers:
-            X-AgentMED-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
+            X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
           content:
             application/json:
               schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/signal_submission_response'}
@@ -99,11 +99,11 @@ paths:
       - $ref: '#/components/parameters/CaseId'
     get:
       operationId: getCase
-      x-agentmed-intent: cases.get
-      x-agentmed-scope: cases:read
-      x-agentmed-wire-status: FROZEN
-      x-agentmed-delivery-slice: S1A
-      x-agentmed-activation-stage: 1
+      x-caseloop-intent: cases.get
+      x-caseloop-scope: cases:read
+      x-caseloop-wire-status: FROZEN
+      x-caseloop-delivery-slice: S1A
+      x-caseloop-activation-stage: 1
       parameters:
         - $ref: '#/components/parameters/WorkspaceId'
         - $ref: '#/components/parameters/ContractVersion'
@@ -113,7 +113,7 @@ paths:
         '200':
           description: Exact workspace-bound QualityCase view.
           headers:
-            X-AgentMED-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
+            X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
           content:
             application/json:
               schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/case_response'}
@@ -131,12 +131,12 @@ paths:
       - $ref: '#/components/parameters/CaseId'
     get:
       operationId: getCaseTimeline
-      x-agentmed-intent: cases.timeline
-      x-agentmed-scope: cases:read
-      x-agentmed-wire-status: FROZEN
-      x-agentmed-delivery-slice: S1A
-      x-agentmed-activation-stage: 1
-      x-agentmed-cursor-binding: workspace_id+case_id+order+filter+watermark
+      x-caseloop-intent: cases.timeline
+      x-caseloop-scope: cases:read
+      x-caseloop-wire-status: FROZEN
+      x-caseloop-delivery-slice: S1A
+      x-caseloop-activation-stage: 1
+      x-caseloop-cursor-binding: workspace_id+case_id+order+filter+watermark
       parameters:
         - $ref: '#/components/parameters/WorkspaceId'
         - $ref: '#/components/parameters/ContractVersion'
@@ -148,7 +148,7 @@ paths:
         '200':
           description: Stable snapshot page; appends after the watermark cannot duplicate or skip entries.
           headers:
-            X-AgentMED-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
+            X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
           content:
             application/json:
               schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/case_timeline_response'}
@@ -167,11 +167,11 @@ paths:
       - $ref: '#/components/parameters/ReceiptId'
     get:
       operationId: getEvidence
-      x-agentmed-intent: evidence.get
-      x-agentmed-scope: artifacts:read
-      x-agentmed-wire-status: FROZEN
-      x-agentmed-delivery-slice: S1A
-      x-agentmed-activation-stage: 1
+      x-caseloop-intent: evidence.get
+      x-caseloop-scope: artifacts:read
+      x-caseloop-wire-status: FROZEN
+      x-caseloop-delivery-slice: S1A
+      x-caseloop-activation-stage: 1
       parameters:
         - $ref: '#/components/parameters/WorkspaceId'
         - $ref: '#/components/parameters/ContractVersion'
@@ -181,7 +181,7 @@ paths:
         '200':
           description: Exact immutable TraceEvidenceReceipt view.
           headers:
-            X-AgentMED-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
+            X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
           content:
             application/json:
               schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/evidence_response'}
@@ -199,11 +199,11 @@ paths:
       - $ref: '#/components/parameters/SourceId'
     get:
       operationId: getSourceCapabilities
-      x-agentmed-intent: sources.capabilities
-      x-agentmed-scope: sources:read
-      x-agentmed-wire-status: FROZEN
-      x-agentmed-delivery-slice: S1B
-      x-agentmed-activation-stage: 1
+      x-caseloop-intent: sources.capabilities
+      x-caseloop-scope: sources:read
+      x-caseloop-wire-status: FROZEN
+      x-caseloop-delivery-slice: S1B
+      x-caseloop-activation-stage: 1
       parameters:
         - $ref: '#/components/parameters/WorkspaceId'
         - $ref: '#/components/parameters/ContractVersion'
@@ -213,7 +213,7 @@ paths:
         '200':
           description: Exact latest immutable capability snapshot.
           headers:
-            X-AgentMED-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
+            X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
           content:
             application/json:
               schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/source_capabilities_response'}
@@ -231,11 +231,11 @@ paths:
       - $ref: '#/components/parameters/SourceId'
     post:
       operationId: doctorSource
-      x-agentmed-intent: sources.doctor
-      x-agentmed-scope: sources:manage
-      x-agentmed-wire-status: FROZEN
-      x-agentmed-delivery-slice: S1B
-      x-agentmed-activation-stage: 1
+      x-caseloop-intent: sources.doctor
+      x-caseloop-scope: sources:manage
+      x-caseloop-wire-status: FROZEN
+      x-caseloop-delivery-slice: S1B
+      x-caseloop-activation-stage: 1
       parameters:
         - $ref: '#/components/parameters/WorkspaceId'
         - $ref: '#/components/parameters/ContractVersion'
@@ -251,7 +251,7 @@ paths:
         '202':
           description: Durable SourceSyncRun accepted; provider failure becomes a queryable terminal domain status.
           headers:
-            X-AgentMED-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
+            X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
           content:
             application/json:
               schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/source_doctor_response'}
@@ -273,11 +273,11 @@ paths:
       - $ref: '#/components/parameters/SourceSyncRunId'
     get:
       operationId: getSourceSyncRun
-      x-agentmed-intent: source-sync-runs.get
-      x-agentmed-scope: sources:read
-      x-agentmed-wire-status: FROZEN
-      x-agentmed-delivery-slice: S1B
-      x-agentmed-activation-stage: 1
+      x-caseloop-intent: source-sync-runs.get
+      x-caseloop-scope: sources:read
+      x-caseloop-wire-status: FROZEN
+      x-caseloop-delivery-slice: S1B
+      x-caseloop-activation-stage: 1
       parameters:
         - $ref: '#/components/parameters/WorkspaceId'
         - $ref: '#/components/parameters/ContractVersion'
@@ -287,7 +287,7 @@ paths:
         '200':
           description: Durable SourceSyncRun status, including FAILED or UNKNOWN without converting it to HTTP 500.
           headers:
-            X-AgentMED-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
+            X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
           content:
             application/json:
               schema: {$ref: '../schemas/public-api-wire.schema.json#/$defs/source_sync_run_response'}
@@ -309,11 +309,11 @@ components:
       description: >-
         The credential is resolved server-side into the accepted principal
         context below. Raw token and raw jti are never persisted or echoed.
-      x-agentmed-accepted-context: ../schemas/public-principal-context.schema.json
+      x-caseloop-accepted-context: ../schemas/public-principal-context.schema.json
 
   parameters:
     WorkspaceId:
-      name: X-AgentMED-Workspace-ID
+      name: X-CaseLoop-Workspace-ID
       in: header
       required: true
       description: Requested workspace. It is accepted only after bearer claims bind the same workspace.
@@ -321,7 +321,7 @@ components:
         type: string
         pattern: '^ws_[0-9A-Za-z]{8,64}$'
     ContractVersion:
-      name: X-AgentMED-Contract-Version
+      name: X-CaseLoop-Contract-Version
       in: header
       required: true
       description: Exact public field contract. Unsupported versions fail with 412 CONTRACT_VERSION_UNSUPPORTED.
@@ -337,7 +337,7 @@ components:
       required: false
       schema: {type: string, pattern: '^req_[0-9A-Za-z]{8,64}$'}
     ClientVersion:
-      name: X-AgentMED-Client-Version
+      name: X-CaseLoop-Client-Version
       in: header
       required: false
       schema: {type: string, minLength: 1, maxLength: 128}
@@ -391,7 +391,7 @@ components:
     RateLimited:
       description: Rate limited; PublicError.retry_after_ms is non-null.
       headers:
-        X-AgentMED-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
+        X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
         Retry-After: {schema: {type: integer, minimum: 0}}
       content:
         application/json:
@@ -400,7 +400,7 @@ components:
     PublicError:
       description: Machine-readable failure. Workspace or audit reference is null when it was not authoritatively resolved/committed.
       headers:
-        X-AgentMED-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
+        X-CaseLoop-Contract-Version: {$ref: '#/components/headers/ContractVersion'}
       content:
         application/json:
           schema: {$ref: '../schemas/public-error.schema.json'}

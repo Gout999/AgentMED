@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agentmed.dev/contracts/schemas/attribution-report.schema.json",
+  "$id": "https://caseloop.dev/contracts/schemas/attribution-report.schema.json",
   "title": "AttributionReport",
   "description": "归因报告（plan-v3 §2.3.2）：evidence bundle 的蒸馏结论版，对外（Case 事件流/门禁/演示材料）引用。含 C/RP/RK/RM/G 五细胞结果、三层 Δ效应量+95%CI、ATTRIBUTED/INCONCLUSIVE/CONFOUNDED 三态裁决。废除旧版\"置信≥0.8\"未定义指标，一切以 Δ+CI+三态为准。",
   "type": "object",

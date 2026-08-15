@@ -26,7 +26,7 @@
   ],
   "completeness": "COMPLETE",
   "artifact_ref": {
-    "uri": "agentmed-artifact://trace/ter_01J0000000000001/snapshot",
+    "uri": "caseloop-artifact://trace/ter_01J0000000000001/snapshot",
     "digest": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
     "media_type": "application/json"
   },

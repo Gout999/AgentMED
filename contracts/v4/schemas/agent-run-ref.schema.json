@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://agentmed.dev/contracts/v4/schemas/agent-run-ref.schema.json",
-  "title": "AgentMED AgentRunRef",
+  "$id": "https://caseloop.dev/contracts/v4/schemas/agent-run-ref.schema.json",
+  "title": "CaseLoop AgentRunRef",
   "type": "object",
   "required": [
     "schema_version",
@@ -21,19 +21,19 @@
   ],
   "properties": {
     "schema_version": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
     },
     "agent_run_ref_id": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/agent_run_ref_id"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/agent_run_ref_id"
     },
     "workspace_id": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
     },
     "governed_agent_id": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/governed_agent_id"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/governed_agent_id"
     },
     "source_id": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/source_id"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/source_id"
     },
     "source_kind": {
       "type": "string",
@@ -81,7 +81,7 @@
     "started_at": {
       "oneOf": [
         {
-          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
         },
         {
           "type": "null"
@@ -91,7 +91,7 @@
     "ended_at": {
       "oneOf": [
         {
-          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
         },
         {
           "type": "null"
@@ -99,7 +99,7 @@
       ]
     },
     "observed_at": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
     },
     "deep_link": {
       "type": [
@@ -109,7 +109,7 @@
       "format": "uri"
     },
     "completeness": {
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/completeness"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/completeness"
     },
     "missing_fields": {
       "type": "array",
@@ -121,7 +121,7 @@
     },
     "locator_digest": {
       "description": "Content digest of locator only; it does not attest to the containing AgentRunRef.",
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
     },
     "immutable": {
       "const": true
@@ -131,7 +131,7 @@
     },
     "agent_run_ref_digest": {
       "description": "Whole AgentRunRef self-hash excluding only this top-level field.",
-      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
     }
   },
   "allOf": [
