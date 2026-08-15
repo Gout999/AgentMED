@@ -2,6 +2,11 @@
 
 面向 AI 应用的开源 Agent-native 治理运营控制面。
 
+> **比赛提交**：AgentTeams 代码包（运行入口 / 依赖说明 / 配置文件 / 样例输入输出 / 运行证据）
+> 见 docs/competition/agentteams-package.md，运行证据见 docs/competition/run-evidence.md。
+> 关联仓库：AgentMED（https://github.com/er-s-an/AgentMED ，被治理应用内核/评估面）、
+> Agent Station（https://github.com/er-s-an/agent-station ，模型路径胶水）。
+
 当一个带 AI 功能的应用答错、调错工具、检索了错误知识或产生了异常外部作用，团队通常要在 Issue、trace、日志、评测、代码、Prompt、模型、RAG、工具和发布系统之间手工拼证据：哪里坏了、改什么、是否真的修好、实际运行了什么、能不能发布，很难形成一条可信闭环。
 
 CaseLoop 希望把这件事变成一个可审计的治理流程：接收质量信号，把模糊反馈变成有来源、经维护者确认的 AcceptanceCriteria 和可判定 bad-case input，绑定完整 AI 应用版本与运行证据，再由 V5-4 exact ResolutionContract 物化 executable BadcaseSpec，验证归因和候选修复。代码库或离线任务可以在 Verified Candidate 结束；需要部署的 AI 应用才经过 release-authorizing Gate、人工审批、观察、回滚或补偿。AI 负责分析与起草，确定性控制面掌握状态、权限、审批、执行对账与恢复。
