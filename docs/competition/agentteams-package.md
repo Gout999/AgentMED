@@ -8,15 +8,14 @@
 ## 代码包组成与仓库链接
 
 CaseLoop 的治理闭环跑在 AgentTeams 平台上：AgentTeams 提供团队/任务/房间/MCP 托管等编排能力，
-CaseLoop 提供治理领域（确定性控制面 + 六角色 Agent 团队 + 评测装置），AgentMED 是被治理应用的
-模型内核（同时承载「精确版本评估面」，是归因实验与门禁的运动员轨），Agent Station 是模型路径胶水
-（网关 → 长度代理 → AgentMED → StepFun）。三个仓库组成完整代码包：
+CaseLoop 提供治理领域（确定性控制面 + 六角色 Agent 团队 + 评测装置 + 模型路径胶水），AgentMED 是
+被治理应用的模型内核（同时承载「精确版本评估面」，是归因实验与门禁的运动员轨）。两个平行仓库
+组成完整代码包：
 
 | 仓库 | 角色 | 链接 |
 |---|---|---|
-| **CaseLoop** | 治理控制面 + 六角色团队 + MCP 工具投影 + 评测装置 + 证据 | https://github.com/Gout999/CaseLoop |
+| **CaseLoop** | 治理控制面 + 六角色团队 + MCP 工具投影 + 评测装置 + 证据 + 模型路径胶水（relay 在 deploy/relay/，沙箱镜像构建件在 deploy/sandbox-image/） | https://github.com/Gout999/CaseLoop |
 | **AgentMED** | 被治理应用内核（模型路径 + 精确版本评估面 + 修复候选写面 + provider log） | https://github.com/er-s-an/AgentMED |
-| **Agent Station** | 模型路径胶水（OpenAI 长度代理/watchdog）+ S0 证据门禁 | https://github.com/er-s-an/agent-station |
 
 平台依赖：AgentTeams v1.2.2（https://github.com/agentscope-ai/AgentTeams ，本机容器化运行），
 Higress 网关（MCP 托管与 worker 密钥注入），PostgreSQL 17，Langfuse（观测），MinIO（skill 分发）。
@@ -86,7 +85,7 @@ make approval-reader   # 段6 reader（--once）
 | mcp-servers | Python 3.12 | `mcp-servers/requirements.txt`（fastmcp/sqlalchemy/httpx 等） | 同上（`mcp-servers/requirements.txt`） |
 | eval-harness | Python 3.12 | `eval-harness/pyproject.toml` + `requirements.txt` + `requirements-dev.txt` | `pip install -e "eval-harness[dev]"` |
 | AgentMED | Python 3.11+ | `AgentMED/pyproject.toml`（fastapi/httpx/openai/langfuse 等） | `pip install -e ".[dev]"` |
-| Agent Station 代理 | Node.js 20+ | `agent-station/package.json`（原生 http，零运行时依赖） | 无需安装 |
+| 模型路径代理 | Node.js 20+ | `deploy/relay/openai-content-length-proxy.mjs`（原生 http，零运行时依赖） | 无需安装（`node deploy/relay/openai-content-length-proxy.mjs`） |
 | 外部服务 | Docker | AgentTeams v1.2.2 / Higress / PostgreSQL 17 / Langfuse / MinIO | 平台容器 + `deploy/compose.yaml` |
 | 模型 | API | StepFun `step-3.7-flash`（运动员）+ `step-3.5-flash`（裁判，刻意异构） | 只需 `STEP_API_KEY` |
 

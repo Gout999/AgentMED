@@ -118,3 +118,13 @@ verifier 返回 `REFUSED`。此时必须调查实际状态，不能通过手工 
 - StepFun key 只出现在：Higress 网关侧配置、`~/agentteams-manager.env`（安装脚本落盘）、本地 shell 环境
 - 仓库内只允许 `.env.example` 模板；`deploy/.env` 必须保持未跟踪
 - Worker 永远只持 Consumer Token，不持真实 LLM Key
+
+## 附属运行件（自 Agent Station 并入，两仓库口径）
+
+Agent Station 仓库的 GitHub 镜像已删除（本地目录保留）；其运行期胶水件随本仓库分发：
+
+- `relay/openai-content-length-proxy.mjs` — 模型路径长度代理（网关 → 8089 → AgentMED(8088) → StepFun）；
+  本机正在运行的 relay 进程即该文件（拷贝自 agent-station commit e8a123f）。
+- `sandbox-image/` — 沙箱验证隔离镜像 `agent-station/copaw-worker:s0-acceptance-v123` 的构建件
+  （Dockerfile + CoPaw task-result acceptance overlay + langfuse-inspect skill）；
+  本机演示直接使用已构建镜像，重建 = 在该目录 docker build。

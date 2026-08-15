@@ -4,8 +4,8 @@
 
 > **比赛提交**：AgentTeams 代码包（运行入口 / 依赖说明 / 配置文件 / 样例输入输出 / 运行证据）
 > 见 docs/competition/agentteams-package.md，运行证据见 docs/competition/run-evidence.md。
-> 关联仓库：AgentMED（https://github.com/er-s-an/AgentMED ，被治理应用内核/评估面）、
-> Agent Station（https://github.com/er-s-an/agent-station ，模型路径胶水）。
+> 关联仓库：AgentMED（https://github.com/er-s-an/AgentMED ，被治理应用内核/评估面）。
+> 模型路径 relay 与沙箱镜像构建件随本仓库分发（deploy/relay/、deploy/sandbox-image/）。
 
 当一个带 AI 功能的应用答错、调错工具、检索了错误知识或产生了异常外部作用，团队通常要在 Issue、trace、日志、评测、代码、Prompt、模型、RAG、工具和发布系统之间手工拼证据：哪里坏了、改什么、是否真的修好、实际运行了什么、能不能发布，很难形成一条可信闭环。
 
