@@ -6,6 +6,7 @@
 > 见 docs/competition/agentteams-package.md，运行证据见 docs/competition/run-evidence.md。
 > 关联仓库：AgentMED0（https://github.com/er-s-an/AgentMED0 ，被治理应用内核/评估面）。
 > 模型路径 relay 与沙箱镜像构建件随本仓库分发（deploy/relay/、deploy/sandbox-image/）。
+> 评审冷启动（clone 后如何复现全部测试基线）：见 docs/competition/reviewer-runbook.md。
 
 当一个带 AI 功能的应用答错、调错工具、检索了错误知识或产生了异常外部作用，团队通常要在 Issue、trace、日志、评测、代码、Prompt、模型、RAG、工具和发布系统之间手工拼证据：哪里坏了、改什么、是否真的修好、实际运行了什么、能不能发布，很难形成一条可信闭环。
 

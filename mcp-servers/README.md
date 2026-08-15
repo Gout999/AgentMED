@@ -50,8 +50,9 @@ mcp-servers/
 ### 1) 建 venv 装依赖
 
 ```bash
-python3.11 -m venv .venv
-.venv/bin/pip install -r requirements.txt
+cd /path/to/AgentMED            # 仓库根目录：requirements 内相对路径按 pip 的 CWD 解析
+python3.11 -m venv mcp-servers/.venv
+mcp-servers/.venv/bin/pip install -r mcp-servers/requirements.txt
 ```
 
 ### 2) 配置环境变量

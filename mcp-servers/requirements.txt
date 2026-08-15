@@ -1,4 +1,4 @@
-# AgentMED mcp-servers — 钉版本依赖（Python 3.11+）
+# AgentMED mcp-servers — 钉版本依赖（Python 3.11–3.12；psycopg-binary==3.2.3 无 3.14 轮子）
 # 传输层：MCP 1.x（fastmcp 在 mcp 包内；2.x 移除了 fastmcp，故钉 1.12.4）
 mcp==1.12.4
 uvicorn[standard]==0.32.1
@@ -13,7 +13,9 @@ ulid-py==1.1.0
 jsonschema==4.23.0
 
 # eval-harness 执行机（S0-006：experiment.execute 复用 5-cell 执行链路，源码依赖同仓）
--e ../eval-harness
+# 注意：pip 对 requirements 内的相对路径按 CWD 解析（不是按本文件所在目录），
+# 因此必须在仓库根目录执行：pip install -r mcp-servers/requirements.txt
+-e ./eval-harness
 
 # 测试
 pytest==8.3.4

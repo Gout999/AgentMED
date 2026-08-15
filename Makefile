@@ -19,7 +19,7 @@ test-harness:
 
 conformance:
 	@test -x $(CONTRACTS_VENV)/bin/pytest || { \
-	  python3 -m venv $(CONTRACTS_VENV) && \
+	  $(PYTHON) -m venv $(CONTRACTS_VENV) && \
 	  $(CONTRACTS_VENV)/bin/pip install -r contracts/conformance/requirements.txt; \
 	}
 	$(CONTRACTS_VENV)/bin/pytest contracts/conformance -q -m "not live"

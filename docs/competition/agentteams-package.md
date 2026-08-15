@@ -81,8 +81,8 @@ make approval-reader   # 段6 reader（--once）
 
 | 组件 | 运行时 | 依赖清单 | 安装 |
 |---|---|---|---|
-| control-plane | Python 3.11+ | `control-plane/requirements.txt`（fastapi/sqlalchemy/alembic/psycopg/ulid-py 等 19 项钉版本） | `python -m venv .venv && pip install -r control-plane/requirements.txt` |
-| mcp-servers | Python 3.12 | `mcp-servers/requirements.txt`（fastmcp/sqlalchemy/httpx 等） | 同上（`mcp-servers/requirements.txt`） |
+| control-plane | Python 3.11–3.12 | `control-plane/requirements.txt`（fastapi/sqlalchemy/alembic/psycopg/ulid-py 等 19 项钉版本） | `python -m venv .venv && pip install -r control-plane/requirements.txt` |
+| mcp-servers | Python 3.11–3.12 | `mcp-servers/requirements.txt`（fastmcp/sqlalchemy/httpx 等） | 在仓库根目录：`python -m venv mcp-servers/.venv && mcp-servers/.venv/bin/pip install -r mcp-servers/requirements.txt`（内含 `-e ./eval-harness`，相对路径按 pip 的 CWD 解析） |
 | eval-harness | Python 3.12 | `eval-harness/pyproject.toml` + `requirements.txt` + `requirements-dev.txt` | `pip install -e "eval-harness[dev]"` |
 | AgentMED | Python 3.11+ | `AgentMED/pyproject.toml`（fastapi/httpx/openai/langfuse 等） | `pip install -e ".[dev]"` |
 | 模型路径代理 | Node.js 20+ | `deploy/relay/openai-content-length-proxy.mjs`（原生 http，零运行时依赖） | 无需安装（`node deploy/relay/openai-content-length-proxy.mjs`） |

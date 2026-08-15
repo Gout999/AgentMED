@@ -1,4 +1,4 @@
-# AgentMED control-plane — 钉版本依赖（Python 3.11+）
+# AgentMED control-plane — 钉版本依赖（Python 3.11–3.12；psycopg-binary==3.2.3 无 3.14 轮子）
 fastapi==0.115.6
 uvicorn[standard]==0.32.1
 sqlalchemy==2.0.36
