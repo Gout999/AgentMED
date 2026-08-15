@@ -4,7 +4,7 @@ description: Controlled git changes through the platform git-delegation mechanis
 assign_when: A repair candidate needs repository changes in the governed app.
 ---
 
-# git-delegation（caseloop 版）
+# git-delegation（agentmed 版）
 
 修复师经平台 git-delegation 落候选补丁。范围：agent-station 仓库 prompt/scenario 资产。
 

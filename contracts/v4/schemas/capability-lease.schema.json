@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://caseloop.dev/contracts/v4/schemas/capability-lease.schema.json",
-  "title": "CaseLoop CapabilityLease",
+  "$id": "https://agentmed.dev/contracts/v4/schemas/capability-lease.schema.json",
+  "title": "AgentMED CapabilityLease",
   "type": "object",
   "required": [
     "schema_version",
@@ -42,17 +42,17 @@
   ],
   "properties": {
     "schema_version": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
     },
     "capability_grant_id": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/capability_grant_id"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/capability_grant_id"
     },
     "revision": {
       "type": "integer",
       "minimum": 1
     },
     "workspace_id": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
     },
     "grant_kind": {
       "enum": [
@@ -78,7 +78,7 @@
       ]
     },
     "principal_id": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
     },
     "audience": {
       "enum": [
@@ -89,7 +89,7 @@
     "bound_worker_task_id": {
       "oneOf": [
         {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/worker_task_id"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/worker_task_id"
         },
         {
           "type": "null"
@@ -99,7 +99,7 @@
     "bound_attempt_id": {
       "oneOf": [
         {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
         },
         {
           "type": "null"
@@ -129,10 +129,10 @@
               "pattern": "^lease_[0-9A-Za-z]{8,64}$"
             },
             "attempt_id": {
-              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+              "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
             },
             "worker_principal": {
-              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+              "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
             },
             "runtime_session_id": {
               "type": "string",
@@ -144,7 +144,7 @@
               "minimum": 1
             },
             "claimed_at": {
-              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+              "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
             }
           },
           "additionalProperties": false
@@ -178,7 +178,7 @@
               "pattern": "^txn_[0-9A-Za-z]{8,64}$"
             },
             "worker_task_snapshot": {
-              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+              "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
             }
           },
           "additionalProperties": false
@@ -191,7 +191,7 @@
     "accepted_proposal": {
       "oneOf": [
         {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
         },
         {
           "type": "null"
@@ -201,7 +201,7 @@
     "resolution_contract": {
       "oneOf": [
         {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
         },
         {
           "type": "null"
@@ -211,7 +211,7 @@
     "bound_agent_intent": {
       "oneOf": [
         {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
         },
         {
           "type": "null"
@@ -221,7 +221,7 @@
     "bound_workorder": {
       "oneOf": [
         {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
         },
         {
           "type": "null"
@@ -231,7 +231,7 @@
     "authorization_grant": {
       "oneOf": [
         {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
         },
         {
           "type": "null"
@@ -248,25 +248,25 @@
       ],
       "properties": {
         "package_request": {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
         },
         "principal_ceiling": {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
         },
         "workspace_policy": {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
         },
         "task_or_action_scope": {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
         }
       },
       "additionalProperties": false
     },
     "effective_permissions": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
     },
     "effective_permissions_digest": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
     },
     "allowed_effect_class": {
       "enum": [
@@ -278,7 +278,7 @@
       ]
     },
     "budget": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/budget"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/budget"
     },
     "nonce": {
       "type": "string",
@@ -288,18 +288,18 @@
       "const": true
     },
     "issued_by_principal": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
     },
     "issued_at": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
     },
     "expires_at": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
     },
     "consumed_at": {
       "oneOf": [
         {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
         },
         {
           "type": "null"
@@ -310,15 +310,15 @@
       "const": true
     },
     "grant_digest": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
     },
     "bound_resource": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
     },
     "previous_snapshot": {
       "oneOf": [
         {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
         },
         {
           "type": "null"
@@ -326,7 +326,7 @@
       ]
     },
     "authority_receipt_id": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
     },
     "hash_rule": {
       "const": "jcs-rfc8785-v1+sha256(excluding:/grant_digest)"
@@ -356,7 +356,7 @@
             ]
           },
           "bound_worker_task_id": {
-            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/worker_task_id"
+            "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/worker_task_id"
           },
           "bound_attempt_id": {
             "type": "null"
@@ -451,10 +451,10 @@
             "const": "CLAIMED_ATTEMPT"
           },
           "bound_worker_task_id": {
-            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/worker_task_id"
+            "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/worker_task_id"
           },
           "bound_attempt_id": {
-            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
+            "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/attempt_id"
           },
           "claim_binding": {
             "type": "object"
@@ -562,7 +562,7 @@
       "then": {
         "properties": {
           "consumed_at": {
-            "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+            "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
           }
         }
       }

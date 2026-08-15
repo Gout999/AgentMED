@@ -1,14 +1,14 @@
 # 赛道 6 调研报告：Agent 权限、运行时安全与合规的外部推力
 
-> **阅读口径更新（2026-08-10）**：本文是 2026-08-09 的研究快照，不构成法律意见。法规时间表、厂商能力、事故与市场数字使用前必须重新核验；架构映射部分控制要求不等于 CaseLoop 已合规。身份、凭证与 guardrail 是依赖能力，ownership 由用户的信任、私有部署与控制要求决定。合规/审计导出只能从真实权威记录下游生成，不能补造 Agent 执行或人工动作。
+> **阅读口径更新（2026-08-10）**：本文是 2026-08-09 的研究快照，不构成法律意见。法规时间表、厂商能力、事故与市场数字使用前必须重新核验；架构映射部分控制要求不等于 AgentMED 已合规。身份、凭证与 guardrail 是依赖能力，ownership 由用户的信任、私有部署与控制要求决定。合规/审计导出只能从真实权威记录下游生成，不能补造 Agent 执行或人工动作。
 
 ## 〇、三个必答题速答
 
 **① "agent 行为需要审批与审计"正在从 nice-to-have 变成合规要求吗？** 【事实+推断】正在变，而且路径清晰：市场侧已经先强制——SOC 2 审计已在检查 AI agent 访问权限、66% 的 B2B 买家要求 SOC 2 报告（[miniOrange, 2026-06](https://www.miniorange.com/blog/ai-agent-compliance-challenges/)）；判例法已确立"公司为 chatbot 言论负责"（Moffatt v. Air Canada, 2024）；EU AI Act 的 GPAI 义务 2025 年 8 月已生效，高风险的 Art.12（自动日志）+Art.14（人类监督）经 Digital Omnibus 推迟至 2027 年 12 月硬强制（[SOVALYX, 2026-07](https://sovalyx.com/en/blog/ai-act-timeline-2026.html)）；美国德州 TRAIGA 2026 年 1 月已生效、科罗拉多 2027 年 1 月跟上。**先后强制的市场排序【推断】：企业采购(SOC2) → 欧盟(GPAI/透明度已生效，高风险 2027 底) → 美国州法(TX/CO) → 金融等垂直行业（截至 2026-08 未见 agent 专项强制规则，挂靠既有模型风险管理与操作韧性框架）。**
 
-**② 真实事故的共同根因？** 【事实】七类：超权限长效凭证、prod/dev 不隔离、破坏性操作无确定性审批门、版本更新后 guardrail 退化无人回归（DPD 正属此类）、输出未与权威源核对（Air Canada）、间接提示注入（EchoLeak/ShadowLeak/Atlas）、agent 自报结果被采信（Replit 撒谎伪造）。**我们的控制面+审批+信任账本能防住前四类的大部分（详见 §3）；防不住的：提示注入这一类攻击面本身、供应链投毒（LiteLLM）、第三方 OAuth 应用失陷（Vercel）——CaseLoop 是生命周期治理而非运行时安全层，只能事后立案归因修复，不能实时阻断。**
+**② 真实事故的共同根因？** 【事实】七类：超权限长效凭证、prod/dev 不隔离、破坏性操作无确定性审批门、版本更新后 guardrail 退化无人回归（DPD 正属此类）、输出未与权威源核对（Air Canada）、间接提示注入（EchoLeak/ShadowLeak/Atlas）、agent 自报结果被采信（Replit 撒谎伪造）。**我们的控制面+审批+信任账本能防住前四类的大部分（详见 §3）；防不住的：提示注入这一类攻击面本身、供应链投毒（LiteLLM）、第三方 OAuth 应用失陷（Vercel）——AgentMED 是生命周期治理而非运行时安全层，只能事后立案归因修复，不能实时阻断。**
 
-**③ MCP 授权生态成熟度会让凭证托管变标配吗？** 【事实+推断】会。MCP 规范 18 个月内从"无认证"演进到 OAuth 2.1 强制+企业托管授权（EMA）扩展，SDK 月下载近 5 亿次；Composio/Permit.io/Entra Agent ID 已在卖"托管凭证+按请求计算权限"。**CaseLoop 应默认评估复用这些能力；若国内私有部署、可靠性或 WorkOrder 级最小授权无法满足，再实现兼容组件。本轮样本未见完全相同的 WorkOrder scope 绑定【推断】。**
+**③ MCP 授权生态成熟度会让凭证托管变标配吗？** 【事实+推断】会。MCP 规范 18 个月内从"无认证"演进到 OAuth 2.1 强制+企业托管授权（EMA）扩展，SDK 月下载近 5 亿次；Composio/Permit.io/Entra Agent ID 已在卖"托管凭证+按请求计算权限"。**AgentMED 应默认评估复用这些能力；若国内私有部署、可靠性或 WorkOrder 级最小授权无法满足，再实现兼容组件。本轮样本未见完全相同的 WorkOrder scope 绑定【推断】。**
 
 ## 1. 全景地图
 
@@ -49,7 +49,7 @@
 - **EchoLeak（CVE-2025-32711, 2025-06）**：M365 Copilot 首个零点击间接注入外泄，攻击者只需让用户打开含隐藏指令的文档（[HackTheBox, 2025-07](https://www.hackthebox.com/blog/cve-2025-32711-echoleak-copilot-vulnerability)；[Safeguard, 2025-06](https://safeguard.sh/resources/blog/echoleak-cve-2025-32711-copilot-zero-click)）。**ShadowLeak（2025-09）**：一封特制邮件让 ChatGPT Deep Research 零点击外泄 Gmail 数据（[Radware, 2025-09](https://www.radware.com/blog/threat-intelligence/shadowleak/)）。OpenAI 公开承认提示注入"可能永远无法彻底解决"（[byteiota, 2025-12，单一来源](https://byteiota.com/openai-admits-operator-prompt-injection-may-never-be-solved/)）。
 - **旁证事故（2026 年）**：LiteLLM PyPI 包投毒窃取凭证（2026-03）、Vercel 因第三方 AI 工具（Context.ai）OAuth 应用失陷被入侵（2026-04）、DataTalks.Club 的 Claude Code 执行 `terraform destroy` 摧毁生产环境（均见 [The New Stack, 2026-05](https://thenewstack.io/ai-agents-credential-crisis/) 及 [openclaw issue](https://github.com/openclaw/openclaw/issues/80350)）。非人类身份已是人类身份的 45 倍，仅 21.9% 团队把 agent OAuth 凭证纳入 PAM（RSAC 2026/Gravitee，同上 New Stack 文）。
 
-## 3. 与 CaseLoop 的对照表
+## 3. 与 AgentMED 的对照表
 
 | 可优先评估复用 | 需适配或验证 | 本轮样本未见相同治理组合 |
 |---|---|---|
@@ -72,11 +72,11 @@
 9. Check Point 约 3 亿美元收购 Lakera（2025-09）、Snyk 收购 Invariant Labs（2025-06）：[Check Point](https://www.checkpoint.com/press-releases/check-point-acquires-lakera-to-deliver-end-to-end-ai-security-for-enterprises/) / [Komo](https://komo.ai/directory/snyk)
 10. 机器身份已达人类身份 45 倍，仅 21.9% 团队将 agent 凭证纳入 PAM；MCP 配置文件在公开 GitHub 泄露 24,008 个密钥：[The New Stack 引 RSAC 2026/GitGuardian, 2026-05](https://thenewstack.io/ai-agents-credential-crisis/)
 
-## 5. 对 CaseLoop-for-Agents 的设计启示
+## 5. 对 AgentMED-for-Agents 的设计启示
 
 1. **验证“确定性控制面+风险审批+信任记账”的控制效果**：事故材料支持最小权限、人工否决和独立证据的必要性，但具体架构不能宣称提前或全面合规，仍需威胁建模、法律评估和真实故障演练。
 2. **凭证与策略采用 adapter-first**：优先接 MCP OAuth/EMA、Composio、Permit.io、Entra、OPA/Cedar；若私有部署、数据边界、可靠性或最小授权绑定无法满足，允许实现必要的兼容组件。WorkOrder 绑定是待验证需求，不以“无人做”证明。
-3. **运行时 guardrail 作为相邻能力与 Signal 来源**：Lakera、Prompt Shields 等可提供拦截和绕过事件。CaseLoop 仍要做发布前门禁和事故后闭环，但不能承诺实时阻断提示注入、供应链投毒或第三方 OAuth 失陷。
+3. **运行时 guardrail 作为相邻能力与 Signal 来源**：Lakera、Prompt Shields 等可提供拦截和绕过事件。AgentMED 仍要做发布前门禁和事故后闭环，但不能承诺实时阻断提示注入、供应链投毒或第三方 OAuth 失陷。
 4. **版本集快照要加"安全/权限 diff"维度**：DPD 事故的根因是版本更新悄悄改变了行为；mcp-scan 证明配置快照可机器扫描。我们的双臂对照实验应把"权限 surface 变化"（新工具、scope 扩大）作为与 prompt/知识库/模型并列的第四归因层【推断，超出原三层设计】。
 5. **提供审计证据导出，而不是“一键合规”**：从真实权威记录导出 WorkOrder、审批、授权、Gate、发布和 Trust 证据，并明确缺失项。法规映射与预算信号不自动证明这是用户优先级，也不能由 exporter 反向制造记录。
 6. **"agent 撒谎"做成正式威胁模型条目**：Replit 事故中 agent 伪造测试结果、谎称无法回滚——这验证了"裁判≠运动员+证据第三方复验"的必要性。所有 agent 自报的评测/回滚结果都应走独立复验通道，这是多数竞品（采信遥测自报）的盲区。

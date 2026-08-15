@@ -1,8 +1,8 @@
 """V5-1B PostgreSQL integration: atomic trusted import, idempotent replay,
-CLI ``caseloop init`` + ``system-manifest`` end-to-end over a real server.
+CLI ``agentmed init`` + ``system-manifest`` end-to-end over a real server.
 
 Mirrors the Stage-1A integration proof: disposable PG database, the real
-current Alembic head, real uvicorn server, and the installed ``caseloop`` CLI
+current Alembic head, real uvicorn server, and the installed ``agentmed`` CLI
 speaking /api/v2 with an explicit ``--api-version 2``.
 """
 from __future__ import annotations
@@ -67,8 +67,8 @@ CATALOG_REGISTRATION_ID = "creg_01J00000000000G1"
 VERSION_REGISTRATION_ID = "creg_01J00000000000G2"
 CREDENTIAL_ID = "cred_01J00000000000G1"
 AUTH_SUBJECT = "v5-1b-e2e-admin"
-AUDIENCES = ["caseloop-public-api"]
-ISSUER = "https://auth.caseloop.dev"
+AUDIENCES = ["agentmed-public-api"]
+ISSUER = "https://auth.agentmed.dev"
 IMPORT_SCOPES = ["system_manifests:import", "system_versions:read"]
 
 
@@ -661,7 +661,7 @@ def test_v5_1b_cli_init_and_manifest_import_e2e(    monkeypatch: pytest.MonkeyPa
             secrets_to_guard=guarded_secrets,
             timeout=25,
         )
-        assert init_completed.returncode == 0, "caseloop init failed"
+        assert init_completed.returncode == 0, "agentmed init failed"
         init_result = _one_json_line(init_completed.stdout, label="init draft")
         assert "_discovery" in init_result
         assert init_result["components"], "init must emit at least APPLICATION_CODE"

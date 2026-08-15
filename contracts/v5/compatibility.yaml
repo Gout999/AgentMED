@@ -81,8 +81,8 @@ current_runtime_overlay:
     - bootstrap_attestation
     - system_assignment_bootstrap
   cli_workflows:
-    caseloop_init: IMPLEMENTED_LOCAL_DRAFT_ONLY
-    caseloop_case_from_issue: IMPLEMENTED_WITHOUT_AUTO_CONFIRMATION
+    agentmed_init: IMPLEMENTED_LOCAL_DRAFT_ONLY
+    agentmed_case_from_issue: IMPLEMENTED_WITHOUT_AUTO_CONFIRMATION
   acceptance_runtime_boundary:
     resolution_contract_binding_status: PENDING_MATERIALIZATION
     materialization_stage: V5-4
@@ -286,12 +286,12 @@ s1a_receipt_regression:
   upgrade_historical_evidence_facet_forbidden: true
 
 onboarding_workflow_orchestration:
-  caseloop_init:
+  agentmed_init:
     steps: [local_read_only_discovery, manifest_draft]
     writes_server_state: false
     import_is_a_separate_operator_command: true
     separate_import_intent: system-manifests.import
-  caseloop_case_from_issue:
+  agentmed_case_from_issue:
     steps: [issue_snapshot, application_read, environment_read, signal_submit_and_case_open, exact_case_read, optional_version_read, application_binding, acceptance_criteria_draft]
     canonical_intents_only: true
     no_auto_confirmation: true

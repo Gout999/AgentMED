@@ -2,13 +2,13 @@
 
 [返回 Wiki 索引](INDEX.md)
 
-> 适用范围：2026-08-07 至 2026-08-10 的本地 AgentTeams v1.2.1 profile，以及当前 v3 客服参考实现和已批准的 v4 Adapter 目标。执行前复核实际安装版本与运行状态。AgentTeams 是可替换的内部协作适配器，不是 CaseLoop 产品身份，也不是被治理 Agent 必须使用的 runtime。
+> 适用范围：2026-08-07 至 2026-08-10 的本地 AgentTeams v1.2.1 profile，以及当前 v3 客服参考实现和已批准的 v4 Adapter 目标。执行前复核实际安装版本与运行状态。AgentTeams 是可替换的内部协作适配器，不是 AgentMED 产品身份，也不是被治理 Agent 必须使用的 runtime。
 
-本页中的 `Worker` 专指 CaseLoop 内部 LLM Worker。它不同于被治理 Agent，也不同于 outbox dispatcher、evaluator 等确定性进程。
+本页中的 `Worker` 专指 AgentMED 内部 LLM Worker。它不同于被治理 Agent，也不同于 outbox dispatcher、evaluator 等确定性进程。
 
 ## 当前运行快照（2026-08-10）
 
-最近一次本地查询中，`caseloop-team` 的 Team CR 为 `Active`，但 `leaderReady=false`、`readyWorkers=0`；六个 Worker 都是 CoPaw runtime、StepFun `step-3.7-flash`，状态均为 `Sleeping`。容器停睡是运行快照，不是删除，也不是动态缩容证明。
+最近一次本地查询中，`agentmed-team` 的 Team CR 为 `Active`，但 `leaderReady=false`、`readyWorkers=0`；六个 Worker 都是 CoPaw runtime、StepFun `step-3.7-flash`，状态均为 `Sleeping`。容器停睡是运行快照，不是删除，也不是动态缩容证明。
 
 | Worker | 职责 | Runtime / model | 实测状态 |
 |---|---|---|---|
@@ -21,14 +21,14 @@
 
 仓库 [agents/team.yaml](../agents/team.yaml) 的 `spec.state: Running` 是 desired spec，Team CR 的 `Active` 是资源状态；二者都不能证明某个 Agent 当前活跃、读取了任务或调用了模型。运行/验收前必须重新查询 Worker、容器和 session。
 
-`caseloop-approver` 是 Human，不是第七个 Agent。当前 AgentTeams 中没有 Claude Code Agent，也没有 GLM Agent；本机 CLI、CCR 配置或 provider 条目存在都不能改变这个事实。
+`agentmed-approver` 是 Human，不是第七个 Agent。当前 AgentTeams 中没有 Claude Code Agent，也没有 GLM Agent；本机 CLI、CCR 配置或 provider 条目存在都不能改变这个事实。
 
 ## 已确认的产品边界
 
 - Phase 1 的六个 Worker CR 静态存在于 [agents/team.yaml](../agents/team.yaml)；没有动态扩缩证据。
-- AgentTeams v1.2.1 没有原生 autoscaling 或 CaseLoop 所需的 durable business queue。
+- AgentTeams v1.2.1 没有原生 autoscaling 或 AgentMED 所需的 durable business queue。
 - 仓库中当前没有 v3 规划的 Caseload Controller 实现；已批准的 v4 目标改为 PostgreSQL Work Kernel、WorkerTask/Attempt 与 Runtime Adapter，仍待 Stage 0 contracts 和后续实现证明。
-- Kine、Matrix 和 MinIO 都不是 CaseLoop 生命周期、审批、发布或审计的权威源。PostgreSQL 控制面仍是唯一业务权威。
+- Kine、Matrix 和 MinIO 都不是 AgentMED 生命周期、审批、发布或审计的权威源。PostgreSQL 控制面仍是唯一业务权威。
 - 平台资源、消息和工件存在，不自动证明内部 Agent 真实执行或对后续动作有因果贡献。
 
 ## 证据语义
@@ -39,7 +39,7 @@
 | Matrix event | 某身份成功发送一条消息 | 接收 Worker 阅读、推理或创作了内容 |
 | MinIO object + digest | 指定字节被写入并可回读 | 工件由某 Agent 创作或影响后续决策 |
 | exporter 签名 | 回执字节完整且签发者明确 | 回执中的 Agent 因果声明真实 |
-| Kine 记录 | AgentTeams 资源状态 | CaseLoop Case / Release / Approval / audit 状态 |
+| Kine 记录 | AgentTeams 资源状态 | AgentMED Case / Release / Approval / audit 状态 |
 | Worker session + model/tool receipts | 对应调用在该 session 中发生 | 仍需 pre-action proposal 和权威 causation binding 才能证明业务贡献 |
 
 因此，Matrix/MinIO 导出只能叫 `platform evidence export`。`agent-causal` 还必须证明 Worker 原生接单、模型/Skill/MCP 调用、动作前 Proposal、作者身份与后续权威事件之间的因果绑定。
@@ -55,7 +55,7 @@
 
 ## v4 双 Team 目标（批准，尚未实现）
 
-v4 保留现有 `caseloop-team` 作为质量治理 Team，另建专业 `caseloop-coding-team`：
+v4 保留现有 `agentmed-team` 作为质量治理 Team，另建专业 `agentmed-coding-team`：
 
 | 目标角色 | AgentTeams / Runtime 边界 | 当前状态 |
 |---|---|---|
@@ -98,7 +98,7 @@ Claude Code 不是 AgentTeams v1.2.1 当前已部署的原生 Worker，也不能
 
 - controller 的 CR 持久化使用 Kine / SQLite，历史路径为 `/data/agentteams-controller/agentteams.db`，删除以 tombstone 表示。
 - Matrix 保存协作消息，MinIO 保存 Worker workspace / artifact；两者只服务适配器运行和取证。
-- CaseLoop 的 Case、Gate、Approval、Release、Trust 和 audit 不得从 Kine/Matrix/MinIO 反推或覆盖。
+- AgentMED 的 Case、Gate、Approval、Release、Trust 和 audit 不得从 Kine/Matrix/MinIO 反推或覆盖。
 
 ## 消息、Skill 与 session
 
@@ -108,7 +108,7 @@ Claude Code 不是 AgentTeams v1.2.1 当前已部署的原生 Worker，也不能
 - 内部 Worker 的单线程 ReAct loop 可能在忙时排队新消息；重启窗口存在消息已推进 sync token 但未处理的风险。
 - Skill 文件可经 MinIO workspace 同步到 Worker；文件出现只证明同步，不证明 Skill 被发现、选择或调用。
 - v1.2.1 Worker 镜像中未确认可用的 `agentteams-sync`，且历史 `copaw-sync` 指向缺失脚本；不要把即时同步命令写成保证，须回查实际 Worker 文件与运行日志。
-- session 损坏时的 `/new` 属于适配器操作，不是 CaseLoop 的业务重试、幂等或恢复语义。
+- session 损坏时的 `/new` 属于适配器操作，不是 AgentMED 的业务重试、幂等或恢复语义。
 
 ## MCP 注册与调用（Higress，实测快照）
 
@@ -138,5 +138,5 @@ Claude Code 不是 AgentTeams v1.2.1 当前已部署的原生 Worker，也不能
 4. 管理员、Exporter、Worker 使用不同身份和最小权限 token。
 5. `domain-provider-live` 与 `agent-causal` 独立报告；`platform evidence export` 使用不同来源类别，不能写入成功 facets。
 6. 关闭、休眠或移除真实 Worker 时，`agent-causal` 验收必须失败或 `BLOCKED`；否则测试没有证明 Worker 因果参与。
-7. `caseloop-coding-team` 创建前保持 `NOT CREATED`；Direct Claude Runtime 通过也不能冒充 AgentTeams 父 Worker 委托已经集成。
+7. `agentmed-coding-team` 创建前保持 `NOT CREATED`；Direct Claude Runtime 通过也不能冒充 AgentTeams 父 Worker 委托已经集成。
 8. GitHub 留言、认领、fork、push 或 PR 不属于 AgentTeams smoke；这些外部写动作必须逐次取得用户授权。

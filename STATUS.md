@@ -1,4 +1,4 @@
-# CaseLoop 当前状态
+# AgentMED 当前状态
 
 原 2026-08-09 PR #1 状态页已归档到
 [`docs/archive/status/STATUS-2026-08-09-pr1.md`](docs/archive/status/STATUS-2026-08-09-pr1.md)。

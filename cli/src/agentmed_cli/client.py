@@ -158,7 +158,7 @@ class RuntimeConfig:
     token: str = field(repr=False)
     timeout_seconds: float = 10.0
     max_attempts: int = 3
-    client_version: str = "caseloop-cli/0.1.0"
+    client_version: str = "agentmed-cli/0.1.0"
 
     def __post_init__(self) -> None:
         object.__setattr__(self, "base_url", validate_base_url(self.base_url))
@@ -359,15 +359,15 @@ class PublicApiClient:
         stable_request_id = request_id or f"req_{self._uuid_factory().hex}"
         if api_major == 2:
             contract_version = "2.0"
-            idempotency_header = "X-CaseLoop-Idempotency-Key"
+            idempotency_header = "X-AgentMED-Idempotency-Key"
         else:
             contract_version = "1.0"
             idempotency_header = "Idempotency-Key"
         headers = {
             "Authorization": f"Bearer {self._config.token}",
-            "X-CaseLoop-Workspace-ID": self._config.workspace_id,
-            "X-CaseLoop-Contract-Version": contract_version,
-            "X-CaseLoop-Client-Version": self._config.client_version,
+            "X-AgentMED-Workspace-ID": self._config.workspace_id,
+            "X-AgentMED-Contract-Version": contract_version,
+            "X-AgentMED-Client-Version": self._config.client_version,
             "X-Request-ID": stable_request_id,
             "Accept": "application/json",
         }
@@ -400,7 +400,7 @@ class PublicApiClient:
         assert response is not None
         if 300 <= response.status_code < 400:
             raise CliError("REMOTE_REDIRECT_REFUSED", ExitFamily.PROTOCOL)
-        if response.headers.get("x-caseloop-contract-version") != contract_version:
+        if response.headers.get("x-agentmed-contract-version") != contract_version:
             raise CliError("REMOTE_CONTRACT_INVALID", ExitFamily.PROTOCOL)
         content_type = response.headers.get("content-type", "").split(";", 1)[0].strip().lower()
         if content_type != "application/json":

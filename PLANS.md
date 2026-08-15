@@ -1,11 +1,11 @@
-# CaseLoop Delivery Plan
+# AgentMED Delivery Plan
 
 Status values: `TODO`, `IN_PROGRESS`, `VERIFYING`, `BLOCKED`, `DONE`. `VERIFYING`
 means a semantic subject exists but its post-commit evidence/verifier closure is still pending.
 
 ## Current milestone
 
-CaseLoop 的 V5 产品边界已经由 D-013 接受：产品升级为**面向 AI 应用的 Agent-native
+AgentMED 的 V5 产品边界已经由 D-013 接受：产品升级为**面向 AI 应用的 Agent-native
 治理运营控制面**，顶层对象是 `AIApplication`，Agent 是 `SystemComponent`。V5 的 PRD、
 架构、progressive blueprint 与 `contracts/v5/` 已经形成施工基线。两份独立产品/
 评测 review 的共同修改已经得到用户确认：First Useful Case 先形成可信验收标准，区分
@@ -60,7 +60,7 @@ external 或 production 能力。
 | V4-S0 | Freeze v4 language, authority, contracts, and migration semantics | DONE | Approved `docs/plan-v4.md`; v3 compatibility baseline; current WIP inventory | PRD v2 and v4 plan are authoritative without claiming implementation; Aggregate Ownership, Run Semantics, Capability, WorkOrder, intent/auth/idempotency/error/compatibility and v3-to-v4 cutover rules are frozen; existing quality Team and future coding Team are unambiguous | 397 v3+v4 tests; JSON/YAML/Python/docs checks; independent verifier including authority-equivocation attacks | `evidence/v4/stage-0/contracts/s0contracts_20260810T085840Z_6604712/` | docs `b7889a7e200f76bd5985188ff6fb7e9e1860fd28`; contracts `6604712b37409cf679dfb43ce97fb9882efdc713` |
 | V4-S1E | Freeze the complete public wire contract | DONE | V4-S0; Stage 1 entry audit | S1A/S1B intents are typed and `FROZEN`; later intents remain undiscoverable `SKELETON`; public auth/error/idempotency/async/cursor contracts fail closed; no-trace evidence is truthfully `UNKNOWN` without an AgentRunRef | 449 v3+v4 tests; 7 coordinated attack groups; JSON/YAML/Python/diff checks; independent verifier PASS | `evidence/v4/stage-1/wire-contract/s1wire_20260810T114213Z_070ba20/` | `070ba200acc09dfbcb725cc3466ef3ebd1e4f6fd` |
 | V4-S1A | Authenticated maintainer report without trace | DONE | V4-S1E PASS; migration review | HTTP/CLI mutation transactionally writes Signal, QualityCase link, `UNKNOWN` TraceEvidenceReceipt, event, audit and idempotency receipt without inventing AgentRunRef | 691 control-plane unit; 232 coordinated attacks; 449 contracts; 81 CLI; 4 disposable PostgreSQL integration tests; independent verifier PASS | `evidence/v4/stage-1/maintainer-intake/s1a_20260810T143055Z_22c23f8/` | `22c23f89708471e3f1cb8ca893414733a839a1bd` |
-| V4-S1B | Langfuse read plus CaseLoop OTel write/readback | BLOCKED | V4-S1A; rotated isolated source/sink credentials; separate live authorization | Governed Agent evidence can be fetched through the Langfuse TraceSource; CaseLoop exports its own trace to a separate sink and verifies readback; retention/masking/UNKNOWN remain explicit | connector contract, cursor/DLQ, masking, export/readback, clean-machine and separately reported live-provider evidence | pending | pending |
+| V4-S1B | Langfuse read plus AgentMED OTel write/readback | BLOCKED | V4-S1A; rotated isolated source/sink credentials; separate live authorization | Governed Agent evidence can be fetched through the Langfuse TraceSource; AgentMED exports its own trace to a separate sink and verifies readback; retention/masking/UNKNOWN remain explicit | connector contract, cursor/DLQ, masking, export/readback, clean-machine and separately reported live-provider evidence | pending | pending |
 
 ## Legacy v3 delivery record
 

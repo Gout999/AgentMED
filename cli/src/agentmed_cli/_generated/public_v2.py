@@ -1,4 +1,4 @@
-"""Generated frozen CaseLoop public v2 success wire models. Do not hand edit.
+"""Generated frozen AgentMED public v2 success wire models. Do not hand edit.
 
 Hand-copied from ``control-plane/app/public_api/v5_models.py`` (schema-major-2)
 so the CLI can validate /api/v2 responses without importing the control-plane

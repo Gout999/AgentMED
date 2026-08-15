@@ -917,7 +917,7 @@ class PublicReadService:
             actor_principal_id=row.actor_principal,
             transaction_id=row.transaction_id,
             payload_ref={
-                "uri": f"caseloop-artifact://event/{row.event_id}/payload",
+                "uri": f"agentmed-artifact://event/{row.event_id}/payload",
                 "digest": row.payload_digest,
                 "media_type": "application/json",
             },

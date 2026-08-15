@@ -76,11 +76,11 @@ _MAX_BODY_BYTES = 256_000
 _PUBLIC_HEADER_NAMES = frozenset(
     {
         "authorization",
-        "x-caseloop-workspace-id",
-        "x-caseloop-contract-version",
-        "x-caseloop-idempotency-key",
+        "x-agentmed-workspace-id",
+        "x-agentmed-contract-version",
+        "x-agentmed-idempotency-key",
         "x-request-id",
-        "x-caseloop-client-version",
+        "x-agentmed-client-version",
     }
 )
 _CONTRACT_VERSION = "2.0"
@@ -132,7 +132,7 @@ def _json_response(model: BaseModel, *, status_code: int) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
         content=model.model_dump(mode="json", exclude_none=False),
-        headers={"X-CaseLoop-Contract-Version": _CONTRACT_VERSION},
+        headers={"X-AgentMED-Contract-Version": _CONTRACT_VERSION},
     )
 
 
@@ -162,7 +162,7 @@ def _error_response(
             workspace_id=workspace_id,
             details={},
         )
-    headers = {"X-CaseLoop-Contract-Version": _CONTRACT_VERSION}
+    headers = {"X-AgentMED-Contract-Version": _CONTRACT_VERSION}
     if mapped.status_code == 429 and mapped.envelope.error.retry_after_ms is not None:
         seconds = (mapped.envelope.error.retry_after_ms + 999) // 1000
         headers["Retry-After"] = str(seconds)
@@ -264,7 +264,7 @@ def _handle_failure(
                 request_id=request_id,
                 workspace_id=workspace_id,
             )
-        headers = {"X-CaseLoop-Contract-Version": _CONTRACT_VERSION}
+        headers = {"X-AgentMED-Contract-Version": _CONTRACT_VERSION}
         return JSONResponse(
             status_code=mapped.status_code,
             content=mapped.envelope.model_dump(mode="json", exclude_none=False),
@@ -470,7 +470,7 @@ def _audit_header_violation(
     failures carry no workspace and are mapped without an audit row.
     """
 
-    workspace_id = request.headers.get("x-caseloop-workspace-id")
+    workspace_id = request.headers.get("x-agentmed-workspace-id")
     if session is None or not isinstance(workspace_id, str) or not workspace_id:
         return None
     if code in {

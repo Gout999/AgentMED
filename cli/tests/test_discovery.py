@@ -1,4 +1,4 @@
-"""``caseloop init`` discovery safety and determinism tests."""
+"""``agentmed init`` discovery safety and determinism tests."""
 from __future__ import annotations
 
 import json
@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from caseloop_cli.discovery import DiscoveryError, discover, render_draft
+from agentmed_cli.discovery import DiscoveryError, discover, render_draft
 
 
 def _git(root: Path, *args: str) -> None:
@@ -24,7 +24,7 @@ def repo(tmp_path: Path) -> Path:
     root = tmp_path / "workload"
     root.mkdir()
     _git(root, "init", "-q", "-b", "main")
-    _git(root, "config", "user.email", "test@caseloop.dev")
+    _git(root, "config", "user.email", "test@agentmed.dev")
     _git(root, "config", "user.name", "Test")
     (root / "pyproject.toml").write_text("[project]\nname = 'demo'\n", encoding="utf-8")
     (root / "src").mkdir()
@@ -118,7 +118,7 @@ def test_discover_root_symlink_rejected(tmp_path: Path) -> None:
     real = tmp_path / "real"
     real.mkdir()
     _git(real, "init", "-q", "-b", "main")
-    _git(real, "config", "user.email", "test@caseloop.dev")
+    _git(real, "config", "user.email", "test@agentmed.dev")
     _git(real, "config", "user.name", "Test")
     (real / "a.txt").write_text("x\n", encoding="utf-8")
     _git(real, "add", ".")

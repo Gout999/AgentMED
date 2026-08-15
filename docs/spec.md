@@ -1,4 +1,4 @@
-# CaseLoop 技术规格说明书（SPEC）
+# AgentMED 技术规格说明书（SPEC）
 
 > 版本：v1.0 ｜ 日期：2026-08-07 ｜ 状态：草案待评审
 > 适用范围：当前“小智客服纵切 + AgentTeams 执行层”的 v1 技术规格。产品战略以 `docs/product-principles.md` 为准；当前实现以 `docs/plan-v3.md`、`contracts/` 和可执行测试为准。
@@ -39,7 +39,7 @@
 读面/写面铁律：
 
 - **写面唯一入口**：Quality API 写面（draft/stage/canary/promote/rollback）仅 Release Controller 可调用；任何 Agent（含守门员、质量官）不可直连。
-- **读面开放**：`GET /logs`、`GET /feedback` 经 mcp-case-admin 代理对采集员/归因师开放，只读。
+- **读面开放**：`GET /logs`、`GET /feedback` 经 mcp-agentmed-admin 代理对采集员/归因师开放，只读。
 - **状态权威**：七个子状态机的权威状态全部存于 Case Controller 的 PG 库；Agent 的"结论"只是进入控制面裁决的输入。
 
 ### 1.2 组件职责表
@@ -289,7 +289,7 @@ PENDING → SENDING → SENT（终态）
 | 当前态 | 触发事件 | 动作 | 下一态 |
 |--------|---------|------|--------|
 | — | 控制面写 outbox（同事务） | 生成 notification（含幂等键） | PENDING |
-| PENDING | 发送器领单 | 调 mcp-notification | SENDING |
+| PENDING | 发送器领单 | 调 mcp-agentmed-notify | SENDING |
 | SENDING | 对端确认（飞书 message_id / mock ack） | outbox 标记已投 | SENT |
 | SENDING | 失败/超时 | 记录错误 | FAILED |
 | FAILED | 到达重试时点（指数退避） | — | RETRYING |
@@ -632,7 +632,7 @@ CREATE TABLE casebase (
 CREATE INDEX ON casebase USING ivfflat (embedding vector_cosine_ops);
 ```
 
-写入入口唯一：仅案例官（经 mcp-casebase-knowledge `kb.upsert`）；向量检索退化策略见 §9.5。
+写入入口唯一：仅案例官（经 mcp-agentmed-casebase-knowledge `kb.upsert`）；向量检索退化策略见 §9.5。
 
 ---
 
@@ -718,11 +718,11 @@ DRAINING → 停止新 claim → 等待 lease=0 → outbox 清空
 
 | MCP Server | 封装能力 | 权限边界 | 主要调用方 |
 |-----------|---------|---------|-----------|
-| mcp-case-admin | case 查询/领单/提交建议/取证（代理 `GET /logs`、`GET /feedback`） | 读开放；建议写入仅产生"建议事件"，不直接改状态 | 全员（按工具 ACL） |
-| mcp-release-admin | WorkOrder 起草/定稿/查询、审批提请与状态、发布进度查询 | **无任何直接发布能力**；写面不在此暴露 | 修复师/守门员/质量官 |
-| mcp-eval-runner | 门禁评测触发与报告查询、归因实验执行与结果查询 | 触发类仅守门员/归因师；查询开放 | 守门员/归因师 |
-| mcp-notification | 飞书（mock 兼容）：原群回复、审批卡片、周报 | 通道级 ACL | 案例官/质量官/控制面 |
-| mcp-casebase-knowledge | 案例库检索/写入 | 读全员；写仅案例官 | 全员 / 案例官 |
+| mcp-agentmed-admin | case 查询/领单/提交建议/取证（代理 `GET /logs`、`GET /feedback`） | 读开放；建议写入仅产生"建议事件"，不直接改状态 | 全员（按工具 ACL） |
+| mcp-agentmed-release | WorkOrder 起草/定稿/查询、审批提请与状态、发布进度查询 | **无任何直接发布能力**；写面不在此暴露 | 修复师/守门员/质量官 |
+| mcp-agentmed-eval | 门禁评测触发与报告查询、归因实验执行与结果查询 | 触发类仅守门员/归因师；查询开放 | 守门员/归因师 |
+| mcp-agentmed-notify | 飞书（mock 兼容）：原群回复、审批卡片、周报 | 通道级 ACL | 案例官/质量官/控制面 |
+| mcp-agentmed-casebase-knowledge | 案例库检索/写入 | 读全员；写仅案例官 | 全员 / 案例官 |
 | trust-ledger（模块，非独立 server） | 记账/查询/晋升评估 | 由 Case Controller 与守门员内嵌调用 | 控制面 |
 
 ### 9.2 公共约定
@@ -747,7 +747,7 @@ DRAINING → 停止新 claim → 等待 lease=0 → outbox 清空
 - **重试与幂等**：只读工具指数退避 ≤3 次；写工具不自动重试，调用方必须携带幂等键（格式 `<case_id>:<action>:<seq>`），服务端 24h 去重；同键同参返回首次结果。
 - **审计**：所有写工具调用、审批流转、拒绝事件按 §7.6 入库；`params_digest` 落哈希不落敏感原文。
 
-### 9.3 mcp-case-admin
+### 9.3 mcp-agentmed-admin
 
 | 工具 | 参数（*必填） | 返回 | ACL |
 |------|-------------|------|-----|
@@ -762,7 +762,7 @@ DRAINING → 停止新 claim → 等待 lease=0 → outbox 清空
 
 降级：`app.logs/feedback` 不可达 → 退避重试，失败返回 `evidence_gap=true`，不阻塞流水线，缺口显式标注。
 
-### 9.4 mcp-release-admin
+### 9.4 mcp-agentmed-release
 
 | 工具 | 参数 | 返回 | ACL |
 |------|------|------|-----|
@@ -776,7 +776,7 @@ DRAINING → 停止新 claim → 等待 lease=0 → outbox 清空
 
 **边界**：本 server 不暴露 Quality API 写面；`approve` 决定来自人（经 notification 通道），`approval.status` 仅查询。执行发布是 Release Controller 内部行为，Agent 只能 `release.get` 旁观。
 
-### 9.5 mcp-eval-runner
+### 9.5 mcp-agentmed-eval
 
 | 工具 | 参数 | 返回 | ACL |
 |------|------|------|-----|
@@ -791,7 +791,7 @@ DRAINING → 停止新 claim → 等待 lease=0 → outbox 清空
 
 降级：live provider 不可达 → live 轨 `UNAVAILABLE` 标记，确定性轨照常（门禁放行策略见 §3.4【待定】）；向量/裁判模型不可达 → 对应轨标退化并重试，不伪造结果。
 
-### 9.6 mcp-notification（飞书 mock 兼容）
+### 9.6 mcp-agentmed-notify（飞书 mock 兼容）
 
 | 工具 | 参数 | 返回 | ACL |
 |------|------|------|-----|
@@ -801,7 +801,7 @@ DRAINING → 停止新 claim → 等待 lease=0 → outbox 清空
 
 约定：原投诉 channel/thread 在 complaint event 冻结，回复不可改道。`body_digest` 绑定不可变回复正文；v0.1 调用方的临时过渡仅允许从自包含 `data:` URI 安全补算，外部引用缺 digest 必须拒绝。命令与业务事务同写 outbox；只有 dispatcher 可接收真实或明确 replay-mock provider receipt，原子写 `notification.sent` + `case.closed`。飞书真实凭证未到位时用同 contract 的 feishu mock，并在证据中**明示**；失败按 §3.6 重试，耗尽 DEAD 升级。ApprovalGrant 由控制面/Console 处理，不注册 MCP `approval_card` 写工具。
 
-### 9.7 mcp-casebase-knowledge
+### 9.7 mcp-agentmed-casebase-knowledge
 
 | 工具 | 参数 | 返回 | ACL |
 |------|------|------|-----|
@@ -884,7 +884,7 @@ DRAINING → 停止新 claim → 等待 lease=0 → outbox 清空
   "chat_id": "oc_…（原群）",
   "msg_type": "interactive",
   "card": {
-    "header": "CaseLoop 处理结果 · case-01J…",
+    "header": "AgentMED 处理结果 · case-01J…",
     "fields": [
       { "label": "投诉摘要", "value": "…" },
       { "label": "归因结论", "value": "ATTRIBUTED · prompt 层（Δ=0.83, 95%CI [0.61,0.94]）" },
@@ -910,7 +910,7 @@ DRAINING → 停止新 claim → 等待 lease=0 → outbox 清空
 }
 ```
 
-巡检流水线：变异算子库 → 探测用例生成 → 周期攻击（Phase 1 为单次）→ 检出/归因/门禁数据回流 → 周报经 mcp-notification 发飞书。
+巡检流水线：变异算子库 → 探测用例生成 → 周期攻击（Phase 1 为单次）→ 检出/归因/门禁数据回流 → 周报经 mcp-agentmed-notify 发飞书。
 
 ---
 

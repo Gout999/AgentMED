@@ -51,7 +51,7 @@ outbox dispatcher 和 console。它是本地演示栈，不是生产部署证明
 
 ### 首次配置与启动
 
-所有宿主端口默认只绑定 `127.0.0.1`。不要为了方便把 `CASELOOP_BIND_HOST` 改成
+所有宿主端口默认只绑定 `127.0.0.1`。不要为了方便把 `AGENTMED_BIND_HOST` 改成
 `0.0.0.0`；确需远程访问时，应先配置受认证的 ingress 和防火墙策略。
 
 ```bash
@@ -81,7 +81,7 @@ secret 都有禁止复用的 fail-closed 校验；role-token JSON 中的值也�
 | control-plane | `http://127.0.0.1:18090` | `/healthz` liveness；Compose 使用 `/readyz` readiness |
 | console | `http://127.0.0.1:8088` | 通过 nginx 反代 control-plane |
 
-`POSTGRES_PASSWORD` 只初始化全新的 `caseloop_pgdata` volume；修改 `.env` 不会轮换既有
+`POSTGRES_PASSWORD` 只初始化全新的 `agentmed_pgdata` volume；修改 `.env` 不会轮换既有
 数据库角色密码。既有 volume 必须由操作员单独完成数据库凭证轮换。
 
 ### demo-app Alembic 启动与旧库接管

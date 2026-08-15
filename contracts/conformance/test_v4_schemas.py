@@ -214,7 +214,7 @@ def test_every_v4_schema_is_draft_2020_12_and_has_stable_id() -> None:
     for path in paths:
         schema = _json(path)
         assert schema["$schema"] == "https://json-schema.org/draft/2020-12/schema"
-        assert schema["$id"] == f"https://caseloop.dev/contracts/v4/schemas/{path.name}"
+        assert schema["$id"] == f"https://agentmed.dev/contracts/v4/schemas/{path.name}"
         Draft202012Validator.check_schema(schema)
 
 
@@ -230,7 +230,7 @@ def test_positive_fixture_validates(fixture_name: str, schema_name: str) -> None
 def test_public_wire_fragment_fixture_validates(
     fixture_name: str, definition: str
 ) -> None:
-    schema_id = "https://caseloop.dev/contracts/v4/schemas/public-api-wire.schema.json"
+    schema_id = "https://agentmed.dev/contracts/v4/schemas/public-api-wire.schema.json"
     validator = Draft202012Validator(
         {"$ref": f"{schema_id}#/$defs/{definition}"},
         registry=_registry(),
@@ -264,7 +264,7 @@ def test_structural_mutation_fixture_is_rejected(
 def test_invalid_public_wire_fragment_fixture_is_rejected(
     fixture_name: str, definition: str
 ) -> None:
-    schema_id = "https://caseloop.dev/contracts/v4/schemas/public-api-wire.schema.json"
+    schema_id = "https://agentmed.dev/contracts/v4/schemas/public-api-wire.schema.json"
     validator = Draft202012Validator(
         {"$ref": f"{schema_id}#/$defs/{definition}"},
         registry=_registry(),
@@ -288,7 +288,7 @@ def test_no_trace_signal_response_statuses_are_linked(
 ) -> None:
     response = _json(VALID / "public-signal-submission-response.json")
     response[section][field] = value
-    schema_id = "https://caseloop.dev/contracts/v4/schemas/public-api-wire.schema.json"
+    schema_id = "https://agentmed.dev/contracts/v4/schemas/public-api-wire.schema.json"
     validator = Draft202012Validator(
         {"$ref": f"{schema_id}#/$defs/signal_submission_response"},
         registry=_registry(),

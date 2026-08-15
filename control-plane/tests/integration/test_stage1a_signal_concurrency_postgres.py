@@ -88,7 +88,7 @@ def _settings() -> Settings:
         public_cursor_signing_key=SecretStr(
             "stage1a-concurrency-cursor-key-independent"
         ),
-        public_auth_issuer="https://auth.caseloop.dev",
+        public_auth_issuer="https://auth.agentmed.dev",
         require_mcp_role_tokens=False,
     )
 
@@ -107,7 +107,7 @@ def _bootstrap_request() -> Stage1ALocalBootstrapRequest:
                 "credential_ref": None,
                 "config": {
                     "display_name": "Stage 1A PostgreSQL concurrency gate",
-                    "provider_origin": "https://caseloop.local",
+                    "provider_origin": "https://agentmed.local",
                 },
             },
             "principal": {"principal_id": PRINCIPAL_ID, "subject": SUBJECT},

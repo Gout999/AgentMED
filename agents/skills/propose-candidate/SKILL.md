@@ -4,7 +4,7 @@ description: Draft a repair candidate (prompt/config patch) and bind it to a Wor
 assign_when: Attribution has identified the broken layer and a fix is draftable.
 ---
 
-# propose-candidate（caseloop 版）
+# propose-candidate（agentmed 版）
 
 修复师专用。产候选补丁，绑定 WorkOrder，落 Gate——**不发布**（出口 2）。
 

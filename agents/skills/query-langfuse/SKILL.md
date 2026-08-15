@@ -4,7 +4,7 @@ description: Query one specific Langfuse trace or observation by id for evidence
 assign_when: A task needs one exact trace/observation detail by id (deep-link or content verification).
 ---
 
-# query-langfuse（caseloop 版）
+# query-langfuse（agentmed 版）
 
 按 id 精确查一条 trace/observation，用于证据核验。
 

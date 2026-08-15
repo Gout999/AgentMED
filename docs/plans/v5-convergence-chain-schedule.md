@@ -1,4 +1,4 @@
-# CaseLoop 最短收敛链路施工排期（V5 收敛视角）
+# AgentMED 最短收敛链路施工排期（V5 收敛视角）
 
 > 状态：**DRAFT（2026-08-14）**——从属施工视图，不拥有 stage 裁决权。
 > 权威层：本文只对 [v5-master-execution-plan.md](./v5-master-execution-plan.md) 做
@@ -29,7 +29,7 @@ V5-3B 归因实验（可诚实 abstain）、V5-2C MCP/A2A、V5-6。
 
 - 当前全部使用**测试 key**，不执行轮换；链路跑通后再统一轮换。
 - 保留两条不变：live/external write 仍逐次授权；Langfuse 的 source（被治理应用证据源）
-  与 sink（CaseLoop 自身可观测）必须分 project 隔离。
+  与 sink（AgentMED 自身可观测）必须分 project 隔离。
 
 ### 0.3 废弃链路处置（产品 owner 确认）
 
@@ -99,7 +99,7 @@ D1（生命周期裁决，推荐方案 A）
    `sources.capabilities / sources.doctor / source-sync-runs.get`，接线即可用）；
 3. 采集员引用 Langfuse trace 作为第三方取证素材（safe deep-link 进 Case/Episode）。
 
-凭证：source 用只读 key（隔离 project）；CaseLoop 自身 sink 写独立 project 并保留
+凭证：source 用只读 key（隔离 project）；AgentMED 自身 sink 写独立 project 并保留
 export receipt。测试 key 先行，跑通后统一轮换。
 
 ### 3-B 证据侧适配器（stage 10，3A-adapter）

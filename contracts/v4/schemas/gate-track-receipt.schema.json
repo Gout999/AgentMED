@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://caseloop.dev/contracts/v4/schemas/gate-track-receipt.schema.json",
-  "title": "CaseLoop GateTrackReceipt",
+  "$id": "https://agentmed.dev/contracts/v4/schemas/gate-track-receipt.schema.json",
+  "title": "AgentMED GateTrackReceipt",
   "description": "Immutable terminal result for one exact Gate track. GateReport references this record by exact id/revision/digest; this record never references a future GateReport.",
   "type": "object",
   "required": [
@@ -36,8 +36,8 @@
       "required": ["kind", "execution", "evaluator_version_digest"],
       "properties": {
         "kind": {"const": "AGENT_JUDGE"},
-        "execution": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/agent_execution_identity"},
-        "evaluator_version_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"}
+        "execution": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/agent_execution_identity"},
+        "evaluator_version_digest": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"}
       },
       "additionalProperties": false
     },
@@ -46,71 +46,71 @@
       "required": ["kind", "principal_id", "runner_digest", "run_receipt"],
       "properties": {
         "kind": {"enum": ["RULE_ENGINE", "DETERMINISTIC_RUNNER", "SANDBOX_RUNNER"]},
-        "principal_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"},
-        "runner_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
-        "run_receipt": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"}
+        "principal_id": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"},
+        "runner_digest": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+        "run_receipt": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"}
       },
       "additionalProperties": false
     }
   },
   "properties": {
-    "schema_version": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"},
-    "gate_track_receipt_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/gate_track_receipt_id"},
-    "workspace_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"},
-    "case_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/case_id"},
-    "gate_execution_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/gate_execution_id"},
+    "schema_version": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"},
+    "gate_track_receipt_id": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/gate_track_receipt_id"},
+    "workspace_id": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"},
+    "case_id": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/case_id"},
+    "gate_execution_id": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/gate_execution_id"},
     "resolution_contract": {
       "allOf": [
-        {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"},
+        {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"},
         {"properties": {"kind": {"const": "RESOLUTION_CONTRACT"}}}
       ]
     },
     "candidate_contract": {
       "allOf": [
-        {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"},
+        {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"},
         {"properties": {"kind": {"const": "CANDIDATE_CONTRACT"}}}
       ]
     },
     "candidate_revision": {
       "allOf": [
-        {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"},
+        {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"},
         {"properties": {"kind": {"const": "CANDIDATE_REVISION"}}}
       ]
     },
     "evaluation_plan": {
       "allOf": [
-        {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"},
+        {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"},
         {"properties": {"kind": {"const": "EVALUATION_PLAN"}}}
       ]
     },
     "track": {"$ref": "#/$defs/track"},
     "status": {"$ref": "#/$defs/status"},
-    "completeness": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/completeness"},
+    "completeness": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/completeness"},
     "executor": {"oneOf": [{"$ref": "#/$defs/agent_judge"}, {"$ref": "#/$defs/runner"}]},
     "evidence_receipts": {
       "type": "array",
-      "items": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"},
+      "items": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"},
       "minItems": 1,
       "uniqueItems": true
     },
     "evidence_facets": {
       "type": "array",
-      "items": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/evidence_facet"},
+      "items": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/evidence_facet"},
       "minItems": 1,
       "uniqueItems": true
     },
     "terminal_reason_digest": {
       "oneOf": [
-        {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+        {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
         {"type": "null"}
       ]
     },
-    "started_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
-    "completed_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
-    "authority_receipt_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"},
+    "started_at": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
+    "completed_at": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
+    "authority_receipt_id": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"},
     "immutable": {"const": true},
     "hash_rule": {"const": "jcs-rfc8785-v1+sha256(excluding:/gate_track_receipt_digest)"},
-    "gate_track_receipt_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"}
+    "gate_track_receipt_digest": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"}
   },
   "allOf": [
     {
@@ -140,7 +140,7 @@
       },
       "else": {
         "properties": {
-          "terminal_reason_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"}
+          "terminal_reason_digest": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"}
         }
       }
     }

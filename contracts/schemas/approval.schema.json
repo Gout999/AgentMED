@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://caseloop.dev/contracts/schemas/approval.schema.json",
+  "$id": "https://agentmed.dev/contracts/schemas/approval.schema.json",
   "title": "ApprovalGrant",
   "description": "审批授权（plan-v3 §2.3.3 / §2.3.9）。审批即批 WorkOrder 的 hash：grant 绑定 workorder_hash + nonce + expiry，nonce 一次性消费，三者共同防重放、防掉包。首次授权启动 release；R2 lifecycle 动作用 authorization 逐次绑定 action、release、目标 revision 与参数。zeroops common/approval.py 的静态 token 方案显式废弃，不得沿用。",
   "type": "object",

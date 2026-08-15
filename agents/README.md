@@ -1,7 +1,7 @@
-# agents/ —— CaseLoop Agent 团队定义
+# agents/ —— AgentMED Agent 团队定义
 
-> 当前可部署基线是 v3 `caseloop-team`，钉 AgentTeams **v1.2.1**；v4 不把这六个质量治理 Worker 重命名成 coding Agent。
-> 新 `caseloop-coding-team` 仍是 **APPROVED DESIGN / NOT CREATED / NOT RUN**。组织与仲裁的当前兼容基线见 `docs/spec.md` §8，v4 目标见 `docs/plan-v4.md` §6。
+> 当前可部署基线是 v3 `agentmed-team`，钉 AgentTeams **v1.2.1**；v4 不把这六个质量治理 Worker 重命名成 coding Agent。
+> 新 `agentmed-coding-team` 仍是 **APPROVED DESIGN / NOT CREATED / NOT RUN**。组织与仲裁的当前兼容基线见 `docs/spec.md` §8，v4 目标见 `docs/plan-v4.md` §6。
 
 ## 目录
 
@@ -14,7 +14,7 @@
 | `souls/case-officer.md` | 案例官（常设）：沉淀/案例库唯一写权/周报 |
 | `souls/attributionist.md` | 归因师（Phase 1 fixed warm-pool 普通 Worker CR）：实验计划建议 + 报告解读 |
 | `souls/repairer.md` | 修复师（Phase 1 fixed warm-pool 普通 Worker CR）：自由起草修复 → 不可变 WorkOrder |
-| `skills/caseloop-b1-loop/SKILL.md` | 六角色共用的 B1 taskflow/MCP/证据纪律；live evidence 绑定此文件 digest |
+| `skills/agentmed-b1-loop/SKILL.md` | 六角色共用的 B1 taskflow/MCP/证据纪律；live evidence 绑定此文件 digest |
 | `RUNBOOK.md` | 从零到团队可领单的安装 runbook（16 步，Step 0–15） |
 | `scripts/verify-soul-sync.py` | 校验 `team.yaml` 内联 soul 与 `souls/*.md` 逐字一致（防漂移） |
 | `OPEN-ISSUES.md` | 成稿对冻结设计的异议与解释（待主控裁决） |
@@ -23,11 +23,11 @@
 
 ## 关键事实
 
-- **编制**：6 Worker 全部在 Team 内，`quality-officer` 为唯一 `team_leader`；审批人 Human 为 `caseloop-approver`（Team admin）。
+- **编制**：6 Worker 全部在 Team 内，`quality-officer` 为唯一 `team_leader`；审批人 Human 为 `agentmed-approver`（Team admin）。
 - **双 Team 边界**：现有六人 Team 负责质量调查与 v3 客服 Scenario；未来 Coding Team 另含 `coding-planner`、`coding-generator`、`coding-reviewer`。Claude Code 是受控 child runtime，不是当前第七个 Worker，也不能在 Manager 身份下代跑后冒充 Agent。
 - **MCP 挂载**：`spec.mcpServers` 指向 Higress 网关 `/mcp-servers/<name>/mcp`；Authorization 由 controller 从 `/data/worker-creds/<name>.env` 自动注入。
 - **交接**：产物一律落 `shared/tasks/{task-id}/`，经 taskflow ack/submit 自动同步（S0-003）。
-- **B1 Skill**：六个 Worker 的 `spec.skills` 都固定为 `caseloop-b1-loop`；未取得 taskflow、Matrix 及该 Skill digest 回执时，live B1 不得通过。
+- **B1 Skill**：六个 Worker 的 `spec.skills` 都固定为 `agentmed-b1-loop`；未取得 taskflow、Matrix 及该 Skill digest 回执时，live B1 不得通过。
 - **串行纪律**：同一时刻活跃 worker ≤2、StepFun 8 RPM 全局预算（D-001）。
 - **工具名对拍**：SOUL §2 的工具名全部来自 `mcp-servers/README.md`（真实实现），签名见 `docs/spec.md` §9。
 

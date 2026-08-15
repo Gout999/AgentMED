@@ -108,7 +108,7 @@ def test_hash_mismatch_rejected(session, settings):
     approval_id = f"appr_test_{wo['hash'][:12]}"
     _grant(session, settings, workorder=wo)
     tampered = dict(wo)
-    tampered["diff"] = dict(wo["diff"], content_ref="minio://case-loop/evil.diff")
+    tampered["diff"] = dict(wo["diff"], content_ref="minio://agentmed/evil.diff")
     tampered["hash"] = workorder_hash(tampered)
     with pytest.raises(McpError) as exc:
         ApprovalService(session, settings).validate_for_release(

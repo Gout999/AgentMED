@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 OFFICIAL_STEPFUN_BASE_URL = "https://api.stepfun.com/step_plan/v1"
 
-JUDGE_RUBRIC = """你是 CaseLoop 评测裁判。请对"客服回复是否满足该探针的期望行为"打分（0-1）并给出 pass/fail。
+JUDGE_RUBRIC = """你是 AgentMED 评测裁判。请对"客服回复是否满足该探针的期望行为"打分（0-1）并给出 pass/fail。
 
 探针期望（expected_behavior）：
 - 描述：{description}

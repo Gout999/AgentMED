@@ -22,7 +22,7 @@
 是什么：client/server 的协议版本对齐机制。做到什么程度：2026-07-28 版起**取消握手**，改为每请求在 `_meta`/`MCP-Protocol-Version` 头声明版本，不匹配返回 `UnsupportedProtocolVersionError` 并列支持清单；≤2025-11-25 旧版靠 `initialize` 握手。真实世界里版本错配导致 agent 静默不调工具的事故频发（thingsboard、stripe 均有 issue）。和我们的关系：证明"tool schema/协议版本"是 agent 行为的真实变量，必须进版本集。[modelcontextprotocol.io/specification/draft/basic/versioning](https://modelcontextprotocol.io/specification/draft/basic/versioning)；错配案例 [github.com/thingsboard/thingsboard-mcp/issues/35](https://github.com/thingsboard/thingsboard-mcp/issues/35)（2026-04）
 
 **Claude Code 文件化配置（git 化事实标准）**
-是什么：`.claude/settings.json`（127+ 设置，权限/hooks 硬强制层）、`.claude/agents/*.md` 子 agent 定义（frontmatter）、`CLAUDE.md`、`.mcp.json`、skills 目录，设计为提交 git（`settings.local.json` 自动 gitignore）。和我们的关系：agent 配置"天然是文件、天然可 hash"——CaseLoop 的版本集 hash 对这类 agent 几乎零成本落地。注意已暴露的弱点：frontmatter 字段被全局设置静默覆盖（issue #64706），文件化≠强一致。[claudefa.st/blog/guide/settings-reference](https://claudefa.st/blog/guide/settings-reference)（2026-08）
+是什么：`.claude/settings.json`（127+ 设置，权限/hooks 硬强制层）、`.claude/agents/*.md` 子 agent 定义（frontmatter）、`CLAUDE.md`、`.mcp.json`、skills 目录，设计为提交 git（`settings.local.json` 自动 gitignore）。和我们的关系：agent 配置"天然是文件、天然可 hash"——AgentMED 的版本集 hash 对这类 agent 几乎零成本落地。注意已暴露的弱点：frontmatter 字段被全局设置静默覆盖（issue #64706），文件化≠强一致。[claudefa.st/blog/guide/settings-reference](https://claudefa.st/blog/guide/settings-reference)（2026-08）
 
 **OpenAI Prompts / Agents SDK**
 做到什么程度：dashboard 创建的 prompt 有版本号，Agents SDK 可按 id+version 引用；但 Prompt Objects API 将于 **2026-11-30 下线**，官方迁移方向是"代码内 versioned prompts"——即承认 git 化才是归宿。【事实，截至 2026-06】[community.openai.com/t/.../1382593](https://community.openai.com/t/deprecation-notice-prompt-objects-in-the-api-will-be-shut-down-on-november-30th-2026/1382593)
@@ -49,12 +49,12 @@ Docker checkpoint 至今 experimental；5GB 堆 checkpoint 40s/restore 20s；Ubu
 覆盖 model/dataset/agent/SDK 清单，面向供应链安全与监管申报（OWASP/Linux Foundation 双标准）。和我们的关系：清单格式可借，但它不管"哪个组件变化导致行为变化"，更没有绑定审批 hash。[cyclonedx.org/capabilities/mlbom](https://cyclonedx.org/capabilities/mlbom/)
 
 **Provider 端确定性的天花板**
-OpenAI `seed`+`system_fingerprint` 只是 best-effort；论文实测同一模型换推理后端，greedy decoding 下输出仍有方差，jailbreak 率波动近 9%，建议多 seed 平均。和我们的关系：全 live 评测的噪声地板客观存在，CaseLoop 的 Δ+95%CI 统计设计恰好是对症方案。[arxiv.org/html/2605.19537v2](https://arxiv.org/html/2605.19537v2)（2026-05）
+OpenAI `seed`+`system_fingerprint` 只是 best-effort；论文实测同一模型换推理后端，greedy decoding 下输出仍有方差，jailbreak 率波动近 9%，建议多 seed 平均。和我们的关系：全 live 评测的噪声地板客观存在，AgentMED 的 Δ+95%CI 统计设计恰好是对症方案。[arxiv.org/html/2605.19537v2](https://arxiv.org/html/2605.19537v2)（2026-05）
 
 **ByteDance DeerFlow 评测平台 RFC（交叉验证）**
 其 roadmap 明写"Capture model/config/commit/tool/suite fingerprints"+ 复用 replay golden 基础设施——一线团队的 agent 评测平台正在收敛到"指纹采集+回放"组合，与我们版本集思路同向，但同样没有做到 hash 绑定审批。[github.com/bytedance/deer-flow/issues/4083](https://github.com/bytedance/deer-flow/issues/4083)（2026-07-11）
 
-## 3. 与 CaseLoop 的对照表
+## 3. 与 AgentMED 的对照表
 
 | 可优先评估复用 | 需适配或验证 | 本轮样本未见相同组合 |
 |---|---|---|
@@ -77,7 +77,7 @@ OpenAI `seed`+`system_fingerprint` 只是 best-effort；论文实测同一模型
 9. Docker checkpoint/CRIU 截至 2026 年仍 experimental，新内核上可挂起，不适合作为生产依赖 — https://github.com/checkpoint-restore/criu/issues/2516 ；https://www.devzero.io/blog/checkpoint-restore-with-criu（2025-07）
 10. provider 端确定性无保证：seed/system_fingerprint 仅 best-effort，换推理后端 greedy decoding 也有方差，需多 seed 平均 — https://arxiv.org/html/2605.19537v2（2026-05）
 
-## 5. 对 CaseLoop-for-Agents 的设计启示
+## 5. 对 AgentMED-for-Agents 的设计启示
 
 1. **把六元组作为可扩展 MVP 假设**：system prompt + skill manifest + tool schema + model snapshot + harness commit + environment image。后续根据可重现性、审批和用户工作加入 memory/RAG、policy、secret/network 等组件，不能直接定成通用标准。
 2. **sandbox/fork 采用 adapter-first**：优先评估 Modal、E2B、Daytona 等原语；按隔离、数据驻留、自托管、可靠性、成本和退出机制验收。不满足国内用户条件时保留兼容性重实现权。
@@ -88,4 +88,4 @@ OpenAI `seed`+`system_fingerprint` 只是 best-effort；论文实测同一模型
 
 ## 6. 当前综合结论
 
-环境固化、配置版本和录制回放已有可复用基线。CaseLoop 需要从重现、审批、归因和用户部署要求推导一个可扩展的最小 VersionSet，并明确各 replay level 的证据能力；本轮样本未见完全相同组合，但这不等于全球无人做，也不自动说明六元组已经定稿。
+环境固化、配置版本和录制回放已有可复用基线。AgentMED 需要从重现、审批、归因和用户部署要求推导一个可扩展的最小 VersionSet，并明确各 replay level 的证据能力；本轮样本未见完全相同组合，但这不等于全球无人做，也不自动说明六元组已经定稿。

@@ -1,4 +1,4 @@
-# CaseLoop 七个子状态机（plan-v3 §2.3.5）
+# AgentMED 七个子状态机（plan-v3 §2.3.5）
 # 纪律：状态权威源 = 控制面数据库（PG aggregate/event）；LLM 永远不是状态权威源。
 # 每个状态机：states 枚举（含 initial/terminal）+ transitions 迁移表 + failure_semantics。
 # 七种必备失败语义（§2.3.5 点名）：重复与合并 / 审批拒绝与过期 / Worker 丢失 /

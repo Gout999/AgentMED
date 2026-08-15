@@ -1,10 +1,10 @@
 ---
 name: langfuse
-description: Langfuse credential and endpoint quick reference for caseloop evidence work. Read-only.
+description: Langfuse credential and endpoint quick reference for agentmed evidence work. Read-only.
 assign_when: Any task needs Langfuse API access details or credential handling rules.
 ---
 
-# langfuse（caseloop 版）
+# langfuse（agentmed 版）
 
 凭证在 `config/langfuse.env`（chmod 600）：LANGFUSE_BASE_URL / LANGFUSE_PUBLIC_KEY / LANGFUSE_SECRET_KEY。
 HTTP Basic auth（pk:sk）。只读纪律：不写 scores/observations，凭证不入聊天、不入产物。

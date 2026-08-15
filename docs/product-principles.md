@@ -1,4 +1,4 @@
-# CaseLoop 产品原则
+# AgentMED 产品原则
 
 > 状态：**V5 产品边界与施工基线已接受；runtime 分阶段实现中** ｜ 生效日期：2026-08-10 ｜ 基线接受：2026-08-11
 >
@@ -6,7 +6,7 @@
 
 ## 1. 产品身份
 
-CaseLoop 最终要做成一个长期维护的、**面向 AI 应用的 Agent-native 治理运营控制面**。
+AgentMED 最终要做成一个长期维护的、**面向 AI 应用的 Agent-native 治理运营控制面**。
 
 它服务的是已经在开发或运行 AI Agent / LLM 应用、需要处理坏结果、验证修复和控制发布风险的团队。被治理的顶层对象是完整 `AIApplication`，Agent 是其中一种一等 `SystemComponent`；应用代码、模型、Prompt、RAG、Skill/MCP/tool、Policy、Memory 与 Runtime 都可以成为系统版本、归因、评测和变更的一部分。
 
@@ -15,11 +15,11 @@ CaseLoop 最终要做成一个长期维护的、**面向 AI 应用的 Agent-nati
 候选是否真正解决问题，以及下一步还缺什么证据。版本、评测、审批、发布和恢复内核
 都服务于这条用户旅程，不能反过来成为首用门槛。
 
-CaseLoop 同时提供两类产品表面：人类 Console 用于查看、审批、干预、复盘和审计；HTTP、CLI、MCP、A2A 与 SDK 让 CI、客户应用和其他 Agent 把 CaseLoop 作为自身治理能力调用。Console 和 Agent-native 入口必须复用同一 canonical intent 与 PostgreSQL 权威内核，不能形成两套业务语义。
+AgentMED 同时提供两类产品表面：人类 Console 用于查看、审批、干预、复盘和审计；HTTP、CLI、MCP、A2A 与 SDK 让 CI、客户应用和其他 Agent 把 AgentMED 作为自身治理能力调用。Console 和 Agent-native 入口必须复用同一 canonical intent 与 PostgreSQL 权威内核，不能形成两套业务语义。
 
-小智客服是当前第一个参考工作负载，用来跑通纵向闭环；它不是 CaseLoop 的最终产品边界，也不代表通用 Agent 或 AI 应用系统接入已经完成。
+小智客服是当前第一个参考工作负载，用来跑通纵向闭环；它不是 AgentMED 的最终产品边界，也不代表通用 Agent 或 AI 应用系统接入已经完成。
 
-我们的目标不是击败某个闭源产品，也不是为了寻找“市场空白”而决定功能。需求是否进入 CaseLoop，首先看它是否解决目标用户的真实工作，而不是看同类产品有没有做、会不会功能重叠。
+我们的目标不是击败某个闭源产品，也不是为了寻找“市场空白”而决定功能。需求是否进入 AgentMED，首先看它是否解决目标用户的真实工作，而不是看同类产品有没有做、会不会功能重叠。
 
 ## 2. 用户需求决定范围
 
@@ -29,15 +29,15 @@ CaseLoop 同时提供两类产品表面：人类 Console 用于查看、审批�
 2. 这项能力是否属于从 AI 应用资产与版本、质量信号、取证、归因、候选修复、评测门禁到发布、恢复与复盘的治理闭环；
 3. 它是否能在开源、自托管和可维护的前提下可靠交付；
 4. 它是否减少用户定义问题、拼接证据和确认修复的净工作，而不是只增加登记与审批；
-5. 它与现有组件应当集成、复用还是由 CaseLoop 自己实现。
+5. 它与现有组件应当集成、复用还是由 AgentMED 自己实现。
 
-“已有项目做过”不是删除需求的理由。成熟实现可以成为设计参考、兼容对象或依赖；如果目标用户仍需要统一体验、私有部署、国内适配、确定性治理或长期可维护性，CaseLoop 可以实现自己的兼容组件。
+“已有项目做过”不是删除需求的理由。成熟实现可以成为设计参考、兼容对象或依赖；如果目标用户仍需要统一体验、私有部署、国内适配、确定性治理或长期可维护性，AgentMED 可以实现自己的兼容组件。
 
 ## 3. 与其他项目的关系
 
-Langfuse、OpenTelemetry、Phoenix、各类 eval 框架、Agent runtime、sandbox、身份与策略系统，以及 CMDB、ITSM、SRE、CI/CD、供应链和 FinOps 系统，首先是可学习、可集成的相关项目，不是用来反向定义 CaseLoop 边界的“敌人”。
+Langfuse、OpenTelemetry、Phoenix、各类 eval 框架、Agent runtime、sandbox、身份与策略系统，以及 CMDB、ITSM、SRE、CI/CD、供应链和 FinOps 系统，首先是可学习、可集成的相关项目，不是用来反向定义 AgentMED 边界的“敌人”。
 
-CaseLoop 应当：
+AgentMED 应当：
 
 - 优先研究公开文档、协议、接口、数据模型和已验证的工程模式；
 - 对许可证兼容的开源实现，可依法复用并保留许可证与归属说明；
@@ -54,17 +54,17 @@ CaseLoop 应当：
 | 直接集成 | 已有项目稳定、许可证与部署方式兼容，且能满足用户的数据、权限、可靠性和维护要求 |
 | 复用开源实现 | 代码质量与许可证可接受，长期维护成本低于重写，并能清楚保留来源与修改记录 |
 | 兼容性重实现 | 公开契约有价值，但现有实现不适合国内环境、私有部署、数据边界或统一治理需求 |
-| 自行设计 | 没有可用实现，或确定性控制、证据绑定、审计与失败语义必须由 CaseLoop 持有 |
+| 自行设计 | 没有可用实现，或确定性控制、证据绑定、审计与失败语义必须由 AgentMED 持有 |
 
 最终选择看用户价值、可靠性、安全边界、许可证、部署兼容性和长期维护成本，不看“会不会和别人做同样的事”。
 
 ## 5. 中国用户优先，协议保持开放
 
-CaseLoop 首先把国内团队的使用条件做好：中文文档、自托管与私有化、国内模型和云服务、飞书/企业微信等协作渠道、数据驻留与受限网络环境，都应成为一等需求。
+AgentMED 首先把国内团队的使用条件做好：中文文档、自托管与私有化、国内模型和云服务、飞书/企业微信等协作渠道、数据驻留与受限网络环境，都应成为一等需求。
 
 “国内优先”不等于把核心锁死在某一家厂商。核心契约应保持 provider-neutral；StepFun、飞书、AgentTeams、Langfuse 等是当前或计划中的实现与适配器，不能被写成所有用户必须采用的产品身份。
 
-关于“国内没有同类完整项目”的判断只能作为待持续验证的研究结论，不能写成绝对事实，也不能成为 CaseLoop 存在的唯一理由。
+关于“国内没有同类完整项目”的判断只能作为待持续验证的研究结论，不能写成绝对事实，也不能成为 AgentMED 存在的唯一理由。
 
 ## 6. 不变的安全与证据边界
 
@@ -90,16 +90,16 @@ CaseLoop 首先把国内团队的使用条件做好：中文文档、自托管�
 1. 核心治理层级为 `Workspace → Project → AIApplication → Environment → SystemComponent`；Agent 是组件类型，不再承载完整应用系统边界；
 2. `SystemVersionSet` 必须不可变地绑定会改变 AI 行为、权限或证据解释的组件；无法固定的远程依赖明确标记 assurance 与 `UNKNOWN`，不能伪装成 exact binding；
 3. `SystemEpisodeView` 用于关联一次用户体验或业务过程中的应用、Agent、模型、RAG、工具和外部作用证据；单个 trace/span 只是其来源之一。Gate/归因必须绑定带 exact receipt set、assignment generation 和 watermark 的不可变 `SystemEpisodeSnapshot`，不能绑定会变化的 view；
-4. CaseLoop 自身应接入标准化可观测链路；被治理系统通过可插拔 Evidence Source 读取 Langfuse、OpenTelemetry、Phoenix、CI、repo、runtime 或其他来源。Langfuse 是适配器，不是权威状态库；
+4. AgentMED 自身应接入标准化可观测链路；被治理系统通过可插拔 Evidence Source 读取 Langfuse、OpenTelemetry、Phoenix、CI、repo、runtime 或其他来源。Langfuse 是适配器，不是权威状态库；
 5. 进入 Case、归因和 Gate 的证据需要被固化、去重、校验完整性并绑定 digest。采集范围、脱敏、采样、丢失、留存和权限不足必须显式表达为 `PARTIAL/UNKNOWN`；
-6. 外部 Agent、CaseLoop 内部 Worker、被治理 Agent、runtime session、provider/model、确定性 Controller/Executor 和只读 Exporter 是不同身份，权限、作者和 receipt 必须分别记录；
+6. 外部 Agent、AgentMED 内部 Worker、被治理 Agent、runtime session、provider/model、确定性 Controller/Executor 和只读 Exporter 是不同身份，权限、作者和 receipt 必须分别记录；
 7. Canonical HTTP intent 是能力基线；CLI、MCP、A2A、SDK 和 Console 是薄 Adapter。外部 Agent 可以报告、调查、提交候选、请求测评和请求动作，但不能 human approve 或取得内部 release execute authority；
 8. Durable Work、不可变 Candidate/Evaluation/Gate，以及在请求部署时使用的 pre-Gate
    ReleasePlan、精确 WorkOrder/人类审批、幂等外部动作、`UNKNOWN` reconcile、rollback 和
    compensation 是 V5 必须继承的治理内核；verification-only PASS 不产生 WorkOrder，
    V4 closed schema 通过同 owner 的 schema-major-2 system profile 泛化，不能原位继承；
-9. 当前 `caseloop-team`、计划中的 `caseloop-coding-team`、AgentTeams、Claude Code 和具体模型都降为可替换的参考 Worker/Runtime/Client Adapter，不是 V5 内核或用户必装依赖；
-10. 通用 CMDB、观测存储、Agent runtime、CI/CD、IAM、ITSM、账单和 GRC 平台通过 Adapter 对接。CaseLoop 自身持有 AI 系统版本、质量案件、证据绑定、变更授权、执行对账和恢复事实。
+9. 当前 `agentmed-team`、计划中的 `agentmed-coding-team`、AgentTeams、Claude Code 和具体模型都降为可替换的参考 Worker/Runtime/Client Adapter，不是 V5 内核或用户必装依赖；
+10. 通用 CMDB、观测存储、Agent runtime、CI/CD、IAM、ITSM、账单和 GRC 平台通过 Adapter 对接。AgentMED 自身持有 AI 系统版本、质量案件、证据绑定、变更授权、执行对账和恢复事实。
 11. First Useful Case 必须记录验收标准来源；来源不足时诚实显示
     `NEEDS_ACCEPTANCE_CRITERIA`，而不是让 Agent 从 Issue 文本自动制造金标准；
 12. 首批同时支持轻量的代码 Issue 验证路径与完整的 AI 行为治理路径。代码库或离线库可在

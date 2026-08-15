@@ -21,10 +21,10 @@ def _client(live_settings):
 
 @pytest.mark.live
 def test_b1_live_experiment_attributed_prompt(live_settings, live_probe_set, b1_protocol_reps, _client):
-    bad_versionset_id = os.environ.get("CASELOOP_B1_BAD_VERSIONSET_ID")
-    good_versionset_id = os.environ.get("CASELOOP_B1_GOOD_VERSIONSET_ID")
+    bad_versionset_id = os.environ.get("AGENTMED_B1_BAD_VERSIONSET_ID")
+    good_versionset_id = os.environ.get("AGENTMED_B1_GOOD_VERSIONSET_ID")
     if not bad_versionset_id or not good_versionset_id:
-        pytest.skip("CASELOOP_B1_BAD_VERSIONSET_ID and CASELOOP_B1_GOOD_VERSIONSET_ID are required")
+        pytest.skip("AGENTMED_B1_BAD_VERSIONSET_ID and AGENTMED_B1_GOOD_VERSIONSET_ID are required")
     digest = frozen_digest(live_probe_set)
     plan = ExperimentPlan(
         experiment_id="exp_liveb1000000000000001",
@@ -94,8 +94,8 @@ def test_b1_live_experiment_attributed_prompt(live_settings, live_probe_set, b1_
 
 @pytest.mark.live
 def test_b1_live_exact_candidates_do_not_mutate_active(live_settings, live_probe_set, _client):
-    bad_versionset_id = os.environ.get("CASELOOP_B1_BAD_VERSIONSET_ID")
-    good_versionset_id = os.environ.get("CASELOOP_B1_GOOD_VERSIONSET_ID")
+    bad_versionset_id = os.environ.get("AGENTMED_B1_BAD_VERSIONSET_ID")
+    good_versionset_id = os.environ.get("AGENTMED_B1_GOOD_VERSIONSET_ID")
     if not bad_versionset_id or not good_versionset_id:
         pytest.skip("immutable B1 VersionSet ids are required")
     active_before = (_client.list_versionsets(status="active").get("items") or [])

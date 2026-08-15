@@ -1,12 +1,12 @@
 ---
-name: caseloop-b1-loop
-description: Execute and evidence the Phase 1 B1 prompt-regression loop through role-scoped CaseLoop MCP tools.
-assign_when: A caseloop-team task references fixture B1, a Case ID, or a prompt-regression investigation.
+name: agentmed-b1-loop
+description: Execute and evidence the Phase 1 B1 prompt-regression loop through role-scoped AgentMED MCP tools.
+assign_when: A agentmed-team task references fixture B1, a Case ID, or a prompt-regression investigation.
 ---
 
-# CaseLoop B1 loop
+# AgentMED B1 loop
 
-Use this skill only inside the fixed Phase 1 `caseloop-team` warm pool. It does
+Use this skill only inside the fixed Phase 1 `agentmed-team` warm pool. It does
 not grant authority: the Control Plane remains the source of lifecycle state,
 Release Controller remains the only Quality API writer, and a human approval
 adapter remains the only ApprovalGrant authority.
@@ -14,7 +14,7 @@ adapter remains the only ApprovalGrant authority.
 ## Required execution discipline
 
 1. Acknowledge the assigned AgentTeams task with `taskflow(ack_task)` before
-   reading or changing CaseLoop state. Keep the returned task receipt.
+   reading or changing AgentMED state. Keep the returned task receipt.
 2. Use only the MCP projection declared for your exact Worker in
    `agents/team.yaml`. A missing tool, `FORBIDDEN`, `LEASE_LOST`, `UNKNOWN`,
    timeout, empty receipt, or digest mismatch is a blocking result.
@@ -71,7 +71,7 @@ the deployment-pinned Ed25519 evidence-export key. The runner has only the
 public key and rejects unsigned, re-signed, or mutated receipts.
 
 The Agent runtime has no domain authority. It proposes these immutable
-products; the deterministic CaseLoop executor validates them and performs
+products; the deterministic AgentMED executor validates them and performs
 state transitions. Post-action source IDs in the completion handoff are
 observations for reconciliation, not a claim that an LLM directly authored
 authoritative state.

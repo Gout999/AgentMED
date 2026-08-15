@@ -1,6 +1,6 @@
 """spike-mcp：Phase 0A 验证用最小 MCP Server（streamable-http）。
 
-提供一个工具 caseloop_ping：原样回显 text 并附上服务器时间。
+提供一个工具 agentmed_ping：原样回显 text 并附上服务器时间。
 仅用于验证 Higress 网关侧 MCP 注册 → Consumer 授权 → Worker 调用链路。
 
 注意：Higress mcp-proxy 会把原始请求路径（/mcp-servers/<name>/mcp）
@@ -15,7 +15,7 @@ mcp = FastMCP("spike-mcp")
 
 
 @mcp.tool()
-def caseloop_ping(text: str) -> str:
+def agentmed_ping(text: str) -> str:
     """回显 text 并附服务器时间戳（spike 验证用）。"""
     return f"PONG | {text} | {datetime.datetime.now(datetime.UTC).isoformat()}"
 

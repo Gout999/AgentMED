@@ -1,13 +1,13 @@
-# eval-harness —— CaseLoop 评测门禁 / 对照实验执行器 / 变异巡检 / 质量周报
+# eval-harness —— AgentMED 评测门禁 / 对照实验执行器 / 变异巡检 / 质量周报
 # Python 3.11+；依赖钉版本（见 requirements.txt / requirements-dev.txt）
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "caseloop-eval-harness"
+name = "agentmed-eval-harness"
 version = "0.1.0"
-description = "CaseLoop 质量自治底座「考试局」：双轨门禁 + 5-cell 对照实验执行器 + 变异巡检 + 质量周报"
+description = "AgentMED 质量自治底座「考试局」：双轨门禁 + 5-cell 对照实验执行器 + 变异巡检 + 质量周报"
 requires-python = ">=3.11"
 dependencies = [
     "requests==2.34.2",

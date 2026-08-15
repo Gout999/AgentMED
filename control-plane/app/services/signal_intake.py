@@ -217,7 +217,7 @@ class SignalIntakeService:
         if _has_sensitive_key(source.config or {}):
             raise SignalIntakeError("INTERNAL_ERROR")
         provider_origin = (source.config or {}).get(
-            "provider_origin", "https://caseloop.local"
+            "provider_origin", "https://agentmed.local"
         )
         if not isinstance(provider_origin, str) or not provider_origin.startswith(
             ("https://", "http://")
@@ -555,7 +555,7 @@ class SignalIntakeService:
         content_payload = submission.content.model_dump(mode="json")
         content_digest = canonical_digest(content_payload)
         content_ref = {
-            "uri": f"caseloop-artifact://signal/{signal_id}/content",
+            "uri": f"agentmed-artifact://signal/{signal_id}/content",
             "digest": content_digest,
             "media_type": "application/json",
         }

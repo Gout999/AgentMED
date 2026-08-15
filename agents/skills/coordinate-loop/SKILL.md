@@ -4,7 +4,7 @@ description: Drive one complaint loop end-to-end as Team Leader. Dispatch role t
 assign_when: A complaint Case is OPEN/UNTRIAGED or a stage handoff returns to the leader.
 ---
 
-# coordinate-loop（caseloop 版）
+# coordinate-loop（agentmed 版）
 
 Team Leader。串行驱动投诉闭环：取证 → 归因 → 修复起草 → 门禁 → 人工审批。
 
@@ -24,7 +24,7 @@ Team Leader。串行驱动投诉闭环：取证 → 归因 → 修复起草 → 
 1. 读 case（`case.get`）：分诊建议（优先级/归类）→ `case.submit_suggestion(kind=triage)`；
 2. 派单 collector：Matrix @完整 ID，交付物落 `shared/tasks/{task-id}/`，经 taskflow ack/submit；
 3. 每步后重读 `case.timeline`，按证据推进归因→修复→门禁；
-4. 门禁通过后交人工审批（caseloop-approver），等待 Matrix 审批事件，不自行恢复自动流转；
+4. 门禁通过后交人工审批（agentmed-approver），等待 Matrix 审批事件，不自行恢复自动流转；
 5. 人工否决/验证不过 → `case.escalate` 或回退归因。
 
 ## 纪律

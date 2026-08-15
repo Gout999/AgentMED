@@ -1,4 +1,4 @@
-# CaseLoop 产品需求文档 v5
+# AgentMED 产品需求文档 v5
 
 > 状态：**ACCEPTED V5 CONSTRUCTION BASELINE（2026-08-11；freeze: `8dd25ca` + `b3727d7`）/ PARTIALLY IMPLEMENTED BY STAGE**
 >
@@ -19,7 +19,7 @@ repository、human-authorized external 或 production 能力已经实现。当�
 
 ## 1. 产品定义
 
-CaseLoop V5 是一个**面向 AI 应用的 Agent-native 治理运营控制面**。它把 AI
+AgentMED V5 是一个**面向 AI 应用的 Agent-native 治理运营控制面**。它把 AI
 应用运行中散落的用户反馈、Issue、trace、日志、评测、代码、配置、数据、工具、
 发布和外部作用组织成一条可追踪、可验证、可批准、可恢复的系统治理闭环：
 
@@ -36,7 +36,7 @@ Signal → QualityCase → confirmed AcceptanceCriteria
        → Closure → RegressionAsset / Problem
 ```
 
-CaseLoop 不是通用 CMDB、trace 存储、Agent runtime、CI/CD、ITSM、IAM、云账单或
+AgentMED 不是通用 CMDB、trace 存储、Agent runtime、CI/CD、ITSM、IAM、云账单或
 合规判断引擎。它自身持有 AI 系统版本、案件、证据绑定、变更授权、执行对账和恢复
 事实，并通过 Adapter 对接已有平台。
 
@@ -201,9 +201,9 @@ nodes、assignment generation、watermark、coverage、missing 和 digest seal �
 移动 desired pointer 不等于 observed 已切换；动作获批不等于 effect 已成功；rollback
 也不能撤销已经发生的不可逆 effect。
 
-`ExternalEffectReceipt` 可来自 CaseLoop 发起的 ExternalOperation，也可来自被治理应用
+`ExternalEffectReceipt` 可来自 AgentMED 发起的 ExternalOperation，也可来自被治理应用
 自身的 exact Episode/run；两种 origin 必须是互斥 union，不能强行把应用既有副作用
-伪装成 CaseLoop 执行动作。
+伪装成 AgentMED 执行动作。
 
 ### 5.5 Case 与 Problem
 
@@ -271,8 +271,8 @@ V3 已有名为 `ChangeSet` 的 Scenario aggregate，V5 不复用该名称承载
 CLI 提供两个低摩擦 workflow helper：
 
 ```text
-caseloop init <repo>
-caseloop case from-issue <github-url>
+agentmed init <repo>
+agentmed case from-issue <github-url>
 ```
 
 `init` 在本地只读发现 git revision、项目/运行描述和可识别的 Prompt、模型、RAG 配置，
@@ -464,7 +464,7 @@ evidence.get
 ```
 
 V2 canonical identity 是 `(api_major, intent_name)`。CLI 默认继续调用 V1；V5 必须显式
-`caseloop --api-version 2 ...`，URL/header/response major 不一致或降级一律拒绝并审计。
+`agentmed --api-version 2 ...`，URL/header/response major 不一致或降级一律拒绝并审计。
 `system-manifests.import` 是 trusted one-shot bootstrap：它在一个本地 PostgreSQL 事务中
 依次调用 Application、Environment、Component、Revision、Topology、Version、Bootstrap
 Attestation 和 Assignment 的各自 Controller；任一步失败整笔回滚，不能让
@@ -531,8 +531,8 @@ Application/Case、Candidate/Gate/Approval 与 Release/Observed/Recovery。Syste
 
 ### P0 — 一个 AI 应用的可信闭环
 
-- CLI-first onboarding：`caseloop init <repo>` 生成 manifest 草稿，
-  `caseloop case from-issue <url>` 形成只读 source snapshot、Case 和验收标准草稿；
+- CLI-first onboarding：`agentmed init <repo>` 生成 manifest 草稿，
+  `agentmed case from-issue <url>` 形成只读 source snapshot、Case 和验收标准草稿；
 - Application/System catalog target；比赛仅需确认后的一次性 manifest import；
 - SystemVersionSet；
 - Signal/Case、CaseReadiness、AcceptanceCriteria/BadcaseSpec、SystemEpisodeView/Snapshot；
@@ -576,8 +576,8 @@ VersionSet、AI 行为评测和 observed verification 都有实际对象：
 
 ```text
 真实 AI 开源项目 GitHub Issue（只读）
-→ 外部 Coding Agent 经 CLI 调用 CaseLoop
-→ caseloop init/case from-issue + manifest draft/confirm
+→ 外部 Coding Agent 经 CLI 调用 AgentMED
+→ agentmed init/case from-issue + manifest draft/confirm
 → QualityCase/Application binding + confirmed AcceptanceCriteria
 → base fail 的本地复现与单一主要变更面 patch Candidate
 → 预先 seal ReleasePlan

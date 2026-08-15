@@ -93,7 +93,7 @@ def _settings(**changes: object) -> Settings:
         "public_cursor_signing_key": SecretStr(
             "bootstrap-cursor-signing-key-that-is-independent"
         ),
-        "public_auth_issuer": "https://auth.caseloop.dev",
+        "public_auth_issuer": "https://auth.agentmed.dev",
         "require_mcp_role_tokens": False,
     }
     values.update(changes)

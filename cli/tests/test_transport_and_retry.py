@@ -9,9 +9,9 @@ from pathlib import Path
 import httpx
 import pytest
 
-from caseloop_cli.client import PublicApiClient, RuntimeConfig, validate_base_url
-from caseloop_cli.errors import CliError, ExitFamily
-from caseloop_cli.main import run
+from agentmed_cli.client import PublicApiClient, RuntimeConfig, validate_base_url
+from agentmed_cli.errors import CliError, ExitFamily
+from agentmed_cli.main import run
 from .wire_samples import capabilities as capabilities_success
 from .wire_samples import digest
 from .wire_samples import evidence as evidence_success
@@ -34,12 +34,12 @@ def _fixture(name: str) -> dict[str, object]:
 @pytest.mark.parametrize(
     "url",
     [
-        "http://caseloop.example",
+        "http://agentmed.example",
         "ftp://127.0.0.1:8090",
-        "https://user:password@caseloop.example",
-        "https://caseloop.example/base-path",
-        "https://caseloop.example?query=yes",
-        "https://caseloop.example#fragment",
+        "https://user:password@agentmed.example",
+        "https://agentmed.example/base-path",
+        "https://agentmed.example?query=yes",
+        "https://agentmed.example#fragment",
     ],
 )
 def test_unsafe_or_ambiguous_base_url_is_rejected(url: str) -> None:
@@ -54,7 +54,7 @@ def test_unsafe_or_ambiguous_base_url_is_rejected(url: str) -> None:
         "http://127.0.0.1:8090",
         "http://[::1]:8090",
         "http://localhost:8090",
-        "https://caseloop.example",
+        "https://agentmed.example",
     ],
 )
 def test_loopback_http_and_remote_https_are_allowed(url: str) -> None:
@@ -85,7 +85,7 @@ def test_http_client_disables_environment_proxy_and_redirects(monkeypatch) -> No
                 request=request,
                 headers={
                     "content-type": "application/json",
-                    "x-caseloop-contract-version": "1.0",
+                    "x-agentmed-contract-version": "1.0",
                 },
                 json=success_for(request),
             )
@@ -116,7 +116,7 @@ def test_signal_network_retry_reuses_exact_body_and_authority_headers() -> None:
             201,
             headers={
                 "content-type": "application/json",
-                "x-caseloop-contract-version": "1.0",
+                "x-agentmed-contract-version": "1.0",
             },
             json=success_for(request),
         )
@@ -138,7 +138,7 @@ def test_signal_network_retry_reuses_exact_body_and_authority_headers() -> None:
             "--reporter-ref",
             "maintainer-01J0000000000001",
         ],
-        env={"CASELOOP_PUBLIC_TOKEN": TOKEN},
+        env={"AGENTMED_PUBLIC_TOKEN": TOKEN},
         stdout=stdout,
         stderr=stderr,
         transport=httpx.MockTransport(handler),
@@ -187,7 +187,7 @@ def test_explicit_idempotency_key_requires_explicit_stable_event_fields(missing:
     stderr = io.StringIO()
     exit_code = run(
         argv,
-        env={"CASELOOP_PUBLIC_TOKEN": TOKEN},
+        env={"AGENTMED_PUBLIC_TOKEN": TOKEN},
         stdout=io.StringIO(),
         stderr=stderr,
     )
@@ -210,7 +210,7 @@ def test_redirect_is_not_followed_and_server_body_or_token_is_not_echoed() -> No
     stderr = io.StringIO()
     exit_code = run(
         ["--api-url", BASE, "--workspace-id", WORKSPACE, "capabilities", "get"],
-        env={"CASELOOP_PUBLIC_TOKEN": TOKEN},
+        env={"AGENTMED_PUBLIC_TOKEN": TOKEN},
         stdout=io.StringIO(),
         stderr=stderr,
         transport=httpx.MockTransport(handler),
@@ -230,7 +230,7 @@ def test_success_response_that_reflects_credential_fails_closed() -> None:
             200,
             headers={
                 "content-type": "application/json",
-                "x-caseloop-contract-version": "1.0",
+                "x-agentmed-contract-version": "1.0",
             },
             json={"schema_version": "1.0", "unexpected": TOKEN},
         )
@@ -239,7 +239,7 @@ def test_success_response_that_reflects_credential_fails_closed() -> None:
     stderr = io.StringIO()
     exit_code = run(
         ["--api-url", BASE, "--workspace-id", WORKSPACE, "capabilities", "get"],
-        env={"CASELOOP_PUBLIC_TOKEN": TOKEN},
+        env={"AGENTMED_PUBLIC_TOKEN": TOKEN},
         stdout=stdout,
         stderr=stderr,
         transport=httpx.MockTransport(handler),
@@ -282,7 +282,7 @@ def test_arbitrary_200_or_public_error_200_cannot_become_capabilities_success(
             200,
             headers={
                 "content-type": "application/json",
-                "x-caseloop-contract-version": "1.0",
+                "x-agentmed-contract-version": "1.0",
             },
             json=payload,
         )
@@ -304,7 +304,7 @@ def test_success_envelope_must_bind_workspace_and_stable_request_id(binding: str
         "GET",
         BASE + "/api/v1/capabilities",
         headers={
-            "X-CaseLoop-Workspace-ID": WORKSPACE,
+            "X-AgentMED-Workspace-ID": WORKSPACE,
             "X-Request-ID": "req_01J0000000000001",
         },
     )
@@ -320,7 +320,7 @@ def test_success_envelope_must_bind_workspace_and_stable_request_id(binding: str
             200,
             headers={
                 "content-type": "application/json",
-                "x-caseloop-contract-version": "1.0",
+                "x-agentmed-contract-version": "1.0",
             },
             json=payload,
         )
@@ -354,7 +354,7 @@ def test_signal_success_binds_exact_idempotency_resource_and_no_trace_chain(drif
         "POST",
         BASE + "/api/v1/signals",
         headers={
-            "X-CaseLoop-Workspace-ID": WORKSPACE,
+            "X-AgentMED-Workspace-ID": WORKSPACE,
             "X-Request-ID": "req_01J0000000000002",
             "Idempotency-Key": "signal-submit-0001",
         },
@@ -377,7 +377,7 @@ def test_signal_success_binds_exact_idempotency_resource_and_no_trace_chain(drif
             201,
             headers={
                 "content-type": "application/json",
-                "x-caseloop-contract-version": "1.0",
+                "x-agentmed-contract-version": "1.0",
             },
             json=payload,
         )
@@ -414,7 +414,7 @@ def test_same_key_replay_accepts_original_response_request_binding_only() -> Non
             201,
             headers={
                 "content-type": "application/json",
-                "x-caseloop-contract-version": "1.0",
+                "x-agentmed-contract-version": "1.0",
             },
             json=payload,
         )
@@ -449,7 +449,7 @@ def test_non_2xx_requires_complete_public_error_shape() -> None:
             401,
             headers={
                 "content-type": "application/json",
-                "x-caseloop-contract-version": "1.0",
+                "x-agentmed-contract-version": "1.0",
             },
             json={"error": {"code": "TOKEN_INVALID"}},
         )
@@ -492,7 +492,7 @@ def test_evidence_receipt_tampering_fails_self_hash_or_exact_binding(
         "GET",
         BASE + f"/api/v1/evidence/{receipt_id}",
         headers={
-            "X-CaseLoop-Workspace-ID": WORKSPACE,
+            "X-AgentMED-Workspace-ID": WORKSPACE,
             "X-Request-ID": request_id,
         },
     )
@@ -541,7 +541,7 @@ def test_evidence_receipt_tampering_fails_self_hash_or_exact_binding(
             200,
             headers={
                 "content-type": "application/json",
-                "x-caseloop-contract-version": "1.0",
+                "x-agentmed-contract-version": "1.0",
             },
             json=payload,
         )
@@ -566,7 +566,7 @@ def test_source_query_partial_evidence_with_exact_self_hash_is_accepted() -> Non
             200,
             headers={
                 "content-type": "application/json",
-                "x-caseloop-contract-version": "1.0",
+                "x-agentmed-contract-version": "1.0",
             },
             json=source_query_evidence(request, receipt_id),
         )
@@ -621,7 +621,7 @@ def test_public_error_status_maps_to_stable_exit_family(
             status,
             headers={
                 "content-type": "application/json",
-                "x-caseloop-contract-version": "1.0",
+                "x-agentmed-contract-version": "1.0",
             },
             json=envelope,
         )
@@ -629,7 +629,7 @@ def test_public_error_status_maps_to_stable_exit_family(
     stderr = io.StringIO()
     exit_code = run(
         ["--api-url", BASE, "--workspace-id", WORKSPACE, "capabilities", "get"],
-        env={"CASELOOP_PUBLIC_TOKEN": TOKEN},
+        env={"AGENTMED_PUBLIC_TOKEN": TOKEN},
         stdout=io.StringIO(),
         stderr=stderr,
         transport=httpx.MockTransport(handler),
@@ -651,7 +651,7 @@ def test_transport_retry_is_bounded_and_private_exception_is_sanitized() -> None
     stderr = io.StringIO()
     exit_code = run(
         ["--api-url", BASE, "--workspace-id", WORKSPACE, "capabilities", "get"],
-        env={"CASELOOP_PUBLIC_TOKEN": TOKEN},
+        env={"AGENTMED_PUBLIC_TOKEN": TOKEN},
         stdout=io.StringIO(),
         stderr=stderr,
         transport=httpx.MockTransport(handler),

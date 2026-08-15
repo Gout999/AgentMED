@@ -136,7 +136,7 @@ def _seed_stage1a_case(sqlite_session) -> None:
                 connector_kind="manual",
                 state="ACTIVE",
                 credential_ref=None,
-                config={"provider_origin": "https://caseloop.local"},
+                config={"provider_origin": "https://agentmed.local"},
                 connection_digest=canonical_digest(
                     {
                         "schema_version": "1.0",
@@ -145,7 +145,7 @@ def _seed_stage1a_case(sqlite_session) -> None:
                         "connector_kind": "manual",
                         "state": "ACTIVE",
                         "credential_ref": None,
-                        "config": {"provider_origin": "https://caseloop.local"},
+                        "config": {"provider_origin": "https://agentmed.local"},
                         "revision": 1,
                         "created_by_principal": PRINCIPAL_ID,
                     }

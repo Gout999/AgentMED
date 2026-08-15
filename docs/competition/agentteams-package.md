@@ -7,15 +7,15 @@
 
 ## 代码包组成与仓库链接
 
-CaseLoop 的治理闭环跑在 AgentTeams 平台上：AgentTeams 提供团队/任务/房间/MCP 托管等编排能力，
-CaseLoop 提供治理领域（确定性控制面 + 六角色 Agent 团队 + 评测装置 + 模型路径胶水），AgentMED 是
+AgentMED 的治理闭环跑在 AgentTeams 平台上：AgentTeams 提供团队/任务/房间/MCP 托管等编排能力，
+AgentMED 提供治理领域（确定性控制面 + 六角色 Agent 团队 + 评测装置 + 模型路径胶水），AgentMED 是
 被治理应用的模型内核（同时承载「精确版本评估面」，是归因实验与门禁的运动员轨）。两个平行仓库
 组成完整代码包：
 
 | 仓库 | 角色 | 链接 |
 |---|---|---|
-| **CaseLoop** | 治理控制面 + 六角色团队 + MCP 工具投影 + 评测装置 + 证据 + 模型路径胶水（relay 在 deploy/relay/，沙箱镜像构建件在 deploy/sandbox-image/） | https://github.com/Gout999/CaseLoop |
-| **AgentMED** | 被治理应用内核（模型路径 + 精确版本评估面 + 修复候选写面 + provider log） | https://github.com/er-s-an/AgentMED |
+| **AgentMED** | 治理控制面 + 六角色团队 + MCP 工具投影 + 评测装置 + 证据 + 模型路径胶水（relay 在 deploy/relay/，沙箱镜像构建件在 deploy/sandbox-image/） | https://github.com/Gout999/AgentMED |
+| **AgentMED0** | 被治理应用内核（模型路径 + 精确版本评估面 + 修复候选写面 + provider log） | https://github.com/er-s-an/AgentMED0 |
 
 平台依赖：AgentTeams v1.2.2（https://github.com/agentscope-ai/AgentTeams ，本机容器化运行），
 Higress 网关（MCP 托管与 worker 密钥注入），PostgreSQL 17，Langfuse（观测），MinIO（skill 分发）。
@@ -52,7 +52,7 @@ scripts/register_gateway.py      # 把投影注册进 Higress 网关（/mcp-serv
 ```bash
 cd AgentMED
 PYTHONPATH=src .venv/bin/python .venv/bin/uvicorn agentmed.api:app --host 0.0.0.0 --port 8088 --workers 4
-# 评估面：POST/GET /v2/versionsets[/{id}/evaluate] + /v2/logs（CaseLoop 实验/门禁直连）
+# 评估面：POST/GET /v2/versionsets[/{id}/evaluate] + /v2/logs（AgentMED 实验/门禁直连）
 ```
 
 ### 1.5 全自动闭环的确定性驱动入口（操作者可复核重放）
@@ -65,7 +65,7 @@ PYTHONPATH=src .venv/bin/python .venv/bin/uvicorn agentmed.api:app --host 0.0.0.
 | 段3 归因 | `mcp-servers/` 投影工具 `experiment.plan/execute`（网关 MCP） | 5-cell 对照实验：freeze → start → execute → verdict |
 | 段4 修复 | 投影工具 `candidate.create/workorder.draft/workorder.freeze` | 单变量修复候选 + 不可变工单 |
 | 段5 验证 | 投影工具 `gate.run` + `sandbox.verify`（`scripts/sandbox/runner.py` 隔离容器） | 真实门禁三轨 + 修前/修后对照 |
-| 段6 审批 | `mcp-servers/scripts/caseloop_approval_cli.py` + `scripts/approval_reader.py` | Matrix 审批消息 + nonce 验签落 grant |
+| 段6 审批 | `mcp-servers/scripts/agentmed_approval_cli.py` + `scripts/approval_reader.py` | Matrix 审批消息 + nonce 验签落 grant |
 
 ### 1.6 Makefile 目标（本仓库根目录）
 
@@ -97,7 +97,7 @@ make approval-reader   # 段6 reader（--once）
 |---|---|---|
 | `deploy/.env.example` | 控制面/团队/审批全套环境变量模板（角色令牌 JSON、审批权威令牌、DB、feishu 位、PG 端口） | `deploy/` |
 | `mcp-servers/.env.example` | MCP 投影环境模板（DB、控制面地址、Quality 面、角色令牌、超时预算） | `mcp-servers/` |
-| `AgentMED/.env.example` | 模型密钥/端点、Langfuse、评估面令牌（`CASELOOP_EVAL_TOKEN`）、registry 路径 | AgentMED 仓库根 |
+| `AgentMED/.env.example` | 模型密钥/端点、Langfuse、评估面令牌（`AGENTMED_EVAL_TOKEN`）、registry 路径 | AgentMED 仓库根 |
 | `agents/team.yaml` | 六角色 Team CR（SOUL 引用、角色级 MCP 挂载、Human CR approver） | `agents/` |
 | `contracts/fixtures/*.yaml` | 冻结探针集、B1 故障注入 ground-truth、状态机契约 | `contracts/` |
 | AgentMED `workloads/xiaozhi-customer-service/registry.json` | 受治理应用版本集注册表（P0/P1 提示词、KB、模型绑定 + 冻结 digest） | AgentMED 仓库 |
@@ -124,7 +124,7 @@ make approval-reader   # 段6 reader（--once）
 | 修复工单 | prompt 单变量回滚 P0 | 工单 `wo_01M01A4AZ1C88D5EBVN6Z7GDC4` FROZEN（内联 unified_diff） | 控制面 `workorders` 表 + 下节证据 |
 | 门禁 | 三轨 passed | rule / deterministic / live-e2e / 裁判 16/16 全 passed | `evidence/gate/eval_01M01A4BEV9QN9EBTJAAEM3320/` |
 | 沙箱 | 修前 fail、修后 pass | **PASS**（隔离容器真实回放） | `var/sandbox/wo_01M01A4AZ1C88D5EBVN6Z7GDC4-sandbox-evidence.json` |
-| 审批 | 人工放行 | Matrix 决策（@caseloop-approver）→ changeset APPROVED → case RELEASING | 下节 |
+| 审批 | 人工放行 | Matrix 决策（@agentmed-approver）→ changeset APPROVED → case RELEASING | 下节 |
 | 出口 | 出口 2 | **VerifiedCandidate / NOT DEPLOYED**（releases 表 0 条） | 控制面 |
 
 ## 五、运行证据
@@ -135,7 +135,7 @@ make approval-reader   # 段6 reader（--once）
 ## 六、快速核验（评委一分钟路径）
 
 ```bash
-git clone https://github.com/Gout999/CaseLoop.git && cd CaseLoop
+git clone https://github.com/Gout999/AgentMED.git && cd AgentMED
 make test                      # 790 + 106 + 81 + 24 全绿（单元层）
 ls evidence/experiments/exp_01M0159WMBWA8S0FPQF74SYDXS/   # 135 份 trial 产物 + 报告
 ls evidence/gate/eval_01M01A4BEV9QN9EBTJAAEM3320/         # 门禁三轨报告 + 裁判证据

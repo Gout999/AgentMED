@@ -1,9 +1,9 @@
-"""Frozen CaseLoop public v2 manifest / system-version wire models.
+"""Frozen AgentMED public v2 manifest / system-version wire models.
 
 Hand-copied from ``control-plane/app/public_api/v5_models.py`` (schema-major-2)
 so the CLI can build and validate /api/v2 system-manifest payloads without
 importing the control-plane package.  Any change to that module must be
-mirrored here and in ``cli/src/caseloop_cli/client.py``.
+mirrored here and in ``cli/src/agentmed_cli/client.py``.
 """
 
 from __future__ import annotations

@@ -1,4 +1,4 @@
-# CaseLoop V5 progressive delivery blueprint
+# AgentMED V5 progressive delivery blueprint
 
 > 状态：**ACCEPTED TARGET BLUEPRINT（2026-08-11；freeze: `8dd25ca` + `b3727d7`）**
 >
@@ -208,7 +208,7 @@ acceptance-criteria.confirm
 - binding write 丢失响应或断线后，CLI/Agent/Console 可经 read intent 权威回读 exact
   `(case_id, case_revision, case_digest)` binding；同 exact Case 只能有一个 target，换绑
   必须产生新 Case revision，冲突不能由“latest”静默覆盖。
-- `caseloop init` 与 `caseloop case from-issue` 只编排上述 canonical intents；网络断线、
+- `agentmed init` 与 `agentmed case from-issue` 只编排上述 canonical intents；网络断线、
   局部失败和重试不产生第二 owner、重复 Case 或自动 confirmed acceptance；
 
 #### Exit / rollback
@@ -258,7 +258,7 @@ acceptance-criteria.confirm
 
 - ComponentRevision、SystemVersionSet、SystemAssignment desired pointer；
 - trusted one-shot manifest import，在 1A+1B owners 都可用后作为联合出口；
-- `caseloop init <repo>` 本地只读 discovery：生成 git/project/test command 与可识别
+- `agentmed init <repo>` 本地只读 discovery：生成 git/project/test command 与可识别
   `APPLICATION_CODE/PROMPT/MODEL_BINDING/RETRIEVER/INDEX` 的 manifest 草稿；必须人工
   确认后才调用 canonical import，扫描结果不构成 observed runtime；
 - identity assurance 与 semantic diff；
@@ -298,7 +298,7 @@ acceptance-criteria.confirm
 
 - additive ApplicationCaseBinding；
 - Manual/GitHub Issue read-only SourceConnection；
-- `caseloop case from-issue <url>` CLI workflow，组合 canonical intake/binding/acceptance
+- `agentmed case from-issue <url>` CLI workflow，组合 canonical intake/binding/acceptance
   intents，不新增 owner，不把 Issue 文本当作 instruction 或 acceptance truth；
 - Signal→QualityCase→Application/Environment/SystemVersionSet；
 - additive CaseReadiness + immutable BadcaseSpec/AcceptanceCriteria artifact，由现有
@@ -393,7 +393,7 @@ operations.cancel-request
 - 外部 Agent principal、OAuth/audience/scope；
 - 结构化 Artifact 与 capability discovery；
 - A2A 使用 `protocolVersion: "1.0"`、官方 `SendMessage/GetTask/ListTasks/CancelTask` 与可选 subscribe/stream，
-  不继承旧 `tasks.create` 映射，也不复制 CaseLoop state machine。
+  不继承旧 `tasks.create` 映射，也不复制 AgentMED state machine。
 - MCP Tasks 只作为 negotiated optional extension；baseline async tool 返回 operation id，
   再用 `operations.get/cancel-request`；tool allowlist、input/output schema、structuredContent
   与 transport/domain error 分开。
@@ -433,7 +433,7 @@ operations.cancel-request
 - sandbox observation 不能冒充 provider/live。
 - view 带 projection revision/as-of/watermark/assignment generation；Gate/归因不能绑定
   mutable view；
-- ExternalEffectReceipt origin 必须区分 CaseLoop operation 与 governed system episode；
+- ExternalEffectReceipt origin 必须区分 AgentMED operation 与 governed system episode；
   workload 无 external effect 时该 receipt 为 N/A，不阻塞比赛。
 
 #### Exit / rollback
@@ -632,7 +632,7 @@ V5-6 不是一个巨型提交，按真实用户需求拆成独立模块：
 - 从空 V5 领域表（已有 V4 Controller trust roots 与既有 V4 Case）经 CLI 只读 discovery、
   人工确认和一次性 manifest import 得到一个 AIApplication/Environment/SystemVersionSet；
 - 一个真实外部 Agent 经显式 V2 CLI 调用；
-- `caseloop init`/`case from-issue` 形成经人工确认的 manifest 与 AcceptanceCriteria；若原
+- `agentmed init`/`case from-issue` 形成经人工确认的 manifest 与 AcceptanceCriteria；若原
   Issue 模糊，必须诚实展示 `NEEDS_ACCEPTANCE_CRITERIA`，不能继续伪造成功路径；
 - V5-4 从 exact Case binding、confirmed AcceptanceCriteria、source snapshot 和 base
   VersionSet 物化 exact ResolutionContract，再从它产生 executable BadcaseSpec；
@@ -662,7 +662,7 @@ V5-6 不是一个巨型提交，按真实用户需求拆成独立模块：
 建议同时演示一个普通 `CODE_CHANGE`/library Issue 对照路径：confirmed AcceptanceCriteria
 → exact ResolutionContract → executable BadcaseSpec → Candidate verification →
 `VerifiedCandidate / NOT DEPLOYED`。它不进入 V5-5，也不替代
-主路径的 observed/rollback 证明；其作用是诚实展示 CaseLoop 相对 GitHub/CI 的增量与成本。
+主路径的 observed/rollback 证明；其作用是诚实展示 AgentMED 相对 GitHub/CI 的增量与成本。
 
 不作为比赛关门线：generic catalog CRUD/graph、SystemEpisode public endpoint、完整
 Attribution engine、generic operation list/cancel、无外部 effect 时的

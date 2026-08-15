@@ -9,8 +9,8 @@ from typing import Any, Callable
 import httpx
 import pytest
 
-from caseloop_cli.errors import ExitFamily
-from caseloop_cli.main import build_parser, run
+from agentmed_cli.errors import ExitFamily
+from agentmed_cli.main import build_parser, run
 from .wire_samples import digest, success_for
 
 
@@ -25,7 +25,7 @@ def _globals() -> list[str]:
 
 
 def _env() -> dict[str, str]:
-    return {"CASELOOP_PUBLIC_TOKEN": TOKEN}
+    return {"AGENTMED_PUBLIC_TOKEN": TOKEN}
 
 
 def _response(request: httpx.Request) -> httpx.Response:
@@ -33,7 +33,7 @@ def _response(request: httpx.Request) -> httpx.Response:
         201 if request.url.path == "/api/v1/signals" else 200,
         headers={
             "content-type": "application/json",
-            "x-caseloop-contract-version": "1.0",
+            "x-agentmed-contract-version": "1.0",
         },
         json=success_for(request),
     )
@@ -83,8 +83,8 @@ def test_read_commands_use_exact_frozen_routes_and_machine_json(
     assert request.url.path == expected_path
     assert request.url.query.decode() == expected_query
     assert request.headers["authorization"] == f"Bearer {TOKEN}"
-    assert request.headers["x-caseloop-workspace-id"] == WORKSPACE
-    assert request.headers["x-caseloop-contract-version"] == "1.0"
+    assert request.headers["x-agentmed-workspace-id"] == WORKSPACE
+    assert request.headers["x-agentmed-contract-version"] == "1.0"
     assert request.headers["x-request-id"].startswith("req_")
     assert json.loads(stdout.getvalue())["request_id"] == request.headers["x-request-id"]
     assert stderr.getvalue() == ""
@@ -100,7 +100,7 @@ def test_capabilities_supports_explicit_v2_without_changing_v1_default() -> None
             200,
             headers={
                 "content-type": "application/json",
-                "x-caseloop-contract-version": "2.0",
+                "x-agentmed-contract-version": "2.0",
             },
             json=success_for(request),
         )
@@ -117,7 +117,7 @@ def test_capabilities_supports_explicit_v2_without_changing_v1_default() -> None
     assert exit_code == ExitFamily.OK
     assert [request.url.path for request in requests] == ["/api/v2/capabilities"]
     request = requests[0]
-    assert request.headers["x-caseloop-contract-version"] == "2.0"
+    assert request.headers["x-agentmed-contract-version"] == "2.0"
     payload = json.loads(stdout.getvalue())
     assert payload["schema_version"] == "2.0"
     assert payload["data"]["api_major"] == 2
@@ -133,7 +133,7 @@ def test_capabilities_v2_rejects_a_major_one_response() -> None:
             200,
             headers={
                 "content-type": "application/json",
-                "x-caseloop-contract-version": "2.0",
+                "x-agentmed-contract-version": "2.0",
             },
             json=payload,
         )
@@ -181,7 +181,7 @@ def _run_case_v2(
             201 if request.method == "POST" else 200,
             headers={
                 "content-type": "application/json",
-                "x-caseloop-contract-version": "2.0",
+                "x-agentmed-contract-version": "2.0",
             },
             json=payload,
         )
@@ -236,7 +236,7 @@ def test_case_bind_application_uses_exact_v2_route() -> None:
     request = requests[0]
     assert request.method == "POST"
     assert request.url.path == "/api/v2/cases/case_01J0000000000001:bind-application"
-    assert request.headers["x-caseloop-contract-version"] == "2.0"
+    assert request.headers["x-agentmed-contract-version"] == "2.0"
     body = json.loads(request.content)
     assert body["case_id"] == "case_01J0000000000001"
     assert body["case_digest"] == CASE_DIGEST
@@ -617,7 +617,7 @@ def test_case_v1_actions_reject_api_version_2() -> None:
 
 
 def test_case_from_issue_composes_canonical_intents_only(tmp_path) -> None:
-    """``caseloop case from-issue`` drives issue_snapshot → signal_submit →
+    """``agentmed case from-issue`` drives issue_snapshot → signal_submit →
     case binding → acceptance draft and never auto-confirms."""
     import json as _json
 
@@ -646,14 +646,14 @@ def test_case_from_issue_composes_canonical_intents_only(tmp_path) -> None:
             201 if request.method == "POST" else 200,
             headers={
                 "content-type": "application/json",
-                "x-caseloop-contract-version": contract,
+                "x-agentmed-contract-version": contract,
             },
             json=success_for(request),
         )
 
     stdout = io.StringIO()
     stderr = io.StringIO()
-    env = {**_env(), "CASELOOP_CACHE_DIR": str(tmp_path / "cache")}
+    env = {**_env(), "AGENTMED_CACHE_DIR": str(tmp_path / "cache")}
     exit_code = run(
         [
             "--api-version",
@@ -739,7 +739,7 @@ def test_from_issue_snapshot_version_controls_retry_and_edit_idempotency(tmp_pat
             201 if request.method == "POST" else 200,
             headers={
                 "content-type": "application/json",
-                "x-caseloop-contract-version": (
+                "x-agentmed-contract-version": (
                     "2.0" if request.url.path.startswith("/api/v2") else "1.0"
                 ),
             },
@@ -771,7 +771,7 @@ def test_from_issue_snapshot_version_controls_retry_and_edit_idempotency(tmp_pat
         stdout = io.StringIO()
         exit_code = run(
             argv,
-            env={**_env(), "CASELOOP_CACHE_DIR": str(tmp_path / "cache")},
+            env={**_env(), "AGENTMED_CACHE_DIR": str(tmp_path / "cache")},
             stdout=stdout,
             stderr=io.StringIO(),
             transport=httpx.MockTransport(handler),
@@ -813,12 +813,12 @@ def test_from_issue_snapshot_version_controls_retry_and_edit_idempotency(tmp_pat
         != signal_requests[0].headers["idempotency-key"]
     )
     assert (
-        bind_requests[2].headers["x-caseloop-idempotency-key"]
-        != bind_requests[0].headers["x-caseloop-idempotency-key"]
+        bind_requests[2].headers["x-agentmed-idempotency-key"]
+        != bind_requests[0].headers["x-agentmed-idempotency-key"]
     )
     assert (
-        propose_requests[2].headers["x-caseloop-idempotency-key"]
-        != propose_requests[0].headers["x-caseloop-idempotency-key"]
+        propose_requests[2].headers["x-agentmed-idempotency-key"]
+        != propose_requests[0].headers["x-agentmed-idempotency-key"]
     )
     edited_binding = json.loads(bind_requests[2].content)
     assert edited_binding["issue_snapshot"]["edited_flag"] is True
@@ -852,7 +852,7 @@ def test_from_issue_application_lookup_fails_before_signal_write(tmp_path) -> No
             200,
             headers={
                 "content-type": "application/json",
-                "x-caseloop-contract-version": "2.0",
+                "x-agentmed-contract-version": "2.0",
             },
             json={"schema_version": "2.0"},
         )
@@ -916,7 +916,7 @@ def test_from_issue_environment_mismatch_fails_before_signal_write(tmp_path) -> 
             200,
             headers={
                 "content-type": "application/json",
-                "x-caseloop-contract-version": "2.0",
+                "x-agentmed-contract-version": "2.0",
             },
             json=payload,
         )

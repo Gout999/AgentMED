@@ -1,8 +1,8 @@
-# CaseLoop 终态对齐交付计划（收敛链路 + 完整版图）
+# AgentMED 终态对齐交付计划（收敛链路 + 完整版图）
 
 > 状态：**DRAFT（2026-08-14）**——从属施工视图，不拥有 stage 裁决权。
-> 靶文档：[CaseLoop-完整产品叙事文档](../presentation/CaseLoop-完整产品叙事文档.md) 与
-> [CaseLoop-项目信息说明书](../presentation/CaseLoop-项目信息说明书.md) 描述的终态产品形态。
+> 靶文档：[AgentMED-完整产品叙事文档](../presentation/AgentMED-完整产品叙事文档.md) 与
+> [AgentMED-项目信息说明书](../presentation/AgentMED-项目信息说明书.md) 描述的终态产品形态。
 > 权威层：任何冲突以 [v5-master-execution-plan.md](./v5-master-execution-plan.md)、
 > 冻结契约与 [AGENTS.md](../../AGENTS.md) 为准；本文是「终态 → 施工」的对齐视图。
 

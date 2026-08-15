@@ -10,7 +10,7 @@
 - Console 使用 `npm ci`、项目测试命令和 `npm run build`。
 - 持久化 schema 通过 Alembic migration 部署；不能依赖开发态 `create_all`。
 - PostgreSQL 测试必须显式指定 disposable database，例如 `control_plane_test`；不要依赖 shell 中可能遗留的 `DATABASE_URL`。
-- AgentTeams、StepFun、飞书和 Langfuse 都不是安装 CaseLoop 核心代码的永久硬依赖；是否需要由当前 workload 和验收轨决定。
+- AgentTeams、StepFun、飞书和 Langfuse 都不是安装 AgentMED 核心代码的永久硬依赖；是否需要由当前 workload 和验收轨决定。
 
 ## 当前 v3 Compose profile
 
@@ -20,7 +20,7 @@
 |---|---|---|
 | PostgreSQL / pgvector | `127.0.0.1:5432` | control-plane、demo-app 与 casebase 的数据底座 |
 | 小智 demo-app | `http://127.0.0.1:8080` | 当前客服参考 workload 的 Quality API |
-| CaseLoop control-plane | `http://127.0.0.1:18090` | Compose 把宿主 `18090` 映射到容器 `8090`；原生启动默认宿主 `8090` |
+| AgentMED control-plane | `http://127.0.0.1:18090` | Compose 把宿主 `18090` 映射到容器 `8090`；原生启动默认宿主 `8090` |
 | Console | `http://127.0.0.1:8088` | 只读运营界面，经 nginx 代理 control-plane |
 | outbox-dispatcher | 无 HTTP 端口 | Phase 1 固定进程；通知、archive 与 Trust 等闭环不能省略它 |
 
@@ -45,7 +45,7 @@
 | Manager UI | `18888` |
 | Dashboard | `13000` |
 
-这是 CaseLoop 内部 Worker 的协作适配器，与被治理 Agent 使用什么 runtime / model 无关。当前 v3 六个 Worker CR 是静态部署；没有 Caseload Controller 实现，也没有动态扩缩证据。
+这是 AgentMED 内部 Worker 的协作适配器，与被治理 Agent 使用什么 runtime / model 无关。当前 v3 六个 Worker CR 是静态部署；没有 Caseload Controller 实现，也没有动态扩缩证据。
 
 ## 通知配置
 

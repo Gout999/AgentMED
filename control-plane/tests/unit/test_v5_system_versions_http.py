@@ -139,11 +139,11 @@ def _seed_route_identity(engine, settings) -> None:
 def _headers(*, idempotency_key: str | None = "manifest-import-0001") -> dict[str, str]:
     headers = {
         "Authorization": f"Bearer {RAW_TOKEN}",
-        "X-CaseLoop-Workspace-ID": WORKSPACE,
-        "X-CaseLoop-Contract-Version": "2.0",
+        "X-AgentMED-Workspace-ID": WORKSPACE,
+        "X-AgentMED-Contract-Version": "2.0",
     }
     if idempotency_key is not None:
-        headers["X-CaseLoop-Idempotency-Key"] = idempotency_key
+        headers["X-AgentMED-Idempotency-Key"] = idempotency_key
     return headers
 
 
@@ -248,9 +248,9 @@ def test_import_rejects_scope_missing(client) -> None:
 
     headers = {
         "Authorization": "Bearer route-token-apps-read-only",
-        "X-CaseLoop-Workspace-ID": WORKSPACE,
-        "X-CaseLoop-Contract-Version": "2.0",
-        "X-CaseLoop-Idempotency-Key": "manifest-import-0001",
+        "X-AgentMED-Workspace-ID": WORKSPACE,
+        "X-AgentMED-Contract-Version": "2.0",
+        "X-AgentMED-Idempotency-Key": "manifest-import-0001",
     }
     response = client.post("/api/v2/system-manifests:import", headers=headers, json=_manifest_payload())
     # The credential lacks the import scope; the resolver fails closed.

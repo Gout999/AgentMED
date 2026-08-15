@@ -1,4 +1,4 @@
-"""Generated frozen CaseLoop public v1 success wire models. Do not hand edit."""
+"""Generated frozen AgentMED public v1 success wire models. Do not hand edit."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-# CaseLoop 运行入口（比赛代码包 · 与 docs/competition/agentteams-package.md 对应）
+# AgentMED 运行入口（比赛代码包 · 与 docs/competition/agentteams-package.md 对应）
 .PHONY: test test-control-plane test-mcp test-harness conformance \
         control-plane projections gateway-register sandbox-verify approval-reader signal-source
 

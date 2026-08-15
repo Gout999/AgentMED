@@ -1,4 +1,4 @@
-# CaseLoop 决策卡
+# AgentMED 决策卡
 
 [返回 Wiki 索引](INDEX.md)
 
@@ -8,15 +8,15 @@
 
 | # | 决策 | 影响 |
 |---|---|---|
-| P1 | CaseLoop 是长期维护的开源 AI Agent 质量与变更治理项目 | 黑客松与比赛是历史来源，不拥有产品范围和成功标准 |
+| P1 | AgentMED 是长期维护的开源 AI Agent 质量与变更治理项目 | 黑客松与比赛是历史来源，不拥有产品范围和成功标准 |
 | P2 | 目标用户需求决定范围 | 竞品、融资、市场空白和功能重叠只提供参考，不拥有产品裁决权 |
 | P3 | 可以集成、依法复用或兼容性重实现已有能力 | 依据用户价值、可靠性、私有部署、许可证与维护成本做选择 |
 | P4 | 中国用户优先，核心契约保持 provider-neutral | 国内模型、云和协作渠道是一等适配器，但不锁死核心 |
 | P5 | 客服是第一参考 workload，不是最终边界 | 通用 Agent 需求进入新版 PRD / plan / contracts 后，才成为实施基线 |
-| P6 | Langfuse 同时是 CaseLoop 自身可观测后端的首个目标和外部 `TraceSource` 的首个适配器 | Langfuse 不是权威状态库，也不是唯一后端；S1A 已实现 no-trace `UNKNOWN` receipt，带 locator 的 connector/008/provider-live 仍未实现 |
+| P6 | Langfuse 同时是 AgentMED 自身可观测后端的首个目标和外部 `TraceSource` 的首个适配器 | Langfuse 不是权威状态库，也不是唯一后端；S1A 已实现 no-trace `UNKNOWN` receipt，带 locator 的 connector/008/provider-live 仍未实现 |
 | P7 | 被治理 Agent、内部 LLM Worker、确定性 Controller / Executor 与只读 Exporter 必须分开 | 分别建模身份、权限和验收；平台证据导出不能冒充真实 Agent 因果执行 |
 | P8 | [v4 全盘计划](../docs/plan-v4.md) 的 Signal、Work Kernel、typed Proposal、独立 Evaluator 与分阶段路线获批施工 | Stage 0 立即冻结 contracts/ADR；计划获批不等于功能已实现 |
-| P9 | 保留现有六角色 `caseloop-team` 作为质量治理 Team，另建三角色 `caseloop-coding-team` | 不把客服 Worker 改名成 coding Agent；Coding Team 当前为 `NOT CREATED / NOT RUN` |
+| P9 | 保留现有六角色 `agentmed-team` 作为质量治理 Team，另建三角色 `agentmed-coding-team` | 不把客服 Worker 改名成 coding Agent；Coding Team 当前为 `NOT CREATED / NOT RUN` |
 | P10 | AgentTeams Worker 是父委托者，Claude Code 是隔离 worktree 中的 child Attempt | 分别记录 requested-by/executor/父子 Attempt；Claude Code 不继承 Worker 长期凭据、审批或 push/merge 权限 |
 | P11 | GLM-5.2 是 Coding Planner/Generator 的目标主模型，StepFun 仍可服务现有质量 Team 或低成本任务 | 模型目标必须经过真实 provider smoke 与每次 receipt 证明；当前 AgentTeams 中没有 GLM Agent |
 | P12 | live 使用两条独立验收轴：`domain-provider-live` 与 `agent-causal` | `platform evidence export` 只是只读取证类别，不能单独满足 `agent-causal`；Worker 休眠/移除时后者必须失败 |

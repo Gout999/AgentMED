@@ -1,10 +1,10 @@
 # 赛道 4 调研报告：Agent 自动修复与自我改进机制
 
-> **阅读口径更新（2026-08-10）**：本文是 2026-08-09 的研究快照。供应商生产数字与 ROI 多为项目方自述；“成熟/无人占据/不要自研”不再直接决定 CaseLoop 的产品范围。应先定义可插拔 Repair Proposer 契约，再按真实 workload 的质量、成本、许可证、数据边界与可控性选择 GEPA 等现有实现、依法复用或自行实现。
+> **阅读口径更新（2026-08-10）**：本文是 2026-08-09 的研究快照。供应商生产数字与 ROI 多为项目方自述；“成熟/无人占据/不要自研”不再直接决定 AgentMED 的产品范围。应先定义可插拔 Repair Proposer 契约，再按真实 workload 的质量、成本、许可证、数据边界与可控性选择 GEPA 等现有实现、依法复用或自行实现。
 
 ## 1. 全景地图
 
-这个赛道可以分成四层。**(a) Prompt 自动优化器**（offline compile 派）：DSPy/MIPROv2/GEPA 是目前唯一有命名生产部署的一支，GEPA（2025，ICLR 2026 Oral）已被 Databricks 产品化进 MLflow；TextGrad（Nature 2025）学术地位高但仍是研究工具；APE/OPRO/EvoPrompt 已沦为基线；OpenAI/Anthropic/Google/AWS 各家云厂商的 prompt optimizer 全部是**人操作的辅助改写工具**，不是自治回路。**(b) 推理期自我修正**：Reflexion/Self-Refine/CRITIC 这一支的 2023–2025 实证共识是"无外部可验证信号的内在自我批评不可靠"，业界已把它降级为 agent 运行时技巧而非质量改进机制。**(c) 经验/skill/上下文自增长**：Voyager（2023）开创"验证后入库的代码 skill 库"，ACE（2025，ICLR 2026）与 ReasoningBank（Google，2025）把上下文/记忆做成自演化 playbook，DGM（Sakana，2025）做到 agent 自改代码但只在沙箱+人监督下运行。**(d) 版本管理与审批基础设施**：LangSmith/PromptLayer/MLflow 的 prompt registry（版本、release label、审批流、灰度路由）是成熟产品品类，但只管 prompt 一个维度；Humanloop（人工评审流做得最好的那家）2025 年被 Anthropic 收编关停。与 CaseLoop 的关系：**修复"起草"这一环业界已有强引擎（GEPA 系），"上架/灰度/审批"这一环在 prompt 维度已成熟，但"归因此次故障属于哪一层→起草修复→hash 绑定工单→门禁→人批"的完整闭环没有人在做。**
+这个赛道可以分成四层。**(a) Prompt 自动优化器**（offline compile 派）：DSPy/MIPROv2/GEPA 是目前唯一有命名生产部署的一支，GEPA（2025，ICLR 2026 Oral）已被 Databricks 产品化进 MLflow；TextGrad（Nature 2025）学术地位高但仍是研究工具；APE/OPRO/EvoPrompt 已沦为基线；OpenAI/Anthropic/Google/AWS 各家云厂商的 prompt optimizer 全部是**人操作的辅助改写工具**，不是自治回路。**(b) 推理期自我修正**：Reflexion/Self-Refine/CRITIC 这一支的 2023–2025 实证共识是"无外部可验证信号的内在自我批评不可靠"，业界已把它降级为 agent 运行时技巧而非质量改进机制。**(c) 经验/skill/上下文自增长**：Voyager（2023）开创"验证后入库的代码 skill 库"，ACE（2025，ICLR 2026）与 ReasoningBank（Google，2025）把上下文/记忆做成自演化 playbook，DGM（Sakana，2025）做到 agent 自改代码但只在沙箱+人监督下运行。**(d) 版本管理与审批基础设施**：LangSmith/PromptLayer/MLflow 的 prompt registry（版本、release label、审批流、灰度路由）是成熟产品品类，但只管 prompt 一个维度；Humanloop（人工评审流做得最好的那家）2025 年被 Anthropic 收编关停。与 AgentMED 的关系：**修复"起草"这一环业界已有强引擎（GEPA 系），"上架/灰度/审批"这一环在 prompt 维度已成熟，但"归因此次故障属于哪一层→起草修复→hash 绑定工单→门禁→人批"的完整闭环没有人在做。**
 
 清单：DSPy(MIPROv2/GEPA) · TextGrad · APE/OPRO/EvoPrompt · OpenAI Prompt Optimizer · Anthropic Prompt Improver · Vertex/Bedrock optimizer · Reflexion/Self-Refine/CRITIC · Voyager · ACE · ReasoningBank · Darwin Gödel Machine · Anthropic Agent Skills + skill-creator · Hermes(Nous) 自演化 · LangSmith/PromptLayer/MLflow/Humanloop registry。
 
@@ -36,19 +36,19 @@
 
 **Prompt registry 三强 + Humanloop** — LangSmith（commit/tag/环境/webhook 部署）、PromptLayer（"Git for prompts"，release label + **重要 label 可加审批流保护** + A/B 流量路由，[官方文档](https://docs.promptlayer.com/features/prompt-registry/overview)）、MLflow（alias + GEPA 一体化）。Humanloop——人工评审工作流做得最细的 prompt 平台——被 Anthropic 收编（[TechCrunch](https://techcrunch.com/2025/08/13/anthropic-nabs-humanloop-team-as-competition-for-enterprise-ai-talent-heats-up/)，2025-08-13），平台 2025-09-08 关停。信号：前沿实验室把"评测+人工评审"能力内化，而非放弃。
 
-## 3. 与 CaseLoop 的对照表
+## 3. 与 AgentMED 的对照表
 
-| 对象/机制 | 判定 | 与 CaseLoop 的关系 |
+| 对象/机制 | 判定 | 与 AgentMED 的关系 |
 |---|---|---|
 | GEPA/DSPy 反思式优化 | **直接可用** | 做"修复自由起草"的引擎：少量 rollout 即产出修复候选，与 badcase→修复回路天然契合；有 MLflow 现成集成 |
 | Prompt registry 的版本/label/审批/灰度机制（LangSmith/PromptLayer/MLflow） | **直接可用（作参照系）** | 灰度发布与审批的工程模式已被验证成熟，可直接借鉴其 release label + 审批流 + A/B 路由设计 |
 | Voyager"验证后入库" + skill-creator 评测回路 + SKILL.md 打包格式 | **直接可用** | skill 候选→执行验证→上架的最小模式；SKILL.md 作为 skill 打包标准 |
-| ACE / ReasoningBank 在线经验演化 | **需改造可用** | 在线自策展无人审、无去重幂等、无回滚；需套 CaseLoop 的立案-门禁-审批壳才能进生产 |
-| DGM 式自改 agent 配置/代码 | **需改造可用** | 论文自证必须沙箱+人监督+lineage；其 reward hacking 记录是 CaseLoop 控制面铁律的最佳反面教材 |
+| ACE / ReasoningBank 在线经验演化 | **需改造可用** | 在线自策展无人审、无去重幂等、无回滚；需套 AgentMED 的立案-门禁-审批壳才能进生产 |
+| DGM 式自改 agent 配置/代码 | **需改造可用** | 论文自证必须沙箱+人监督+lineage；其 reward hacking 记录是 AgentMED 控制面铁律的最佳反面教材 |
 | TextGrad / 云厂商 prompt optimizer | **需改造可用** | 前者需自建反馈工程；后者是人工辅助工具，可作起草环节的人机界面 |
 | Reflexion/Self-Refine 内在自我批评 | **不建议采用** | 无外部信号时不可靠，只能作为运行时技巧，不能当质量改进机制 |
 | 全配置快照（prompt+skill 清单+工具 schema+模型+harness）统一版本化 + hash 绑定 | **本轮样本未见相同组合** | registry 多聚焦 prompt；通用组件集合与审批语义仍需需求验证 |
-| 修复前的归因实验（判定故障组件） | **本轮样本未见相同组合** | GEPA/MIPRO 优化全局指标，不直接归因单次失败；CaseLoop 机制仍需实证 |
+| 修复前的归因实验（判定故障组件） | **本轮样本未见相同组合** | GEPA/MIPRO 优化全局指标，不直接归因单次失败；AgentMED 机制仍需实证 |
 | 演化产物的回放/conformance 验证 | **研究明确提出缺口** | 《Beyond Task Completion》(2026) 指出 tool-evolving agent 的 verification-vs-conformance gap（[arXiv:2604.00392](https://arxiv.org/html/2604.00392v2)） |
 | 案例库→回归考题→信任账本 | **本轮样本未见相同治理组合** | 阈值、样本独立性与用户价值仍需验证 |
 
@@ -65,15 +65,15 @@
 9. 【事实】Humanloop（人工评审流最成熟的 prompt 平台）被 Anthropic 收编、2025-09-08 关停 — https://techcrunch.com/2025/08/13/anthropic-nabs-humanloop-team-as-competition-for-enterprise-ai-talent-heats-up/
 10. 【事实】EU AI Act 第 14 条要求高风控 AI 系统必须内建"有效人类监督"（理解、干预、否决、停止的真实能力，2026 起分阶段适用）— https://artificialintelligenceact.eu/article/14/
 
-## 5. 对 CaseLoop-for-Agents 的设计启示
+## 5. 对 AgentMED-for-Agents 的设计启示
 
 1. **保留“候选自由起草、确切内容受控发布”的边界。** 现有优化器、registry 和 AgentOps 流程可作为参考。WorkOrder 是否必须逐次人批应按风险等级决定，但审批对象必须绑定不可变内容与证据，不能只批准可变 label。
 2. **先定义可插拔 Repair Proposer 契约。** GEPA/DSPy 可作为首个候选，用真实 workload 的质量、成本、许可证、数据边界和可控性验收；如果现有实现不能满足目标用户，不排除内置或独立实现。
-3. **门禁必须坚持"外部可验证信号 + 裁判≠运动员"，并新增"防 reward hacking"显式设计。** Reflexion 系的失败实证（Huang et al.）+ DGM 自曝的两次作弊（伪造测试日志、破坏检测函数）共同证明：被优化对象与评判信号同源必被钻空子。CaseLoop 的不可变 WorkOrder（防止优化过程顺手改考题）恰好是这个问题的工程解——建议把 DGM 案例写进文档作为设计依据。
+3. **门禁必须坚持"外部可验证信号 + 裁判≠运动员"，并新增"防 reward hacking"显式设计。** Reflexion 系的失败实证（Huang et al.）+ DGM 自曝的两次作弊（伪造测试日志、破坏检测函数）共同证明：被优化对象与评判信号同源必被钻空子。AgentMED 的不可变 WorkOrder（防止优化过程顺手改考题）恰好是这个问题的工程解——建议把 DGM 案例写进文档作为设计依据。
 4. **skill 生命周期可参考 Voyager、skill-creator 与 SKILL.md。** 候选 skill → 冻结任务回放 → 旧能力 conformance → hash 上架 → 可回滚是一项待验证方案；优先复用成熟格式和工具，必要时实现缺失的治理绑定。
-5. **案例到回归资产可借鉴 ACE/ReasoningBank。** 论文收益不能直接外推到 CaseLoop；去重、人工确认、回滚和回归转化的具体价值要在目标用户流程中验证。
-6. **需要如实承认的一点**：DSPy 系的生产数字全部来自项目方自述，无独立审计；"prompt 优化器在生产的真实渗透率"没有任何权威第三方数据（Chris Potts 2025-11 在 DSPy Meetup 的演讲标题就叫"Why Are Prompt Optimizers Still So Underrated?"——侧面说明采用度仍低于热度）。【推断】这意味着 CaseLoop-for-Agents 不应假设客户已在用自动优化器，而应把"起草引擎"做成可插拔。
+5. **案例到回归资产可借鉴 ACE/ReasoningBank。** 论文收益不能直接外推到 AgentMED；去重、人工确认、回滚和回归转化的具体价值要在目标用户流程中验证。
+6. **需要如实承认的一点**：DSPy 系的生产数字全部来自项目方自述，无独立审计；"prompt 优化器在生产的真实渗透率"没有任何权威第三方数据（Chris Potts 2025-11 在 DSPy Meetup 的演讲标题就叫"Why Are Prompt Optimizers Still So Underrated?"——侧面说明采用度仍低于热度）。【推断】这意味着 AgentMED-for-Agents 不应假设客户已在用自动优化器，而应把"起草引擎"做成可插拔。
 
 ## 6. 当前综合结论
 
-候选起草和 prompt 版本/审批已有可参考实现，CaseLoop 应把生成器做成可插拔能力，并用独立门禁、不可变工单和真实工作负载决定是否采用候选。跨层归因、全配置绑定和演化产物回放是待验证的用户需求与工程组合，不用“无人占据”来证明其优先级。
+候选起草和 prompt 版本/审批已有可参考实现，AgentMED 应把生成器做成可插拔能力，并用独立门禁、不可变工单和真实工作负载决定是否采用候选。跨层归因、全配置绑定和演化产物回放是待验证的用户需求与工程组合，不用“无人占据”来证明其优先级。

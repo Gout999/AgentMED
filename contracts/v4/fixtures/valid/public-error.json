@@ -14,6 +14,6 @@
     "details": {
       "dependency": "trace_source"
     },
-    "help_url": "https://docs.caseloop.dev/errors/DEPENDENCY_UNAVAILABLE"
+    "help_url": "https://docs.agentmed.dev/errors/DEPENDENCY_UNAVAILABLE"
   }
 }

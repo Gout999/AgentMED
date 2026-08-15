@@ -79,8 +79,8 @@ BINDER_ENV_CREDENTIAL_ID = "cred_01J0000000000G03"
 CONFIRMER_ENV_CREDENTIAL_ID = "cred_01J0000000000G04"
 CONFIRMER_FRESH_CREDENTIAL_ID = "cred_01J0000000000G05"
 AUTH_SUBJECT = "v5-1c-e2e-operator"
-ISSUER = "https://auth.caseloop.dev"
-AUDIENCES = ["caseloop-public-api"]
+ISSUER = "https://auth.agentmed.dev"
+AUDIENCES = ["agentmed-public-api"]
 BINDER_SCOPES = [
     "signals:write",
     "cases:read",
@@ -218,7 +218,7 @@ def _seed_auth_and_controllers(
         "connector_kind": "manual",
         "state": "ACTIVE",
         "credential_ref": None,
-        "config": {"provider_origin": "https://caseloop.local"},
+        "config": {"provider_origin": "https://agentmed.local"},
         "revision": 1,
         "created_by_principal": BINDER_PRINCIPAL_ID,
     }

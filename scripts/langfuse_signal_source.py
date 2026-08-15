@@ -26,9 +26,9 @@ LANGFUSE_BASE = os.environ.get("LANGFUSE_BASE_URL", "http://127.0.0.1:3001")
 LANGFUSE_PK = os.environ.get("LANGFUSE_PUBLIC_KEY", "pk-lf-84970690db0784d6520aceac1d74d5c2")
 LANGFUSE_SK = os.environ.get("LANGFUSE_SECRET_KEY", "sk-lf-4539ece94bd23c9be767998bf5fd75370c7fa45d288ed7bf")
 CONTROL_PLANE = os.environ.get("CONTROL_PLANE_BASE_URL", "http://127.0.0.1:18090")
-OPERATOR_BEARER = os.environ.get("CASELOOP_OPERATOR_BEARER", "demo-operator-bearer-20260814-flow-first")
-WORKSPACE = os.environ.get("CASELOOP_WORKSPACE_ID", "ws_wsLocalDemoAgentstation001")
-SOURCE_ID = os.environ.get("CASELOOP_SIGNAL_SOURCE_ID", "src_srcLocalDemoManual0000001")
+OPERATOR_BEARER = os.environ.get("AGENTMED_OPERATOR_BEARER", "demo-operator-bearer-20260814-flow-first")
+WORKSPACE = os.environ.get("AGENTMED_WORKSPACE_ID", "ws_wsLocalDemoAgentstation001")
+SOURCE_ID = os.environ.get("AGENTMED_SIGNAL_SOURCE_ID", "src_srcLocalDemoManual0000001")
 SCORE_THRESHOLD = float(os.environ.get("LANGFUSE_NEGATIVE_THRESHOLD", "1.0"))
 OBS_LATENCY_LIMIT = float(os.environ.get("LANGFUSE_INSTANT_CLOSE_LATENCY", "0.002"))
 
@@ -50,7 +50,7 @@ def submit_signal(source_event_id: str, summary: str, body_text: str) -> str | N
         "source_event_id": source_event_id,
         "source_event_version": "1",
         "signal_kind": "maintainer_report",
-        "reporter": {"kind": "maintainer", "source_subject_ref": "caseloop-demo-operator"},
+        "reporter": {"kind": "maintainer", "source_subject_ref": "agentmed-demo-operator"},
         "project_id": "proj_projLocalDemoAgentstation01",
         "environment_id": None,
         "governed_agent_id": None,
@@ -61,8 +61,8 @@ def submit_signal(source_event_id: str, summary: str, body_text: str) -> str | N
     }
     headers = {
         "Authorization": "Bearer " + OPERATOR_BEARER,
-        "X-CaseLoop-Workspace-ID": WORKSPACE,
-        "X-CaseLoop-Contract-Version": "1.0",
+        "X-AgentMED-Workspace-ID": WORKSPACE,
+        "X-AgentMED-Contract-Version": "1.0",
         "Idempotency-Key": source_event_id,
         "Content-Type": "application/json",
     }

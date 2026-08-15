@@ -1,4 +1,4 @@
-# CaseLoop conformance suite 依赖（钉版本，Phase 0B 冻结）
+# AgentMED conformance suite 依赖（钉版本，Phase 0B 冻结）
 pytest==9.1.1
 jsonschema==4.26.0
 PyYAML==6.0.3

@@ -20,7 +20,7 @@ def _key() -> str:
 
 def _sample_content(tag: str) -> dict:
     """最小合法 VersionSetContent（digest 为示例值，服务端按 JCS+SHA-256 重算）。"""
-    h = uuid.uuid5(uuid.NAMESPACE_URL, f"caseloop-conformance-{tag}").hex * 2
+    h = uuid.uuid5(uuid.NAMESPACE_URL, f"agentmed-conformance-{tag}").hex * 2
     return {
         "prompt": {
             "prompt_id": "prompts/system.md",

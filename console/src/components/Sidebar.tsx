@@ -19,7 +19,7 @@ export function Sidebar() {
           CL
         </div>
         <div className="leading-tight">
-          <p className="text-sm font-semibold text-gray-900">CaseLoop 控制台</p>
+          <p className="text-sm font-semibold text-gray-900">AgentMED 控制台</p>
           <p className="text-[11px] text-gray-400">质量自治运营后台</p>
         </div>
       </div>

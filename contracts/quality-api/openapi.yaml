@@ -2,11 +2,11 @@ openapi: 3.1.0
 jsonSchemaDialect: https://json-schema.org/draft/2020-12/schema
 
 info:
-  title: CaseLoop Quality API
+  title: AgentMED Quality API
   version: "2.0.0"
   summary: AI 应用质量自治底座——被治理应用的质量契约（v2 强化版）
   description: |
-    Quality API v2（plan-v3 §2.3.1 / T0）。任何 LLM 应用实现本契约即可被 CaseLoop 纳管。
+    Quality API v2（plan-v3 §2.3.1 / T0）。任何 LLM 应用实现本契约即可被 AgentMED 纳管。
 
     核心不变量：
     - **VersionSet 不可变**：{prompt, KB manifest, model+params} 创建后内容不可改，
@@ -23,8 +23,8 @@ info:
     {prompt, kb_manifest, model} 三元组内容。
 
   contact:
-    name: CaseLoop contracts
-    url: https://caseloop.dev/contracts
+    name: AgentMED contracts
+    url: https://agentmed.dev/contracts
 
 servers:
   - url: http://127.0.0.1:8080

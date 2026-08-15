@@ -48,10 +48,10 @@ def _claims_digest(
     return canonical_digest(
         {
             "schema_version": "1.0",
-            "issuer": "https://auth.caseloop.dev",
+            "issuer": "https://auth.agentmed.dev",
             "subject": "maintainer-01J0000000000001",
             "principal_type": principal_type,
-            "audiences": ["caseloop-public-api"] if audiences is None else audiences,
+            "audiences": ["agentmed-public-api"] if audiences is None else audiences,
             "workspace_id": workspace_id,
             "project_ids": [PROJECT_ID] if project_ids is None else project_ids,
             "environment_ids": (
@@ -89,7 +89,7 @@ def _seed_credential(
     claims_digest: str | None = None,
 ) -> None:
     granted_scopes = BASE_SCOPES if scopes is None else scopes
-    granted_audiences = ["caseloop-public-api"] if audiences is None else audiences
+    granted_audiences = ["agentmed-public-api"] if audiences is None else audiences
     granted_projects = [PROJECT_ID] if project_ids is None else project_ids
     granted_environments = (
         [ENVIRONMENT_ID] if environment_ids is None else environment_ids
@@ -122,7 +122,7 @@ def _seed_credential(
             credential_id=CREDENTIAL_ID,
             workspace_id=workspace_id,
             principal_id=PRINCIPAL_ID,
-            issuer="https://auth.caseloop.dev",
+            issuer="https://auth.agentmed.dev",
             subject="maintainer-01J0000000000001",
             credential_hash=hash_opaque_bearer(token, PEPPER),
             hash_algorithm="hmac-sha256-v1",
@@ -146,7 +146,7 @@ def _resolver(sqlite_session, *, pepper: SecretStr = PEPPER) -> PublicCredential
     return PublicCredentialResolver(
         sqlite_session,
         hash_pepper=pepper,
-        expected_issuer="https://auth.caseloop.dev",
+        expected_issuer="https://auth.agentmed.dev",
     )
 
 
@@ -268,7 +268,7 @@ def test_unknown_bearer_is_a_secret_safe_token_invalid_error(sqlite_session) -> 
     ("field", "drifted_value"),
     [
         ("claims_digest", "sha256:" + "9" * 64),
-        ("audiences", ["caseloop-public-api", "drifted-audience"]),
+        ("audiences", ["agentmed-public-api", "drifted-audience"]),
         ("project_ids", []),
         ("environment_ids", []),
         ("scopes", ["cases:read"]),
@@ -327,7 +327,7 @@ def test_credential_and_principal_grant_drift_fails_closed(
         ),
         (
             {
-                "audiences": ["caseloop-public-api", "admin-control-plane"],
+                "audiences": ["agentmed-public-api", "admin-control-plane"],
                 "claims_digest": BASE_CLAIMS_DIGEST,
             },
             {},

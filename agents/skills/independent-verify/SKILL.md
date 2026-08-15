@@ -4,7 +4,7 @@ description: Independently verify a repair candidate against the frozen badcase 
 assign_when: A candidate/workorder is ready for gate verification before human approval.
 ---
 
-# independent-verify（caseloop 版）
+# independent-verify（agentmed 版）
 
 守门员专用。独立复核：候选是否真解决原坏例、是否引入回归。放行结论只属于守门员。
 

@@ -7,7 +7,7 @@
   "name": "bounded-code-repair",
   "version": "1.0.0",
   "source": {
-    "repository_uri": "https://example.com/caseloop/skills.git",
+    "repository_uri": "https://example.com/agentmed/skills.git",
     "commit": "0123456789abcdef0123456789abcdef01234567",
     "license_spdx": "Apache-2.0",
     "content_digest": "sha256:4646464646464646464646464646464646464646464646464646464646464646"

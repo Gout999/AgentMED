@@ -167,7 +167,7 @@ def read_credential(
     *,
     env: dict[str, str],
     stdin: TextIO,
-    token_env: str = "CASELOOP_PUBLIC_TOKEN",
+    token_env: str = "AGENTMED_PUBLIC_TOKEN",
     token_file: str | Path | None = None,
     token_stdin: bool = False,
 ) -> str:

@@ -21,18 +21,18 @@
 ## 2. Skill 九要素映射（8 个能力域）
 
 说明：8 个能力域当前以「SOUL 角色 + MCP 工具投影」形态运行，正式 SKILL.md 打包已有样板
-（`agents/skills/caseloop-b1-loop/SKILL.md`，全部 worker 引用）。版本/发布/回滚/质量评估
+（`agents/skills/agentmed-b1-loop/SKILL.md`，全部 worker 引用）。版本/发布/回滚/质量评估
 四要素对所有能力域统一适用，见表后。
 
 | 能力域 | 调用条件 | 输入 → 输出 | 依赖工具 | 失败处理 | 安全边界 |
 |---|---|---|---|---|---|
 | 采集分诊 | 新投诉立案 | 投诉原文+版本观测 → 取证包（digest 分组+证据缺口标注） | mcp-observation（/logs、/feedback、/versions） | 观察异常如实上报，不强扭剧本（T6c-A 实证） | 只读；PII 脱敏；不预设故障层 |
 | 启发式归因 | 取证完成 | 取证包 → 归因假设（先验层+实验设计） | 案例库检索（历史 postmortem） | 假设仅是假设，裁决权归实验 | LLM 归因器=举证助手，非裁决者 |
-| 对照实验 | 假设成立 | 冻结探针集×双臂版本 → ATTRIBUTED/INCONCLUSIVE/CONFOUNDED+Δ+95%CI | mcp-eval-runner（plan/freeze/run/report） | 平台失败如实 BLOCKED（T6c-A 实证）；统计不足即拒 | 探针集平台冻结；实验不可改题 |
+| 对照实验 | 假设成立 | 冻结探针集×双臂版本 → ATTRIBUTED/INCONCLUSIVE/CONFOUNDED+Δ+95%CI | mcp-agentmed-eval（plan/freeze/run/report） | 平台失败如实 BLOCKED（T6c-A 实证）；统计不足即拒 | 探针集平台冻结；实验不可改题 |
 | 修复原语 | 实验 ATTRIBUTED | 归因结论 → 修复草稿 → 不可变 WorkOrder（hash 绑定） | mcp-change（changeset/workorder） | digest 必须对账 live 观测（G5 已修）；伪造即拒 | 无生产写权限，只能起草 |
-| 评测门禁 | WorkOrder freeze | 回归集+裁判轨 → GateReport（绑工单 hash） | mcp-eval-runner、裁判模型（≠运动员） | 任一轨非 passed 即拒；UNKNOWN 不推断成功 | fail-closed；裁判独立校准 |
-| 案例沉淀 | 发布完成 | 案件全程 → postmortem 入库+回归考题候选 | mcp-casebase（kb.upsert，幂等） | 归档必须 receipt 绑定，无回执不归档 | 入库候选需回放验证才上架 |
-| 变异巡检 | 周期触发 | 历史 badcase 变异 → 攻击报告 → 新考题 | mcp-eval-runner、案例库 | 变异用例入库同走回放验证 | 只攻击 staging，不碰生产 |
+| 评测门禁 | WorkOrder freeze | 回归集+裁判轨 → GateReport（绑工单 hash） | mcp-agentmed-eval、裁判模型（≠运动员） | 任一轨非 passed 即拒；UNKNOWN 不推断成功 | fail-closed；裁判独立校准 |
+| 案例沉淀 | 发布完成 | 案件全程 → postmortem 入库+回归考题候选 | mcp-agentmed-casebase（kb.upsert，幂等） | 归档必须 receipt 绑定，无回执不归档 | 入库候选需回放验证才上架 |
+| 变异巡检 | 周期触发 | 历史 badcase 变异 → 攻击报告 → 新考题 | mcp-agentmed-eval、案例库 | 变异用例入库同走回放验证 | 只攻击 staging，不碰生产 |
 | 信任管理 | 每次动作记账 | 动作结果 → 账本样本 → 晋升/拒绝裁决 | trust ledger（自动记账，PR#1） | 证据不足一律拒绝（3/3 LB=0.4385 实证） | 高风险动作永远逐次人审 |
 
 **统一适用的四要素**：

@@ -34,7 +34,7 @@ def make_workorder(
         },
         "diff": {
             "format": "unified_diff",
-            "content_ref": diff_content or "minio://case-loop/prompts/fix-v1.diff",
+            "content_ref": diff_content or "minio://agentmed/prompts/fix-v1.diff",
             "digest": "sha256:" + "f" * 64,
         },
         "gate_report_ref": {"uri": "eval://eval_test00000001", "digest": "sha256:" + "g" * 64},

@@ -48,11 +48,11 @@ _MAX_SIGNAL_BODY_BYTES = 256_000
 _PUBLIC_HEADER_NAMES = frozenset(
     {
         "authorization",
-        "x-caseloop-workspace-id",
-        "x-caseloop-contract-version",
+        "x-agentmed-workspace-id",
+        "x-agentmed-contract-version",
         "idempotency-key",
         "x-request-id",
-        "x-caseloop-client-version",
+        "x-agentmed-client-version",
     }
 )
 
@@ -141,7 +141,7 @@ def _json_response(model: BaseModel, *, status_code: int) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
         content=model.model_dump(mode="json", exclude_none=False),
-        headers={"X-CaseLoop-Contract-Version": "1.0"},
+        headers={"X-AgentMED-Contract-Version": "1.0"},
     )
 
 

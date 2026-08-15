@@ -1,18 +1,18 @@
-# CaseLoop v4 全盘计划（批准施工基线）
+# AgentMED v4 全盘计划（批准施工基线）
 
 > 状态：**APPROVED TARGET / IMPLEMENTATION IN PROGRESS**
 >
 > 更新：2026-08-10
 >
-> 目的：定义 CaseLoop 从“客服参考纵切”升级为“小团队可采用的开源 Agent 质量与变更治理项目”的完整依赖顺序、架构、契约与验收。
+> 目的：定义 AgentMED 从“客服参考纵切”升级为“小团队可采用的开源 Agent 质量与变更治理项目”的完整依赖顺序、架构、契约与验收。
 >
 > 权威边界：本文是 v4 新开发的目标架构、依赖顺序与施工基线。`docs/plan-v3.md`、现有 `contracts/`、migrations 和可执行测试继续约束已实现的 v3 客服 Scenario Pack，直到相应能力被明确的 v4 migration、contract 和测试替换。计划获批不等于功能已经实现；运行事实仍只由代码、PostgreSQL 权威记录和可复验证据证明。
 >
-> 研究依据：[`docs/research/demand/caseloop-v4-small-team-adoption.md`](research/demand/caseloop-v4-small-team-adoption.md)。
+> 研究依据：[`docs/research/demand/agentmed-v4-small-team-adoption.md`](research/demand/agentmed-v4-small-team-adoption.md)。
 
 ## 0. 总裁决
 
-CaseLoop v4 的产品形态应是：
+AgentMED v4 的产品形态应是：
 
 > **可由人或其他 Agent 调用的开源 Agent 质量维护团队。**它从外部反馈、内部反馈、维护人员报告、运行异常和自动评测中接收质量 Signal，绑定确切 Agent Run 与版本，驱动真实 Agent Team 调查和生成候选，用独立 Evaluator 与确定性 Gate 证伪，在策略允许的范围内发布、观察、回滚，并把每次问题沉淀成回归与能力资产。
 
@@ -57,31 +57,31 @@ CaseLoop v4 的产品形态应是：
 
 ```bash
 # 已有 Langfuse 负反馈：向导列出最近低分 trace 供选择
-caseloop quickstart --profile local --source langfuse
+agentmed quickstart --profile local --source langfuse
 
 # 维护人员直接报告：允许暂时没有 trace
-caseloop signal submit \
+agentmed signal submit \
   --agent coding-assistant \
   --summary "最近经常选错部署工具"
 ```
 
-`caseloop report` 是 `caseloop signal submit` 的短 alias；文档、脚本和机器输出使用后者作为 canonical command。
+`agentmed report` 是 `agentmed signal submit` 的短 alias；文档、脚本和机器输出使用后者作为 canonical command。
 
 机器模式使用同一能力层：
 
 ```bash
-caseloop quickstart \
+agentmed quickstart \
   --no-input \
-  --config .caseloop/config.yaml \
+  --config .agentmed/config.yaml \
   --trace-id <trace-id> \
   --output json
 ```
 
-凭据只能通过交互式 stdin、OS keyring、环境变量或权限为 `0600` 的 secret file 注入，不能进入 argv、shell history 或不含 secret 的 `.caseloop/config.yaml`。成功结果必须返回确切 `workspace_id / source_id / signal_id / case_id / evidence_status / missing_fields / request_id / audit_ref / next_command`，不得以 `--latest` 作为验收定位。
+凭据只能通过交互式 stdin、OS keyring、环境变量或权限为 `0600` 的 secret file 注入，不能进入 argv、shell history 或不含 secret 的 `.agentmed/config.yaml`。成功结果必须返回确切 `workspace_id / source_id / signal_id / case_id / evidence_status / missing_fields / request_id / audit_ref / next_command`，不得以 `--latest` 作为验收定位。
 
 首次价值目标不是“生产全自动”，而是：
 
-> 一条已有坏 trace 进入 CaseLoop，显示来源、输入/输出摘要、确切版本、证据完整性、缺失项和一个可追踪 Case。
+> 一条已有坏 trace 进入 AgentMED，显示来源、输入/输出摘要、确切版本、证据完整性、缺失项和一个可追踪 Case。
 
 这个 `First Useful Case` 还必须给出跨来源去重结果、不可变 Evidence Receipt，以及一个明确下一步：补证据、启动调查或关闭误报。只复制一份 trace 或创建空 Case 不计激活。没有 trace 的维护报告进入 `NEEDS_CORRELATION`，系统给出候选 Run 或明确缺失，而不是拒绝或伪造绑定。
 
@@ -117,7 +117,7 @@ Stage 0 可以按已批准需求立即施工；用户验证与实现并行，不
 flowchart TB
   subgraph Users["人和外部 Agent"]
     Web["Console"]
-    CLI["caseloop CLI / CI"]
+    CLI["agentmed CLI / CI"]
     MCP["Public MCP"]
     SDK["HTTP SDK / Webhook"]
     Plugin["Claude Code / Codex / 其他 Skill"]
@@ -136,8 +136,8 @@ flowchart TB
   Work["Durable Work Coordinator\nWorkerTask · Attempt · reaction ledger"]
   ATRuntime["AgentTeams Runtime Adapter\ndispatch · wake · platform receipt"]
   ClaudeRuntime["Claude Code Runtime Adapter\nchild Attempt · isolated worktree"]
-  QualityTeam["caseloop-team\nsix quality-governance Workers"]
-  CodingTeam["caseloop-coding-team\nplanner · generator · reviewer"]
+  QualityTeam["agentmed-team\nsix quality-governance Workers"]
+  CodingTeam["agentmed-coding-team\nplanner · generator · reviewer"]
   Kernel["Deterministic Control Plane\nPostgreSQL · Event Store · Outbox"]
   Eval["Eval Runner · Independent Judge\nGate Controller · Sandbox Adapters"]
   Release["Scoped Executors\nQuality · Repo · Closure · Distribution"]
@@ -318,13 +318,13 @@ v4 不把现有六个质量 Worker 伪装成专业 coding Agent，也不静默�
 
 | Team / 单元 | 角色与执行后端 | 产物与边界 |
 |---|---|---|
-| `caseloop-team`（现有质量治理 Team） | `quality-officer`、`collector`、`attributionist`、`repairer`、`gatekeeper`、`case-officer`；当前参考实现为 CoPaw + StepFun `step-3.7-flash` | 保留 v3 客服 Scenario 与通用质量调查职责；是否参与某次 Case 由 `ParticipationManifest` 决定，不能因 Team 存在就宣称参与 |
-| `caseloop-coding-team`（新增专业 coding Team） | `coding-planner`、`coding-generator`、`coding-reviewer` | 对 coding workload 产出计划、patch candidate 与 Finding；第一实现以 GLM-5.2 为计划/生成候选模型，以受控 Claude Code CLI 为 generator 子执行后端；实际 provider 由每次不可变 assignment receipt 证明 |
+| `agentmed-team`（现有质量治理 Team） | `quality-officer`、`collector`、`attributionist`、`repairer`、`gatekeeper`、`case-officer`；当前参考实现为 CoPaw + StepFun `step-3.7-flash` | 保留 v3 客服 Scenario 与通用质量调查职责；是否参与某次 Case 由 `ParticipationManifest` 决定，不能因 Team 存在就宣称参与 |
+| `agentmed-coding-team`（新增专业 coding Team） | `coding-planner`、`coding-generator`、`coding-reviewer` | 对 coding workload 产出计划、patch candidate 与 Finding；第一实现以 GLM-5.2 为计划/生成候选模型，以受控 Claude Code CLI 为 generator 子执行后端；实际 provider 由每次不可变 assignment receipt 证明 |
 | Deterministic Eval Runner / Code Gate | 非 Agent 的确定性服务 | 编译、测试、lint、sandbox、权限与 diff policy 原始结果；计算 PASS/FAIL/INCONCLUSIVE/ERROR/UNKNOWN |
 | Independent Judge | 与最终 Generator 独立的模型轨 | 版本化评分与 Finding；无放行权，不能静默回落到同源模型 |
 | Controllers / scoped Executors | 确定性权威 | 冻结合同、接受/拒绝 Proposal、Gate、授权、草稿 PR/发布/回滚；不冒充 Agent 作者 |
 
-截至批准施工时，AgentTeams 中没有已部署的 Claude Code Agent 或 GLM Agent；`caseloop-coding-team` 是待 Stage 2 创建和验收的目标资源，不得提前写成当前能力。
+截至批准施工时，AgentTeams 中没有已部署的 Claude Code Agent 或 GLM Agent；`agentmed-coding-team` 是待 Stage 2 创建和验收的目标资源，不得提前写成当前能力。
 
 ### 6.2 AgentTeams 父 Worker 与 Claude Code 子 Attempt
 
@@ -492,7 +492,7 @@ Agent 不见 secret，只能请求与本次调查或动作权威记录绑定的 
 
 ## 9. Langfuse 首个纵切
 
-### 9.1 CaseLoop 自身可观测
+### 9.1 AgentMED 自身可观测
 
 - 统一 W3C trace context；
 - 控制面、Worker、eval、release、connector 传播同一 trace；
@@ -562,23 +562,23 @@ Stage 0 冻结唯一 Intent Registry 的**名称与传输骨架**：intent 名�
 ### 10.3 CLI
 
 ```text
-caseloop auth login|status|logout
-caseloop quickstart
-caseloop project init|doctor|capabilities
-caseloop source connect|list|capabilities|doctor
-caseloop signal submit|import
-caseloop run start|get|watch|cancel
-caseloop case list|get|timeline
-caseloop proposal get
-caseloop gate get
-caseloop approval list|get|decide
-caseloop release get|rollback-request
-caseloop evidence get|export|verify
-caseloop skill discover|inspect|candidate|eval|release|rollback|revoke
-caseloop mcp serve --stdio
+agentmed auth login|status|logout
+agentmed quickstart
+agentmed project init|doctor|capabilities
+agentmed source connect|list|capabilities|doctor
+agentmed signal submit|import
+agentmed run start|get|watch|cancel
+agentmed case list|get|timeline
+agentmed proposal get
+agentmed gate get
+agentmed approval list|get|decide
+agentmed release get|rollback-request
+agentmed evidence get|export|verify
+agentmed skill discover|inspect|candidate|eval|release|rollback|revoke
+agentmed mcp serve --stdio
 ```
 
-`caseloop report` 只作为 `caseloop signal submit` 的兼容 alias，不是第二个 intent。当前 registry 已冻结的是 `source capabilities`、`source doctor`、`evidence get`；同目录中的 connect/list/import/export/verify 在各自 intent + OpenAPI + conformance 落盘前只是目标命令，不得 advertise 为已实现。
+`agentmed report` 只作为 `agentmed signal submit` 的兼容 alias，不是第二个 intent。当前 registry 已冻结的是 `source capabilities`、`source doctor`、`evidence get`；同目录中的 connect/list/import/export/verify 在各自 intent + OpenAPI + conformance 落盘前只是目标命令，不得 advertise 为已实现。
 
 全局支持 `--profile`、`--workspace`、`--project`、`--environment`、`--output text|json|jsonl`、`--no-input`、`--idempotency-key`、`--request-id` 与 `--timeout`。stdout 保持机器输出，日志进 stderr，退出码稳定。`--timeout` 只停止本地等待；`--dry-run` 只有服务端返回内容寻址的 `PreviewReceipt` 时才成立，不支持则返回 `DRY_RUN_UNSUPPORTED`。
 
@@ -588,7 +588,7 @@ Stage 6 才启用远端 Streamable HTTP + OAuth 与本地 stdio Public MCP。只
 
 ### 10.5 Public principal 与 scope
 
-四类 caller principal 必须分开：human、external agent/service、connector、internal controller/worker；`GovernedAgent` 是被治理资源，不是调用者自报身份。Public API 必须先校验 bearer，再把 `X-CaseLoop-Workspace-ID` 与服务端解析的 issuer/audience/workspace/project/environment、subject type、scope、not-before、expiry 和 active/non-revoked credential 绑定；调用者不能在 body 自报 principal/workspace/role。持久化和返回的是 `jti_digest`，不是 raw jti。认证前失败的 `workspace_id` 可以为 null；audit/DB 提交失败时 `audit_ref` 必须为 null，并回滚业务事务，不能伪造审计引用。
+四类 caller principal 必须分开：human、external agent/service、connector、internal controller/worker；`GovernedAgent` 是被治理资源，不是调用者自报身份。Public API 必须先校验 bearer，再把 `X-AgentMED-Workspace-ID` 与服务端解析的 issuer/audience/workspace/project/environment、subject type、scope、not-before、expiry 和 active/non-revoked credential 绑定；调用者不能在 body 自报 principal/workspace/role。持久化和返回的是 `jti_digest`，不是 raw jti。认证前失败的 `workspace_id` 可以为 null；audit/DB 提交失败时 `audit_ref` 必须为 null，并回滚业务事务，不能伪造审计引用。
 
 最小 scopes 包括：
 
@@ -631,17 +631,17 @@ Agent/service token 永远不能获得 `approvals:decide:human` 或 `external_op
 
 HTTP、CLI exit family、MCP `isError + structuredContent` 与 A2A task error 都映射同一 code taxonomy。Gate `FAILED/INCONCLUSIVE` 与 Evidence `PARTIAL/UNKNOWN` 是成功读取到的领域结果，不冒充 500。上游原文和 secret 不进入用户错误。
 
-兼容契约从 Stage 0 开始：HTTP major path + payload `schema_version`、webhook `event_version`、CLI/server min-max handshake、MCP tool schema digest、Skill SemVer+digest、A2A adapter/protocol version。additive change 留在 major 内，breaking change 新 major；提供 `caseloop version/capabilities/upgrade check|plan|apply`，Compose/image/CLI pin 同一 release manifest，数据库使用 expand→backfill→contract migration 并做 N/N-1 contract tests。
+兼容契约从 Stage 0 开始：HTTP major path + payload `schema_version`、webhook `event_version`、CLI/server min-max handshake、MCP tool schema digest、Skill SemVer+digest、A2A adapter/protocol version。additive change 留在 major 内，breaking change 新 major；提供 `agentmed version/capabilities/upgrade check|plan|apply`，Compose/image/CLI pin 同一 release manifest，数据库使用 expand→backfill→contract migration 并做 N/N-1 contract tests。
 
 ### 10.7 portable Skill 与客户端包
 
-- `caseloop-report-signal`：人或 Agent 报问题；
-- `caseloop-investigate`：启动/观察 run；
-- `caseloop-status`：只读；
+- `agentmed-report-signal`：人或 Agent 报问题；
+- `agentmed-investigate`：启动/观察 run；
+- `agentmed-status`：只读；
 
 维护一个遵循 Agent Skills 标准字段的 portable core；Claude Code、Codex、Qwen Code、AgentTeams、阿里云分别生成薄 Adapter。Claude plugin 可打包 Skills、MCP 和可选 hooks，但核心不能依赖 Claude Agent SDK。
 
-Approval 不做 model-visible portable Skill。它只存在于独立 UI 或 human-scoped CLI，需要交互确认/重新鉴权；高风险 `caseloop-operator` 也不随只读包默认安装。
+Approval 不做 model-visible portable Skill。它只存在于独立 UI 或 human-scoped CLI，需要交互确认/重新鉴权；高风险 `agentmed-operator` 也不随只读包默认安装。
 
 ### 10.8 A2A 与 SDK/Webhook
 
@@ -653,7 +653,7 @@ OpenAPI 生成首批 Python/TypeScript SDK。Webhook registration、secret rotat
 
 ### 11.1 portable package + 治理 sidecar
 
-保留标准 `SKILL.md` 目录，增加 `caseloop.skill.json`：
+保留标准 `SKILL.md` 目录，增加 `agentmed.skill.json`：
 
 ```text
 source repo/commit/license
@@ -718,7 +718,7 @@ Rollback 只改变后续 assignment，不会抹掉已经发生的外部副作用
 ### 11.4 可复用组件
 
 - Agent Skills 格式与 `skills-ref`；
-- 固定 commit/CLI/runner image 的 Alibaba `skill-up run` 作为多引擎 with/without Eval Adapter；三臂与 hidden temporal holdout 由 CaseLoop 编排，`skill-upper` 禁止访问 holdout；
+- 固定 commit/CLI/runner image 的 Alibaba `skill-up run` 作为多引擎 with/without Eval Adapter；三臂与 hidden temporal holdout 由 AgentMED 编排，`skill-upper` 禁止访问 holdout；
 - OCI/ORAS 保存制品，SPDX/CycloneDX SBOM，SLSA provenance，Cosign/Sigstore 签名；
 - 阿里云 AISC Skills Detection 作为安全轨；
 - MSE AI Registry 作为首选阿里 distribution target；Managed Agents Skills API 只在明确选择百炼托管 runtime 时作为条件 Adapter。
@@ -745,7 +745,7 @@ MCP 版本还绑定 protocol version、server package/image/source digest、tool
 
 ### 12.2 自有 Skill 发布
 
-- CaseLoop portable Skill 经内部 Gate；
+- AgentMED portable Skill 经内部 Gate；
 - 以 MSE AI Registry 作为项目首选阿里分发目标；
 - 走 Draft → 审核/扫描 → Publish；
 - 固定版本下载并重验 digest；
@@ -765,15 +765,15 @@ MCP 版本还绑定 protocol version、server package/image/source digest、tool
 
 ### 12.4 Skill 包数量
 
-当前只有一个正式 `caseloop-b1-loop` 包；比赛材料里的八项是能力域，不是八个已实现 Skill。v4 建议先交付六个真实、可移植、可独立评测的包：
+当前只有一个正式 `agentmed-b1-loop` 包；比赛材料里的八项是能力域，不是八个已实现 Skill。v4 建议先交付六个真实、可移植、可独立评测的包：
 
 ```text
-caseloop-intake
-caseloop-investigate
-caseloop-change-proposal
-caseloop-evaluate-release
-caseloop-skill-evolution
-caseloop-operator
+agentmed-intake
+agentmed-investigate
+agentmed-change-proposal
+agentmed-evaluate-release
+agentmed-skill-evolution
+agentmed-operator
 ```
 
 能力域可以映射到这些包，不为满足数字复制同质内容。每个包都必须有版本、digest、权限、失败语义、eval 与发布证据。
@@ -784,7 +784,7 @@ caseloop-operator
 
 | Profile | 用途 | 组成 |
 |---|---|---|
-| `local` | 小团队试用/开发 | CaseLoop API、Worker、PostgreSQL、Console；外接现有 Langfuse/Phoenix |
+| `local` | 小团队试用/开发 | AgentMED API、Worker、PostgreSQL、Console；外接现有 Langfuse/Phoenix |
 | `single-node-production` | 小公司首个稳定部署 | pin 版本的 Compose/Podman、外部备份、TLS、secret store、health/SLO、单机恢复 |
 | `production` | K8s/VPC/HA | 独立 control/workers/connectors、managed PG、object store、queue/outbox、secret manager |
 
@@ -794,8 +794,8 @@ caseloop-operator
 
 ### 13.2 开源采用要求
 
-- 一条 `caseloop quickstart` 向导和可组合的底层子命令；
-- declarative `.caseloop/config.yaml`，不含 secret；
+- 一条 `agentmed quickstart` 向导和可组合的底层子命令；
+- declarative `.agentmed/config.yaml`，不含 secret；
 - capability discovery 与 doctor；
 - migration、backup/restore、upgrade/rollback 文档；
 - 中文优先文档与端到端 example；
@@ -841,13 +841,13 @@ Runtime 的 immutable hash 必须 pin `rfc8785==0.1.4` 并复用 no-float、排�
 
 首发支持矩阵冻结为：macOS/Linux + Docker Compose、单 Workspace、Shadow only、Manual CLI/HTTP maintainer report、Langfuse Cloud/明确验证过的 self-host 版本、Langfuse negative score。飞书仍是 v3 客服 Scenario 的现有渠道；把它升级为 v4 通用 maintainer Signal Adapter 属于 Stage 1B 增量，需独立 contract/live receipt。Phoenix、GitHub/GitLab、Sentry、企微和生产写面继续是后续 Adapter，不把配置占位当支持。
 
-交付：public HTTP、CLI、`quickstart/signal submit/source doctor/source capabilities/evidence get/case`、只读 `caseloop-report-signal` 与 `caseloop-status` Skills、Signal intake、Langfuse TraceSource、TraceEvidenceReceipt、Console 证据完整性，以及 CaseLoop 自身 W3C/OTel trace 到隔离 Langfuse project 的 export/read-back receipt。读取被治理 Agent 与输出 CaseLoop 自身 trace 是两条独立验收链；`report` 仅为 `signal submit` alias；Public MCP/A2A 留到 Stage 6。
+交付：public HTTP、CLI、`quickstart/signal submit/source doctor/source capabilities/evidence get/case`、只读 `agentmed-report-signal` 与 `agentmed-status` Skills、Signal intake、Langfuse TraceSource、TraceEvidenceReceipt、Console 证据完整性，以及 AgentMED 自身 W3C/OTel trace 到隔离 Langfuse project 的 export/read-back receipt。读取被治理 Agent 与输出 AgentMED 自身 trace 是两条独立验收链；`report` 仅为 `signal submit` alias；Public MCP/A2A 留到 Stage 6。
 
 出口：
 
 - external feedback、internal maintainer report、Langfuse negative score 三种 Signal 均可幂等立案；
 - Langfuse 历史坏 trace 与无 trace 的 maintainer report 两条路径都形成 First Useful Case；
-- CaseLoop 自身一条真实请求的 W3C/OTel trace 可以按 ID 从隔离 Langfuse project 回读；client-side masking、export failure receipt 与 PG 权威不受观测后端支配的语义均通过；
+- AgentMED 自身一条真实请求的 W3C/OTel trace 可以按 ID 从隔离 Langfuse project 回读；client-side masking、export failure receipt 与 PG 权威不受观测后端支配的语义均通过；
 - 无 AgentTeams 也能完成 Shadow 价值；
 - 断网、权限过宽、字段缺失、retention、重复投递、恶意 Signal/附件都诚实失败/降级；
 - clean-machine CI 至少覆盖 macOS arm64 与 Linux x64，fixture 冷启动/真实热启动分别保留 p50/p95 原始计时；
@@ -859,7 +859,7 @@ Stage 2 分成三个可独立验收的纵切，避免同时调试领域 work 语
 
 - **Stage 2A — Durable Work Kernel**：交付 WorkerTask/Attempt/lease/fence、typed Proposal/ProposalDecision、durable coordinator、最小 Work MCP、恢复/重派和故障注入；先用确定性 fixture 证明动作前 Proposal 与 PG causation。
 - **Stage 2B — Direct Claude Runtime**：交付 host-side Claude Code Runtime Adapter、模型/Skill/MCP/进程 receipt、隔离 worktree、结构化终态与 `UNKNOWN→reconcile`；用本地冻结 coding fixture 证明 child Attempt 的真实 claim 和 artifact。
-- **Stage 2C — AgentTeams Parent Delegation**：先对钉版本 v1.2.1 做 compatibility spike（当前 taskflow 是 Worker 内部协议，不假设存在外部 Controller Task API），再新增 AgentTeams Bridge、父 Worker claim、DelegationProposal、parent/child Attempt 绑定与 `caseloop-coding-team`；证明 AgentTeams Worker 真实被唤醒并委托 Claude child，而非 Manager/exporter 代跑。无法取得原生身份/ack receipt 时保持 `BLOCKED`。
+- **Stage 2C — AgentTeams Parent Delegation**：先对钉版本 v1.2.1 做 compatibility spike（当前 taskflow 是 Worker 内部协议，不假设存在外部 Controller Task API），再新增 AgentTeams Bridge、父 Worker claim、DelegationProposal、parent/child Attempt 绑定与 `agentmed-coding-team`；证明 AgentTeams Worker 真实被唤醒并委托 Claude child，而非 Manager/exporter 代跑。无法取得原生身份/ack receipt 时保持 `BLOCKED`。
 
 出口：
 
@@ -958,7 +958,7 @@ CLI/MCP/飞书 `maintainer_report` → 关联 coding Agent run → 调查 tool/s
 - Stage 3 只产生 verified local patch；Stage 4 经单独人批后才允许 draft PR。draft PR 是外部写，关闭 PR、删除远端分支或提出 revert 都是新的补偿动作，不能声称天然可逆；
 - 可以同时验证 public CLI、MCP、portable Skill、Agent causal evidence 和阿里云 Skill 发布。
 
-Claude Code 在这个 workload 中有两个明确分离的角色：内部是受控 coding execution harness，外部也可作为调用 CaseLoop CLI/MCP 的参考客户端。两者使用不同 principal、credential 和 receipt；都不是产品绑定。不能把 CaseLoop 自身命名为 Claude Code 或 Claude Code Agent。
+Claude Code 在这个 workload 中有两个明确分离的角色：内部是受控 coding execution harness，外部也可作为调用 AgentMED CLI/MCP 的参考客户端。两者使用不同 principal、credential 和 receipt；都不是产品绑定。不能把 AgentMED 自身命名为 Claude Code 或 Claude Code Agent。
 
 ## 17. 效果评测
 
@@ -1021,7 +1021,7 @@ rollback/revoke 成功率
 
 1. 产品对外定位为“可调用、逐步赢得权限的开源 Agent 质量维护团队”；
 2. `Signal` 取代 `Complaint` 作为核心输入；
-3. 保留现有六角色质量治理 Team，新增三角色 `caseloop-coding-team`；Eval Runner、Judge、Gate Controller 位于 Agent Team 之外；
+3. 保留现有六角色质量治理 Team，新增三角色 `agentmed-coding-team`；Eval Runner、Judge、Gate Controller 位于 Agent Team 之外；
 4. 引入 WorkerTask/Attempt/typed Proposal/ProposalDecision，runner 退出业务编排；
 5. Langfuse 是首个 TraceSource，coding Agent 是第二 workload；
 6. HTTP + CLI + Public MCP + portable Skill，A2A 后置；
@@ -1033,7 +1033,7 @@ rollback/revoke 成功率
 
 1. 首批 pilot 只开放 A1–A4；A5 逐次人批，A6 等真实 pilot、自动降级和补偿机制通过后再启用；
 2. 首发 ICP 选 2–8 人、1–3 个真实 Agent 的国内产品团队；5–20 人内部平台团队作为第二采用画像；
-3. 第二 workload 用 Claude Code 作公开参考客户端，同时用 CaseLoop 自己的施工 Agent dogfood；二者共享同一 public contracts；
+3. 第二 workload 用 Claude Code 作公开参考客户端，同时用 AgentMED 自己的施工 Agent dogfood；二者共享同一 public contracts；
 4. 阿里云自有 Skill 主发布目标固定为 MSE AI Registry；Model Studio 仅在书面赛制要求或主动采用 Managed Agents runtime 时接入；
 5. 第一版部署只支持单 Workspace，但 schema、principal、idempotency 与 evidence 从第一天带 `workspace_id`，多租户运行后置；
 6. Evidence 默认保存 metadata/digest、脱敏必要片段和客户对象存储引用；加密全文仅租户 opt-in，并受区域、retention、删除和访问策略控制；

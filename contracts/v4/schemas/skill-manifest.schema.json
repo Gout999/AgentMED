@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://caseloop.dev/contracts/v4/schemas/skill-manifest.schema.json",
-  "title": "CaseLoop governed SkillManifest",
+  "$id": "https://agentmed.dev/contracts/v4/schemas/skill-manifest.schema.json",
+  "title": "AgentMED governed SkillManifest",
   "type": "object",
   "required": [
     "schema_version",
@@ -33,10 +33,10 @@
   ],
   "properties": {
     "schema_version": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"
     },
     "skill_manifest_id": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/skill_manifest_id"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/skill_manifest_id"
     },
     "revision": {
       "type": "integer",
@@ -78,13 +78,13 @@
           "pattern": "^[A-Za-z0-9-.+() ]{2,128}$"
         },
         "content_digest": {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
         }
       },
       "additionalProperties": false
     },
     "package": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
     },
     "supply_chain": {
       "type": "object",
@@ -96,16 +96,16 @@
       ],
       "properties": {
         "dependency_lock_digest": {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
         },
         "sbom": {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
         },
         "provenance": {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/artifact_ref"
         },
         "builder_digest": {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
         }
       },
       "additionalProperties": false
@@ -161,7 +161,7 @@
       "uniqueItems": true
     },
     "requested_permissions": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/permission_surface"
     },
     "permission_change": {
       "type": "object",
@@ -182,7 +182,7 @@
         "previous_manifest": {
           "oneOf": [
             {
-              "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
+              "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/resource_binding"
             },
             {
               "type": "null"
@@ -224,7 +224,7 @@
       ]
     },
     "budget_ceiling": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/budget"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/budget"
     },
     "declarative_tool_hints": {
       "type": "object",
@@ -248,21 +248,21 @@
       "additionalProperties": false
     },
     "registered_by_principal": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"
     },
     "registered_at": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"
     },
     "manifest_digest": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"
     },
     "workspace_id": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"
     },
     "previous_snapshot": {
       "oneOf": [
         {
-          "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
+          "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"
         },
         {
           "type": "null"
@@ -270,7 +270,7 @@
       ]
     },
     "authority_receipt_id": {
-      "$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
+      "$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/authority_receipt_id"
     },
     "hash_rule": {
       "const": "jcs-rfc8785-v1+sha256(excluding:/manifest_digest)"

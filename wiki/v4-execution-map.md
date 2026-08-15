@@ -1,4 +1,4 @@
-# CaseLoop v4 施工路线速查
+# AgentMED v4 施工路线速查
 
 [返回 Wiki 索引](INDEX.md)
 
@@ -6,11 +6,11 @@
 >
 > 更新：2026-08-11
 >
-> 完整架构见 [CaseLoop v4 全盘计划](../docs/plan-v4.md)，文件级 entry/test/live/evidence/rollback 见 [v4 渐进式施工台账](../docs/plans/v4-progressive-delivery.md)。本页只做导航和状态蒸馏；“路线已批准”不等于功能已经实现。`docs/plan-v3.md`、现有 `contracts/`、migrations 与可执行测试继续约束已实现的 v3 客服 Scenario Pack，直到被明确的 v4 contract、migration 和测试替换。
+> 完整架构见 [AgentMED v4 全盘计划](../docs/plan-v4.md)，文件级 entry/test/live/evidence/rollback 见 [v4 渐进式施工台账](../docs/plans/v4-progressive-delivery.md)。本页只做导航和状态蒸馏；“路线已批准”不等于功能已经实现。`docs/plan-v3.md`、现有 `contracts/`、migrations 与可执行测试继续约束已实现的 v3 客服 Scenario Pack，直到被明确的 v4 contract、migration 和测试替换。
 
 ## 一句话
 
-CaseLoop v4 要成为**可由人和其他 Agent 调用的开源 Agent 质量维护团队**：接收外部/内部反馈、维护报告、运行异常与 eval 回归，绑定确切 Agent Run，驱动真实 Agent Team 调查和生成候选，再由独立 Evaluator 与确定性控制面验证、授权、发布和回滚。
+AgentMED v4 要成为**可由人和其他 Agent 调用的开源 Agent 质量维护团队**：接收外部/内部反馈、维护报告、运行异常与 eval 回归，绑定确切 Agent Run，驱动真实 Agent Team 调查和生成候选，再由独立 Evaluator 与确定性控制面验证、授权、发布和回滚。
 
 ## 当前事实，不要混写
 
@@ -20,15 +20,15 @@ CaseLoop v4 要成为**可由人和其他 Agent 调用的开源 Agent 质量维�
 | Stage 0 文档、ADR 与契约施工 | `DONE (contract-only)` |
 | Stage 1 Entry wire contract | `DONE (contract-only)`；14 个 target intent 中 8 个 S1A/S1B intent 已冻结，后续 6 个仍为 `SKELETON` |
 | S1A · 无 trace 维护报告 | `DONE (LOCAL RUNTIME)`；007、bootstrap、5 个 HTTP/CLI intent 与 PG 事务链已在 `22c23f8` 完成，独立 verifier/evidence 通过；不称 provider/Agent/live |
-| S1B · Langfuse 读 + CaseLoop OTel 写回 | `NOT IMPLEMENTED / PROVIDER-LIVE BLOCKED`；当前只有 frozen wire contract，live 前还需轮换隔离凭证并取得单独授权 |
-| 现有 `caseloop-team` | 六个 CoPaw / StepFun `step-3.7-flash` 质量治理 Worker；最近实测均为 `Sleeping`，`leaderReady=false`、`readyWorkers=0` |
+| S1B · Langfuse 读 + AgentMED OTel 写回 | `NOT IMPLEMENTED / PROVIDER-LIVE BLOCKED`；当前只有 frozen wire contract，live 前还需轮换隔离凭证并取得单独授权 |
+| 现有 `agentmed-team` | 六个 CoPaw / StepFun `step-3.7-flash` 质量治理 Worker；最近实测均为 `Sleeping`，`leaderReady=false`、`readyWorkers=0` |
 | AgentTeams 中的 Claude Code / GLM Agent | 不存在 |
-| 新 `caseloop-coding-team` | `design_status=APPROVED`、`lifecycle_status=NOT_CREATED`、`runtime_status=NOT_RUN`；计划在 Stage 2C 内生成 deployment manifest、部署并验收 |
+| 新 `agentmed-coding-team` | `design_status=APPROVED`、`lifecycle_status=NOT_CREATED`、`runtime_status=NOT_RUN`；计划在 Stage 2C 内生成 deployment manifest、部署并验收 |
 | Langfuse 双向接入 | 已批准；S1B 尚未实现，provider-live 未运行且当前被阻塞 |
 | 真实 GitHub issue 修复 | `NOT RUN` |
 | GitHub 留言、认领、fork、push、PR | 未授权；执行前逐次询问用户 |
 
-`caseloop-team` 的 Team CR 显示 `Active` 或仓库 desired spec 写 `state: Running`，都不能证明 Worker 当前活跃。运行状态是有时间戳的快照，实际操作前必须重新查询。
+`agentmed-team` 的 Team CR 显示 `Active` 或仓库 desired spec 写 `state: Running`，都不能证明 Worker 当前活跃。运行状态是有时间戳的快照，实际操作前必须重新查询。
 
 ## Signal 取代 Complaint
 
@@ -52,13 +52,13 @@ scheduled_inspection 周期巡检
 
 | Team / 单元 | 角色 | 当前/目标执行后端 | 状态与边界 |
 |---|---|---|---|
-| `caseloop-team` | `quality-officer`、`collector`、`attributionist`、`repairer`、`gatekeeper`、`case-officer` | CoPaw + StepFun `step-3.7-flash` | 已部署的质量治理 Team；当前六个 Worker 均休眠，不是专业 Coding Team |
-| `caseloop-coding-team` | `coding-planner`、`coding-generator`、`coding-reviewer` | Planner/Generator 目标模型为 GLM-5.2；Generator 委托受控 Claude Code 子 Attempt；Reviewer 使用独立模型轨操作 sandbox，并且只提交 `Finding` | `design_status=APPROVED`、`lifecycle_status=NOT_CREATED`、`runtime_status=NOT_RUN`；provider 必须以每次 receipt 和 smoke 证明 |
+| `agentmed-team` | `quality-officer`、`collector`、`attributionist`、`repairer`、`gatekeeper`、`case-officer` | CoPaw + StepFun `step-3.7-flash` | 已部署的质量治理 Team；当前六个 Worker 均休眠，不是专业 Coding Team |
+| `agentmed-coding-team` | `coding-planner`、`coding-generator`、`coding-reviewer` | Planner/Generator 目标模型为 GLM-5.2；Generator 委托受控 Claude Code 子 Attempt；Reviewer 使用独立模型轨操作 sandbox，并且只提交 `Finding` | `design_status=APPROVED`、`lifecycle_status=NOT_CREATED`、`runtime_status=NOT_RUN`；provider 必须以每次 receipt 和 smoke 证明 |
 | Eval Runner / Code Gate | 非 Agent 的确定性服务 | 编译、测试、lint、sandbox、diff/权限规则 | 计算硬门禁，不让模型自行放行 |
 | Independent Judge | 独立模型轨 | 与最终 Generator 不同的 independence key | 提交评分/Finding，无放行权 |
 | Controllers / scoped Executors | 确定性权威 | PostgreSQL 控制面和范围受限的外部动作执行器 | 冻结合约、裁决 Proposal、审批、发布/回滚；不冒充 Agent 作者 |
 
-`caseloop-approver` 是 Human，不是第七个 Agent。当前 AgentTeams 内没有 Claude Code Agent 或 GLM Agent；目标模型配置、CCR 路由或本机 CLI 存在都不能替代真实运行验收。
+`agentmed-approver` 是 Human，不是第七个 Agent。当前 AgentTeams 内没有 Claude Code Agent 或 GLM Agent；目标模型配置、CCR 路由或本机 CLI 存在都不能替代真实运行验收。
 
 `coding-reviewer` 不持有 Gate。它只提交绑定确切 Candidate revision 的 `Finding` 和 sandbox evidence；确定性 Eval Runner / Code Gate 位于 Team 外，根据冻结 EvaluationPlan 和所有必选 evidence facets 计算终态。
 
@@ -121,10 +121,10 @@ A2A        稳定 Run API 之上的长任务 Adapter
 
 已批准两个方向：
 
-1. CaseLoop 自身的 Agent/LLM/tool trace 通过 OTel/OTLP 发往 Langfuse；
+1. AgentMED 自身的 Agent/LLM/tool trace 通过 OTel/OTLP 发往 Langfuse；
 2. `LangfuseTraceSource` 读取被治理 Agent 的 observations/scores。
 
-进入 Case 前形成 `TraceEvidenceReceipt`，记录 exact Signal binding、requested/result field set、来源版本、digest、`COMPLETE/PARTIAL/UNKNOWN` 和缺失项。无 trace locator 时固定为 `collection_mode=NO_LOCATOR / query=null / AgentRunRef=null / UNKNOWN`，禁止伪造 run。Case 主状态仍为 `OPEN`，另记 `correlation_status=NEEDS_CORRELATION`。Langfuse 不是 CaseLoop 权威数据库，也不默认拥有全部输入输出。
+进入 Case 前形成 `TraceEvidenceReceipt`，记录 exact Signal binding、requested/result field set、来源版本、digest、`COMPLETE/PARTIAL/UNKNOWN` 和缺失项。无 trace locator 时固定为 `collection_mode=NO_LOCATOR / query=null / AgentRunRef=null / UNKNOWN`，禁止伪造 run。Case 主状态仍为 `OPEN`，另记 `correlation_status=NEEDS_CORRELATION`。Langfuse 不是 AgentMED 权威数据库，也不默认拥有全部输入输出。
 
 ## Skill/MCP 自进化
 
@@ -152,7 +152,7 @@ Stage 5 前不得生产安装、外部发布或 Policy promote Skill/MCP。阿�
 |---|---|---|---|
 | 0 | 正式 PRD v2、ADR、v4 contracts、Intent Registry、迁移语义 | `DONE (contract-only)` | owner/command/event、auth/idempotency/error、双轨 evidence 与 v3 cutover contract review 已通过；不代表 runtime/live |
 | 1A | authenticated maintainer report without trace：Signal + HTTP/CLI | `DONE (LOCAL RUNTIME)` | 691 unit、232 attack replay、449 contract、81 CLI 与 4 个 disposable PostgreSQL integration 通过；所有 live/Agent/external facets 为 `NOT_RUN` |
-| 1B | Langfuse 读取 + CaseLoop OTel 输出/回读 | `NOT IMPLEMENTED / PROVIDER-LIVE BLOCKED` | connector/008/runtime 尚未施工；真实读取和独立 sink 回读还需要轮换凭证、单独 live 授权与 provider receipt |
+| 1B | Langfuse 读取 + AgentMED OTel 输出/回读 | `NOT IMPLEMENTED / PROVIDER-LIVE BLOCKED` | connector/008/runtime 尚未施工；真实读取和独立 sink 回读还需要轮换凭证、单独 live 授权与 provider receipt |
 | 2A | Durable Work Kernel | `NOT STARTED` | lease/fence/retry/cancel/reconcile 与动作前 Proposal 的 PG 因果语义成立 |
 | 2B | Direct Claude Runtime | `NOT STARTED` | fixture 中 child Attempt 的 claim、runtime/model/tool receipt 和终态语义成立 |
 | 2C | AgentTeams Parent Delegation 与 Coding Team | `NOT STARTED` | 在 2C 内从已批准 design manifest 生成、审查、部署版本钉定 manifest，再完成真唤醒/父子 Attempt/Reviewer Finding/Team 外 Gate；Manager/exporter 代跑必须失败 |

@@ -1,4 +1,4 @@
--- CaseLoop 逻辑库初始化（清理 A1：demo-app 库随被治理应用迁移 AgentMED 退役）
+-- AgentMED 逻辑库初始化（清理 A1：demo-app 库随被治理应用迁移 AgentMED 退役）
 -- 容器入口：/docker-entrypoint-initdb.d/
 
 CREATE DATABASE control_plane;

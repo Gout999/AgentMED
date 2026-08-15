@@ -19,7 +19,7 @@
 | 切片 | 当前状态 | 口径 |
 |---|---|---|
 | S1A · authenticated maintainer report without trace | `DONE (LOCAL RUNTIME)` | `007`、本地 bootstrap、5 个 HTTP/CLI intent 和 PostgreSQL 事务链已在 `22c23f8` 完成；独立 verifier 与 evidence 通过，但所有 provider/Agent/外部/生产 facet 仍为 `NOT_RUN` |
-| S1B · Langfuse read + CaseLoop OTel write/readback | `NOT IMPLEMENTED / PROVIDER-LIVE BLOCKED` | 当前只有 frozen wire contract；connector、008、真实读取和独立 sink 回读尚未施工，且 live 前必须轮换隔离凭证并取得单独授权 |
+| S1B · Langfuse read + AgentMED OTel write/readback | `NOT IMPLEMENTED / PROVIDER-LIVE BLOCKED` | 当前只有 frozen wire contract；connector、008、真实读取和独立 sink 回读尚未施工，且 live 前必须轮换隔离凭证并取得单独授权 |
 
 Stage 1 只有在 S1A 与 S1B 各自满足测试、证据和验收边界后才能整体关闭；本地 PostgreSQL/loopback 通过不等于 `domain-provider-live`。
 
@@ -77,9 +77,9 @@ V4 S1B–S7 继续冻结。D-013 和 V5 construction baseline 已接受；当前
 ## 环境与凭证安全
 
 - 每个进程只注入各自 `.env.example` 所需的最小变量；不要 `source` 其他仓库或未知整份 `.env`。
-- 测试数据库必须显式指定 disposable URL。会 reset schema 的 control-plane PostgreSQL integration suite 还必须显式设置 `CASELOOP_ALLOW_INTEGRATION_RESET=true`；若 shell 已有生产/演示 `DATABASE_URL`，测试可能沿用它。
+- 测试数据库必须显式指定 disposable URL。会 reset schema 的 control-plane PostgreSQL integration suite 还必须显式设置 `AGENTMED_ALLOW_INTEGRATION_RESET=true`；若 shell 已有生产/演示 `DATABASE_URL`，测试可能沿用它。
 - `docker compose config` 可能展开 secret 并打印到日志；共享会话不要运行未脱敏的完整输出。
-- CaseLoop 原生 control-plane 默认宿主 `8090`；Compose profile 是宿主 `18090 → 容器 8090`；AgentTeams controller 的容器内 `8090` 属于另一个地址空间。
+- AgentMED 原生 control-plane 默认宿主 `8090`；Compose profile 是宿主 `18090 → 容器 8090`；AgentTeams controller 的容器内 `8090` 属于另一个地址空间。
 - MCP 隔离测试使用 [mcp-servers/README.md](../mcp-servers/README.md) 中的完整受信 backend smoke，包含所需 token 和 consumer 约束；不要复制过期裸命令。
 - `demo-app/scripts/reset_state.sh` 会改变或删除演示数据，只能用于明确 disposable 环境；记录运行前后 VersionSet，不把“保持故障注入”当通用收尾规则。
 

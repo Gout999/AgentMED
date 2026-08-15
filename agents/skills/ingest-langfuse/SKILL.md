@@ -4,7 +4,7 @@ description: Collect Langfuse evidence for a complaint Case. Read scores (v3), o
 assign_when: A Case has correlation_status NEEDS_CORRELATION or missing evidence fields referencing langfuse.
 ---
 
-# ingest-langfuse（caseloop 版）
+# ingest-langfuse（agentmed 版）
 
 取证：从 Langfuse 拉观测补 Case 证据缺口。只读，不写 Langfuse。
 

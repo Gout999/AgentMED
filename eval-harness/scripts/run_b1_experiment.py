@@ -4,7 +4,7 @@
 用法：
     .venv/bin/python scripts/run_b1_experiment.py [--reps 3] [--seed 20260807] [--out-dir evidence]
 
-前置：demo-app 运行于 CASELOOP_QUALITY_API_BASE_URL（默认 127.0.0.1:8080）；
+前置：demo-app 运行于 AGENTMED_QUALITY_API_BASE_URL（默认 127.0.0.1:8080）；
       STEPFUN_API_KEY 已配置（live 调用）。
 VersionSet 必须预先由 Release Controller 创建；本命令没有 Quality 写权限。
 """

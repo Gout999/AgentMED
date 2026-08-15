@@ -164,7 +164,7 @@ def _edge_options(parser: argparse.ArgumentParser) -> None:
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = SafeArgumentParser(prog="caseloop")
+    parser = SafeArgumentParser(prog="agentmed")
     parser.add_argument("--profile")
     parser.add_argument("--api-url")
     parser.add_argument("--workspace-id")
@@ -354,7 +354,7 @@ def _load_manifest_payload(path: str) -> dict[str, object]:
         raise CliError("MANIFEST_INVALID_JSON", ExitFamily.INPUT) from exc
     if not isinstance(payload, dict):
         raise CliError("MANIFEST_INVALID", ExitFamily.INPUT)
-    # ``caseloop init`` drafts carry an informational ``_discovery`` section;
+    # ``agentmed init`` drafts carry an informational ``_discovery`` section;
     # strip underscore-prefixed metadata keys before canonical validation.
     payload = {key: value for key, value in payload.items() if not key.startswith("_")}
     try:
@@ -375,7 +375,7 @@ _ISSUE_URL = re.compile(
     r"^https?://github\.com/(?P<owner>[A-Za-z0-9_.-]{1,128})/"
     r"(?P<repo>[A-Za-z0-9_.-]{1,128})/issues/(?P<number>[1-9][0-9]{0,9})$"
 )
-_ISSUE_CACHE_ENV = "CASELOOP_CACHE_DIR"
+_ISSUE_CACHE_ENV = "AGENTMED_CACHE_DIR"
 
 
 def _parse_issue_url(url: str) -> tuple[str, str, int]:
@@ -389,7 +389,7 @@ def _issue_cache_dir(env: dict[str, str]) -> Path:
     configured = env.get(_ISSUE_CACHE_ENV)
     if configured:
         return Path(configured)
-    return Path.home() / ".cache" / "caseloop" / "issues"
+    return Path.home() / ".cache" / "agentmed" / "issues"
 
 
 def _fetch_issue_snapshot(
@@ -430,7 +430,7 @@ def _fetch_issue_snapshot(
     api_url = f"https://api.github.com/repos/{owner}/{repo}/issues/{number}"
     request = urllib.request.Request(
         api_url,
-        headers={"Accept": "application/vnd.github+json", "User-Agent": "caseloop-cli"},
+        headers={"Accept": "application/vnd.github+json", "User-Agent": "agentmed-cli"},
     )
     try:
         with urllib.request.urlopen(request, timeout=20) as response:  # noqa: S310 - read-only public GET
@@ -631,10 +631,10 @@ def _cmd_init(args: argparse.Namespace, *, output_stream: TextIO, error_stream: 
         raise CliError(exc.code, ExitFamily.INPUT) from None
     _write_json(output_stream, result.to_manifest_draft())
     error_stream.write(
-        "caseloop init: draft only; no server state was written.\n"
+        "agentmed init: draft only; no server state was written.\n"
         "Complete 'application'/'environment', then run:\n"
-        "  caseloop --api-version 2 system-manifest validate --manifest-file <file>\n"
-        "  caseloop --api-version 2 system-manifest import --manifest-file <file>\n"
+        "  agentmed --api-version 2 system-manifest validate --manifest-file <file>\n"
+        "  agentmed --api-version 2 system-manifest import --manifest-file <file>\n"
     )
     return int(ExitFamily.OK)
 
@@ -778,7 +778,7 @@ def _cmd_case_from_issue(
     output_stream: TextIO,
     error_stream: TextIO,
 ) -> dict[str, object]:
-    """``caseloop case from-issue <github-url>`` orchestration.
+    """``agentmed case from-issue <github-url>`` orchestration.
 
     Composes only canonical intents: signals.submit → cases.bind-application →
     acceptance-criteria.propose (draft).  The issue snapshot is read-only data
@@ -822,12 +822,12 @@ def _cmd_case_from_issue(
         body = body[:19_997] + "..."
 
     source_id = _valid_id(
-        setting(args.source_id, env, "CASELOOP_SOURCE_ID", profile, "source_id"),
+        setting(args.source_id, env, "AGENTMED_SOURCE_ID", profile, "source_id"),
         "source",
         required=True,
     )
     reporter_ref = _required(
-        setting(args.reporter_ref, env, "CASELOOP_REPORTER_REF", profile, "reporter_ref"),
+        setting(args.reporter_ref, env, "AGENTMED_REPORTER_REF", profile, "reporter_ref"),
         "REPORTER_REF_REQUIRED",
     )
     if len(reporter_ref) > 256:
@@ -1021,13 +1021,13 @@ def _cmd_case_from_issue(
     revision_digest = revision["record_envelope"]["record_digest"]
 
     error_stream.write(
-        f"caseloop case from-issue: case {case_id} bound to "
+        f"agentmed case from-issue: case {case_id} bound to "
         f"{bind_response['application_case_binding']['application_id']}; "
         f"acceptance draft {revision_id} recorded as PROPOSED (untrusted).\n"
         "No acceptance criteria were auto-confirmed. A reauthenticated human "
         "maintainer/domain reviewer may confirm the draft; confirmation remains "
         "non-executable until V5-4 materializes a ResolutionContract:\n"
-        f"  caseloop --api-version 2 case acceptance-criteria confirm {revision_id} "
+        f"  agentmed --api-version 2 case acceptance-criteria confirm {revision_id} "
         f"--case-id {case_id} --case-revision {case_revision} "
         f"--proposed-revision-digest {revision_digest}\n"
     )
@@ -1051,7 +1051,7 @@ def _cmd_case_from_issue(
         "next_action": {
             "code": "CONFIRM_ACCEPTANCE_CRITERIA",
             "command": (
-                f"caseloop --api-version 2 case acceptance-criteria confirm "
+                f"agentmed --api-version 2 case acceptance-criteria confirm "
                 f"{revision_id} --case-id {case_id} "
                 f"--case-revision {case_revision} "
                 f"--proposed-revision-digest {revision_digest}"
@@ -1096,17 +1096,17 @@ def run(
         if args.command == "system-manifest" and args.action == "validate":
             return _cmd_manifest_validate(args, output_stream=output_stream)
 
-        profile_path = args.profile or actual_env.get("CASELOOP_PROFILE")
+        profile_path = args.profile or actual_env.get("AGENTMED_PROFILE")
         profile = load_profile(profile_path) if profile_path else {}
         api_url = _required(
-            setting(args.api_url, actual_env, "CASELOOP_API_URL", profile, "api_url"),
+            setting(args.api_url, actual_env, "AGENTMED_API_URL", profile, "api_url"),
             "API_URL_REQUIRED",
         )
         workspace = _required(
-            setting(args.workspace_id, actual_env, "CASELOOP_WORKSPACE_ID", profile, "workspace_id"),
+            setting(args.workspace_id, actual_env, "AGENTMED_WORKSPACE_ID", profile, "workspace_id"),
             "WORKSPACE_ID_REQUIRED",
         )
-        token_env = args.token_env or profile.get("token_env") or "CASELOOP_PUBLIC_TOKEN"
+        token_env = args.token_env or profile.get("token_env") or "AGENTMED_PUBLIC_TOKEN"
         token_file = args.token_file or profile.get("token_file")
         token = read_credential(
             env=actual_env,
@@ -1473,10 +1473,10 @@ def run(
             receipt_id = _valid_id(args.receipt_id, "receipt", required=True)
             result = client.request("GET", f"/api/v1/evidence/{receipt_id}")
         else:
-            source_id = setting(args.source_id, actual_env, "CASELOOP_SOURCE_ID", profile, "source_id")
+            source_id = setting(args.source_id, actual_env, "AGENTMED_SOURCE_ID", profile, "source_id")
             source_id = _valid_id(source_id, "source", required=True)
             reporter_ref = _required(
-                setting(args.reporter_ref, actual_env, "CASELOOP_REPORTER_REF", profile, "reporter_ref"),
+                setting(args.reporter_ref, actual_env, "AGENTMED_REPORTER_REF", profile, "reporter_ref"),
                 "REPORTER_REF_REQUIRED",
             )
             if not 1 <= len(args.summary) <= 500 or len(reporter_ref) > 256:
@@ -1501,14 +1501,14 @@ def run(
                 "signal_kind": "maintainer_report",
                 "reporter": {"kind": "maintainer", "source_subject_ref": reporter_ref},
                 "project_id": _valid_id(
-                    setting(args.project_id, actual_env, "CASELOOP_PROJECT_ID", profile, "project_id"),
+                    setting(args.project_id, actual_env, "AGENTMED_PROJECT_ID", profile, "project_id"),
                     "project",
                 ),
                 "environment_id": _valid_id(
                     setting(
                         args.environment_id,
                         actual_env,
-                        "CASELOOP_ENVIRONMENT_ID",
+                        "AGENTMED_ENVIRONMENT_ID",
                         profile,
                         "environment_id",
                     ),
@@ -1518,7 +1518,7 @@ def run(
                     setting(
                         args.governed_agent_id,
                         actual_env,
-                        "CASELOOP_GOVERNED_AGENT_ID",
+                        "AGENTMED_GOVERNED_AGENT_ID",
                         profile,
                         "governed_agent_id",
                     ),

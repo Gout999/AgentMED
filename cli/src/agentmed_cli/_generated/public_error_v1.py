@@ -1,4 +1,4 @@
-"""Generated frozen CaseLoop public v1 error wire model."""
+"""Generated frozen AgentMED public v1 error wire model."""
 
 from __future__ import annotations
 

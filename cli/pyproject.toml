@@ -3,9 +3,9 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "caseloop-cli"
+name = "agentmed-cli"
 version = "0.1.0"
-description = "Stage 1A public CLI for CaseLoop"
+description = "Stage 1A public CLI for AgentMED"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -22,7 +22,7 @@ test = [
 ]
 
 [project.scripts]
-caseloop = "caseloop_cli.main:entrypoint"
+agentmed = "agentmed_cli.main:entrypoint"
 
 [tool.setuptools.packages.find]
 where = ["src"]

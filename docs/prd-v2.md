@@ -1,4 +1,4 @@
-# CaseLoop 产品需求文档 v2
+# AgentMED 产品需求文档 v2
 
 > 状态：**APPROVED TARGET / IMPLEMENTATION IN PROGRESS**
 >
@@ -12,7 +12,7 @@
 
 ## 1. 产品定义
 
-CaseLoop 是一个可由人、CI 或其他 Agent 调用的开源 Agent 质量与变更治理系统。它把散落在反馈渠道、trace、日志、评测、代码仓库和发布系统中的质量处理工作，收口为一条可追踪、可验证、可回滚的闭环：
+AgentMED 是一个可由人、CI 或其他 Agent 调用的开源 Agent 质量与变更治理系统。它把散落在反馈渠道、trace、日志、评测、代码仓库和发布系统中的质量处理工作，收口为一条可追踪、可验证、可回滚的闭环：
 
 ```text
 Signal → Case → Run/Trace evidence → Investigation → Candidate
@@ -20,7 +20,7 @@ Signal → Case → Run/Trace evidence → Investigation → Candidate
        → Observe/Reconcile/Rollback → Closure → Regression asset
 ```
 
-CaseLoop 不是 Agent runtime、trace 存储、通用聊天编排器或“多个 LLM 同意即可自动发布”的系统。PostgreSQL 控制面持有生命周期、权限、幂等、审批、发布、审计和因果记录；Agent 只提交假设、Finding、Proposal 与候选工件。
+AgentMED 不是 Agent runtime、trace 存储、通用聊天编排器或“多个 LLM 同意即可自动发布”的系统。PostgreSQL 控制面持有生命周期、权限、幂等、审批、发布、审计和因果记录；Agent 只提交假设、Finding、Proposal 与候选工件。
 
 “支持所有 Agent”的产品含义是：核心契约不绑定客服、coding、某个模型或 runtime。能提供至少一种质量 Signal，并能提供运行/版本证据、验证接点或受控动作接点的 Agent，可以按能力逐步接入。无法观测、无法版本化、无法复验或无法隔离副作用的对象只能进入观察、补证或 `UNKNOWN`，不承诺自动归因和自动修复。
 
@@ -47,12 +47,12 @@ CaseLoop 不是 Agent runtime、trace 存储、通用聊天编排器或“多个
 
 - 没有任何 Signal、run、版本或验证接点的黑盒系统；
 - 首次接入即要求不可逆、高损失、钱/身份/敏感数据写入的全自动场景；
-- 以 CaseLoop 代替客户既有 observability、eval、sandbox、runtime 或 identity 平台；
+- 以 AgentMED 代替客户既有 observability、eval、sandbox、runtime 或 identity 平台；
 - 无人监督的自我修改评测、隐藏考题、审批策略或生产权限。
 
 ## 3. 用户价值与成功标准
 
-首个可用价值不是“全自动修复”，而是 **First Useful Case**：一条真实坏 trace 或维护报告进入 CaseLoop，形成确切 `signal_id` 与 `case_id`，显示来源、运行/版本绑定、证据完整性、缺失项、去重结果和下一步。
+首个可用价值不是“全自动修复”，而是 **First Useful Case**：一条真实坏 trace 或维护报告进入 AgentMED，形成确切 `signal_id` 与 `case_id`，显示来源、运行/版本绑定、证据完整性、缺失项、去重结果和下一步。
 
 产品依次证明四层价值：
 
@@ -80,7 +80,7 @@ CaseLoop 不是 Agent runtime、trace 存储、通用聊天编排器或“多个
 ### 5.1 租户与治理对象
 
 - `Workspace / Project / Environment`：从第一版 schema 即存在；首版运行可只支持单 Workspace；
-- `GovernedAgent`：被治理对象，不等于调用 CaseLoop 的 Agent principal；
+- `GovernedAgent`：被治理对象，不等于调用 AgentMED 的 Agent principal；
 - `AgentVersionSet`：可扩展的版本快照，包含模型、prompt、knowledge、Skill、tool/MCP schema、harness/orchestrator、policy 和 environment digest；
 - `SourceConnection`：Signal/trace/issue/monitor 等来源，只保存 credential reference 和 capability，不保存明文 secret。
 
@@ -125,9 +125,9 @@ CaseLoop 不是 Agent runtime、trace 存储、通用聊天编排器或“多个
 
 ### 6.2 Langfuse 双向需求
 
-1. CaseLoop 自身通过标准 OTel/GenAI instrumentation 把内部模型、Agent 和工具调用发送到可配置 Langfuse；
+1. AgentMED 自身通过标准 OTel/GenAI instrumentation 把内部模型、Agent 和工具调用发送到可配置 Langfuse；
 2. Langfuse TraceSource 以 project-scoped credential 增量读取被治理 Agent 的 observation/score，按 trace ID 组装 Run evidence；
-3. source credential 视为广权限 secret；CaseLoop 只暴露 allowlisted read operations，不宣称官方 key 是细粒度只读；
+3. source credential 视为广权限 secret；AgentMED 只暴露 allowlisted read operations，不宣称官方 key 是细粒度只读；
 4. polling 使用 watermark、重叠窗口、ID 去重、cursor CAS、重试和 DLQ；
 5. retention 前固化所需 evidence receipt/artifact；Langfuse 不是权威状态库；
 6. 脱敏、采样、丢 span、留存、权限或 instrumentation 不全时返回 `PARTIAL/UNKNOWN`。
@@ -136,11 +136,11 @@ CaseLoop 不是 Agent runtime、trace 存储、通用聊天编排器或“多个
 
 ### 7.1 现有质量治理 Team
 
-`caseloop-team` 保留六个职责：`quality-officer`、`collector`、`attributionist`、`repairer`、`gatekeeper`、`case-officer`。它是 v3 客服 Scenario 和通用质量调查的参考 Team，不是专业 coding Team；固定 warm pool 不等于所有角色每次都参与。
+`agentmed-team` 保留六个职责：`quality-officer`、`collector`、`attributionist`、`repairer`、`gatekeeper`、`case-officer`。它是 v3 客服 Scenario 和通用质量调查的参考 Team，不是专业 coding Team；固定 warm pool 不等于所有角色每次都参与。
 
 ### 7.2 新增 Coding Team
 
-`caseloop-coding-team`：
+`agentmed-coding-team`：
 
 - `coding-planner`：复现问题、冻结基线、提出 ResolutionContract；
 - `coding-generator`：提出执行委托并消费 Claude Code child Attempt 的 patch；
@@ -186,7 +186,7 @@ Stage 0 v1 Intent Registry 是 target catalog；`wire_status` 决定当前是否
 
 ## 10. Skill/MCP 自进化
 
-CaseLoop 支持自有 Skill/MCP 与阿里云适配，但 Agent Skills 的 `SKILL.md` 只是可移植描述格式，不是安全、签名或发布权威。
+AgentMED 支持自有 Skill/MCP 与阿里云适配，但 Agent Skills 的 `SKILL.md` 只是可移植描述格式，不是安全、签名或发布权威。
 
 每个 capability 由 immutable package digest、版本、来源、SBOM/provenance、权限/网络/secret sidecar、依赖和兼容范围组成。候选经过 quarantine、old/candidate/no-skill 三臂、隐藏 holdout、供应链/权限 Gate、人批、固定版本 publish、下载 digest 核验、Worker canary、promote/revoke/rollback。
 

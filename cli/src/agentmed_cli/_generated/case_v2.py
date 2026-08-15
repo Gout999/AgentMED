@@ -1,9 +1,9 @@
-"""Frozen CaseLoop public v2 case, acceptance, and capability wire models.
+"""Frozen AgentMED public v2 case, acceptance, and capability wire models.
 
 Hand-copied from ``control-plane/app/public_api/v5_models.py`` (schema-major-2)
 so the CLI can build and validate /api/v2 case-binding and acceptance-criteria
 responses without importing the control-plane package.  Any change to that
-module must be mirrored here and in ``cli/src/caseloop_cli/client.py``.
+module must be mirrored here and in ``cli/src/agentmed_cli/client.py``.
 """
 
 from __future__ import annotations

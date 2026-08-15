@@ -1,4 +1,4 @@
-# CaseLoop v4 需求研究：让小型 Agent 团队真正用起来
+# AgentMED v4 需求研究：让小型 Agent 团队真正用起来
 
 > 状态：需求研究快照，不是实现基线；已批准裁决以 `docs/prd-v2.md` 与 `docs/plan-v4.md` 为准
 >
@@ -10,9 +10,9 @@
 
 ## 1. 结论
 
-CaseLoop 面向小型 Agent 团队时，不应表现成“另一套要先学会运维的多 Agent 平台”，而应表现成一个可接入现有工具的 AI 维护团队：
+AgentMED 面向小型 Agent 团队时，不应表现成“另一套要先学会运维的多 Agent 平台”，而应表现成一个可接入现有工具的 AI 维护团队：
 
-> 把差评、错误、内部反馈或维护人员发现的问题交给 CaseLoop；它自动绑定运行证据、调查原因、提出并验证修复，在用户预先授权的低风险范围内自动发布和回滚。
+> 把差评、错误、内部反馈或维护人员发现的问题交给 AgentMED；它自动绑定运行证据、调查原因、提出并验证修复，在用户预先授权的低风险范围内自动发布和回滚。
 
 要做到这一点，下一阶段不是继续给“投诉流程”堆分支，而是完成五个结构性变化：
 
@@ -41,8 +41,8 @@ CaseLoop 面向小型 Agent 团队时，不应表现成“另一套要先学会�
 - Complaint 没有通用 `run_ref / trace_ref`，无法在立案时冻结原始 Agent Run；
 - 当前 `trace_id` 多为业务关联字符串，不等于可读取、完整的 OTel/Langfuse trace；
 - 当前 12 个 MCP projection 是内部 Worker 接口，不是公共产品 API；
-- 没有统一 `caseloop` CLI，也没有公共 MCP facade；
-- `caseloop-b1-loop` 是 B1 客服纵切 Skill，不是通用岗位能力；
+- 没有统一 `agentmed` CLI，也没有公共 MCP facade；
+- `agentmed-b1-loop` 是 B1 客服纵切 Skill，不是通用岗位能力；
 - 没有 Skill Registry、Skill Candidate、独立 Skill Eval、发布/撤销/回滚或阿里云同步权威记录；
 - 当前本地 runner 同时扮演编排器、Actor 模拟器和证据组装器，继续扩展会成为“大号状态机”；
 - 当前证据导出路径不能证明六个 Worker 真实领取任务、调用模型/Skill/MCP 并产生因果贡献。
@@ -62,7 +62,7 @@ CaseLoop 面向小型 Agent 团队时，不应表现成“另一套要先学会�
 
 合理的首次体验目标是：
 
-> CLI 已安装、Docker 健康且 Langfuse 凭据有效时，用 `caseloop quickstart --profile local --source langfuse` 把一条历史坏 trace 变成 First Useful Case；另用 `caseloop report` 支持暂时没有 trace 的维护人员直报。
+> CLI 已安装、Docker 健康且 Langfuse 凭据有效时，用 `agentmed quickstart --profile local --source langfuse` 把一条历史坏 trace 变成 First Useful Case；另用 `agentmed report` 支持暂时没有 trace 的维护人员直报。
 
 First Useful Case 不只是 trace 镜像：它必须同时给出 Signal/reporter、确切 run/version、跨来源去重、完整性/缺失项、不可变 receipt 和下一步。没有 trace 的报告进入 `NEEDS_CORRELATION`，不能补造关联。“五分钟”只在明确前置下作为待测 pilot 目标，fixture 冷启动和真实来源热启动分开报告。
 
@@ -84,9 +84,9 @@ First Useful Case 不只是 trace 镜像：它必须同时给出 Signal/reporter
 | `runtime_failure` | exception、timeout、tool permission/auth failure | OTel、Claude Code hook、SDK |
 | `policy_violation` | guardrail、安全扫描或越权命中 | 安全产品 webhook |
 | `agent_self_report` | 被治理 Agent 主动声明“不确定/失败” | 公共 MCP/HTTP；默认不可信，只作线索 |
-| `scheduled_inspection` | 周期巡检发现质量漂移 | CaseLoop scheduler |
+| `scheduled_inspection` | 周期巡检发现质量漂移 | AgentMED scheduler |
 
-Langfuse 已把人工、模型和程序产生的质量判断统一表示为 score；Phoenix annotation 也区分 `HUMAN`、`LLM` 和 `CODE` 来源。CaseLoop 应读取这些现有记录并固化案件证据，而不是重新造一套反馈数据库：
+Langfuse 已把人工、模型和程序产生的质量判断统一表示为 score；Phoenix annotation 也区分 `HUMAN`、`LLM` 和 `CODE` 来源。AgentMED 应读取这些现有记录并固化案件证据，而不是重新造一套反馈数据库：
 
 - [Langfuse Scores](https://langfuse.com/docs/evaluation/scores/overview)
 - [Phoenix Annotations](https://arize.com/docs/phoenix/tracing/concepts-tracing/annotations-concepts)
@@ -113,12 +113,12 @@ idempotency_key / dedup_fingerprint
 
 Signal、trace、issue、IM 正文和附件都是不可信输入：自然语言中的权限请求没有授权效力，不能拼入系统指令；附件先做类型/大小/安全解包与恶意内容限制；跨源相似匹配只能生成可审计、可拆分的 link proposal。来源更新和删除用 superseding event 表达，并保留 acknowledgement、correlation 与 Closure/reopen 路径。
 
-飞书和 GitHub webhook 都明确要求处理重试与去重，这与 CaseLoop 现有 inbox/outbox 基础一致：
+飞书和 GitHub webhook 都明确要求处理重试与去重，这与 AgentMED 现有 inbox/outbox 基础一致：
 
 - [飞书事件订阅](https://open.feishu.cn/document/server-docs/event-subscription-guide/overview?lang=zh-CN)
 - [GitHub Webhook 最佳实践](https://docs.github.com/en/webhooks/using-webhooks/best-practices-for-using-webhooks)
 
-## 5. Anthropic 的 GAN-inspired 架构如何正确用于 CaseLoop
+## 5. Anthropic 的 GAN-inspired 架构如何正确用于 AgentMED
 
 用户提到的文章是 Anthropic 2026-03-24 发布的 [Harness design for long-running application development](https://www.anthropic.com/engineering/harness-design-long-running-apps)。原文明确采用受 GAN 启发的 Generator–Evaluator 循环，并扩展为 Planner、Generator、Evaluator 三 Agent。
 
@@ -169,7 +169,7 @@ rollback_plan
 max_iterations / plateau_rule / stop_conditions
 ```
 
-Evaluator Agent 审查其可测性与风险，Controller 校验并冻结。每个 Candidate revision 开工前，Generator 再提出公开的 `CandidateContract`，说明本轮构建范围与验证方式，由 Evaluator 审查后冻结。这准确对应 Anthropic 的 Generator–Evaluator sprint contract，同时保留 CaseLoop 的上层问题合同。
+Evaluator Agent 审查其可测性与风险，Controller 校验并冻结。每个 Candidate revision 开工前，Generator 再提出公开的 `CandidateContract`，说明本轮构建范围与验证方式，由 Evaluator 审查后冻结。这准确对应 Anthropic 的 Generator–Evaluator sprint contract，同时保留 AgentMED 的上层问题合同。
 
 隐藏考题、标签、独立 Judge 配置和阈值单独放在 Eval Controller 专属的 sealed `EvaluationPlan / HoldoutBinding`。参与生成的 Worker 只能看见 digest、策略类别和最终聚合 verdict，不能访问或修改其内容。
 
@@ -219,16 +219,16 @@ WorkerTask 只拥有 queue/lease/fence/retry/cancel/exhausted，不拥有领域�
 
 Langfuse 在 v4 中有两种角色：
 
-1. CaseLoop 自身的模型、Agent、工具调用通过 OTel/OTLP 输出到 Langfuse；
-2. CaseLoop 通过 `TraceSource` 读取被治理 Agent 的 observation、score 和相关上下文。
+1. AgentMED 自身的模型、Agent、工具调用通过 OTel/OTLP 输出到 Langfuse；
+2. AgentMED 通过 `TraceSource` 读取被治理 Agent 的 observation、score 和相关上下文。
 
 TraceSource 必须报告 `COMPLETE | PARTIAL | UNKNOWN`，并把查询窗口、字段、来源版本、响应 digest 和缺失项固化为 `TraceEvidenceReceipt`。进入案件的必要证据要在来源 retention 删除前复制到客户控制的不可变存储或生成可验证引用。
 
-不能默认随 CaseLoop 再部署整套 Langfuse。其自托管包含 Web、Worker、PostgreSQL、ClickHouse、Redis/Valkey 与对象存储，对小团队可能过重：[Langfuse Self-hosting](https://langfuse.com/self-hosting)。
+不能默认随 AgentMED 再部署整套 Langfuse。其自托管包含 Web、Worker、PostgreSQL、ClickHouse、Redis/Valkey 与对象存储，对小团队可能过重：[Langfuse Self-hosting](https://langfuse.com/self-hosting)。
 
 Langfuse project key 的公开文档没有提供细粒度只读 scope；凭据必须只进入确定性 TraceSource 进程，并由 endpoint allowlist/egress proxy 限制为读取路径。Agent Worker 永远不接触该 secret。
 
-## 9. 人和其他 Agent 如何调用 CaseLoop
+## 9. 人和其他 Agent 如何调用 AgentMED
 
 正确分层是：
 
@@ -236,12 +236,12 @@ Langfuse project key 的公开文档没有提供细粒度只读 scope；凭据�
 HTTP API = 唯一公共能力基线
 CLI      = 人、CI 与所有 shell-capable Agent 的通用操控面
 MCP      = Claude Code/Codex/Cursor 等 Agent-native 工具面
-Skill    = 教 Agent 何时、如何安全使用 CaseLoop
+Skill    = 教 Agent 何时、如何安全使用 AgentMED
 Plugin   = Claude Code 等特定客户端的分发包
 A2A      = 稳定 Run API 之上的跨厂商长任务适配器
 ```
 
-“Cloud Code”按上下文应统一写为 **Claude Code**。Anthropic 官方的 `claude -p` 是程序调用 Claude；要让 Claude 调 CaseLoop，CaseLoop 自己仍需要 CLI、MCP 或 HTTP。参考：
+“Cloud Code”按上下文应统一写为 **Claude Code**。Anthropic 官方的 `claude -p` 是程序调用 Claude；要让 Claude 调 AgentMED，AgentMED 自己仍需要 CLI、MCP 或 HTTP。参考：
 
 - [Claude Code headless/非交互模式](https://code.claude.com/docs/en/headless)
 - [Claude Code CLI](https://code.claude.com/docs/en/cli-usage)
@@ -253,7 +253,7 @@ A2A      = 稳定 Run API 之上的跨厂商长任务适配器
 
 ## 10. Skills/MCP 自进化的工程边界
 
-开放 [Agent Skills 规范](https://agentskills.io/specification) 只定义 `SKILL.md` 目录与渐进式加载；`allowed-tools` 仍属实验字段，规范没有定义 registry、依赖解析、签名、撤销或安全发布。因此 CaseLoop 必须补自己的治理 sidecar，而不能把 `SKILL.md` 当发布授权。
+开放 [Agent Skills 规范](https://agentskills.io/specification) 只定义 `SKILL.md` 目录与渐进式加载；`allowed-tools` 仍属实验字段，规范没有定义 registry、依赖解析、签名、撤销或安全发布。因此 AgentMED 必须补自己的治理 sidecar，而不能把 `SKILL.md` 当发布授权。
 
 建议对象：
 
@@ -296,17 +296,17 @@ MCP 描述和 schema 可走相同闭环；可执行 MCP server 代码还必须�
 公开 GOAI Agent Infra 规则中，Skill 是必选项，阿里云官方 Skills 属合理使用与评分考虑，并非“使用越多越好”。用户已把阿里云 Skills 接入提升为本项目交付要求，因此 v4 按更高标准验收：
 
 1. 从 [阿里云 Agent Skills 门户](https://help.aliyun.com/zh/skillsportal/learn-about-the-alibaba-cloud-agent-skills-portal) 安装至少一个官方 Skill，在只读或可逆场景真实调用并留 receipt；
-2. 将 CaseLoop portable Skill 以固定版本发布/镜像到 [MSE AI Registry](https://help.aliyun.com/zh/mse/user-guide/ai-registry-skill-management-guide)，验证 Draft → 安全审核 → Publish → 固定版本下载 → 下线/回滚；
+2. 将 AgentMED portable Skill 以固定版本发布/镜像到 [MSE AI Registry](https://help.aliyun.com/zh/mse/user-guide/ai-registry-skill-management-guide)，验证 Draft → 安全审核 → Publish → 固定版本下载 → 下线/回滚；
 3. 把 [Agent Security Center Skills 检测](https://help.aliyun.com/zh/document_detail/3045542.html) 作为 Skill Gate 的一条独立安全轨，绑定精确文件清单、本地与供应商 SHA-256、root/child task、扫描规则版本、完整终态和报告 digest；timeout/error/漏文件均失败关闭；
-4. 同一 Skill 仍可安装到 AgentTeams、本地 `.claude/skills`、`.codex/skills` 或其他兼容 runtime；阿里云是发布/安全 Adapter，不是 CaseLoop 的唯一权威源。
+4. 同一 Skill 仍可安装到 AgentTeams、本地 `.claude/skills`、`.codex/skills` 或其他兼容 runtime；阿里云是发布/安全 Adapter，不是 AgentMED 的唯一权威源。
 
-CaseLoop PostgreSQL Registry 应保存内部不可变版本和发布裁决；MSE AI Registry 是首选阿里 distribution target。只有组委会后续书面指定百炼环境，或项目主动采用百炼 Managed Agents runtime 时，才接支持精确版本绑定的 Managed Agents Skills API；ModelScope 先视作待验证的开源发现/分发目标。不能用外部 `latest` 标签替代已批准 digest。
+AgentMED PostgreSQL Registry 应保存内部不可变版本和发布裁决；MSE AI Registry 是首选阿里 distribution target。只有组委会后续书面指定百炼环境，或项目主动采用百炼 Managed Agents runtime 时，才接支持精确版本绑定的 Managed Agents Skills API；ModelScope 先视作待验证的开源发现/分发目标。不能用外部 `latest` 标签替代已批准 digest。
 
 MSE 审核扫描与 AISC 不是同一证明。当前 AISC 还依赖付费版、按文件计费、10MB 单文件限制、默认 10QPS 和公网可访问压缩包，因此它应进入 `competition-aliyun` profile，而不是成为所有开源部署的硬依赖；上传内容还要受租户同意、数据分类、区域、留存和删除策略约束。扫描通过不替代功能、SBOM、漏洞和许可证验证。
 
-首个官方 Skill 推荐 `alibabacloud-sls-query`：只绑定 Collector，用限制到指定 Project/Logstore 的 `log:GetLogStoreLogs` 与 `log:GetIndex` 读取测试 SLS 中的一条 Agent 负反馈/异常，再由确定性 Connector 规范化为 Signal。保存 Portal Skill ID、上游 commit/本地包 digest、CLI 版本、查询窗口、API receipt、原始响应 digest、真实 Worker identity 和 Signal source_event_id。Cloud Skills Portal 的公开接口当前侧重发现与安装，未确认第三方项目可通过公开写 API 上架；因此“消费官方 Skill”和“发布 CaseLoop 自有 Skill 到 MSE AI Registry”应作为两条不同证据。
+首个官方 Skill 推荐 `alibabacloud-sls-query`：只绑定 Collector，用限制到指定 Project/Logstore 的 `log:GetLogStoreLogs` 与 `log:GetIndex` 读取测试 SLS 中的一条 Agent 负反馈/异常，再由确定性 Connector 规范化为 Signal。保存 Portal Skill ID、上游 commit/本地包 digest、CLI 版本、查询窗口、API receipt、原始响应 digest、真实 Worker identity 和 Signal source_event_id。Cloud Skills Portal 的公开接口当前侧重发现与安装，未确认第三方项目可通过公开写 API 上架；因此“消费官方 Skill”和“发布 AgentMED 自有 Skill 到 MSE AI Registry”应作为两条不同证据。
 
-当前仓库也必须修正文档与实现的数量口径：实际只有一个正式 `caseloop-b1-loop` 包，所谓“8 个 Skill”目前是八个能力域，不是八个已实现、可复用、可发布的 Skill。v4 建议形成少量职责清晰的真实包，例如 `caseloop-intake`、`caseloop-investigate`、`caseloop-change-proposal`、`caseloop-evaluate-release`、`caseloop-skill-evolution` 和 `caseloop-operator`，无需为了数字机械复制。
+当前仓库也必须修正文档与实现的数量口径：实际只有一个正式 `agentmed-b1-loop` 包，所谓“8 个 Skill”目前是八个能力域，不是八个已实现、可复用、可发布的 Skill。v4 建议形成少量职责清晰的真实包，例如 `agentmed-intake`、`agentmed-investigate`、`agentmed-change-proposal`、`agentmed-evaluate-release`、`agentmed-skill-evolution` 和 `agentmed-operator`，无需为了数字机械复制。
 
 ## 12. 采用效果的验收方式
 
@@ -335,4 +335,4 @@ MSE 审核扫描与 AISC 不是同一证明。当前 AISC 还依赖付费版、�
 
 下一条真实纵切选择 **coding Agent / Claude Code**，而不是再做一个客服变体：它天然有内部维护反馈、工具失败、代码/Skill/MCP 变更、PR、sandbox 和机器终态验证，也能同时验证 CLI、公共 MCP、portable Skill 和阿里云发布 Adapter。
 
-这不会把 CaseLoop 绑定到 Claude。Claude Code 是首个参考客户端；HTTP、CLI、MCP、Agent Skills 和 Adapter contracts 继续保持 provider-neutral。
+这不会把 AgentMED 绑定到 Claude。Claude Code 是首个参考客户端；HTTP、CLI、MCP、Agent Skills 和 Adapter contracts 继续保持 provider-neutral。

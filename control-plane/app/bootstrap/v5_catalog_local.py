@@ -90,7 +90,7 @@ _SECRET_LIKE_KEY = re.compile(
 _MAX_STDIN_BYTES = 65_536
 _OWNER_REAUTH_MAX_AGE = timedelta(minutes=5)
 
-_AUDIENCE = ["caseloop-public-api"]
+_AUDIENCE = ["agentmed-public-api"]
 _OPERATOR_SCOPES = [
     "capabilities:read",
     "signals:write",

@@ -1,4 +1,4 @@
-"""Local read-only manifest discovery for ``caseloop init <repo>``.
+"""Local read-only manifest discovery for ``agentmed init <repo>``.
 
 Discovery never writes server state and never calls the canonical import;
 it only produces a manifest DRAFT that a human must confirm before import.

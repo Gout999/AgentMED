@@ -130,7 +130,7 @@ def test_desired_observed_and_effect_are_separate_facts() -> None:
         "external_effect_verified",
     }
     origin = resources["external_effect_receipt"]["origin_union"]
-    assert set(origin["variants"]) == {"CASELOOP_EXTERNAL_OPERATION", "GOVERNED_SYSTEM_EPISODE"}
+    assert set(origin["variants"]) == {"AGENTMED_EXTERNAL_OPERATION", "GOVERNED_SYSTEM_EPISODE"}
     assert "exact_system_episode_snapshot_binding" in (
         origin["variants"]["GOVERNED_SYSTEM_EPISODE"]["requires"]
     )
@@ -509,8 +509,8 @@ def test_v2_cli_and_http_require_explicit_matching_major() -> None:
     assert "profile_field" not in selection["cli"]
     assert selection["cli"]["silent_default_change"] == "FORBIDDEN"
     assert selection["http"]["url_major_must_match_request_header_major"] is True
-    assert selection["http"]["request_header"] == "X-CaseLoop-Contract-Version"
-    assert selection["http"]["response_header"] == "X-CaseLoop-Contract-Version"
+    assert selection["http"]["request_header"] == "X-AgentMED-Contract-Version"
+    assert selection["http"]["response_header"] == "X-AgentMED-Contract-Version"
     assert selection["http"]["v2_required_request_value"] == "2.0"
     assert selection["http"]["v2_missing_or_other_value_error"] == "REQUEST_INVALID"
     assert selection["http"]["v2_never_falls_back_to_v1"] is True
@@ -562,7 +562,7 @@ def test_a2a_target_uses_official_methods_and_exact_operation_mapping() -> None:
     assert a2a["operation_state_mapping"]["CANCEL_REQUESTED"] == "TASK_STATE_WORKING"
     assert a2a["operation_state_mapping"]["COMPLETED"] == "TASK_STATE_COMPLETED"
     assert a2a["task_completed_can_contain_domain_non_pass_artifact"] is True
-    assert a2a["method_mapping"]["SendMessage"]["intent_discriminator_field"] == "caseloop_intent"
+    assert a2a["method_mapping"]["SendMessage"]["intent_discriminator_field"] == "agentmed_intent"
     assert a2a["task_id_issued_by_server"] is True
     assert a2a["auth_required_grants_approval_capability_or_scope"] is False
     serialized = (V5 / "intent-registry.yaml").read_text(encoding="utf-8")
@@ -580,7 +580,7 @@ def test_mcp_tasks_are_optional_and_tools_are_allowlisted_non_authoritative() ->
     assert mcp["structured_content_required"] is True
     assert mcp["mutation_idempotency_required"] is True
     assert mcp["disconnect_or_transport_cancel_effect"] == "DETACH_WAIT_ONLY"
-    assert mcp["durable_operation_cancel_requires_tool"] == "caseloop_operation_cancel"
+    assert mcp["durable_operation_cancel_requires_tool"] == "agentmed_operation_cancel"
     allowed = {tool["intent"] for tool in mcp["tool_allowlist"].values()}
     assert "approvals.decide" not in allowed
     assert "releases.request" not in allowed

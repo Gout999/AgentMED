@@ -109,7 +109,7 @@ def _payload() -> dict[str, object]:
             "connector_kind": "manual",
             "state": "ACTIVE",
             "credential_ref": None,
-            "config": {"provider_origin": "https://caseloop.local"},
+            "config": {"provider_origin": "https://agentmed.local"},
         },
         "controller": {
             "registration_id": "creg_01J0000000000H01",
@@ -233,7 +233,7 @@ def _manifest() -> SystemManifestImportRequest:
                             "name": "local-model-alias",
                         },
                         "identity_assurance": "MUTABLE_ALIAS",
-                        "provider_origin": "https://caseloop.local",
+                        "provider_origin": "https://agentmed.local",
                         "resolved_at": IMPORT_AT.isoformat(),
                     },
                 },

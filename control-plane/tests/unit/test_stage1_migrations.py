@@ -318,7 +318,7 @@ def test_empty_007_can_downgrade_but_immutable_records_block_with_stable_error(t
                   raw_content_persisted
                 ) VALUES (
                   'sigc_01J0000000000001', 'ws_01J0000000000001',
-                  'caseloop-artifact://signal/content', 'application/json', :digest,
+                  'agentmed-artifact://signal/content', 'application/json', :digest,
                   '{}', 'INTERNAL', 'NOT_REQUIRED', 1
                 )"""
             ),
@@ -345,7 +345,7 @@ def test_v4_orm_metadata_contains_migration_tables_and_immutable_guard() -> None
         row = SignalContent(
             signal_content_id="sigc_01J0000000000001",
             workspace_id="ws_01J0000000000001",
-            uri="caseloop-artifact://signal/content",
+            uri="agentmed-artifact://signal/content",
             media_type="application/json",
             content_digest=_digest("4"),
             content_payload={"summary": "sealed"},

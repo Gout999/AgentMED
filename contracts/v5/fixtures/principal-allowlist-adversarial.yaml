@@ -96,7 +96,7 @@ contract_grounding:
           - external_effect_verified
       external_effect_receipt:
         invariants:
-          - caseloop_operation_origin_exactly_matches_current_operation_and_frozen_receipt_requirement
+          - agentmed_operation_origin_exactly_matches_current_operation_and_frozen_receipt_requirement
 
 does_not_prove:
   - authentication_implemented

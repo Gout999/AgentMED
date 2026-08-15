@@ -7,7 +7,7 @@
   "server_name": "repo-reader",
   "version": "1.0.0",
   "source": {
-    "repository_uri": "https://example.com/caseloop/mcp.git",
+    "repository_uri": "https://example.com/agentmed/mcp.git",
     "commit": "89abcdef0123456789abcdef0123456789abcdef",
     "license_spdx": "Apache-2.0",
     "content_digest": "sha256:5252525252525252525252525252525252525252525252525252525252525252"

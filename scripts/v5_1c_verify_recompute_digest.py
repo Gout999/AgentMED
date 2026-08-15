@@ -62,8 +62,8 @@ CONFIRMER = "prn_01J000000000000C"
 CASE_CTRL = "prn_01J000000000000D"
 CASE_CTRL_REG = "creg_01J00000000000CD"
 SUBJECT = "v5-1c-verify"
-ISSUER = "https://auth.caseloop.dev"
-AUDIENCES = ["caseloop-public-api"]
+ISSUER = "https://auth.agentmed.dev"
+AUDIENCES = ["agentmed-public-api"]
 APP_ID = "app_01J0000000000001"
 ENV_ID = "env_01J0000000000001"
 CASE_ID = "case_01J0000000000001"
@@ -207,7 +207,7 @@ def main() -> int:
                         "owner": "case-controller",
                         "controller_principal": CASE_CTRL,
                         "principal_type": "CONTROLLER_SERVICE",
-                        "service": "caseloop-control-plane",
+                        "service": "agentmed-control-plane",
                     }
                 ),
             },
@@ -236,7 +236,7 @@ def main() -> int:
                     "owner": "case-controller",
                     "controller_principal": CASE_CTRL,
                     "principal_type": "CONTROLLER_SERVICE",
-                    "service": "caseloop-control-plane",
+                    "service": "agentmed-control-plane",
                 }
             ),
             registered_by_human_principal=OWNER,

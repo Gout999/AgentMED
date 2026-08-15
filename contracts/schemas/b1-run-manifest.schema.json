@@ -1,8 +1,8 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://caseloop.dev/contracts/schemas/b1-run-manifest.schema.json",
+  "$id": "https://agentmed.dev/contracts/schemas/b1-run-manifest.schema.json",
   "title": "B1RunManifest",
-  "description": "Machine-verifiable index for one CaseLoop B1 vertical-loop run. Replay and live-provider evidence are explicitly separated.",
+  "description": "Machine-verifiable index for one AgentMED B1 vertical-loop run. Replay and live-provider evidence are explicitly separated.",
   "type": "object",
   "additionalProperties": false,
   "required": [

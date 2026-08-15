@@ -1,4 +1,4 @@
-# CaseLoop Console 数据映射（P0-3 当前态）
+# AgentMED Console 数据映射（P0-3 当前态）
 
 > T7 在 2026-08-08 首次交付时，`/v1/env`、Trust、Case events、WorkOrders 和 Gates
 > 确实尚未接通，原文记录的是当时的真实运行快照。随后 `9afcefa` 合并了朋友的 T8

@@ -146,7 +146,7 @@ def test_idempotency_terminal_transition_cannot_rebind_immutable_identity(
         principal_type="human",
         state="ACTIVE",
         subject_digest="sha256:" + "a" * 64,
-        audiences=["caseloop-public-api"],
+        audiences=["agentmed-public-api"],
         project_ids=[],
         environment_ids=[],
         scopes=["signals:write"],

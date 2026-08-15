@@ -1,4 +1,4 @@
-# eval-harness —— CaseLoop「考试局」
+# eval-harness —— AgentMED「考试局」
 
 AI 应用质量自治底座的评测与归因执行面（T3）。职责：**评测门禁**（双轨）、**对照实验执行器**
 （5-cell / 全因子）、**变异巡检**（单次版）、**质量周报**。
@@ -51,7 +51,7 @@ cp .env.example .env                     # 按需修改；密钥不入库
 .venv/bin/pytest -q
 ```
 
-live 集成依赖：demo-app 运行于 `CASELOOP_QUALITY_API_BASE_URL`（默认 `http://127.0.0.1:8080`）、
+live 集成依赖：demo-app 运行于 `AGENTMED_QUALITY_API_BASE_URL`（默认 `http://127.0.0.1:8080`）、
 `STEPFUN_API_KEY`（由当前 checkout 的 `eval-harness/.env` 或进程环境显式提供；不要依赖
 相邻私有仓库的 `.env`）。
 
@@ -59,8 +59,8 @@ live 集成依赖：demo-app 运行于 `CASELOOP_QUALITY_API_BASE_URL`（默认 
 
 ```bash
 .venv/bin/python scripts/run_b1_experiment.py \
-  --bad-versionset-id "$CASELOOP_B1_BAD_VERSIONSET_ID" \
-  --good-versionset-id "$CASELOOP_B1_GOOD_VERSIONSET_ID" \
+  --bad-versionset-id "$AGENTMED_B1_BAD_VERSIONSET_ID" \
+  --good-versionset-id "$AGENTMED_B1_GOOD_VERSIONSET_ID" \
   --reps 3 --seed 20260807
 # 产出 evidence/exp_b1run*/evidence-bundle.json + attribution-report.json
 # 预期：裁决=ATTRIBUTED，故障层=prompt，Δ_prompt>0 且 CI 下界>δ_min=0.2

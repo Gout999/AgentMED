@@ -7,8 +7,8 @@ import stat
 
 import pytest
 
-from caseloop_cli.config import load_profile, read_credential
-from caseloop_cli.errors import CliError
+from agentmed_cli.config import load_profile, read_credential
+from agentmed_cli.errors import CliError
 
 
 TOKEN = "opaque-token-must-stay-secret"
@@ -19,17 +19,17 @@ def test_profile_supports_only_nonsecret_json_and_yaml(tmp_path) -> None:
     json_path.write_text(
         json.dumps(
             {
-                "api_url": "https://caseloop.example",
+                "api_url": "https://agentmed.example",
                 "workspace_id": "ws_01J0000000000001",
                 "source_id": "src_01J0000000000001",
-                "token_env": "TEAM_CASELOOP_TOKEN",
+                "token_env": "TEAM_AGENTMED_TOKEN",
             }
         ),
         encoding="utf-8",
     )
     yaml_path = tmp_path / "profile.yaml"
     yaml_path.write_text(
-        "api_url: https://caseloop.example\nworkspace_id: ws_01J0000000000001\n",
+        "api_url: https://agentmed.example\nworkspace_id: ws_01J0000000000001\n",
         encoding="utf-8",
     )
 
@@ -93,7 +93,7 @@ def test_profile_rejects_nonfinite_values_and_nonstring_keys(
 
 
 def test_token_environment_stdin_and_secure_file_sources(tmp_path) -> None:
-    assert read_credential(env={"CASELOOP_PUBLIC_TOKEN": TOKEN}, stdin=io.StringIO("")) == TOKEN
+    assert read_credential(env={"AGENTMED_PUBLIC_TOKEN": TOKEN}, stdin=io.StringIO("")) == TOKEN
     assert read_credential(env={}, stdin=io.StringIO(TOKEN + "\n"), token_stdin=True) == TOKEN
 
     path = tmp_path / "credential"
@@ -144,7 +144,7 @@ def test_ambiguous_or_missing_credential_source_fails_closed(tmp_path) -> None:
 
     with pytest.raises(CliError) as ambiguous:
         read_credential(
-            env={"CASELOOP_PUBLIC_TOKEN": TOKEN},
+            env={"AGENTMED_PUBLIC_TOKEN": TOKEN},
             stdin=io.StringIO(""),
             token_file=path,
         )

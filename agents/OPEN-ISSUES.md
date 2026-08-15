@@ -8,7 +8,7 @@
 
 ## 1. `approval.request` 的 ACL 归属（设计 vs spec 冲突）
 
-- **冻结设计**：wave3 §6「修复师工具面：mcp-release-admin（workorder.draft/freeze/approval.request）」——把 `approval.request` 列给了修复师。
+- **冻结设计**：wave3 §6「修复师工具面：mcp-agentmed-release（workorder.draft/freeze/approval.request）」——把 `approval.request` 列给了修复师。
 - **spec §9.4 ACL**：`approval.request` 仅**守门员**可调（impl `release_admin.py` docstring 同样标注 "ACL：守门员"）。
 - **成稿做法**：`approval.request` 归守门员（gatekeeper SOUL §2）；修复师只到 `workorder.draft` / `workorder.freeze`，其「永不」明确"不直接提请审批"。
 - **理由**：spec §9.4 与 impl 一致（守门员），且门禁先于审批（GATE_PASSED 前置校验），提请审批天然在守门员域内；修复师提请会造成"运动员自报通过"。
@@ -38,9 +38,9 @@
 - **理由**：在不改动网关能力的前提下尽量收紧；SOUL 工具面纪律是行为层兜底。
 - **建议**：**采纳**双约束；若需要强制单工具 ACL，属 mcp-servers/ 网关配置的后续工作。
 
-## 5. 质量官的 mcp-notification 工具面
+## 5. 质量官的 mcp-agentmed-notify 工具面
 
-- **冻结设计**：wave3 §1「mcp-notification（升级人工时发消息）」。
+- **冻结设计**：wave3 §1「mcp-agentmed-notify（升级人工时发消息）」。
 - **spec §9.6 ACL**：`feishu.reply_origin`（控制面/案例官）、`feishu.weekly_report`（案例官）、`matrix.log`（全员）；ApprovalGrant 由控制面/Console 处理，不注册 MCP `approval_card` 写工具。
 - **成稿做法**：质量官的 notification 工具面只列 `matrix.log`；升级到人的通知由控制面投递（`case.escalate` → 控制面 → 飞书审批卡/原群消息）。
 - **理由**：按 §9.6 ACL，质量官能用的通知工具只有 `matrix.log`；把人话消息通道给质量官会与"控制面投递"铁律冲突。

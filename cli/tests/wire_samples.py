@@ -24,7 +24,7 @@ def digest(value: object) -> str:
 
 def _context(request: httpx.Request) -> tuple[str, str]:
     return (
-        request.headers["x-caseloop-workspace-id"],
+        request.headers["x-agentmed-workspace-id"],
         request.headers["x-request-id"],
     )
 
@@ -138,7 +138,7 @@ def case(request: httpx.Request, case_id: str) -> dict[str, Any]:
             "next_action": {
                 "code": "CORRELATE_TRACE",
                 "command": "case correlate",
-                "href": f"https://caseloop.local/api/v1/cases/{case_id}",
+                "href": f"https://agentmed.local/api/v1/cases/{case_id}",
             },
         },
     }
@@ -276,7 +276,7 @@ def _v5_core(
 ) -> dict[str, Any]:
     return {
         "schema_version": "2.0",
-        "workspace_id": request.headers["x-caseloop-workspace-id"],
+        "workspace_id": request.headers["x-agentmed-workspace-id"],
         "request_id": request.headers["x-request-id"],
         "audit_ref": "audit://aud_01J0000000000007",
     }
@@ -285,7 +285,7 @@ def _v5_core(
 def _record_envelope(request: httpx.Request, *, digest_char: str) -> dict[str, Any]:
     return {
         "schema_version": "2.0",
-        "workspace_id": request.headers["x-caseloop-workspace-id"],
+        "workspace_id": request.headers["x-agentmed-workspace-id"],
         "revision": 1,
         "recorded_by_principal": "prn_01J0000000000001",
         "recorded_at": "2026-08-11T10:00:00Z",
@@ -383,10 +383,10 @@ def _case_v2_receipt(
     response_without_idempotency.pop("idempotency", None)
     receipt: dict[str, Any] = {
         "schema_version": "1.0",
-        "workspace_id": request.headers["x-caseloop-workspace-id"],
+        "workspace_id": request.headers["x-agentmed-workspace-id"],
         "principal_id": "prn_01J0000000000001",
         "intent": intent,
-        "idempotency_key": request.headers["x-caseloop-idempotency-key"],
+        "idempotency_key": request.headers["x-agentmed-idempotency-key"],
         "request_fingerprint": digest(submission),
         "resource": {"kind": resource_kind, "id": resource_id},
         "operation_id": None,
@@ -416,7 +416,7 @@ def _binding_envelope(request: httpx.Request, binding_id: str) -> dict[str, Any]
             declared_binding = candidate
     return {
         "application_case_binding_id": binding_id,
-        "workspace_id": request.headers["x-caseloop-workspace-id"],
+        "workspace_id": request.headers["x-agentmed-workspace-id"],
         "exact_case_binding": {
             "case_id": "case_01J0000000000001",
             "case_revision": int(request.url.params.get("case_revision", "1")),
@@ -428,7 +428,7 @@ def _binding_envelope(request: httpx.Request, binding_id: str) -> dict[str, Any]
         "binding_digest": "sha256:" + "d" * 64,
         "record_envelope": {
             "schema_version": "2.0",
-            "workspace_id": request.headers["x-caseloop-workspace-id"],
+            "workspace_id": request.headers["x-agentmed-workspace-id"],
             "revision": 1,
             "recorded_by_principal": "prn_01J0000000000001",
             "recorded_at": "2026-08-11T10:00:00Z",
@@ -486,7 +486,7 @@ def _revision_envelope(
     confirmed = confirmed_from is not None
     return {
         "acceptance_criteria_revision_id": revision_id,
-        "workspace_id": request.headers["x-caseloop-workspace-id"],
+        "workspace_id": request.headers["x-agentmed-workspace-id"],
         "exact_case_binding": copy.deepcopy(exact_case_binding),
         "resolution_contract_binding_status": {
             "status": "PENDING_MATERIALIZATION",
@@ -529,7 +529,7 @@ def _revision_envelope(
         "acceptance_digest": "sha256:" + ("6" if confirmed else "f") * 64,
         "record_envelope": {
             "schema_version": "2.0",
-            "workspace_id": request.headers["x-caseloop-workspace-id"],
+            "workspace_id": request.headers["x-agentmed-workspace-id"],
             "revision": 1,
             "recorded_by_principal": "prn_01J0000000000001",
             "recorded_at": "2026-08-11T10:00:00Z",

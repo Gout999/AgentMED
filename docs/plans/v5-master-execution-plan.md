@@ -1,4 +1,4 @@
-# CaseLoop V5 Master Execution Plan
+# AgentMED V5 Master Execution Plan
 
 > 状态：**ACTIVE LOCAL EXECUTION PLAN / NOT IMPLEMENTATION PROOF**
 >
@@ -316,7 +316,7 @@ standalone `system-versions.record` 标为未授权、未冻结 wire。R3 开工
 - 请求只能引用已存在且通过 authority 验证的 Application、Environment、ComponentRevision、
   TopologyRevision，不暗建前置对象；
 - HTTP、显式 V2 CLI、capabilities、contract、idempotency、audit、GET/diff 同步；
-- `caseloop system-manifest record` 不再是 import 别名；
+- `agentmed system-manifest record` 不再是 import 别名；
 - second-version PG E2E 验证真实差异，不接受 self-diff 作为唯一证据。
 
 **Verification**：mutable alias/UNKNOWN、dependency substitution、fan-out、dataset role、

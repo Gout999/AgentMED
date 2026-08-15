@@ -1,4 +1,4 @@
-# CaseLoop V5 总体架构与迁移计划
+# AgentMED V5 总体架构与迁移计划
 
 > 状态：**ACCEPTED V5 CONSTRUCTION BASELINE（2026-08-11；freeze: `8dd25ca` + `b3727d7`）/ PARTIALLY IMPLEMENTED BY STAGE**
 >
@@ -23,7 +23,7 @@ semantic commit。
 
 ## 0. 总裁决
 
-V5 不继续采用“先完成 CaseLoop 自有 Coding Team，再在末期开放 Agent-native
+V5 不继续采用“先完成 AgentMED 自有 Coding Team，再在末期开放 Agent-native
 入口”的 V4 关键路径。新的产品结构是：
 
 ```text
@@ -36,7 +36,7 @@ Human Console + Agent Capability Gateway
 Evidence / Repo / Runtime / Eval / Deploy / IAM Adapters
 ```
 
-CaseLoop 可以调度内部 Worker，也可以消费外部 Agent 提交的 Candidate，但两者都
+AgentMED 可以调度内部 Worker，也可以消费外部 Agent 提交的 Candidate，但两者都
 不是 lifecycle authority。AgentTeams、Claude Code、具体 provider/model 和 trace
 vendor 都是可选 Adapter。
 
@@ -312,7 +312,7 @@ resume Assignment。
 ### 8.1 调用原则
 
 - canonical intent 先冻结，再生成 CLI/MCP/A2A/SDK；
-- V2 CLI 必须显式使用 `caseloop --api-version 2 ...`；默认仍是 V1，URL/header/response
+- V2 CLI 必须显式使用 `agentmed --api-version 2 ...`；默认仍是 V1，URL/header/response
   major 不一致或 downgrade 必须拒绝并审计；
 - 所有 mutation 有 durable idempotency fingerprint；
 - 客户端 timeout/Ctrl-C/detach 只停止等待；
@@ -431,5 +431,5 @@ V5 implementation 在以下条件满足前为 `NO-GO`：
     ReleasePlan→WorkOrder→human Approval→ExternalOperation，并有正反 fixture；
 13. fail-to-pass、holdout/anti-overfit、Judge `N/A/advisory/required` 与 required calibration
     有对抗 fixture；演示 repetitions/threshold 不被合同冻结成通用质量保证；
-14. `caseloop init`/`case from-issue` 被证明只编排 canonical intents，在失败/重试时不产生
+14. `agentmed init`/`case from-issue` 被证明只编排 canonical intents，在失败/重试时不产生
     第二 owner、重复 Case、自动 confirmed acceptance 或 observed claim。

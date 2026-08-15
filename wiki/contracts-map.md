@@ -40,7 +40,7 @@
 | 切片 | 当前事实 | 仍缺什么 |
 |---|---|---|
 | S1A · authenticated maintainer report without trace | `DONE (LOCAL RUNTIME)`：`007`、本地 bootstrap、5 个 HTTP/CLI intent，以及同事务 Signal/Case link/`UNKNOWN` receipt/event/audit/outbox/idempotency 路径 | provider、Agent、外部与 production facets 均为 `NOT_RUN`；evidence 见 `evidence/v4/stage-1/maintainer-intake/` |
-| S1B · Langfuse read + CaseLoop OTel write/readback | `FROZEN` wire contract only；connector、cursor/DLQ、真实 Langfuse 读取与独立 sink 回读均未实现 | 008、runtime、测试，以及轮换后的隔离凭证和单独 live 授权；当前 provider-live 为 `BLOCKED` |
+| S1B · Langfuse read + AgentMED OTel write/readback | `FROZEN` wire contract only；connector、cursor/DLQ、真实 Langfuse 读取与独立 sink 回读均未实现 | 008、runtime、测试，以及轮换后的隔离凭证和单独 live 授权；当前 provider-live 为 `BLOCKED` |
 
 ## V5 accepted contracts and current runtime overlay
 
@@ -101,7 +101,7 @@
 | `SystemVersionSet` | V5 定义 AI 应用 code、Agent、model、prompt、runtime data/RAG、tool、policy 与 runtime component 的 declared composition；当前 first-import runtime 处于 closure repair，standalone second-version record 未冻结；不包含 EvaluationBundle，也不证明 observed runtime |
 | `Proposal Causation` | Agent 输入快照、原生 Worker/model/tool receipts、pre-action proposal 与后续权威事件的因果绑定 |
 | `Closure / Release Adapter` | 不同 Agent runtime 的发布、回滚、停止、告警和结果回传语义 |
-| CaseLoop 自身 trace 出站 | 标准传播、service/tenant 标识、脱敏、采样与 Langfuse adapter 配置 |
+| AgentMED 自身 trace 出站 | 标准传播、service/tenant 标识、脱敏、采样与 Langfuse adapter 配置 |
 
 表中 Signal 的 S1A no-trace 子集已完成本地 runtime、verifier、evidence 与 commit；其余能力
 按 V5 Master Plan 分阶段施工。target/contract 只能证明语义已明确，不能证明尚未关闭的

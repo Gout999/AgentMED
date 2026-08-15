@@ -139,13 +139,13 @@ def _seed_route_identity(engine, settings) -> None:
 def _headers(*, mutation: bool = False, contract_version: str = "2.0") -> dict[str, str]:
     headers = {
         "Authorization": f"Bearer {RAW_TOKEN}",
-        "X-CaseLoop-Workspace-ID": WORKSPACE,
-        "X-CaseLoop-Contract-Version": contract_version,
+        "X-AgentMED-Workspace-ID": WORKSPACE,
+        "X-AgentMED-Contract-Version": contract_version,
         "X-Request-ID": "req_01J000000000000A",
         "Content-Type": "application/json",
     }
     if mutation:
-        headers["X-CaseLoop-Idempotency-Key"] = "app-register-0001"
+        headers["X-AgentMED-Idempotency-Key"] = "app-register-0001"
     return headers
 
 
@@ -184,7 +184,7 @@ def test_register_application_v2_success(client) -> None:
         content=_app_body(),
     )
     assert response.status_code == 201
-    assert response.headers["x-caseloop-contract-version"] == "2.0"
+    assert response.headers["x-agentmed-contract-version"] == "2.0"
     body = response.json()
     assert body["schema_version"] == "2.0"
     assert body["workspace_id"] == WORKSPACE
@@ -228,8 +228,8 @@ def test_get_application_cross_project_is_opaque_not_found(client) -> None:
     application_id = registered.json()["application"]["application_id"]
     foreign_headers = {
         "Authorization": f"Bearer {FOREIGN_READER_TOKEN}",
-        "X-CaseLoop-Workspace-ID": WORKSPACE,
-        "X-CaseLoop-Contract-Version": "2.0",
+        "X-AgentMED-Workspace-ID": WORKSPACE,
+        "X-AgentMED-Contract-Version": "2.0",
         "X-Request-ID": "req_01J000000000000D",
         "Content-Type": "application/json",
     }
@@ -252,7 +252,7 @@ def test_wrong_contract_version_is_request_invalid(client) -> None:
     for version in ("1.0", "3.0", None):
         headers = _headers(mutation=True, contract_version=version)
         if version is None:
-            headers.pop("X-CaseLoop-Contract-Version")
+            headers.pop("X-AgentMED-Contract-Version")
         response = client.post(
             "/api/v2/applications",
             headers=headers,
@@ -264,7 +264,7 @@ def test_wrong_contract_version_is_request_invalid(client) -> None:
 
 def test_missing_idempotency_key_is_rejected(client) -> None:
     headers = _headers(mutation=True)
-    headers.pop("X-CaseLoop-Idempotency-Key")
+    headers.pop("X-AgentMED-Idempotency-Key")
     response = client.post("/api/v2/applications", headers=headers, content=_app_body())
     assert response.status_code == 400
     assert response.json()["error"]["code"] == "IDEMPOTENCY_KEY_REQUIRED"
@@ -284,7 +284,7 @@ def test_duplicate_slug_is_catalog_conflict(client) -> None:
     )
     assert first.status_code == 201
     headers = _headers(mutation=True)
-    headers["X-CaseLoop-Idempotency-Key"] = "app-register-0002"
+    headers["X-AgentMED-Idempotency-Key"] = "app-register-0002"
     response = client.post("/api/v2/applications", headers=headers, content=_app_body())
     assert response.status_code == 409
     assert response.json()["error"]["code"] == "CATALOG_CONFLICT"
@@ -292,7 +292,7 @@ def test_duplicate_slug_is_catalog_conflict(client) -> None:
 
 def test_cross_workspace_request_is_denied(client) -> None:
     headers = _headers(mutation=True)
-    headers["X-CaseLoop-Workspace-ID"] = "ws_01J0000000000999"
+    headers["X-AgentMED-Workspace-ID"] = "ws_01J0000000000999"
     response = client.post("/api/v2/applications", headers=headers, content=_app_body())
     assert response.status_code in (401, 403)
     assert response.json()["error"]["code"] in {
@@ -310,7 +310,7 @@ def test_environment_and_component_registration_v2(client) -> None:
     application_id = registered.json()["application"]["application_id"]
 
     env_headers = _headers(mutation=True)
-    env_headers["X-CaseLoop-Idempotency-Key"] = "env-register-0001"
+    env_headers["X-AgentMED-Idempotency-Key"] = "env-register-0001"
     env_body = json.dumps(
         {
             "schema_version": "2.0",
@@ -324,7 +324,7 @@ def test_environment_and_component_registration_v2(client) -> None:
     assert env.json()["environment"]["logical_name"] == "production"
 
     component_headers = _headers(mutation=True)
-    component_headers["X-CaseLoop-Idempotency-Key"] = "component-register-0001"
+    component_headers["X-AgentMED-Idempotency-Key"] = "component-register-0001"
     component_body = json.dumps(
         {
             "schema_version": "2.0",

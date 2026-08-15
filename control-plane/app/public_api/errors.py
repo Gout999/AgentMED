@@ -146,7 +146,7 @@ class MappedPublicError:
 
     @property
     def headers(self) -> dict[str, str]:
-        headers = {"X-CaseLoop-Contract-Version": "1.0"}
+        headers = {"X-AgentMED-Contract-Version": "1.0"}
         if self.status_code == 429 and self.envelope.error.retry_after_ms is not None:
             seconds = (self.envelope.error.retry_after_ms + 999) // 1000
             headers["Retry-After"] = str(seconds)
@@ -207,7 +207,7 @@ def map_public_error(
             audit_ref=audit_ref,
             audit_status=audit_status,
             details=safe_details,
-            help_url=f"https://docs.caseloop.dev/errors/{public_code}",
+            help_url=f"https://docs.agentmed.dev/errors/{public_code}",
         ),
     )
     return MappedPublicError(status_code=spec.status_code, envelope=envelope)

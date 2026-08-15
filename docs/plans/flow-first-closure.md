@@ -15,7 +15,7 @@
 | 5 沙箱验证 | ❌ gate_reports=0；「把测试 agent 拿进容器跑」从未真实发生（eval-harness 是 API 级评测非容器沙箱） | 建沙箱 runner 薄层（隔离容器跑坏例回放，修前 fail/修后 pass 观测对比）；gate.run/gate.run_verification 走它 | gate_reports=1 + 修前/修后 digest |
 | 6 人工放行 | 🟡 机制四缺二：Matrix 审批请求通知未接（A2）、reader 未建；CLI decide ✅、approval.request ✅ | ① approval.request 发 Matrix 审批请求（A2 通知写真 Matrix）；② 建 reader（读 Matrix 事件→验 nonce→grant/consume_nonce→落 VerifiedCandidate） | grant 落库 + case 到 VerifiedCandidate/NOT DEPLOYED（出口 2） |
 
-全局前置：① 每段开跑前探活模型路径（8088/relay；stepfun 外部不稳定，4-worker+本地 models 已降误杀）；② caseloop 脏工作区（V5-1A/B/C 162 文件，818 单测已绿）按纪律语义提交，为 A2 通知适配器改动清路。
+全局前置：① 每段开跑前探活模型路径（8088/relay；stepfun 外部不稳定，4-worker+本地 models 已降误杀）；② agentmed 脏工作区（V5-1A/B/C 162 文件，818 单测已绿）按纪律语义提交，为 A2 通知适配器改动清路。
 
 顺序与依赖：段2→3→4→5→6 串行（取证喂归因、归因喂修复、候选喂验证、验证报告喂审批）；每段完成 = 一段真实演示 + DB 证据 + 审计日志更新；全程两个人工卡点不变（机器统计判决 + 审批 nonce）。
 
@@ -42,10 +42,10 @@ approval / outbox_relay / eval-harness。
 
 ### 第 1 步：部署治理团队（agent team 上线，全走原生）
 - 被治理对象接入登记：Agent Station 作为 Application，其组件（代码 / prompt / 模型）挂到 Langfuse 可观测；
-- 六角色团队（quality-officer / collector / gatekeeper / case-officer / attributionist / repairer）+ 人工审批人（caseloop-approver，Human CR 接 Matrix 审批）部署就位；skills 挂平台 skill_pool 角色级 skill，不再挂单巨 skill；
+- 六角色团队（quality-officer / collector / gatekeeper / case-officer / attributionist / repairer）+ 人工审批人（agentmed-approver，Human CR 接 Matrix 审批）部署就位；skills 挂平台 skill_pool 角色级 skill，不再挂单巨 skill；
 - **完成=能演示**：人工触发一条投诉信号，quality-officer 判定立案并分发。
 
-进度（2026-08-14）：✅ 团队已部署且 Active（6 worker Running、ReadyWorkers 5/5、Human CR Active）；待办：caseloop MCP servers 平台注册（mcporter）+ 控制面拉起（PG/迁移）+ 角色级 skills 分发。
+进度（2026-08-14）：✅ 团队已部署且 Active（6 worker Running、ReadyWorkers 5/5、Human CR Active）；待办：agentmed MCP servers 平台注册（mcporter）+ 控制面拉起（PG/迁移）+ 角色级 skills 分发。
 
 ### 第 2 步：接 Langfuse 信号（投诉入口跑通）
 - 读 Langfuse 观测（scores / observations）→ 负向信号 → 立案；
@@ -62,7 +62,7 @@ approval / outbox_relay / eval-harness。
 - **完成=能演示**：沙箱报告展示「修前 fail / 修后 pass」，可复核。
 
 ### 第 5 步：人工卡点 + 出口 2 关闭
-- 审批请求走团队原生通道：系统在 Matrix 向审批人（caseloop-approver）发结构化消息（工单 + nonce + 风险摘要）；
+- 审批请求走团队原生通道：系统在 Matrix 向审批人（agentmed-approver）发结构化消息（工单 + nonce + 风险摘要）；
 - 审批人回复批准/否决：Element 直回，或用 CLI/MCP 封装发送同样结构的消息；系统读 Matrix 事件、验 nonce、核发；
 - 结果落 VerifiedCandidate（修好已验证）或 NOT DEPLOYED（验证不过，退回）；
 - **完成=能演示**：一段投诉从入口到出口 2 完整走通，含人工否决路径。
@@ -99,15 +99,15 @@ approval / outbox_relay / eval-harness。
 
 | 能力 | 平台机制 | 闭环用法 |
 |---|---|---|
-| 人类角色 | team.yaml Human CR + human-management | caseloop-approver 进团队，DM/房间消息审批 |
+| 人类角色 | team.yaml Human CR + human-management | agentmed-approver 进团队，DM/房间消息审批 |
 | 团队/成员 | team-management | 六角色建团、增删成员 |
 | 运行时重组 | worker-management（create/reset/start/stop） | 按需增减角色，不停整个团队 |
-| 市场导入 | agentteams-find-worker + Nacos | 直接导入 caseloop 六角色包 |
+| 市场导入 | agentteams-find-worker + Nacos | 直接导入 agentmed 六角色包 |
 | 任务编排 | task-management / task-coordination + 心跳 | 立案分发、状态跟踪、逾期提醒 |
 | 项目隔离 | project-management + channel-management | 每个 complaint 一个项目房间 |
 | 共享文件 | agentteams-fs + MinIO + file-sync | 证据、补丁、观测全队分发 |
 | 代管 git | git-delegation（.processing 标记） | 修复落 Gate 的受控 git 操作 |
-| 技能池 | skills + skill_pool 镜像分发 | caseloop skill 池已在平台就位 |
+| 技能池 | skills + skill_pool 镜像分发 | agentmed skill 池已在平台就位 |
 | 工具挂载 | mcp-server-management + mcporter | 沙箱 runner、langfuse、approval 挂为 MCP 工具 |
 | 模型路由 | model-switch / worker-model-switch | 贵模型给归因/修复，便宜模型给取证 |
 | 成本治理 | 空闲自动停机（720 分钟留痕） | worker 闲置自动回收 |

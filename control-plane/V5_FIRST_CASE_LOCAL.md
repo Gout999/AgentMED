@@ -42,12 +42,12 @@ export AGENTMED_API_URL=http://127.0.0.1:8090
 export AGENTMED_WORKSPACE_ID="$CL_WORKSPACE_ID"
 ```
 
-The examples use `jq` and an installed `caseloop` CLI. Set
+The examples use `jq` and an installed `agentmed` CLI. Set
 `CL_MANIFEST_FILE` to a schema-2 JSON manifest that passes:
 
 ```bash
 export CL_MANIFEST_FILE=/absolute/path/to/system-manifest.json
-caseloop --api-version 2 system-manifest validate \
+agentmed --api-version 2 system-manifest validate \
   --manifest-file "$CL_MANIFEST_FILE"
 mkdir -p var/v5-first-case-local
 ```
@@ -100,7 +100,7 @@ payload = {
         "connector_kind": "manual",
         "state": "ACTIVE",
         "credential_ref": None,
-        "config": {"provider_origin": "https://caseloop.local"},
+        "config": {"provider_origin": "https://agentmed.local"},
     },
     "controller": {
         "registration_id": "creg_01J0000000000L01",
@@ -142,7 +142,7 @@ Use the initial bearer for the one-shot manifest import:
 
 ```bash
 export AGENTMED_PUBLIC_TOKEN="$CL_OPERATOR_TOKEN_0"
-caseloop --api-version 2 system-manifest import \
+agentmed --api-version 2 system-manifest import \
   --manifest-file "$CL_MANIFEST_FILE" \
   --idempotency-key v5-first-case-import-0001 \
   > var/v5-first-case-local/manifest-import.json
@@ -221,7 +221,7 @@ binding, and proposal:
 
 ```bash
 export CL_SIGNAL_AT=$(.venv/bin/python -c 'from datetime import datetime, timezone; print(datetime.now(timezone.utc).isoformat())')
-caseloop signal submit \
+agentmed signal submit \
   --source-id "$CL_SOURCE_ID" \
   --summary 'The bounded tool was not selected' \
   --body 'Fresh local first-system-case report' \
@@ -235,14 +235,14 @@ caseloop signal submit \
   > var/v5-first-case-local/signal.json
 
 export CL_CASE_ID=$(jq -er '.case.case_id' var/v5-first-case-local/signal.json)
-caseloop --api-version 2 case acceptance-criteria get "$CL_CASE_ID" \
+agentmed --api-version 2 case acceptance-criteria get "$CL_CASE_ID" \
   --case-revision 1 > var/v5-first-case-local/readiness-before.json
 export CL_CASE_REVISION=$(jq -er '.exact_case_binding.case_revision' \
   var/v5-first-case-local/readiness-before.json)
 export CL_CASE_DIGEST=$(jq -er '.exact_case_binding.case_digest' \
   var/v5-first-case-local/readiness-before.json)
 
-caseloop --api-version 2 case bind-application "$CL_CASE_ID" \
+agentmed --api-version 2 case bind-application "$CL_CASE_ID" \
   --application-id "$CL_APPLICATION_ID" \
   --environment-id "$CL_ENVIRONMENT_ID" \
   --case-revision "$CL_CASE_REVISION" \
@@ -252,7 +252,7 @@ caseloop --api-version 2 case bind-application "$CL_CASE_ID" \
   > var/v5-first-case-local/case-binding.json
 
 export CL_ACCEPTANCE_JSON='{"acceptance_source":{"kind":"manual","title":"Wrong tool selected"},"expected_behavior":{"summary":"The bounded tool must be selected."},"applicable_workload_profile":{"name":"local-once","concurrency":"SINGLE"},"applicable_deployment_profile":{"name":"local-shadow","kind":"DEVELOPMENT"}}'
-caseloop --api-version 2 case acceptance-criteria propose "$CL_CASE_ID" \
+agentmed --api-version 2 case acceptance-criteria propose "$CL_CASE_ID" \
   --case-revision "$CL_CASE_REVISION" \
   --case-digest "$CL_CASE_DIGEST" \
   --acceptance-json "$CL_ACCEPTANCE_JSON" \
@@ -320,7 +320,7 @@ jq -e '.status == "CREATED" or .status == "REUSED"' \
   var/v5-first-case-local/owner-reauthentication.json
 
 export AGENTMED_PUBLIC_TOKEN="$CL_OWNER_TOKEN"
-caseloop --api-version 2 case acceptance-criteria confirm "$CL_PROPOSAL_ID" \
+agentmed --api-version 2 case acceptance-criteria confirm "$CL_PROPOSAL_ID" \
   --case-id "$CL_CASE_ID" \
   --case-revision "$CL_CASE_REVISION" \
   --proposed-revision-digest "$CL_PROPOSAL_DIGEST" \

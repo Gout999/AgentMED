@@ -76,12 +76,12 @@ runtime_overlay:
   standalone_system_versions_record_route_enabled: false
   standalone_system_versions_record_cli_enabled: false
   cli_workflows:
-    caseloop_init:
+    agentmed_init:
       command: init
       status: IMPLEMENTED_LOCAL_DRAFT_ONLY
       writes_server_state: false
       import_requires_separate_operator_command: true
-    caseloop_case_from_issue:
+    agentmed_case_from_issue:
       command: case from-issue
       status: IMPLEMENTED_ORCHESTRATION
       composes_intents:
@@ -103,11 +103,11 @@ api_major_selection:
   v2_requires_explicit_selection: true
   cli:
     flag: "--api-version 2"
-    v2_invocation_prefix: "caseloop --api-version 2"
+    v2_invocation_prefix: "agentmed --api-version 2"
     silent_default_change: FORBIDDEN
   http:
-    request_header: X-CaseLoop-Contract-Version
-    response_header: X-CaseLoop-Contract-Version
+    request_header: X-AgentMED-Contract-Version
+    response_header: X-AgentMED-Contract-Version
     v2_required_request_value: "2.0"
     v2_missing_or_other_value_error: REQUEST_INVALID
     v2_missing_or_other_value_is_audited: true
@@ -845,7 +845,7 @@ agent_protocol_target:
     method_mapping:
       SendMessage:
         canonical_async_intents: [investigations.start, evaluations.start]
-        intent_discriminator_field: caseloop_intent
+        intent_discriminator_field: agentmed_intent
         discriminator_location: structured_message_data_part
         missing_or_ambiguous_discriminator: REJECT
       GetTask: operations.get
@@ -894,17 +894,17 @@ agent_protocol_target:
     transport_error_is_domain_verdict: false
     every_tool_call_reauthorizes: [audience, expiry, revocation, scope, object_visibility]
     operation_id_or_task_handle_is_capability: false
-    mutation_idempotency_field: _meta.caseloop/idempotencyKey
+    mutation_idempotency_field: _meta.agentmed/idempotencyKey
     mutation_idempotency_required: true
     disconnect_or_transport_cancel_effect: DETACH_WAIT_ONLY
-    durable_operation_cancel_requires_tool: caseloop_operation_cancel
+    durable_operation_cancel_requires_tool: agentmed_operation_cancel
     tool_call_cancel_is_domain_terminal: false
     tool_allowlist:
-      caseloop_capabilities: {intent: capabilities.get, input_schema_ref: null, output_schema_ref: null}
-      caseloop_investigate: {intent: investigations.start, input_schema_ref: null, output_schema_ref: null}
-      caseloop_evaluate: {intent: evaluations.start, input_schema_ref: null, output_schema_ref: null}
-      caseloop_operation_get: {intent: operations.get, input_schema_ref: null, output_schema_ref: null}
-      caseloop_operation_cancel: {intent: operations.cancel-request, input_schema_ref: null, output_schema_ref: null}
+      agentmed_capabilities: {intent: capabilities.get, input_schema_ref: null, output_schema_ref: null}
+      agentmed_investigate: {intent: investigations.start, input_schema_ref: null, output_schema_ref: null}
+      agentmed_evaluate: {intent: evaluations.start, input_schema_ref: null, output_schema_ref: null}
+      agentmed_operation_get: {intent: operations.get, input_schema_ref: null, output_schema_ref: null}
+      agentmed_operation_cancel: {intent: operations.cancel-request, input_schema_ref: null, output_schema_ref: null}
 
 competition_profile:
   real_external_agent_via_cli_is_sufficient_for_agent_native_transport_proof: true
@@ -936,7 +936,7 @@ first_slice_wire_contract:
   transport_generation_all_disabled: true
   http:
     api_prefix: /api/v2
-    mutation_idempotency_key_field: X-CaseLoop-Idempotency-Key
+    mutation_idempotency_key_field: X-AgentMED-Idempotency-Key
     missing_mutation_idempotency_key: REQUEST_INVALID
   error_contract:
     fail_closed: true

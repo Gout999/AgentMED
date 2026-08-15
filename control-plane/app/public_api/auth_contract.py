@@ -71,15 +71,15 @@ class PublicRequestHeaders(WireModel):
                 "TOKEN_INVALID", "The bearer credential header is invalid."
             )
 
-        workspace_id = normalized.get("x-caseloop-workspace-id")
+        workspace_id = normalized.get("x-agentmed-workspace-id")
         if workspace_id is None:
             raise HeaderContractViolation(
-                "REQUEST_INVALID", "X-CaseLoop-Workspace-ID is required."
+                "REQUEST_INVALID", "X-AgentMED-Workspace-ID is required."
             )
-        contract_version = normalized.get("x-caseloop-contract-version")
+        contract_version = normalized.get("x-agentmed-contract-version")
         if contract_version is None:
             raise HeaderContractViolation(
-                "REQUEST_INVALID", "X-CaseLoop-Contract-Version is required."
+                "REQUEST_INVALID", "X-AgentMED-Contract-Version is required."
             )
         if contract_version != "1.0":
             raise HeaderContractViolation(
@@ -99,7 +99,7 @@ class PublicRequestHeaders(WireModel):
                 contract_version=contract_version,
                 idempotency_key=idempotency_key,
                 request_id=normalized.get("x-request-id"),
-                client_version=normalized.get("x-caseloop-client-version"),
+                client_version=normalized.get("x-agentmed-client-version"),
             )
         except ValidationError as exc:
             # Pydantic messages contain field metadata, never the excluded token.
@@ -147,8 +147,8 @@ class AcceptedPrincipalContext(WireModel):
 
     @model_validator(mode="after")
     def accepted_context_is_bound(self) -> "AcceptedPrincipalContext":
-        if "caseloop-public-api" not in self.audiences:
-            raise ValueError("accepted principal audience does not include caseloop-public-api")
+        if "agentmed-public-api" not in self.audiences:
+            raise ValueError("accepted principal audience does not include agentmed-public-api")
         if not (self.not_before <= self.evaluated_at < self.expires_at):
             raise ValueError("accepted principal is outside not-before/expiry bounds")
         requested = self.requested_context

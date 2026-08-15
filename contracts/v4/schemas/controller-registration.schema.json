@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://caseloop.dev/contracts/v4/schemas/controller-registration.schema.json",
-  "title": "CaseLoop ControllerRegistration",
+  "$id": "https://agentmed.dev/contracts/v4/schemas/controller-registration.schema.json",
+  "title": "AgentMED ControllerRegistration",
   "description": "Frozen control-plane service identity and command allowlist. This is a trust root record and therefore does not recursively carry an AuthorityReceipt.",
   "type": "object",
   "required": [
@@ -28,23 +28,23 @@
     "registration_digest"
   ],
   "properties": {
-    "schema_version": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"},
-    "controller_registration_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/controller_registration_id"},
+    "schema_version": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/schema_version"},
+    "controller_registration_id": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/controller_registration_id"},
     "revision": {"type": "integer", "minimum": 1},
     "previous_snapshot": {
       "oneOf": [
-        {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"},
+        {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/exact_record_binding"},
         {"type": "null"}
       ]
     },
     "state": {"enum": ["ACTIVE", "REVOKED", "EXPIRED"]},
-    "workspace_id": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"},
+    "workspace_id": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/workspace_id"},
     "owner": {"type": "string", "pattern": "^[a-z][a-z0-9-]{2,63}$"},
-    "controller_principal": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"},
+    "controller_principal": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"},
     "principal_type": {"const": "CONTROLLER_SERVICE"},
     "allowed_commands": {
       "type": "array",
-      "items": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/intent_name"},
+      "items": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/intent_name"},
       "minItems": 1,
       "uniqueItems": true
     },
@@ -53,7 +53,7 @@
       "required": ["version", "digest"],
       "properties": {
         "version": {"const": "1.0"},
-        "digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"}
+        "digest": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"}
       },
       "additionalProperties": false
     },
@@ -62,24 +62,24 @@
       "required": ["version", "digest"],
       "properties": {
         "version": {"const": "1.0"},
-        "digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"}
+        "digest": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"}
       },
       "additionalProperties": false
     },
-    "valid_from": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
+    "valid_from": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
     "expires_at": {
       "oneOf": [
-        {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
+        {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
         {"type": "null"}
       ]
     },
-    "service_identity_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
-    "registered_by_human_principal": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"},
-    "registration_audit_ref": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"},
-    "registered_at": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
+    "service_identity_digest": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"},
+    "registered_by_human_principal": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/principal_id"},
+    "registration_audit_ref": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/audit_ref"},
+    "registered_at": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/date_time"},
     "immutable": {"const": true},
     "hash_rule": {"const": "jcs-rfc8785-v1+sha256(excluding:/registration_digest)"},
-    "registration_digest": {"$ref": "https://caseloop.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"}
+    "registration_digest": {"$ref": "https://agentmed.dev/contracts/v4/schemas/common-defs.schema.json#/$defs/digest"}
   },
   "allOf": [
     {

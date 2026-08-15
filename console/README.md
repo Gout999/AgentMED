@@ -1,4 +1,4 @@
-# CaseLoop Console
+# AgentMED Console
 
 Console 是控制面的只读人类界面。它通过相对路径 `/api/*` 读取 control-plane 投影；浏览器
 不持有 Release Controller、Approval Authority 或 V5 credential-issuance 权限。页面显示的

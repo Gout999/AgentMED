@@ -1,8 +1,8 @@
 # DESIGN ONLY. This is not an AgentTeams CR and must not be passed to `agt apply`.
-apiVersion: caseloop.dev/v4alpha1
+apiVersion: agentmed.dev/v4alpha1
 kind: TeamManifestDraft
 metadata:
-  name: caseloop-coding-team
+  name: agentmed-coding-team
 status:
   design_status: APPROVED
   lifecycle_status: NOT_CREATED

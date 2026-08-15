@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://caseloop.dev/contracts/schemas/workorder.schema.json",
+  "$id": "https://agentmed.dev/contracts/schemas/workorder.schema.json",
   "title": "WorkOrder",
   "description": "不可变修复工单（plan-v3 §2.3.3 / T5）。修复师自由起草的产物；审批即批此 WorkOrder 的 hash，防止审批后掉包。hash 绑定：目标 VersionSet digest / 输入版本 / diff / 门禁报告引用 / expiry / nonce。单变量纪律：channel 三选一，一份 WorkOrder 只允许改动一个通道。",
   "type": "object",

@@ -69,11 +69,11 @@ def test_public_request_headers_parse_opaque_bearer_without_echoing_it() -> None
     parsed = PublicRequestHeaders.from_headers(
         {
             "Authorization": f"Bearer {raw_token}",
-            "X-CaseLoop-Workspace-ID": "ws_01J0000000000001",
-            "X-CaseLoop-Contract-Version": "1.0",
+            "X-AgentMED-Workspace-ID": "ws_01J0000000000001",
+            "X-AgentMED-Contract-Version": "1.0",
             "Idempotency-Key": "signal-submit-0001",
             "X-Request-ID": "req_01J0000000000002",
-            "X-CaseLoop-Client-Version": "agentmed-cli/1.0.0",
+            "X-AgentMED-Client-Version": "agentmed-cli/1.0.0",
         },
         mutation=True,
     )
@@ -90,8 +90,8 @@ def test_public_request_headers_are_case_insensitive() -> None:
     parsed = PublicRequestHeaders.from_headers(
         {
             "authorization": "Bearer opaque-token",
-            "x-caseloop-workspace-id": "ws_01J0000000000001",
-            "x-caseloop-contract-version": "1.0",
+            "x-agentmed-workspace-id": "ws_01J0000000000001",
+            "x-agentmed-contract-version": "1.0",
         }
     )
 
@@ -105,8 +105,8 @@ def test_public_request_headers_are_case_insensitive() -> None:
         (
             {
                 "Authorization": "Basic abc",
-                "X-CaseLoop-Workspace-ID": "ws_01J0000000000001",
-                "X-CaseLoop-Contract-Version": "1.0",
+                "X-AgentMED-Workspace-ID": "ws_01J0000000000001",
+                "X-AgentMED-Contract-Version": "1.0",
             },
             False,
             "TOKEN_INVALID",
@@ -114,8 +114,8 @@ def test_public_request_headers_are_case_insensitive() -> None:
         (
             {
                 "Authorization": "Bearer opaque-token",
-                "X-CaseLoop-Workspace-ID": "ws_01J0000000000001",
-                "X-CaseLoop-Contract-Version": "2.0",
+                "X-AgentMED-Workspace-ID": "ws_01J0000000000001",
+                "X-AgentMED-Contract-Version": "2.0",
             },
             False,
             "CONTRACT_VERSION_UNSUPPORTED",
@@ -123,8 +123,8 @@ def test_public_request_headers_are_case_insensitive() -> None:
         (
             {
                 "Authorization": "Bearer opaque-token",
-                "X-CaseLoop-Workspace-ID": "ws_01J0000000000001",
-                "X-CaseLoop-Contract-Version": "1.0",
+                "X-AgentMED-Workspace-ID": "ws_01J0000000000001",
+                "X-AgentMED-Contract-Version": "1.0",
             },
             True,
             "IDEMPOTENCY_KEY_REQUIRED",
@@ -147,7 +147,7 @@ def test_duplicate_case_insensitive_headers_fail_closed() -> None:
             {
                 "Authorization": "Bearer one-token",
                 "authorization": "Bearer other-token",
-                "X-CaseLoop-Workspace-ID": "ws_01J0000000000001",
-                "X-CaseLoop-Contract-Version": "1.0",
+                "X-AgentMED-Workspace-ID": "ws_01J0000000000001",
+                "X-AgentMED-Contract-Version": "1.0",
             }
         )

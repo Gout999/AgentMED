@@ -1,4 +1,4 @@
-# CaseLoop V5 contract namespace
+# AgentMED V5 contract namespace
 
 > Status: **ACCEPTED V5 CONSTRUCTION BASELINE / V5-1A/B/C WORKTREE OVERLAY / STAGES IN_PROGRESS**
 

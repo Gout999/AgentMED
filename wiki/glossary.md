@@ -1,16 +1,16 @@
-# CaseLoop 术语表
+# AgentMED 术语表
 
 [返回 Wiki 索引](INDEX.md)
 
 | 术语 | 含义 |
 |---|---|
 | 控制面 | 非 LLM 的确定性系统。PostgreSQL 中的生命周期、权限、幂等、审批、发布与审计记录是权威事实 |
-| 被治理 Agent | CaseLoop 外部的治理对象；它产生业务运行、输出和 trace，不等同于 CaseLoop 内部 Worker |
-| CaseLoop 内部 LLM Worker | 质量官、采集员、归因师、修复师、守门员、案例官等概率性执行角色，只能产出建议、假设和候选工件 |
+| 被治理 Agent | AgentMED 外部的治理对象；它产生业务运行、输出和 trace，不等同于 AgentMED 内部 Worker |
+| AgentMED 内部 LLM Worker | 质量官、采集员、归因师、修复师、守门员、案例官等概率性执行角色，只能产出建议、假设和候选工件 |
 | 确定性进程 Worker | outbox dispatcher、evaluator runner 等按代码规则执行工作的进程；名字含 Worker 也不表示它是 LLM Agent |
 | Controller / Executor | 校验命令、持久化状态、编排获批动作或调用唯一写面的确定性组件；不能伪装成 Agent 判断 |
 | Evidence Exporter | 只读采集来源记录、保留 provenance，并明确区分 PostgreSQL 权威事实与 Matrix/MinIO 等平台证据；不能创建任务、ack/submit、审批、工件或因果关系 |
-| 概率性执行面 | CaseLoop 内部 LLM Worker 的建议和候选生成侧；不是权威状态机，也不是所有执行进程的总称 |
+| 概率性执行面 | AgentMED 内部 LLM Worker 的建议和候选生成侧；不是权威状态机，也不是所有执行进程的总称 |
 | Case Controller | v3 控制面核心：inbox 去重立案、派单、lease、fencing、幂等与 outbox |
 | Release Controller | 唯一允许调用 Quality API 写面的组件；以 CAS 执行 stage、canary、promote、rollback 和 reconcile |
 | Caseload Controller | 当前 v3 Phase 2 规划组件，用于内部 Worker 扩缩；尚未实现，通用产品是否继承仍待裁决 |
@@ -29,7 +29,7 @@
 | Finding（v4 草案） | 独立 Evaluator 对确切 candidate revision 提出的可复现问题与证据 |
 | AutomationRunView（v4 草案） | 汇总多个权威聚合状态的只读进度投影和事件游标；不接受 start/cancel，也不拥有业务终态 |
 | TraceSource | 读取外部 Agent run / trace 的可插拔接口；Langfuse 是首个计划适配器，不是唯一后端 |
-| Langfuse | 可接收 CaseLoop 自身 trace，也可作为被治理 Agent 的取证来源；不持有 CaseLoop 生命周期权威状态 |
+| Langfuse | 可接收 AgentMED 自身 trace，也可作为被治理 Agent 的取证来源；不持有 AgentMED 生命周期权威状态 |
 | trace completeness | 对采集范围、缺失、脱敏、采样、留存和权限限制的显式说明；不足时必须为 `UNKNOWN` |
 | VersionSet | v3 为 `{prompt, KB manifest, model + params}` 的不可变集合；通用 Agent 的 skill、tool、harness、memory、policy、environment 等候选维度尚未冻结 |
 | reference workload | 用于验证治理闭环的首个真实场景；不等于最终产品范围，也不自动证明通用能力 |
@@ -52,7 +52,7 @@
 | warm pool | Phase 1 固定规模的内部 Worker 池；不是动态扩缩能力 |
 | feishu mock | 只允许具名 contract/replay；默认通知 adapter 是 `disabled` 且 fail closed，mock 不代表 live 飞书或真人消息 |
 | SOUL | AgentTeams 中内部 Worker 的人设和规程文件 `SOUL.md`；文件存在不证明规程被实际执行 |
-| portable Skill（v4 草案） | 以开放 Agent Skills 目录为兼容格式的能力包；发布权限、依赖、签名、撤销和 Gate 由 CaseLoop sidecar 与控制面补足 |
+| portable Skill（v4 草案） | 以开放 Agent Skills 目录为兼容格式的能力包；发布权限、依赖、签名、撤销和 Gate 由 AgentMED sidecar 与控制面补足 |
 | SkillCandidate（v4 草案） | 人或 Agent 生成的不可变 Skill 变更候选；必须经过 old/candidate/no-skill、隐藏 holdout、安全、权限和供应链验证后才能发布 |
 | Team CR / Worker CR / Human CR | AgentTeams 声明式资源；资源存在只证明平台声明状态，不证明业务闭环或 Agent 因果执行 |
-| kine | AgentTeams controller 的 SQLite KV 存储；不是 CaseLoop 业务状态、审批、发布或审计权威源 |
+| kine | AgentTeams controller 的 SQLite KV 存储；不是 AgentMED 业务状态、审批、发布或审计权威源 |

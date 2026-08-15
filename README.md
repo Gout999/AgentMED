@@ -1,19 +1,19 @@
-# CaseLoop
+# AgentMED
 
 面向 AI 应用的开源 Agent-native 治理运营控制面。
 
 > **比赛提交**：AgentTeams 代码包（运行入口 / 依赖说明 / 配置文件 / 样例输入输出 / 运行证据）
 > 见 docs/competition/agentteams-package.md，运行证据见 docs/competition/run-evidence.md。
-> 关联仓库：AgentMED（https://github.com/er-s-an/AgentMED ，被治理应用内核/评估面）。
+> 关联仓库：AgentMED0（https://github.com/er-s-an/AgentMED0 ，被治理应用内核/评估面）。
 > 模型路径 relay 与沙箱镜像构建件随本仓库分发（deploy/relay/、deploy/sandbox-image/）。
 
 当一个带 AI 功能的应用答错、调错工具、检索了错误知识或产生了异常外部作用，团队通常要在 Issue、trace、日志、评测、代码、Prompt、模型、RAG、工具和发布系统之间手工拼证据：哪里坏了、改什么、是否真的修好、实际运行了什么、能不能发布，很难形成一条可信闭环。
 
-CaseLoop 希望把这件事变成一个可审计的治理流程：接收质量信号，把模糊反馈变成有来源、经维护者确认的 AcceptanceCriteria 和可判定 bad-case input，绑定完整 AI 应用版本与运行证据，再由 V5-4 exact ResolutionContract 物化 executable BadcaseSpec，验证归因和候选修复。代码库或离线任务可以在 Verified Candidate 结束；需要部署的 AI 应用才经过 release-authorizing Gate、人工审批、观察、回滚或补偿。AI 负责分析与起草，确定性控制面掌握状态、权限、审批、执行对账与恢复。
+AgentMED 希望把这件事变成一个可审计的治理流程：接收质量信号，把模糊反馈变成有来源、经维护者确认的 AcceptanceCriteria 和可判定 bad-case input，绑定完整 AI 应用版本与运行证据，再由 V5-4 exact ResolutionContract 物化 executable BadcaseSpec，验证归因和候选修复。代码库或离线任务可以在 Verified Candidate 结束；需要部署的 AI 应用才经过 release-authorizing Gate、人工审批、观察、回滚或补偿。AI 负责分析与起草，确定性控制面掌握状态、权限、审批、执行对账与恢复。
 
-当前仓库用「小智客服」跑第一条纵向参考链路。投诉、飞书回复、prompt/知识库/模型三层归因和固定六角色都是这个场景的实现，**不是 CaseLoop 的最终产品边界，也不是通用 AI 应用治理已经完成的证明**。V4 S1A 的五个认证 HTTP/CLI intent 和 no-trace `Signal → QualityCase → UNKNOWN evidence` 本地链路已实现；当前工作区正在收口 V5-1A/1B/1C 的 Application、SystemVersionSet、Case binding 与 AcceptanceCriteria 切片。在形成 completion commit、证据 manifest 和状态台账之前，这些 V5 切片仍不能标为 stage `DONE`，V5-2+ 仍未实现。
+当前仓库用「小智客服」跑第一条纵向参考链路。投诉、飞书回复、prompt/知识库/模型三层归因和固定六角色都是这个场景的实现，**不是 AgentMED 的最终产品边界，也不是通用 AI 应用治理已经完成的证明**。V4 S1A 的五个认证 HTTP/CLI intent 和 no-trace `Signal → QualityCase → UNKNOWN evidence` 本地链路已实现；当前工作区正在收口 V5-1A/1B/1C 的 Application、SystemVersionSet、Case binding 与 AcceptanceCriteria 切片。在形成 completion commit、证据 manifest 和状态台账之前，这些 V5 切片仍不能标为 stage `DONE`，V5-2+ 仍未实现。
 
-CaseLoop 不以击败某个闭源产品为目标。Langfuse、OpenTelemetry、Phoenix、eval 框架、Agent runtime 和 sandbox 都可以是参考或适配对象；是否集成、复用或自行实现，以目标用户需求、可靠性、私有部署、许可证和维护成本决定。完整原则见 [`docs/product-principles.md`](docs/product-principles.md)。
+AgentMED 不以击败某个闭源产品为目标。Langfuse、OpenTelemetry、Phoenix、eval 框架、Agent runtime 和 sandbox 都可以是参考或适配对象；是否集成、复用或自行实现，以目标用户需求、可靠性、私有部署、许可证和维护成本决定。完整原则见 [`docs/product-principles.md`](docs/product-principles.md)。
 
 V5 产品、架构与冻结合同已被接受为 V5 stage 施工基线：[PRD v5](docs/prd-v5.md)、
 [plan v5](docs/plan-v5.md) 和 [V5 目标蓝图](docs/plans/v5-progressive-delivery.md)。当前
@@ -23,9 +23,9 @@ v3 contracts/migrations/tests 继续约束尚未迁移的实现面。
 
 ### 现在 AgentTeams 里是什么
 
-现有 `caseloop-team` 是六个 CoPaw + StepFun `step-3.7-flash` 的质量治理 Worker：质量官、采集员、归因师、修复师、守门员和案例官。最近运行快照中六个均为 `Sleeping`，`leaderReady=false`、`readyWorkers=0`；Team CR 显示 `Active` 不等于 Agent 正在工作。Human approver 不是第七个 Agent。
+现有 `agentmed-team` 是六个 CoPaw + StepFun `step-3.7-flash` 的质量治理 Worker：质量官、采集员、归因师、修复师、守门员和案例官。最近运行快照中六个均为 `Sleeping`，`leaderReady=false`、`readyWorkers=0`；Team CR 显示 `Active` 不等于 Agent 正在工作。Human approver 不是第七个 Agent。
 
-新 `caseloop-coding-team`、Claude Code child Attempt 和 GLM-5.2 都只是可选 Adapter 目标，当前分别是 `NOT CREATED / NOT IMPLEMENTED / NOT VERIFIED`；它们不再是 V5 治理内核前置。
+新 `agentmed-coding-team`、Claude Code child Attempt 和 GLM-5.2 都只是可选 Adapter 目标，当前分别是 `NOT CREATED / NOT IMPLEMENTED / NOT VERIFIED`；它们不再是 V5 治理内核前置。
 
 ## 历史 Phase 1 演示记录
 

@@ -1,7 +1,7 @@
 """V5-1A/B/C first-case journey: Alembic + PostgreSQL + installed CLI.
 
 The fixture migrates a disposable PostgreSQL database, starts the real API,
-and drives the installed ``caseloop`` CLI through manifest import, an
+and drives the installed ``agentmed`` CLI through manifest import, an
 environment-bound Signal and case binding, acceptance proposal, and a
 separately reauthenticated owner confirmation. Credential issuance/rotation
 stays on the local management entrypoint; it is never exposed as public HTTP.
@@ -104,7 +104,7 @@ def _bootstrap_payload(
             "connector_kind": "manual",
             "state": "ACTIVE",
             "credential_ref": None,
-            "config": {"provider_origin": "https://caseloop.local"},
+            "config": {"provider_origin": "https://agentmed.local"},
         },
         "controller": {
             "registration_id": "creg_01J00000000000F1",
@@ -188,7 +188,7 @@ def _manifest_payload(*, resolved_at: datetime) -> dict[str, Any]:
                         "name": "local-model-alias",
                     },
                     "identity_assurance": "MUTABLE_ALIAS",
-                    "provider_origin": "https://caseloop.local",
+                    "provider_origin": "https://agentmed.local",
                     "resolved_at": resolved_at.isoformat(),
                 },
             },
@@ -329,7 +329,7 @@ def _run_cli(
 ) -> dict[str, Any]:
     completed = _safe_process(
         [str(cli), *argv],
-        label="caseloop cli",
+        label="agentmed cli",
         env=dict(env, PYTHONPATH=pinned_site_packages),
         cwd=Path.cwd(),
         timeout=30,
@@ -391,7 +391,7 @@ def test_v5_first_case_installed_cli_real_postgres_loopback(
             DATABASE_URL=TEST_DATABASE_URL,
             PUBLIC_CREDENTIAL_HASH_PEPPER=public_pepper,
             PUBLIC_CURSOR_SIGNING_KEY=cursor_key,
-            PUBLIC_AUTH_ISSUER="https://auth.caseloop.dev",
+            PUBLIC_AUTH_ISSUER="https://auth.agentmed.dev",
             REQUIRE_MCP_ROLE_TOKENS="false",
             NOTIFICATION_ADAPTER="disabled",
             LOG_LEVEL="ERROR",

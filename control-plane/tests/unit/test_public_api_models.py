@@ -166,7 +166,7 @@ def test_case_response_validates_the_exact_s1a_shape() -> None:
             "next_action": {
                 "code": "CORRELATE_TRACE",
                 "command": "case correlate",
-                "href": "https://caseloop.local/api/v1/cases/case_01J0000000000001",
+                "href": "https://agentmed.local/api/v1/cases/case_01J0000000000001",
             },
         },
     }

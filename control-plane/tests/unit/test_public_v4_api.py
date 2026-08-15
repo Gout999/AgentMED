@@ -75,8 +75,8 @@ def _principal(*, required_scope: str, project_id: str | None = None, environmen
 def _headers(*, mutation: bool = False) -> dict[str, str]:
     headers = {
         "Authorization": f"Bearer {PUBLIC_TOKEN}",
-        "X-CaseLoop-Workspace-ID": WORKSPACE_ID,
-        "X-CaseLoop-Contract-Version": "1.0",
+        "X-AgentMED-Workspace-ID": WORKSPACE_ID,
+        "X-AgentMED-Contract-Version": "1.0",
         "X-Request-ID": REQUEST_ID,
     }
     if mutation:
@@ -198,7 +198,7 @@ def _case_response() -> CaseResponse:
                 "next_action": {
                     "code": "CORRELATE_TRACE",
                     "command": "case correlate",
-                    "href": f"https://caseloop.local/api/v1/cases/{CASE_ID}",
+                    "href": f"https://agentmed.local/api/v1/cases/{CASE_ID}",
                 },
             },
         }
@@ -399,10 +399,10 @@ def _public_claims_digest(
     return canonical_digest(
         {
             "schema_version": "1.0",
-            "issuer": "https://auth.caseloop.dev",
+            "issuer": "https://auth.agentmed.dev",
             "subject": PUBLIC_SUBJECT,
             "principal_type": principal_type,
-            "audiences": ["caseloop-public-api"] if audiences is None else audiences,
+            "audiences": ["agentmed-public-api"] if audiences is None else audiences,
             "workspace_id": workspace_id,
             "project_ids": (
                 [PUBLIC_PROJECT_ID] if project_ids is None else project_ids
@@ -438,7 +438,7 @@ def _seed_real_public_identity(
     )
     granted_scopes = PUBLIC_SCOPES if scopes is None else scopes
     granted_audiences = (
-        ["caseloop-public-api"] if audiences is None else audiences
+        ["agentmed-public-api"] if audiences is None else audiences
     )
     stored_claims_digest = claims_digest or _public_claims_digest(
         workspace_id=workspace_id,
@@ -470,7 +470,7 @@ def _seed_real_public_identity(
                 credential_id="cred_01J0000000000001",
                 workspace_id=workspace_id,
                 principal_id="prn_01J0000000000001",
-                issuer="https://auth.caseloop.dev",
+                issuer="https://auth.agentmed.dev",
                 subject=PUBLIC_SUBJECT,
                 credential_hash=hash_opaque_bearer(PUBLIC_TOKEN, pepper),
                 hash_algorithm="hmac-sha256-v1",
@@ -519,7 +519,7 @@ def test_signal_submit_authenticates_then_binds_body_grants_and_commits_exact_re
         )
 
         assert response.status_code == 201
-        assert response.headers["X-CaseLoop-Contract-Version"] == "1.0"
+        assert response.headers["X-AgentMED-Contract-Version"] == "1.0"
         assert response.json() == _fixture("public-signal-submission-response.json")
         assert len(resolver.calls) == 1
         assert resolver.calls[0]["required_scope"] == "signals:write"
@@ -649,7 +649,7 @@ def test_real_asgi_rejects_coordinated_stale_claims_escalation_before_any_write(
     app = create_app(settings=settings, engine=sqlite_engine, create_tables=True)
     app.state.signal_intake_service_factory = lambda _session: signal
     headers = _headers(mutation=True)
-    headers["X-CaseLoop-Workspace-ID"] = requested_workspace_id
+    headers["X-AgentMED-Workspace-ID"] = requested_workspace_id
     payload = copy.deepcopy(_fixture("public-signal-submission.json"))
     payload.update(payload_changes)
 
@@ -730,8 +730,8 @@ def test_workspace_bound_read_routes_delegate_to_read_service(
         (
             {
                 "Authorization": "Basic abc",
-                "X-CaseLoop-Workspace-ID": WORKSPACE_ID,
-                "X-CaseLoop-Contract-Version": "1.0",
+                "X-AgentMED-Workspace-ID": WORKSPACE_ID,
+                "X-AgentMED-Contract-Version": "1.0",
             },
             401,
             "TOKEN_INVALID",
@@ -739,8 +739,8 @@ def test_workspace_bound_read_routes_delegate_to_read_service(
         (
             {
                 "Authorization": f"Bearer {PUBLIC_TOKEN}",
-                "X-CaseLoop-Workspace-ID": WORKSPACE_ID,
-                "X-CaseLoop-Contract-Version": "2.0",
+                "X-AgentMED-Workspace-ID": WORKSPACE_ID,
+                "X-AgentMED-Contract-Version": "2.0",
             },
             412,
             "CONTRACT_VERSION_UNSUPPORTED",
@@ -773,8 +773,8 @@ def test_public_header_failures_use_safe_exact_public_error(
     "duplicate_name",
     [
         "Authorization",
-        "X-CaseLoop-Workspace-ID",
-        "X-CaseLoop-Contract-Version",
+        "X-AgentMED-Workspace-ID",
+        "X-AgentMED-Contract-Version",
         "X-Request-ID",
         "Idempotency-Key",
     ],

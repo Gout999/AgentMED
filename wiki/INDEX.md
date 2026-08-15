@@ -1,4 +1,4 @@
-# CaseLoop Wiki —— 产品与施工知识库
+# AgentMED Wiki —— 产品与施工知识库
 
 > 读者：贡献者、维护者，以及参与施工的 Agent。
 > 用途：提供「完成当前任务所需的最小上下文」；本 Wiki 是导航与蒸馏，不是独立权威源。
@@ -35,8 +35,8 @@
 
 - D-013 已确认 V5 产品边界：治理完整 AIApplication，并让其他 Agent 通过同一治理内核调用。V5-0B/0C contract freeze 已接受；V5-1A/B/C 当前仍是未提交的 repair/closure worktree，不能标 stage `DONE`。
 - V4 Stage 0、Stage 1 Entry 与 S1A 已封板。S1A 只证明本地 authenticated no-trace intake，不证明 provider/Agent/live；V4 S1B–S7 冻结，V5-2+ 尚未实现。
-- 最近核验的 `caseloop-team` 是六个 CoPaw / StepFun `step-3.7-flash` 质量治理 Worker，全部为 `Sleeping`，`leaderReady=false`、`readyWorkers=0`；运行前须重新查询。AgentTeams 中没有 Claude Code Agent 或 GLM Agent。
-- 新 `caseloop-coding-team` 已进入施工目标，但当前为 `NOT CREATED / NOT RUN`；不能把现有客服质量 Worker 改名成专业 Coding Team。
+- 最近核验的 `agentmed-team` 是六个 CoPaw / StepFun `step-3.7-flash` 质量治理 Worker，全部为 `Sleeping`，`leaderReady=false`、`readyWorkers=0`；运行前须重新查询。AgentTeams 中没有 Claude Code Agent 或 GLM Agent。
+- 新 `agentmed-coding-team` 已进入施工目标，但当前为 `NOT CREATED / NOT RUN`；不能把现有客服质量 Worker 改名成专业 Coding Team。
 - 两条 live 验收轴必须分开：`domain-provider-live` 与 `agent-causal`。`platform evidence export` 是只读取证类别，不能冒充真实 Agent 因果执行。
 - Langfuse 双向接入、Claude Code Runtime Adapter 和真实 GitHub coding workload 均尚未由实现与证据证明；GitHub 留言、认领、fork、push、PR 仍未授权，执行前逐次询问用户。
 - 小智客服、StepFun、飞书和 AgentTeams 是当前参考实现或适配器，不是所有部署必须采用的产品身份。

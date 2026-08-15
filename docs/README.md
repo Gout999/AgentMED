@@ -1,4 +1,4 @@
-# CaseLoop 文档索引与权威层级
+# AgentMED 文档索引与权威层级
 
 本文是文档导航，不是新的产品、合同或运行权威。发生冲突时按下表从上到下处理；
 不得用 Wiki、研究、presentation、handoff 或历史 evidence 覆盖正式权威层。

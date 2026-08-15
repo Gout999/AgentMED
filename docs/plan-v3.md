@@ -1,6 +1,6 @@
-# CaseLoop —— 最终目标完整实现方案（终态蓝图 + 分阶段推进）v3
+# AgentMED —— 最终目标完整实现方案（终态蓝图 + 分阶段推进）v3
 
-> **适用范围更新（2026-08-10）**：本文件是当前“小智客服纵切 + AgentTeams 执行层”的 v3 实现蓝图和 T0–T10 施工基线，不再代表 CaseLoop 面向通用 AI Agent 的最终产品范围。产品定位与取舍以 `docs/product-principles.md` 为准；通用 Agent、Langfuse/TraceSource 与第二工作负载已在 `docs/prd-v2.md`、`docs/plan-v4.md` 和 `contracts/v4/` 作为批准目标进入 Stage 0，但 migration/runtime 尚未实现，不能从本文件或 target contract 推断为已实现。
+> **适用范围更新（2026-08-10）**：本文件是当前“小智客服纵切 + AgentTeams 执行层”的 v3 实现蓝图和 T0–T10 施工基线，不再代表 AgentMED 面向通用 AI Agent 的最终产品范围。产品定位与取舍以 `docs/product-principles.md` 为准；通用 Agent、Langfuse/TraceSource 与第二工作负载已在 `docs/prd-v2.md`、`docs/plan-v4.md` 和 `contracts/v4/` 作为批准目标进入 Stage 0，但 migration/runtime 尚未实现，不能从本文件或 target contract 推断为已实现。
 >
 > 本版已吸收外部技术审查 F1–F8 全部修订（审查裁决：T0–T10 保留，补齐控制面/统计协议/真实 Spike 后 Conditional Build GO）。
 > 核心架构原则：**确定性控制面 + 概率性执行面**——AI 负责动脑子，系统负责管规矩。
@@ -8,7 +8,7 @@
 
 ## 0. 系统定位
 
-**CaseLoop：AI 应用质量自治底座。** 任何 LLM 应用实现 Quality API 契约即可被纳管；多 Agent 团队（AgentTeams 编排）自动完成 badcase 全生命周期闭环：**投诉进来 → 对照实验归因 → 自由起草修复 → 评测门禁 → 灰度发布 → 回复投诉原处 → 沉淀为评测与知识资产**。
+**AgentMED：AI 应用质量自治底座。** 任何 LLM 应用实现 Quality API 契约即可被纳管；多 Agent 团队（AgentTeams 编排）自动完成 badcase 全生命周期闭环：**投诉进来 → 对照实验归因 → 自由起草修复 → 评测门禁 → 灰度发布 → 回复投诉原处 → 沉淀为评测与知识资产**。
 
 核心理念：信任是挣来的且有数学纪律（Trust Ledger）；组织是活的（为 AgentTeams 补上弹性面）；每次事故让系统变强（案例即资产、Skill 自演化）；**LLM 永远不是状态与权限的权威源**。
 

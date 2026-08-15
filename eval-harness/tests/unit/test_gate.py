@@ -55,7 +55,7 @@ def _candidate(probe_set, answers: dict | None = None, probe_samples: dict | Non
 
 
 def _suite(kind: str, *, status: str = "passed", passed: int = 3, failed: int = 0) -> SuiteResult:
-    uri = f"file:///tmp/caseloop-gate-{kind}.json"
+    uri = f"file:///tmp/agentmed-gate-{kind}.json"
     return SuiteResult(
         suite=f"{kind}-suite",
         kind=kind,
@@ -75,7 +75,7 @@ def _run(runner: GateRunner, candidate: GateCandidate, **over):
         [
             {"uri": contract.report_ref, "digest": contract.report_digest},
             {"uri": replay.report_ref, "digest": replay.report_digest},
-            {"uri": "file:///tmp/caseloop-gate-candidate.json", "digest": "sha256:" + "c" * 64},
+            {"uri": "file:///tmp/agentmed-gate-candidate.json", "digest": "sha256:" + "c" * 64},
         ],
     )
     return runner.run(

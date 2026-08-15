@@ -1,5 +1,5 @@
 # =============================================================================
-# caseloop-spike — Phase 0A 平台行为验证用最小团队（非最终 6 Agent 定义）
+# agentmed-spike — Phase 0A 平台行为验证用最小团队（非最终 6 Agent 定义）
 #
 # 验证目标（plan-v3 §4 Phase 0A 出口）：
 #   1. 3 个 Worker（1 leader + 2 worker）创建并 Running
@@ -92,7 +92,7 @@ metadata:
   name: spike-team
 spec:
   goal: Phase 0A 平台行为验证：派单/交接/Skill/MCP/sleep-wake/重启恢复
-  description: caseloop spike team（非最终定义）
+  description: agentmed spike team（非最终定义）
   workerMembers:
     - name: spike-leader
       role: team_leader

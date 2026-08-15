@@ -4,7 +4,7 @@
 
 ## 1. 全景地图
 
-这个赛道呈三层结构：**（A）任务型 benchmark**——提供冻结任务集+可执行判分，回答"agent 行不行"，代表是 SWE-bench 家族、Terminal-Bench、τ-bench 系列、OSWorld、WebArena、GAIA、AgentBench；**（B）评测工程平台**——把"数据集+判分器+CI 门禁"产品化，回答"怎么把评测搬进开发流程"，代表是 Braintrust、promptfoo（已被 OpenAI 收购）、DeepEval、LangSmith、Langfuse、Ragas、Patronus、Arthur；**（C）判分方法学**——研究"判分器本身可不可信"，代表是 MT-Bench（LLM-as-judge 奠基）、Alt-Test（裁判统计校验）、τ-bench 的 pass^k（一致性度量）。2025–2026 年最重要的事件是 **SWE-bench 体系信用崩塌**：OpenAI 先后弃用 Verified（2026-02）并撤回对 Pro 的推荐（2026-07），核心原因正是"判分器（测试用例）本身有缺陷"——这与 CaseLoop 的核心命题直接相关。
+这个赛道呈三层结构：**（A）任务型 benchmark**——提供冻结任务集+可执行判分，回答"agent 行不行"，代表是 SWE-bench 家族、Terminal-Bench、τ-bench 系列、OSWorld、WebArena、GAIA、AgentBench；**（B）评测工程平台**——把"数据集+判分器+CI 门禁"产品化，回答"怎么把评测搬进开发流程"，代表是 Braintrust、promptfoo（已被 OpenAI 收购）、DeepEval、LangSmith、Langfuse、Ragas、Patronus、Arthur；**（C）判分方法学**——研究"判分器本身可不可信"，代表是 MT-Bench（LLM-as-judge 奠基）、Alt-Test（裁判统计校验）、τ-bench 的 pass^k（一致性度量）。2025–2026 年最重要的事件是 **SWE-bench 体系信用崩塌**：OpenAI 先后弃用 Verified（2026-02）并撤回对 Pro 的推荐（2026-07），核心原因正是"判分器（测试用例）本身有缺陷"——这与 AgentMED 的核心命题直接相关。
 
 ## 2. 逐对象速览
 
@@ -38,23 +38,23 @@ Patronus：专用判分模型（Lynx 幻觉检测、GLIDER 裁判）、Percival 
 **判分方法学（LLM judge 可靠性）**
 MT-Bench（NeurIPS 2023）：GPT-4 裁判与人类一致率 ~80%，接近人与人之间的一致水平，但有自我偏好/冗长偏好等系统性偏差；Alt-Test（Calderon et al., ACL 2025）给出"judge 能否替代人类标注"的统计检验框架，已成判分器校准的标准做法；实证研究显示 judge 与人类 binary 判断的 κ 可达 0.79–0.82，但主观维度一致性显著更低。来源：[Zheng et al. 2023](https://arxiv.org/abs/2306.05685)、[Calderon et al. 2025](https://arxiv.org/pdf/2501.10970)、[LLM judge 验证实例 2025-11](https://www.arxiv.org/pdf/2511.12014)。
 
-## 3. 与 CaseLoop 的对照
+## 3. 与 AgentMED 的对照
 
 **直接可用（平移即可）**
-- **冻结任务集的工程做法已完全成熟**：SWE-bench 每实例 Docker、Terminal-Bench 每任务 Docker+参考解、τ2 全程序化模拟环境、OSWorld VM 快照——CaseLoop-for-Agents 的"探针"照此构建即可，推荐 Docker 镜像 + 种子数据脚本 + 镜像 digest 锁定。
-- **终态判分优于轨迹判分**：τ2 的 DB 哈希终态比对是最干净的确定性判分范式，与 CaseLoop"确定性控制面"铁律同构。
-- **判分二元化、规则优先、LLM judge 兜底**：Arthur/promptfoo/DeepEval 的共识做法 = CaseLoop 双轨门禁的"规则轨"。
-- **pass^k 多次独立重跑**：直接适配 CaseLoop 信任账本的二项统计（Wilson 下界），解决 agent 非确定性下"一次过≠修好"。
+- **冻结任务集的工程做法已完全成熟**：SWE-bench 每实例 Docker、Terminal-Bench 每任务 Docker+参考解、τ2 全程序化模拟环境、OSWorld VM 快照——AgentMED-for-Agents 的"探针"照此构建即可，推荐 Docker 镜像 + 种子数据脚本 + 镜像 digest 锁定。
+- **终态判分优于轨迹判分**：τ2 的 DB 哈希终态比对是最干净的确定性判分范式，与 AgentMED"确定性控制面"铁律同构。
+- **判分二元化、规则优先、LLM judge 兜底**：Arthur/promptfoo/DeepEval 的共识做法 = AgentMED 双轨门禁的"规则轨"。
+- **pass^k 多次独立重跑**：直接适配 AgentMED 信任账本的二项统计（Wilson 下界），解决 agent 非确定性下"一次过≠修好"。
 - **CI 门禁**：promptfoo/DeepEval/Braintrust 的"数据集+判分器+阈值→block merge"模式可直接映射。
 
 **需改造可用**
-- **数据集版本管理**（LangSmith 自动版本化、Braintrust 按 experiment 绑版本、τ3 用 tag 固定判分版本）：可用，但 CaseLoop 需升级为**与"agent 配置快照 hash"绑定的考题版本**——业界版本管理绑的是数据集本身，不绑被测对象配置。
-- **badcase→考题转化**（LangSmith Add-to-Dataset、Braintrust 一键提升+Loop 生成）：半自动，**"期望行为/判分标准"仍需人工定义**，CaseLoop 的取证+归因 agent 可自动化这一段，但题库入库仍需人工确认环节。
-- **LLM judge 校准**（Alt-Test 统计检验、Ragas/Galileo 校准流程）：CaseLoop 的"裁判≠运动员"要落地，必须给裁判建校准集+定期统计审计，这部分方法学现成但需自行工程化。
+- **数据集版本管理**（LangSmith 自动版本化、Braintrust 按 experiment 绑版本、τ3 用 tag 固定判分版本）：可用，但 AgentMED 需升级为**与"agent 配置快照 hash"绑定的考题版本**——业界版本管理绑的是数据集本身，不绑被测对象配置。
+- **badcase→考题转化**（LangSmith Add-to-Dataset、Braintrust 一键提升+Loop 生成）：半自动，**"期望行为/判分标准"仍需人工定义**，AgentMED 的取证+归因 agent 可自动化这一段，但题库入库仍需人工确认环节。
+- **LLM judge 校准**（Alt-Test 统计检验、Ragas/Galileo 校准流程）：AgentMED 的"裁判≠运动员"要落地，必须给裁判建校准集+定期统计审计，这部分方法学现成但需自行工程化。
 
 **本轮样本中的待验证缺口**
 - **线上 badcase→版本化回归考题闭环**：Arthur 是方法论+半自动工具，Braintrust Loop 接近但仍是 beta 辅助生成；本轮公开样本未见同一工具同时覆盖立案、去重、取证、固化和入题库。是否需要全自动、哪些步骤必须人工确认，应由用户工作流决定。
-- **判分结果的统计裁决**：所查 benchmark/平台主要报告 pass rate；本轮样本未见与 CaseLoop 设想完全相同的 Δ 效应量、95% CI 和三态裁决组合。
+- **判分结果的统计裁决**：所查 benchmark/平台主要报告 pass rate；本轮样本未见与 AgentMED 设想完全相同的 Δ 效应量、95% CI 和三态裁决组合。
 - **判分器自身的质量保证体系**：特定 SWE-bench 子集缺陷、GAIA 污染和 WebArena 状态问题说明持续验证判分器很重要；Terminal-Bench Oracle 等模式可直接参考。
 - **信任/放权与不可变工单绑定**：本轮评测平台样本未见相同组合；仍需用真实用户任务验证其必要性和阈值。
 
@@ -71,9 +71,9 @@ MT-Bench（NeurIPS 2023）：GPT-4 裁判与人类一致率 ~80%，接近人与�
 9. Braintrust Loop（beta）可从生产日志生成判分器与回归数据集（[官方博客](https://www.braintrust.dev/blog/loop)，2025-11-24；[文档](https://www.braintrust.dev/docs/loop)，2026-07-16）。
 10. OpenAI 2026-03-09 收购 promptfoo（金额未官方披露）（[openai.com](https://openai.com/index/openai-to-acquire-promptfoo/)；[Crunchbase](https://news.crunchbase.com/ma/data/openai-2023-2026-acquisitions-open-source-astral-promptfoo/)，2026-03）；Patronus 获 $50M B 轮押注仿真评测世界模型（[TechCrunch](https://techcrunch.com/2026/06/25/patronus-ai-lands-50m-to-build-digital-worlds-that-stress-test-ai-agents/)，2026-06-25）。
 
-## 5. 对 CaseLoop-for-Agents 的设计启示
+## 5. 对 AgentMED-for-Agents 的设计启示
 
-1. **把判分器质量作为系统级风险管理**。特定 SWE-bench 子集的缺陷说明二元 pass/fail 也需要审计；CaseLoop 应在适用任务上验证 Δ 效应量、区间与三态裁决，而不是把特定缺陷比例外推为行业常数。
+1. **把判分器质量作为系统级风险管理**。特定 SWE-bench 子集的缺陷说明二元 pass/fail 也需要审计；AgentMED 应在适用任务上验证 Δ 效应量、区间与三态裁决，而不是把特定缺陷比例外推为行业常数。
 2. **终态判分与轨迹判分按任务分工**。功能正确性优先采用环境终态与必需信息；安全、工具使用或过程约束仍可能需要轨迹证据，不能一概放弃。
 3. **考题集要版本化并处理污染风险**。私有 holdout、轮换、公开基准和配置快照绑定按用户与任务选择；可先兼容 LangSmith/Braintrust 等数据集能力，只有缺少关键控制时才实现自己的存储或绑定层。
 4. **重复运行与信任统计分开设计**。`pass^k` 衡量多次任务一致成功，Wilson 下界估计样本成功率的不确定性；两者互补但不天然同构，阈值需在真实 workload 上校准。
@@ -82,4 +82,4 @@ MT-Bench（NeurIPS 2023）：GPT-4 裁判与人类一致率 ~80%，接近人与�
 
 ## 6. 当前综合结论
 
-任务型 benchmark 与工程平台提供了环境冻结、终态判分、重复运行、数据集版本和 CI 门禁的可复用基线。特定 benchmark 的缺陷提醒 CaseLoop 必须验证判分器自身，并把线上 badcase 固化为回归资产；这是一项用户需求与工程目标，不证明全球没有其他实现，也不证明当前仓库已经完成通用闭环。
+任务型 benchmark 与工程平台提供了环境冻结、终态判分、重复运行、数据集版本和 CI 门禁的可复用基线。特定 benchmark 的缺陷提醒 AgentMED 必须验证判分器自身，并把线上 badcase 固化为回归资产；这是一项用户需求与工程目标，不证明全球没有其他实现，也不证明当前仓库已经完成通用闭环。

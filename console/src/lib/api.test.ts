@@ -63,7 +63,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-describe("CaseLoop Console API client", () => {
+describe("AgentMED Console API client", () => {
   it("targets every authoritative T8/read endpoint through /api", async () => {
     await api.getEnvironment();
     await api.getCaseEvents("case/a b");

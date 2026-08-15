@@ -1,4 +1,4 @@
-# CaseLoop CLI
+# AgentMED CLI
 
 This package is the machine-oriented client for the frozen V4 Stage 1A public
 contract and the current, explicitly selected V5-1 runtime overlay.
@@ -32,7 +32,7 @@ api_url: http://127.0.0.1:8090
 workspace_id: ws_01J0000000000001
 source_id: src_01J0000000000001
 reporter_ref: maintainer-01J0000000000001
-token_env: CASELOOP_PUBLIC_TOKEN
+token_env: AGENTMED_PUBLIC_TOKEN
 ```
 
 Remote endpoints require HTTPS. Plain HTTP is accepted only for loopback
@@ -42,11 +42,11 @@ mode `0600` passed through `--token-file`. The token itself is never accepted
 as an argument or profile field.
 
 ```bash
-caseloop --profile .caseloop/config.yaml capabilities get
+agentmed --profile .agentmed/config.yaml capabilities get
 
-caseloop --profile .caseloop/config.yaml --api-version 2 capabilities get
+agentmed --profile .agentmed/config.yaml --api-version 2 capabilities get
 
-caseloop --profile .caseloop/config.yaml signal submit \
+agentmed --profile .agentmed/config.yaml signal submit \
   --summary "The agent chose the wrong tool" \
   --body "No trace is available" \
   --privacy INTERNAL

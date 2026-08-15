@@ -55,14 +55,14 @@
 
 **Statsig / Adaline（补充）** — Statsig（实验/灰度平台）2025-05 融 $100M @ $1.1B，**2025-09-02 被 OpenAI 以 $1.1B 全股票收购**（[OpenAI 官方](https://openai.com/index/vijaye-raji-to-become-cto-of-applications-with-acquisition-of-statsig/)；[GeekWire](https://www.geekwire.com/2025/openai-acquires-statsig-for-1-1b-names-ceo-to-key-exec-role-in-surprise-exit-for-seattle-area-unicorn/)）。Adaline 是新出现的 **prompt 发布治理**产品：environments、approvals、promotion、rollback、**eval gates 可阻断 promotion**（[官网对比文 2026-04](https://www.adaline.ai/blog/promptlayer-alternative)，厂商自述，成熟度待验证）。
 
-## 3. 与 CaseLoop 的能力参考表
+## 3. 与 AgentMED 的能力参考表
 
 | 可优先评估复用 | 需适配或补充 | 本轮样本未见相同组合 |
 |---|---|---|
 | OTel/GenAI trace 管道作取证数据源（OpenLLMetry、Langfuse/Phoenix 等可评估） | 用户反馈收集（Langfuse/LangSmith feedback）→ 接立案去重幂等成为一种 Signal 入口 | **归因层**：本轮样本未见双臂对照实验+Δ效应量+95%CI+三态裁决的完全相同产品组合 |
 | LLM-as-judge 做双轨评测第二轨（Langfuse/Braintrust/Patronus 裁判能力成熟） | AI debugger（Percival/Polly/Loop）→ 降级为"假设生成器"，其建议必须进工单过门禁，不能直接生效 | **不可变 WorkOrder（hash 绑定、"批的是 hash"）**——Adaline/LaunchDarkly 有审批流但无不可变工件 |
 | CI 评测门禁模式（Braintrust eval-action、Langfuse CI/CD gates 2026-05） | 在线评测（Weave Online Evals、Langfuse 生产打分）→ 作为灰度期质量哨兵 | **信任账本（Wilson 下界放权计量）**——本轮样本未见相同实现，阈值仍需验证 |
-| prompt 版本管理+label 发布（Langfuse/PromptLayer）做版本集的 prompt 分量 | LaunchDarkly 式 progressive rollout → 借鉴其灰度编排，但绑回 CaseLoop 门禁与裁判 | **agent 配置快照整体版本化**（prompt+skills+工具 schema+模型+harness）——prompt CMS 全是 prompt 粒度 |
+| prompt 版本管理+label 发布（Langfuse/PromptLayer）做版本集的 prompt 分量 | LaunchDarkly 式 progressive rollout → 借鉴其灰度编排，但绑回 AgentMED 门禁与裁判 | **agent 配置快照整体版本化**（prompt+skills+工具 schema+模型+harness）——prompt CMS 全是 prompt 粒度 |
 | 事故转回归数据集（Braintrust trace→dataset） | | **Signal→Case→Closure 业务闭环**——本轮样本未见相同整链；投诉/回复原处只是客服适配器 |
 
 ## 4. 关键事实清单（10 条）
@@ -78,10 +78,10 @@
 9. Arize 2025-02-20 融 $70M Series C（累计 ~$135M）主打 agentic evaluation — [PR Newswire](https://www.prnewswire.com/news-releases/arize-ai-secures-70m-series-c-to-fix-ais-biggest-problem-making-llms-and-ai-agents-work-in-the-real-world-302381601.html)
 10. LaunchDarkly AI Configs 2025-09 上线 approvals；在本轮样本中，它是少数把 prompt 渐进放量与审批放在一起的产品之一 — [官方](https://launchdarkly.com/blog/introducing-agents-trends-approvals-ai-configs/)
 
-## 5. 对 CaseLoop-for-Agents 的设计启示
+## 5. 对 AgentMED-for-Agents 的设计启示
 
-1. **把端到端闭环作为待验证用户工作**：Braintrust/Langfuse 的门禁和 LaunchDarkly 的发布治理可直接参考。CaseLoop 是否持有整链，以目标用户是否需要跨系统 Case、证据与发布仲裁为准；单点能力默认先做复用评估。
-2. **把实验归因作为需要实证的机制**：Percival/Polly/Loop 可作为假设生成器参考。CaseLoop 的 Δ+CI+三态裁决和不可变工单要在真实 workload 上证明决策价值，不以市场空位作为依据。
+1. **把端到端闭环作为待验证用户工作**：Braintrust/Langfuse 的门禁和 LaunchDarkly 的发布治理可直接参考。AgentMED 是否持有整链，以目标用户是否需要跨系统 Case、证据与发布仲裁为准；单点能力默认先做复用评估。
+2. **把实验归因作为需要实证的机制**：Percival/Polly/Loop 可作为假设生成器参考。AgentMED 的 Δ+CI+三态裁决和不可变工单要在真实 workload 上证明决策价值，不以市场空位作为依据。
 3. **TraceSource 采用 adapter-first，但保留实现权**：优先兼容 OTel/Langfuse/Phoenix；若数据完整性、国内私有部署、权限、可靠性或退出机制不满足，可实现必要的采集、查询和证据固化能力。
 4. **VersionSet 应覆盖影响行为的 Agent 配置**：prompt、skill、tool schema、model、harness 以及可能的 memory/policy 都会改变行为。最小集合和 hash 规则要从重现与审批需求推导，不能只因本轮样本未见就直接定稿。
 5. **候选修复保持可插拔**：既支持人工/Agent 自由起草，也允许接入自动优化器；所有候选受同一 WorkOrder、Gate 和 Approval 约束，是否内置优化能力由用户需求与维护成本决定。
@@ -89,4 +89,4 @@
 
 ## 6. 当前综合结论
 
-本轮样本显示 trace、eval、候选优化、版本与发布治理已有大量可参考组件，但没有在同一产品中看到完全相同的 CaseLoop 精确链路。这个观察用于设计集成与验证清单，不证明全球空白，也不决定 CaseLoop 的范围；端到端能力是否由项目持有，取决于目标用户的闭环、数据和控制需求。
+本轮样本显示 trace、eval、候选优化、版本与发布治理已有大量可参考组件，但没有在同一产品中看到完全相同的 AgentMED 精确链路。这个观察用于设计集成与验证清单，不证明全球空白，也不决定 AgentMED 的范围；端到端能力是否由项目持有，取决于目标用户的闭环、数据和控制需求。

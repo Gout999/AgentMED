@@ -4,7 +4,7 @@ description: Bind the exact immutable SystemVersionSet to a Case/experiment. Use
 assign_when: Evidence or experiments must reference the exact system version at incident time.
 ---
 
-# bind-version-snapshot（caseloop 版）
+# bind-version-snapshot（agentmed 版）
 
 把「出错当时运行的确切版本」绑定进 Case/实验：
 

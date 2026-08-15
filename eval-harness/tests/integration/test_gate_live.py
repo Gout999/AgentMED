@@ -178,10 +178,10 @@ def test_gate_live_faulted_candidate_blocked(live_settings, live_probe_set, _cli
     """Release Controller 预先创建的 B1 候选必须被规则轨拦截。"""
     digest = frozen_digest(live_probe_set)
     probe_ids = ["cs-001", "cs-002", "cs-003", "cs-013", "cs-014"]
-    versionset_id = os.environ.get("CASELOOP_B1_FAULT_VERSIONSET_ID", "").strip()
+    versionset_id = os.environ.get("AGENTMED_B1_FAULT_VERSIONSET_ID", "").strip()
     if not versionset_id:
         pytest.skip(
-            "CASELOOP_B1_FAULT_VERSIONSET_ID 未配置；故障候选必须由 Release Controller 预先创建"
+            "AGENTMED_B1_FAULT_VERSIONSET_ID 未配置；故障候选必须由 Release Controller 预先创建"
         )
     target = _client.get_versionset(versionset_id)
     answers, results = _collect_answers(

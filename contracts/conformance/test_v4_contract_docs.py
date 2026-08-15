@@ -52,7 +52,7 @@ def test_runtime_adr_uses_formal_capability_and_model_receipt_names() -> None:
 
 def test_plan_declares_signal_submit_canonical_and_mcp_stage_six() -> None:
     text = _text(PLAN)
-    assert "`caseloop report` 是 `caseloop signal submit` 的短 alias" in text
+    assert "`agentmed report` 是 `agentmed signal submit` 的短 alias" in text
     stage_one = text.split("### Stage 1：", 1)[1].split("### Stage 2：", 1)[0]
     assert "Public MCP/A2A 留到 Stage 6" in stage_one
     assert "stdio Public MCP" not in stage_one

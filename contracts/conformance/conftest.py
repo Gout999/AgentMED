@@ -1,7 +1,7 @@
 """conformance suite 共享 fixture 与路径常量。
 
-BASE_URL 从环境变量读：CASELOOP_QUALITY_API_BASE_URL（默认 http://127.0.0.1:8080）。
-令牌：CASELOOP_READ_TOKEN / CASELOOP_WRITE_TOKEN（演示环境缺省占位值；
+BASE_URL 从环境变量读：AGENTMED_QUALITY_API_BASE_URL（默认 http://127.0.0.1:8080）。
+令牌：AGENTMED_READ_TOKEN / AGENTMED_WRITE_TOKEN（演示环境缺省占位值；
 真实部署由 Higress 凭证托管注入）。写面令牌按契约仅 Release Controller 持有，
 conformance 持有它只是为了扮演 Release Controller 做契约级验证。
 """
@@ -20,9 +20,9 @@ EVENTS_YAML = CONTRACTS_ROOT / "events" / "events.yaml"
 STATE_MACHINES_YAML = CONTRACTS_ROOT / "events" / "state-machines.yaml"
 OPENAPI_YAML = CONTRACTS_ROOT / "quality-api" / "openapi.yaml"
 
-BASE_URL = os.environ.get("CASELOOP_QUALITY_API_BASE_URL", "http://127.0.0.1:8080").rstrip("/")
-READ_TOKEN = os.environ.get("CASELOOP_READ_TOKEN", "conformance-read-token")
-WRITE_TOKEN = os.environ.get("CASELOOP_WRITE_TOKEN", "conformance-write-token")
+BASE_URL = os.environ.get("AGENTMED_QUALITY_API_BASE_URL", "http://127.0.0.1:8080").rstrip("/")
+READ_TOKEN = os.environ.get("AGENTMED_READ_TOKEN", "conformance-read-token")
+WRITE_TOKEN = os.environ.get("AGENTMED_WRITE_TOKEN", "conformance-write-token")
 
 
 @pytest.fixture(scope="session")

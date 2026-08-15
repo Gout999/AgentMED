@@ -1,8 +1,8 @@
-# CaseLoop Coding Team（设计清单）
+# AgentMED Coding Team（设计清单）
 
 Status: **APPROVED DESIGN / NOT CREATED / NOT RUN**
 
-本目录冻结 v4 `caseloop-coding-team` 的角色和目标 manifest，供 Stage 0 contract review 使用。它不是 AgentTeams v1.2.1 可直接部署的 CR；`team.yaml` 使用 CaseLoop 的 design-only `TeamManifestDraft`，故意不能被 `agt apply` 接受。其三个独立状态字段为 `design_status=APPROVED`、`lifecycle_status=NOT_CREATED`、`runtime_status=NOT_RUN`。
+本目录冻结 v4 `agentmed-coding-team` 的角色和目标 manifest，供 Stage 0 contract review 使用。它不是 AgentTeams v1.2.1 可直接部署的 CR；`team.yaml` 使用 AgentMED 的 design-only `TeamManifestDraft`，故意不能被 `agt apply` 接受。其三个独立状态字段为 `design_status=APPROVED`、`lifecycle_status=NOT_CREATED`、`runtime_status=NOT_RUN`。
 
 Stage 2A Durable Work 与 Stage 2B Claude Code Runtime Adapter 是 Stage 2C 的 Entry 前置。**Stage 2C 自身的第一项交付**是从这个已批准 design manifest 生成钉住 AgentTeams 版本的 deployment manifest，保存 source/design digest 与语义 diff，完成审查后再 apply、回查资源并运行因果验收。只有“生成 → 审查 → 部署 → 验收”全部通过，Stage 2C 才能关闭；不得把 deployment manifest 的生成放到 2C 通过之后形成循环。
 

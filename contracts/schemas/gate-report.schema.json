@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://caseloop.dev/contracts/schemas/gate-report.schema.json",
+  "$id": "https://agentmed.dev/contracts/schemas/gate-report.schema.json",
   "title": "GateReport",
   "description": "评测门禁报告（plan-v3 §2.3.6 / T6）。双轨：规则轨+裁判轨（裁判模型≠运动员模型）；确定性 contract/replay 测试与 live-provider E2E 必须分开报告，不得合并成一个总分。门禁报告是 WorkOrder 的必要附件。",
   "type": "object",

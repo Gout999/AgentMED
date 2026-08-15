@@ -4,7 +4,7 @@ description: Turn a complaint Case into a reproducible probe (badcase replay) an
 assign_when: A Case has evidence (trace/score) and attribution needs a controlled reproduction.
 ---
 
-# reproduce-badcase（caseloop 版）
+# reproduce-badcase（agentmed 版）
 
 归因师专用。目标：把坏例变成可重放、可对照的实验，定位「代码/prompt/模型/环境」哪一层。
 

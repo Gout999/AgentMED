@@ -71,7 +71,7 @@ def _canonical_source_record(
         "config": (
             source.config
             if source is not None
-            else {"provider_origin": "https://caseloop.local"}
+            else {"provider_origin": "https://agentmed.local"}
         ),
         "revision": source.revision if source is not None else 1,
         "created_by_principal": (
@@ -111,7 +111,7 @@ def _seed_stage1a(sqlite_session) -> tuple[AcceptedPrincipalContext, SignalSubmi
                 connector_kind="manual",
                 state="ACTIVE",
                 credential_ref=None,
-                config={"provider_origin": "https://caseloop.local"},
+                config={"provider_origin": "https://agentmed.local"},
                 connection_digest=canonical_digest(_canonical_source_record()),
                 revision=1,
                 created_by_principal=principal.principal_id,
@@ -1482,7 +1482,7 @@ _SOURCE_INTEGRITY_CASES = [
         "config",
         {
             "config": {
-                "provider_origin": "https://caseloop.local",
+                "provider_origin": "https://agentmed.local",
                 "display_name": "tampered",
             }
         },

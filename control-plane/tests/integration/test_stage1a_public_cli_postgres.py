@@ -154,7 +154,7 @@ def _install_cli(repo_root: Path, tmp_path: Path) -> tuple[Path, str]:
     )
     if installed.returncode != 0:
         pytest.fail("cli installation failed; output withheld", pytrace=False)
-    executable = venv / "bin" / "caseloop"
+    executable = venv / "bin" / "agentmed"
     if not executable.is_file():
         pytest.fail("installed CLI entrypoint is missing", pytrace=False)
 
@@ -180,7 +180,7 @@ def _bootstrap_payload(
             "credential_ref": None,
             "config": {
                 "display_name": "Stage 1A installed CLI PostgreSQL proof",
-                "provider_origin": "https://caseloop.local",
+                "provider_origin": "https://agentmed.local",
             },
         },
         "principal": {
@@ -318,7 +318,7 @@ def test_stage1a_public_installed_cli_real_postgres_loopback(
         "DATABASE_URL": TEST_DATABASE_URL,
         "PUBLIC_CREDENTIAL_HASH_PEPPER": public_pepper,
         "PUBLIC_CURSOR_SIGNING_KEY": cursor_key,
-        "PUBLIC_AUTH_ISSUER": "https://auth.caseloop.dev",
+        "PUBLIC_AUTH_ISSUER": "https://auth.agentmed.dev",
         "REQUIRE_MCP_ROLE_TOKENS": "false",
         "NOTIFICATION_ADAPTER": "disabled",
         "LOG_LEVEL": "ERROR",
@@ -587,7 +587,7 @@ def test_stage1a_public_installed_cli_real_postgres_loopback(
             database_url=TEST_DATABASE_URL,
             public_credential_hash_pepper=SecretStr(public_pepper),
             public_cursor_signing_key=SecretStr(cursor_key),
-            public_auth_issuer="https://auth.caseloop.dev",
+            public_auth_issuer="https://auth.agentmed.dev",
             require_mcp_role_tokens=False,
             notification_adapter="disabled",
         )

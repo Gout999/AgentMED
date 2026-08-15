@@ -1,4 +1,4 @@
-# CaseLoop Engineering Rules
+# AgentMED Engineering Rules
 
 ## Authority and safety
 
@@ -33,7 +33,7 @@
   `cd control-plane && .venv/bin/python -m app.workers.outbox`
 - Demo app startup is normally through `docker compose -f deploy/compose.yaml up -d --build postgres demo-app`; live use requires `STEPFUN_API_KEY`.
 - Control-plane tests must use an explicit disposable database, for example:
-  `cd control-plane && CASELOOP_ALLOW_INTEGRATION_RESET=true DATABASE_URL=postgresql+psycopg://caseloop:caseloop@127.0.0.1:5432/control_plane_test .venv/bin/python -m pytest -q`
+  `cd control-plane && AGENTMED_ALLOW_INTEGRATION_RESET=true DATABASE_URL=postgresql+psycopg://agentmed:agentmed@127.0.0.1:5432/control_plane_test .venv/bin/python -m pytest -q`
 - Unit/offline suites:
   - `cd demo-app && .venv/bin/python -m pytest tests/unit -q`
   - `cd eval-harness && .venv/bin/python -m pytest -q`

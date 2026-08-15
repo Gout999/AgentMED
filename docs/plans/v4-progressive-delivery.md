@@ -1,4 +1,4 @@
-# CaseLoop v4 渐进式施工台账
+# AgentMED v4 渐进式施工台账
 
 > 状态：**APPROVED FOR PROGRESSIVE DELIVERY / Stage 0 CONTRACT FREEZE COMPLETE**
 >
@@ -10,7 +10,7 @@
 > compatibility runtime；V5 stage 的当前施工编排以
 > [`v5-master-execution-plan.md`](v5-master-execution-plan.md) 为准。
 >
-> 目的：把已确认的 CaseLoop v4 产品方向拆成可以逐阶段运行、验证、回滚和提交的工程闭环。本文描述目标与施工顺序，不把计划中的能力写成当前实现。
+> 目的：把已确认的 AgentMED v4 产品方向拆成可以逐阶段运行、验证、回滚和提交的工程闭环。本文描述目标与施工顺序，不把计划中的能力写成当前实现。
 
 ## 0. 权威边界与台账规则
 
@@ -57,7 +57,7 @@ evidence/v4/stage-<n>/<slice>/<run-id>/
 
 ### 1.1 保留现有质量治理 Team
 
-`caseloop-team` 是当前 v3 客服 Scenario 的六个质量治理 Worker，不是专业 coding team，也不因 v4 被重命名或重组：
+`agentmed-team` 是当前 v3 客服 Scenario 的六个质量治理 Worker，不是专业 coding team，也不因 v4 被重命名或重组：
 
 | Worker | 责任 | 当前声明的 runtime / model |
 |---|---|---|
@@ -72,7 +72,7 @@ evidence/v4/stage-<n>/<slice>/<run-id>/
 
 ### 1.2 新增专业 Coding Team
 
-新建独立的 `caseloop-coding-team`：
+新建独立的 `agentmed-coding-team`：
 
 | Worker principal | 责任 | 初始执行策略 | 明确禁止 |
 |---|---|---|---|
@@ -80,14 +80,14 @@ evidence/v4/stage-<n>/<slice>/<run-id>/
 | `coding-generator` | 领取生成任务，委托 Claude Code 子 Attempt 产出最小 patch | Claude Code CLI harness + GLM-5.2 | 持有 GitHub 写凭据、修改冻结测试、批准自己的 Proposal |
 | `coding-reviewer` | 对抗审查、操作 sandbox、提交 `Finding` | 与 Generator 不同的 provider/model origin + 确定性测试 | 改写候选、决定 Gate、执行外部动作 |
 
-两个 Team 复用同一个 `Signal → QualityCase → WorkerTask → Attempt → typed Proposal → Gate → scoped Execution` 内核，但拥有不同 Team manifest、SOUL、Skill、MCP allowlist、预算和权限。`caseloop-b1-loop` 不作为 coding Skill 复用。
+两个 Team 复用同一个 `Signal → QualityCase → WorkerTask → Attempt → typed Proposal → Gate → scoped Execution` 内核，但拥有不同 Team manifest、SOUL、Skill、MCP allowlist、预算和权限。`agentmed-b1-loop` 不作为 coding Skill 复用。
 
 ### 1.3 四类身份不能混用
 
 1. **AgentTeams Worker principal**：领取 WorkerTask、持有 lease/fencing token、提交 Proposal/Finding。
 2. **Runtime session**：CoPaw session 或 Claude Code CLI session，证明某次执行发生；它不自动等于新的 Agent principal。
 3. **Model invocation**：provider、requested/resolved model、usage 与 response receipt；Claude Code 是 harness，不是模型名。
-4. **GovernedAgent**：被 CaseLoop 观察和治理的外部 Agent 资源，不等于 CaseLoop 内部 Worker。
+4. **GovernedAgent**：被 AgentMED 观察和治理的外部 Agent 资源，不等于 AgentMED 内部 Worker。
 
 如果 `coding-generator` 只是委托 Claude Code，父 Worker Attempt 与 Claude Code 子 Attempt 必须用 `parent_attempt_id` 连接。不能把 wrapper 与 Claude session 重复计算成两个参与 Agent；只有独立 principal、claim、lease 和 receipt 完整的身份才进入 `ParticipationManifest`。
 
@@ -232,7 +232,7 @@ test(contracts): freeze v4 work and identity contracts
 - S1A 的 `signals.submit` 必须在同一 PG 事务写四个领域事实与各 owner receipt/audit/outbox/idempotency；无 locator 返回 `UNKNOWN + null AgentRunRef`，禁止伪造 run。`source_id` 必须绑定 authenticated workspace 的 `ACTIVE` manual SourceConnection；007 提供最小 bootstrap，008 再扩 connector cursor/DLQ。
 - runtime pin `rfc8785==0.1.4` 并使用 no-float JCS/self-field exclusion；PG audit 权威，JSONL/export 只能 after-commit/outbox，避免 rollback 后留下幽灵成功。
 - Langfuse credential 由 Connector/Secret Broker 隔离，Adapter 只允许 allowlisted reads；除非 provider-side read-only 机制已单独验证，否则按广权限 project secret 管理且不宣称 key 本身最小权限。字段范围、retention 和脱敏策略已发现。
-- CaseLoop OTel sink 使用独立 Langfuse project 与独立 write credential；不得复用 TraceSource read credential。两者分别有 credential reference、audience/project binding、rotation/revocation、retention 与脱敏策略。
+- AgentMED OTel sink 使用独立 Langfuse project 与独立 write credential；不得复用 TraceSource read credential。两者分别有 credential reference、audience/project binding、rotation/revocation、retention 与脱敏策略。
 - 未配置 AgentTeams 时也必须能产生 Shadow 价值。
 
 ### Deliverables
@@ -240,7 +240,7 @@ test(contracts): freeze v4 work and identity contracts
 - Manual HTTP/CLI Signal intake；Public MCP 与 A2A 统一留到 Stage 6，Stage 1 不以 registry 中存在 mapping 冒充 transport 已启用。
 - `external_feedback`、`internal_feedback`、`maintainer_report`、Langfuse negative score 的标准化、幂等、关联和补证。
 - `LangfuseTraceSource` 的增量 cursor、水位、去重、DLQ、trace snapshot 与 completeness。
-- CaseLoop 自身 W3C/OTel trace 输出到独立 Langfuse project，形成 export receipt、脱敏结果与明确失败语义；业务状态仍只在 PG。该自观测写路径与读取被治理 Agent 的 `LangfuseTraceSource` 是两条独立验收链，任何一条不能替代另一条。
+- AgentMED 自身 W3C/OTel trace 输出到独立 Langfuse project，形成 export receipt、脱敏结果与明确失败语义；业务状态仍只在 PG。该自观测写路径与读取被治理 Agent 的 `LangfuseTraceSource` 是两条独立验收链，任何一条不能替代另一条。
 - First Useful Case：来源、输入/输出摘要、确切版本、完整性、缺失项、evidence digest 与下一步。
 - 可安装的 single-node quickstart、readiness/doctor、macOS arm64 与 Linux x64 clean-machine 验收；至少两名非项目开发者在不接触 AgentTeams 内部对象的前提下完成 Shadow activation。
 
@@ -275,10 +275,10 @@ deploy/compose.yaml
 
 ### 验证
 
-- **focused**：规范化、同源幂等、跨源 link proposal、trace completeness、PII policy、cursor/watermark、DLQ replay、audit failure rollback；CaseLoop 自身 OTel export receipt、client-side masking、export 失败不影响 PG 权威写入但必须留下可观测失败；quickstart/readiness/doctor。
+- **focused**：规范化、同源幂等、跨源 link proposal、trace completeness、PII policy、cursor/watermark、DLQ replay、audit failure rollback；AgentMED 自身 OTel export receipt、client-side masking、export 失败不影响 PG 权威写入但必须留下可观测失败；quickstart/readiness/doctor。
 - **negative**：重复 webhook、错误 endpoint/version、权限过宽、retention 缺口、恶意 Signal 指令、附件路径穿越/压缩炸弹、跨租户引用。
 - **replay**：固定 Langfuse fixture 和无 trace maintainer report，各自重复投递并得到同一 Case/receipt。
-- **live**：一条真实 Langfuse 历史低分 trace；一条真实维护人员直报；一条 CaseLoop 自身请求真实导出到隔离的 Langfuse project 并按 trace ID 回读核对 receipt。provider 不可达时明确失败，不退回 fixture 宣称 live。
+- **live**：一条真实 Langfuse 历史低分 trace；一条真实维护人员直报；一条 AgentMED 自身请求真实导出到隔离的 Langfuse project 并按 trace ID 回读核对 receipt。provider 不可达时明确失败，不退回 fixture 宣称 live。
 
 ### Evidence
 
@@ -290,7 +290,7 @@ deploy/compose.yaml
 ### Exit
 
 - Langfuse 读取侧：真实低分 trace 可被不可变绑定为 First Useful Case，缺字段得到 `PARTIAL/UNKNOWN` 而不是伪造 `COMPLETE`。
-- Langfuse 写入侧：CaseLoop 自身一条真实请求的 W3C/OTel trace 可按 ID 在隔离 project 回读，脱敏策略和 export failure receipt 均通过；PG 仍是唯一业务权威。
+- Langfuse 写入侧：AgentMED 自身一条真实请求的 W3C/OTel trace 可按 ID 在隔离 project 回读，脱敏策略和 export failure receipt 均通过；PG 仍是唯一业务权威。
 - 无 AgentTeams 时 manual/internal maintainer Signal 仍可工作；macOS arm64 与 Linux x64 clean-machine quickstart 通过，至少两名非项目开发者完成 Shadow activation。
 - Stage 1 focused/replay/live、独立 verifier 和 `evidence/v4/stage-1/` 全部通过；任一双接入链或安装路径缺失时不得进入 Stage 2。
 
@@ -416,14 +416,14 @@ contracts/v4/schemas/tool-receipt.schema.json
 - 2A/2B 通过。
 - 先完成钉版本 AgentTeams v1.2.1 compatibility spike：现有 `delegate_task → ack_task → submit_task` 是 Worker 内部 taskflow/file protocol，不假设存在可供外部 Adapter 直接调用的 Controller Task API。若不能取得真实 Worker identity、wake/ack 与 digest receipt，2C 保持 `BLOCKED`，不得由 Manager/exporter 代跑。
 - design-only `agents/coding/team.yaml` 为 `design_status=APPROVED`、`lifecycle_status=NOT_CREATED`、`runtime_status=NOT_RUN`；三个 principal、SOUL、Skill/MCP allowlist 与预算完成审查。
-- 现有 `caseloop-team` manifest/SOUL 不被修改为 coding 角色。
+- 现有 `agentmed-team` manifest/SOUL 不被修改为 coding 角色。
 
 #### Deliverables
 
 - 2C 内从已批准 design manifest 生成钉住 AgentTeams 版本的 deployment manifest，记录 design/source digest、生成器版本和语义 diff；审查通过后才 apply。deployment manifest 生成是 2C 的首项交付，不以“2C 已通过”为前置。
-- apply deployment manifest，并回查 Team/Worker CR、容器、Matrix、MinIO、SOUL、Skill/MCP allowlist 与预算，形成实际部署 receipt；随后才运行 `caseloop-coding-team` 的 Planner、Generator、Reviewer 因果验收。
+- apply deployment manifest，并回查 Team/Worker CR、容器、Matrix、MinIO、SOUL、Skill/MCP allowlist 与预算，形成实际部署 receipt；随后才运行 `agentmed-coding-team` 的 Planner、Generator、Reviewer 因果验收。
 - AgentTeams Adapter 负责 wake/dispatch；Worker 必须用原生身份 claim，Adapter 不能代 ack/submit。
-- 过渡 bridge 只把 taskflow/Matrix/MinIO 当 transport；若必须改上游，先形成最小结构化 Task API 贡献方案，不把上游 Controller 私有状态复制成 CaseLoop 权威表。
+- 过渡 bridge 只把 taskflow/Matrix/MinIO 当 transport；若必须改上游，先形成最小结构化 Task API 贡献方案，不把上游 Controller 私有状态复制成 AgentMED 权威表。
 - Planner ResolutionContract → Generator Claude 子 Attempt → ChangeProposal → Reviewer `Finding` → Controller Decision → Team 外确定性 Gate 的真实链。Reviewer 只提交 Finding，不拥有或决定 Gate。
 - `ParticipationManifest` 只列实际参与角色；未参与角色不进入成功声明。
 
@@ -460,7 +460,7 @@ deploy/
 
 - facets：`agentteams-native`、`claude-runtime-live`、`agent-causal`；路径：`evidence/v4/stage-2/2c-coding-team/<run-id>/`
 - rollback：suspend coding Team、停止 dispatch、回落 Stage 1 Shadow；现有质量 Team 保持原样。
-- commit：`feat(agentteams): add isolated caseloop coding team`
+- commit：`feat(agentteams): add isolated agentmed coding team`
 
 ## Stage 3 · Verified Candidate 循环
 
@@ -587,7 +587,7 @@ evidence/v4/stage-3/3b-real-issue/
 #### Deliverables
 
 - 将同一 Candidate/Revision/Finding/Gate 内核用于 Prompt candidate，不复制一条 Prompt 专用超级 runner。
-- 现有 `caseloop-team` 继续处理质量场景；新 coding Team 不冒充 B1 质量角色。
+- 现有 `agentmed-team` 继续处理质量场景；新 coding Team 不冒充 B1 质量角色。
 - 证明 code 与 prompt 两类 Candidate 共享权威内核、但使用不同 Adapter/sandbox。
 
 #### Migration

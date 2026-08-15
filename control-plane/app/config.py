@@ -46,7 +46,7 @@ class Settings(BaseSettings):
         default=SecretStr(""), alias="PUBLIC_CURSOR_SIGNING_KEY"
     )
     public_auth_issuer: str = Field(
-        default="https://auth.caseloop.dev", alias="PUBLIC_AUTH_ISSUER"
+        default="https://auth.agentmed.dev", alias="PUBLIC_AUTH_ISSUER"
     )
 
     lease_ttl_seconds: int = Field(default=60, alias="LEASE_TTL_SECONDS")

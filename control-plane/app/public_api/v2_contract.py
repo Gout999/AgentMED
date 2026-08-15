@@ -1,8 +1,8 @@
 """V2 public header parsing for the /api/v2 catalog boundary.
 
 Mirrors the frozen v1 ``auth_contract.PublicRequestHeaders`` rules, but the
-contract version is fixed to ``2.0`` (``X-CaseLoop-Contract-Version: 2.0``) and
-mutations require ``X-CaseLoop-Idempotency-Key`` per the V5 wire contract.
+contract version is fixed to ``2.0`` (``X-AgentMED-Contract-Version: 2.0``) and
+mutations require ``X-AgentMED-Idempotency-Key`` per the V5 wire contract.
 A missing or non-``2.0`` contract value is ``REQUEST_INVALID`` and never falls
 back to v1.
 """
@@ -53,23 +53,23 @@ class PublicV2RequestHeaders(WireModel):
                 "TOKEN_INVALID", "The bearer credential header is invalid."
             )
 
-        workspace_id = normalized.get("x-caseloop-workspace-id")
+        workspace_id = normalized.get("x-agentmed-workspace-id")
         if workspace_id is None:
             raise HeaderContractViolation(
-                "REQUEST_INVALID", "X-CaseLoop-Workspace-ID is required."
+                "REQUEST_INVALID", "X-AgentMED-Workspace-ID is required."
             )
-        contract_version = normalized.get("x-caseloop-contract-version")
+        contract_version = normalized.get("x-agentmed-contract-version")
         if contract_version != "2.0":
             # v2 missing or other value is REQUEST_INVALID; the URL major must
             # match the request header major and v2 never falls back to v1.
             raise HeaderContractViolation(
-                "REQUEST_INVALID", "X-CaseLoop-Contract-Version must be 2.0 for /api/v2."
+                "REQUEST_INVALID", "X-AgentMED-Contract-Version must be 2.0 for /api/v2."
             )
 
-        idempotency_key = normalized.get("x-caseloop-idempotency-key")
+        idempotency_key = normalized.get("x-agentmed-idempotency-key")
         if mutation and idempotency_key is None:
             raise HeaderContractViolation(
-                "IDEMPOTENCY_KEY_REQUIRED", "X-CaseLoop-Idempotency-Key is required for mutations."
+                "IDEMPOTENCY_KEY_REQUIRED", "X-AgentMED-Idempotency-Key is required for mutations."
             )
         if "idempotency-key" in normalized:
             raise HeaderContractViolation(
@@ -83,7 +83,7 @@ class PublicV2RequestHeaders(WireModel):
                 contract_version=contract_version,
                 idempotency_key=idempotency_key,
                 request_id=normalized.get("x-request-id"),
-                client_version=normalized.get("x-caseloop-client-version"),
+                client_version=normalized.get("x-agentmed-client-version"),
             )
         except ValidationError as exc:
             fields = sorted({str(item["loc"][0]) for item in exc.errors()})

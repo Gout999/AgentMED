@@ -8,10 +8,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 # Interactive local runs may load repository-owned dotenv files. Orchestrated
-# provider subprocesses set CASELOOP_DISABLE_DOTENV=1 and receive a strict
+# provider subprocesses set AGENTMED_DISABLE_DOTENV=1 and receive a strict
 # purpose-scoped environment so they cannot discover controller/approval secrets.
 _REPO_ROOT = Path(__file__).resolve().parents[2]
-if os.environ.get("CASELOOP_DISABLE_DOTENV") != "1":
+if os.environ.get("AGENTMED_DISABLE_DOTENV") != "1":
     load_dotenv(_REPO_ROOT / ".env")
     load_dotenv(Path.cwd() / ".env")
 
@@ -24,11 +24,11 @@ def _env(name: str, default: str = "") -> str:
 class Settings:
     # Quality API
     quality_api_base_url: str = field(
-        default_factory=lambda: _env("CASELOOP_QUALITY_API_BASE_URL", "http://127.0.0.1:8088")
+        default_factory=lambda: _env("AGENTMED_QUALITY_API_BASE_URL", "http://127.0.0.1:8088")
     )
-    read_token: str = field(default_factory=lambda: _env("CASELOOP_READ_TOKEN", "conformance-read-token"))
+    read_token: str = field(default_factory=lambda: _env("AGENTMED_READ_TOKEN", "conformance-read-token"))
     quality_api_timeout_seconds: float = field(
-        default_factory=lambda: float(_env("CASELOOP_QUALITY_API_TIMEOUT_SECONDS", "95"))
+        default_factory=lambda: float(_env("AGENTMED_QUALITY_API_TIMEOUT_SECONDS", "95"))
     )
 
     # StepFun（运动员模型）
