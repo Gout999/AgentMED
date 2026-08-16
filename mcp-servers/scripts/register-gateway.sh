@@ -6,10 +6,16 @@ cd "$(dirname "$0")/.."
 CONSOLE="http://127.0.0.1:18001"
 COOKIE="/tmp/higress-cookie"
 
-# 登录（复用已有会话则跳过）
+# 登录（复用已有会话则跳过）；口令只从环境取，绝不写死（历史教训：曾以明文入库）
+PASSWORD="${HIGRESS_CONSOLE_PASSWORD:-}"
+if [ -z "$PASSWORD" ]; then
+  echo "缺少 HIGRESS_CONSOLE_PASSWORD（Higress 控制台 admin 口令）" >&2
+  exit 1
+fi
 if ! curl -s -o /dev/null -w '%{http_code}' "$CONSOLE/v1/service-sources" -b "$COOKIE" | grep -q 200; then
+  payload=$(PASSWORD="$PASSWORD" python3 -c 'import json,os; print(json.dumps({"username":"admin","password":os.environ["PASSWORD"]}))')
   curl -s -c "$COOKIE" -X POST "$CONSOLE/session/login" -H 'Content-Type: application/json' \
-    -d '{"username":"admin","password":"AgentMEDAdmin2026"}' > /dev/null
+    -d "$payload" > /dev/null
   echo "logged in"
 fi
 
